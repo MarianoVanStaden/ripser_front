@@ -1,3 +1,4 @@
+import FechaField from '../common/FechaField';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Grid, Card, CardContent, Typography, CircularProgress, Alert,
@@ -395,14 +396,11 @@ export const RefinanciacionPage: React.FC = () => {
               )}
 
               {/* Fecha primera cuota */}
-              <TextField
+              <FechaField
                 label="Fecha primera cuota"
-                type="date"
-                fullWidth
+                size="medium"
                 value={form.fechaPrimeraCuota}
-                onChange={(e) => handleFieldChange('fechaPrimeraCuota', e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{}}
+                onChange={(v) => handleFieldChange('fechaPrimeraCuota', v)}
                 error={!!errors.fechaPrimeraCuota}
                 helperText={errors.fechaPrimeraCuota}
                 disabled={!estaRefinanciable || sinDeuda}

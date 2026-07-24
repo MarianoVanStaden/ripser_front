@@ -1,3 +1,8 @@
+import FechaField from '../../common/FechaField';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 import { useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -138,14 +143,18 @@ export const RegistrarAccionDialog: React.FC<RegistrarAccionDialogProps> = ({
 
           <Grid container spacing={2}>
             <Grid item xs={7}>
-              <TextField
-                label="Fecha y Hora"
-                type="datetime-local"
-                fullWidth size="small"
-                value={form.fecha}
-                onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-              />
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DateTimePicker
+                  label="Fecha y Hora"
+                  format="DD/MM/YYYY HH:mm"
+                  ampm={false}
+                  value={form.fecha ? dayjs(form.fecha) : null}
+                  onChange={(v) =>
+                    setForm((f) => ({ ...f, fecha: v?.isValid() ? v.format('YYYY-MM-DDTHH:mm') : '' }))
+                  }
+                  slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                />
+              </LocalizationProvider>
             </Grid>
             <Grid item xs={5}>
               <TextField
@@ -174,23 +183,17 @@ export const RegistrarAccionDialog: React.FC<RegistrarAccionDialogProps> = ({
           />
 
           {showFechaPromesa && (
-            <TextField
+            <FechaField
               label="Fecha en que prometió pagar *"
-              type="date"
-              fullWidth size="small"
               value={form.fechaPrometePago}
-              onChange={(e) => setForm((f) => ({ ...f, fechaPrometePago: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
+              onChange={(v) => setForm((f) => ({ ...f, fechaPrometePago: v }))}
             />
           )}
 
-          <TextField
+          <FechaField
             label="Próximo contacto (fecha)"
-            type="date"
-            fullWidth size="small"
             value={form.fechaProximoContacto}
-            onChange={(e) => setForm((f) => ({ ...f, fechaProximoContacto: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
+            onChange={(v) => setForm((f) => ({ ...f, fechaProximoContacto: v }))}
           />
 
           <FormControlLabel

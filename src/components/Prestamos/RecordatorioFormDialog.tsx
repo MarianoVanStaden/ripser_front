@@ -1,3 +1,4 @@
+import FechaField from '../common/FechaField';
 import { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
@@ -96,13 +97,11 @@ export const RecordatorioFormDialog: React.FC<RecordatorioFormDialogProps> = ({
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
+              <FechaField
                 label="Fecha Recordatorio"
-                type="date"
+                size="medium"
                 value={formData.fechaRecordatorio || ''}
-                onChange={(e) => handleChange('fechaRecordatorio', e.target.value)}
-                InputLabelProps={{ shrink: true }}
+                onChange={(v) => handleChange('fechaRecordatorio', v)}
               />
             </Grid>
             <Grid item xs={12} sm={6}>

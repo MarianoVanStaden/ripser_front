@@ -1,3 +1,4 @@
+import FechaField from '../common/FechaField';
 import { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
@@ -272,13 +273,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
+              <FechaField
                 label="Fecha de Pago"
-                type="date"
+                size="medium"
                 value={fechaPago}
-                onChange={(e) => setFechaPago(e.target.value)}
-                InputLabelProps={{ shrink: true }}
+                onChange={setFechaPago}
               />
             </Grid>
             <Grid item xs={12}>
@@ -403,24 +402,20 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth required
+                      <FechaField
                         label="Fecha de emisión"
-                        type="date"
+                        required size="medium"
                         value={chequeData.fechaEmision}
-                        onChange={(e) => setChequeData({ ...chequeData, fechaEmision: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                        inputProps={{ max: dayjs().format('YYYY-MM-DD') }}
+                        onChange={(v) => setChequeData({ ...chequeData, fechaEmision: v })}
+                        maxDate={dayjs().format('YYYY-MM-DD')}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth required
+                      <FechaField
                         label="Fecha de cobro"
-                        type="date"
+                        required size="medium"
                         value={chequeData.fechaCobro}
-                        onChange={(e) => setChequeData({ ...chequeData, fechaCobro: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
+                        onChange={(v) => setChequeData({ ...chequeData, fechaCobro: v })}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>

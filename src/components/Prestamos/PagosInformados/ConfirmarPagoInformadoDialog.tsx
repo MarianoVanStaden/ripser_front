@@ -1,3 +1,4 @@
+import FechaField from '../../common/FechaField';
 import { useEffect, useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
@@ -219,16 +220,14 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
                         onChange={(e) => setChequeData({ ...chequeData, cuitTitular: e.target.value })} />
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                      <TextField fullWidth required type="date" label="Fecha emisión"
-                        InputLabelProps={{ shrink: true }}
+                      <FechaField label="Fecha emisión" required size="medium"
                         value={chequeData.fechaEmision}
-                        onChange={(e) => setChequeData({ ...chequeData, fechaEmision: e.target.value })} />
+                        onChange={(v) => setChequeData({ ...chequeData, fechaEmision: v })} />
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                      <TextField fullWidth required type="date" label="Fecha cobro"
-                        InputLabelProps={{ shrink: true }}
+                      <FechaField label="Fecha cobro" required size="medium"
                         value={chequeData.fechaCobro}
-                        onChange={(e) => setChequeData({ ...chequeData, fechaCobro: e.target.value })} />
+                        onChange={(v) => setChequeData({ ...chequeData, fechaCobro: v })} />
                     </Grid>
                     <Grid item xs={12}>
                       <FormControlLabel

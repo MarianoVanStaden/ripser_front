@@ -7,6 +7,10 @@ import {
   ToggleButtonGroup, ToggleButton,
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 import { gestionCobranzaApi } from '../../../api/services/gestionCobranzaApi';
 import { prestamoPersonalApi } from '../../../api/services/prestamoPersonalApi';
 import {
@@ -265,14 +269,17 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
             </Select>
           </FormControl>
 
-          <TextField
-            label="Próxima gestión (fecha)"
-            type="date"
-            fullWidth size="small"
-            value={form.fechaProximaGestion}
-            onChange={(e) => setForm((f) => ({ ...f, fechaProximaGestion: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-          />
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              label="Próxima gestión (fecha)"
+              format="DD/MM/YYYY"
+              value={form.fechaProximaGestion ? dayjs(form.fechaProximaGestion) : null}
+              onChange={(value) =>
+                setForm((f) => ({ ...f, fechaProximaGestion: value?.isValid() ? value.format('YYYY-MM-DD') : '' }))
+              }
+              slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+            />
+          </LocalizationProvider>
 
           <TextField
             label="Observaciones"

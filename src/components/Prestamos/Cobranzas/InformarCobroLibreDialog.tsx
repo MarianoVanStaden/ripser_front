@@ -4,6 +4,10 @@ import {
   Button, TextField, MenuItem, FormControl, InputLabel, Select,
   Stack, Alert, CircularProgress,
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 import { pagoInformadoApi } from '../../../api/services/pagoInformadoApi';
 import { MetodoPago, METODO_PAGO_LABELS } from '../../../types/prestamo.types';
 import type { MetodoPago as MetodoPagoType } from '../../../types/venta.types';
@@ -20,6 +24,13 @@ interface InformarCobroLibreDialogProps {
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
+// El enum global del front incluye alias legacy (TRANSFERENCIA, FINANCIAMIENTO)
+// que el backend rechaza — mismo filtro que RegistrarPagoDialog. FINANCIACION_PROPIA
+// tampoco aplica a un cobro puntual.
+const METODOS_EXCLUIDOS: string[] = ['FINANCIACION_PROPIA', 'TRANSFERENCIA', 'FINANCIAMIENTO'];
+const METODOS_COBRO = (Object.keys(MetodoPago) as (keyof typeof MetodoPago)[])
+  .filter((k) => !METODOS_EXCLUIDOS.includes(k));
+
 /**
  * Informe de cobro de una gestión libre (sin crédito): mismo circuito que
  * "Pagos Informados por Cobranzas" — queda pendiente en la bandeja de
@@ -29,7 +40,7 @@ export const InformarCobroLibreDialog: React.FC<InformarCobroLibreDialogProps> =
   open, gestionId, clienteNombre, montoSugerido, onClose, onSaved,
 }) => {
   const [monto, setMonto] = useState<number | ''>(montoSugerido ?? '');
-  const [metodoPago, setMetodoPago] = useState<MetodoPagoType>('TRANSFERENCIA');
+  const [metodoPago, setMetodoPago] = useState<MetodoPagoType>('TRANSFERENCIA_BANCARIA');
   const [numeroComprobante, setNumeroComprobante] = useState('');
   const [fechaPago, setFechaPago] = useState(getTodayStr());
   const [observaciones, setObservaciones] = useState('');
@@ -98,7 +109,7 @@ export const InformarCobroLibreDialog: React.FC<InformarCobroLibreDialogProps> =
               label="Método de pago"
               onChange={(e) => setMetodoPago(e.target.value as MetodoPagoType)}
             >
-              {(Object.keys(MetodoPago) as (keyof typeof MetodoPago)[]).map((k) => (
+              {METODOS_COBRO.map((k) => (
                 <MenuItem key={k} value={MetodoPago[k]}>
                   {METODO_PAGO_LABELS[MetodoPago[k]]}
                 </MenuItem>
@@ -111,14 +122,15 @@ export const InformarCobroLibreDialog: React.FC<InformarCobroLibreDialogProps> =
             value={numeroComprobante}
             onChange={(e) => setNumeroComprobante(e.target.value)}
           />
-          <TextField
-            label="Fecha del cobro"
-            type="date"
-            fullWidth size="small"
-            value={fechaPago}
-            onChange={(e) => setFechaPago(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              label="Fecha del cobro"
+              format="DD/MM/YYYY"
+              value={fechaPago ? dayjs(fechaPago) : null}
+              onChange={(value) => setFechaPago(value?.isValid() ? value.format('YYYY-MM-DD') : '')}
+              slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+            />
+          </LocalizationProvider>
           <TextField
             label="Observaciones"
             multiline rows={2}
