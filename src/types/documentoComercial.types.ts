@@ -94,7 +94,8 @@ export interface DetalleNotaCreditoItemDTO {
 
 export interface CreateNotaCreditoDTO {
   facturaId: number;
-  usuarioId: number;
+  /** Opcional: el backend cae al usuario autenticado si no se envía. */
+  usuarioId?: number;
   observaciones?: string;
   motivo?: MotivoNotaCredito;
   /** Modo DEVOLUCION_EQUIPO: IDs de equipos a retornar al inventario. */
@@ -104,6 +105,26 @@ export interface CreateNotaCreditoDTO {
   /** true = se devolvió efectivo al cliente → aparece como EGRESO en flujo de caja.
    *  false (default) = reversión documental/CC sin salida de dinero → no impacta caja. */
   reintegraEfectivo?: boolean;
+}
+
+export interface NotaCreditoPreviewCreditoDTO {
+  movimientoOriginalId: number | null;
+  concepto: string;
+  importeOriginal: number;
+  importeACreditar: number;
+}
+
+/** Créditos de CC que generaría la NC — calculado por el backend con la misma
+ *  lógica de la creación (inversión prorrateada de los débitos originales). */
+export interface NotaCreditoPreviewDTO {
+  totalNc: number;
+  factor: number;
+  totalDebitos: number;
+  creditosPrevios: number;
+  capacidadRestante: number;
+  totalACreditar: number;
+  fallbackLegacy: boolean;
+  creditos: NotaCreditoPreviewCreditoDTO[];
 }
 // En types/index.ts agregar:
 export interface CreateOpcionFinanciamientoDTO {

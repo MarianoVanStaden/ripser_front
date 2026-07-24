@@ -10,6 +10,7 @@ import type {
   ConvertToFacturaDTO,
   ConvertToNotaPedidoResult,
   CreateNotaCreditoDTO,
+  NotaCreditoPreviewDTO,
   PageResponse,
   PaginationParams,
 } from '../../types';
@@ -533,6 +534,12 @@ export const documentoApi = {
       console.error('Error creating nota de credito:', error);
       throw error;
     }
+  },
+
+  // Preview de Nota de Crédito: créditos de CC reales que generaría (sin persistir).
+  previewNotaCredito: async (data: CreateNotaCreditoDTO): Promise<NotaCreditoPreviewDTO> => {
+    const response = await api.post<NotaCreditoPreviewDTO>('/api/documentos/nota-credito/preview', data);
+    return response.data;
   },
 
   // Precio unitario vigente del revestimiento de acero (parámetro de sistema).

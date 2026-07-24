@@ -16,7 +16,7 @@ import dayjs from 'dayjs';
 import api from '../../api/config';
 import { documentoApi } from '../../api/services';
 import { useTenant } from '../../context/TenantContext';
-import type { DocumentoComercial, EquipoFabricadoDTO, DetalleDocumento, TipoItemDocumento, MotivoNotaCredito } from '../../types';
+import type { DocumentoComercial, EquipoFabricadoDTO, DetalleDocumento, TipoItemDocumento, CreateNotaCreditoDTO, NotaCreditoPreviewDTO } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 
 // ────────────────────────── Types ──────────────────────────
@@ -158,6 +158,7 @@ const NotasCreditoPage: React.FC = () => {
     setItemsError([]);
     setModoCredito(null);
     setErrors({ factura: '', items: '' });
+    setPreview(null);
   };
 
   const handleFacturaChange = async (factura: DocumentoComercial | null) => {
@@ -371,6 +372,66 @@ const NotasCreditoPage: React.FC = () => {
 
   const montoActual = modoCredito === 'DEVOLUCION_EQUIPO' ? montoDevolucion : montoError;
 
+  // ── Preview backend: créditos CC reales (inversión de débitos) ──
+  // El monto local por precios es solo un placeholder: en facturas financiadas
+  // la CC debitó "Entrega inicial" + "Crédito personal" y la NC acredita eso.
+
+  const [preview, setPreview] = useState<NotaCreditoPreviewDTO | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const previewSeqRef = useRef(0);
+
+  const buildNotaCreditoPayload = (): CreateNotaCreditoDTO | null => {
+    if (!form.facturaId || !modoCredito) return null;
+    if (modoCredito === 'DEVOLUCION_EQUIPO') {
+      if (form.equiposSeleccionados.length === 0) return null;
+      return {
+        facturaId: form.facturaId,
+        motivo: 'DEVOLUCION_EQUIPO',
+        reintegraEfectivo: form.reintegraEfectivo,
+        equiposADevolver: form.equiposSeleccionados.map(e => e.id),
+      };
+    }
+    if (itemsErrorSeleccionados.length === 0) return null;
+    return {
+      facturaId: form.facturaId,
+      motivo: 'ERROR_FACTURACION',
+      reintegraEfectivo: form.reintegraEfectivo,
+      itemsAcreditar: itemsErrorSeleccionados.map(i => ({
+        detalleDocumentoId: i.detalleDocumentoId,
+        cantidadAcreditar: i.cantidadAcreditar,
+        ...(i.tipoItem === 'EQUIPO' && i.retornarInventario && i.equipoFabricadoId
+          ? { equipoFabricadoId: i.equipoFabricadoId }
+          : {}),
+      })),
+    };
+  };
+
+  useEffect(() => {
+    const payload = buildNotaCreditoPayload();
+    const seq = ++previewSeqRef.current;
+    if (!payload) {
+      setPreview(null);
+      setLoadingPreview(false);
+      return;
+    }
+    setLoadingPreview(true);
+    const timer = setTimeout(async () => {
+      try {
+        const p = await documentoApi.previewNotaCredito(payload);
+        if (previewSeqRef.current === seq) setPreview(p);
+      } catch {
+        if (previewSeqRef.current === seq) setPreview(null);
+      } finally {
+        if (previewSeqRef.current === seq) setLoadingPreview(false);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.facturaId, modoCredito, form.equiposSeleccionados, itemsErrorSeleccionados]);
+
+  /** Monto real a acreditar en CC según backend; null mientras no hay preview. */
+  const montoRealCC = preview ? preview.totalACreditar : null;
+
   // ── Submit ──
 
   const validateForm = (): boolean => {
@@ -401,38 +462,18 @@ const NotasCreditoPage: React.FC = () => {
       }
 
       const observacionesTexto = form.observaciones.trim() || undefined;
-      const motivo: MotivoNotaCredito = modoCredito === 'ERROR_FACTURACION' ? 'ERROR_FACTURACION' : 'DEVOLUCION_EQUIPO';
 
-      let payload: any;
-      if (modoCredito === 'DEVOLUCION_EQUIPO') {
-        payload = {
-          facturaId: form.facturaId,
-          usuarioId,
-          observaciones: observacionesTexto,
-          motivo,
-          reintegraEfectivo: form.reintegraEfectivo,
-          equiposADevolver: form.equiposSeleccionados.map(e => e.id),
-        };
-      } else {
-        payload = {
-          facturaId: form.facturaId,
-          usuarioId,
-          observaciones: observacionesTexto,
-          motivo,
-          reintegraEfectivo: form.reintegraEfectivo,
-          itemsAcreditar: itemsErrorSeleccionados.map(i => ({
-            detalleDocumentoId: i.detalleDocumentoId,
-            cantidadAcreditar: i.cantidadAcreditar,
-            ...(i.tipoItem === 'EQUIPO' && i.retornarInventario && i.equipoFabricadoId
-              ? { equipoFabricadoId: i.equipoFabricadoId }
-              : {}),
-          })),
-        };
+      // Mismo payload que el preview (única fuente): solo se agregan usuario y observaciones.
+      const base = buildNotaCreditoPayload();
+      if (!base) {
+        setCreating(false);
+        return;
       }
+      const payload: CreateNotaCreditoDTO = { ...base, usuarioId, observaciones: observacionesTexto };
 
       const successSnap = {
         facturaNumero: form.facturaNumero,
-        montoCalculado: montoActual,
+        montoCalculado: montoRealCC ?? montoActual,
         modoCredito: modoCredito!,
         equiposDevueltos: modoCredito === 'DEVOLUCION_EQUIPO' ? form.equiposSeleccionados.length : undefined,
         totalEquiposFactura: modoCredito === 'DEVOLUCION_EQUIPO' ? equiposElegiblesDevolucion.length : undefined,
@@ -740,11 +781,19 @@ const NotasCreditoPage: React.FC = () => {
                             </Typography>
                           </Grid>
                           <Grid item xs={12} sm={4}>
-                            <Typography variant="body2" color="text.secondary">Monto a acreditar (estimado)</Typography>
-                            <Typography variant="h6" fontWeight="600" color="primary.main">{formatCurrency(montoDevolucion)}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {montoRealCC !== null ? 'Monto a acreditar en CC' : 'Monto a acreditar (estimado)'}
+                            </Typography>
+                            <Typography variant="h6" fontWeight="600" color="primary.main">
+                              {loadingPreview && montoRealCC === null
+                                ? '…'
+                                : formatCurrency(montoRealCC ?? montoDevolucion)}
+                            </Typography>
                           </Grid>
                           <Grid item xs={12} sm={4}>
-                            <Tooltip title="Monto proporcional sobre los ítems de equipo de la factura">
+                            <Tooltip title={montoRealCC !== null
+                              ? 'Reversa de los débitos que la factura generó en cuenta corriente'
+                              : 'Monto proporcional sobre los ítems de equipo de la factura'}>
                               <Alert severity="info" sx={{ py: 0.5, borderRadius: 1 }}>
                                 <Typography variant="caption">
                                   {form.equiposSeleccionados.length === equiposElegiblesDevolucion.length ? 'Devolución total' : 'Devolución parcial'}
@@ -901,12 +950,22 @@ const NotasCreditoPage: React.FC = () => {
                             <Typography variant="h6" fontWeight="600" color="warning.dark">{itemsErrorSeleccionados.length}</Typography>
                           </Grid>
                           <Grid item xs={12} sm={4}>
-                            <Typography variant="body2" color="text.secondary">Monto a acreditar (exacto)</Typography>
-                            <Typography variant="h6" fontWeight="600" color="primary.main">{formatCurrency(montoError)}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {montoRealCC !== null ? 'Monto a acreditar en CC' : 'Monto a acreditar (exacto)'}
+                            </Typography>
+                            <Typography variant="h6" fontWeight="600" color="primary.main">
+                              {loadingPreview && montoRealCC === null
+                                ? '…'
+                                : formatCurrency(montoRealCC ?? montoError)}
+                            </Typography>
                           </Grid>
                           <Grid item xs={12} sm={4}>
-                            <Alert severity="warning" sx={{ py: 0.5, borderRadius: 1 }}>
-                              <Typography variant="caption">Sin IVA incluido — el backend lo calcula al guardar</Typography>
+                            <Alert severity={montoRealCC !== null ? 'info' : 'warning'} sx={{ py: 0.5, borderRadius: 1 }}>
+                              <Typography variant="caption">
+                                {montoRealCC !== null
+                                  ? 'Reversa de los débitos que la factura generó en cuenta corriente'
+                                  : 'Sin IVA incluido — el backend lo calcula al guardar'}
+                              </Typography>
                             </Alert>
                           </Grid>
                         </Grid>
@@ -992,10 +1051,33 @@ const NotasCreditoPage: React.FC = () => {
                     </Typography>
                   </Grid>
                   <Grid item xs={6} sm={3}>
-                    <Typography variant="caption" color="text.secondary">Monto estimado</Typography>
-                    <Typography variant="h6" fontWeight="600" color="primary.main">{formatCurrency(montoActual)}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {montoRealCC !== null ? 'Monto a acreditar en CC' : 'Monto estimado'}
+                    </Typography>
+                    <Typography variant="h6" fontWeight="600" color="primary.main">
+                      {formatCurrency(montoRealCC ?? montoActual)}
+                    </Typography>
                   </Grid>
                 </Grid>
+
+                {preview && !preview.fallbackLegacy && (
+                  <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
+                    <Typography variant="body2" fontWeight={600} gutterBottom>
+                      Créditos en cuenta corriente (reversa de los débitos de la factura):
+                    </Typography>
+                    {preview.creditos.map((c, idx) => (
+                      <Typography key={c.movimientoOriginalId ?? idx} variant="body2">
+                        • {c.concepto}: {formatCurrency(c.importeACreditar)}
+                        {preview.factor < 1 && ` (de ${formatCurrency(c.importeOriginal)})`}
+                      </Typography>
+                    ))}
+                    {preview.creditosPrevios > 0 && (
+                      <Typography variant="caption" color="text.secondary">
+                        Ya acreditado por NC anteriores: {formatCurrency(preview.creditosPrevios)} — restante: {formatCurrency(preview.capacidadRestante)}
+                      </Typography>
+                    )}
+                  </Alert>
+                )}
 
                 <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
                   <Typography variant="body2">
