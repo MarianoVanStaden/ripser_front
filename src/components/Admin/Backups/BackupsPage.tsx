@@ -22,6 +22,8 @@ import {
   TableHead,
   TableRow,
   Tabs,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -31,23 +33,33 @@ import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import DnsIcon from '@mui/icons-material/Dns';
+import FolderZipIcon from '@mui/icons-material/FolderZip';
 import {
   backupApi,
+  backupFilesApi,
+  type AnyBackupTier,
+  type BackupApiClient,
   type BackupFileDTO,
   type BackupStatusDTO,
   type BackupsPorTier,
-  type BackupTier,
   type EstadoBackup,
 } from '../../../api/services/backupApi';
 
-const TIERS: { code: BackupTier; label: string }[] = [
+type TipoBackup = 'db' | 'archivos';
+
+const DB_TIERS: { code: AnyBackupTier; label: string }[] = [
   { code: 'hourly', label: 'Horarios' },
   { code: 'weekly', label: 'Semanales' },
   { code: 'monthly', label: 'Mensuales' },
   { code: 'yearly', label: 'Anuales' },
 ];
 
-const EMPTY: BackupsPorTier = { hourly: [], weekly: [], monthly: [], yearly: [] };
+const FILE_TIERS: { code: AnyBackupTier; label: string }[] = [
+  { code: 'daily', label: 'Diarios' },
+  { code: 'weekly', label: 'Semanales' },
+  { code: 'monthly', label: 'Mensuales' },
+];
 
 const formatFecha = (iso: string | null): string => {
   if (!iso) return '—';
@@ -83,14 +95,20 @@ function StatCard({ label, hint, children }: StatCardProps) {
   );
 }
 
-export default function BackupsPage() {
+interface BackupPanelProps {
+  api: BackupApiClient;
+  tiers: { code: AnyBackupTier; label: string }[];
+  defaultTab: AnyBackupTier;
+}
+
+function BackupPanel({ api, tiers, defaultTab }: BackupPanelProps) {
   const [status, setStatus] = useState<BackupStatusDTO | null>(null);
-  const [backups, setBackups] = useState<BackupsPorTier>(EMPTY);
+  const [backups, setBackups] = useState<BackupsPorTier>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  const [tab, setTab] = useState<BackupTier>('hourly');
+  const [tab, setTab] = useState<AnyBackupTier>(defaultTab);
   const [running, setRunning] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<BackupFileDTO | null>(null);
@@ -102,16 +120,16 @@ export default function BackupsPage() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [st, list] = await Promise.all([backupApi.status(), backupApi.list()]);
+      const [st, list] = await Promise.all([api.status(), api.list()]);
       setStatus(st);
-      setBackups({ ...EMPTY, ...list });
+      setBackups(list);
     } catch (err) {
       console.error('Error cargando backups:', err);
       setError('No se pudieron cargar los backups. Verificá tus permisos y la conexión.');
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     void load();
@@ -137,7 +155,7 @@ export default function BackupsPage() {
     setError(null);
     setInfo(null);
     try {
-      const res = await backupApi.run();
+      const res = await api.run();
       setInfo(res.mensaje ?? 'Backup solicitado.');
       setTimeout(() => { void load(true); }, 2000);
     } catch (err) {
@@ -153,7 +171,7 @@ export default function BackupsPage() {
     setDownloading(key);
     setError(null);
     try {
-      await backupApi.download(b.tier, b.nombre);
+      await api.download(b.tier, b.nombre);
     } catch (err) {
       console.error('Error descargando backup:', err);
       setError(`No se pudo descargar ${b.nombre}.`);
@@ -167,7 +185,7 @@ export default function BackupsPage() {
     setDeleting(true);
     setError(null);
     try {
-      await backupApi.remove(toDelete.tier, toDelete.nombre);
+      await api.remove(toDelete.tier, toDelete.nombre);
       setInfo(`Backup ${toDelete.nombre} eliminado.`);
       setToDelete(null);
       await load(true);
@@ -184,12 +202,8 @@ export default function BackupsPage() {
   const filasTier = backups[tab] ?? [];
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Box display="flex" alignItems="center" gap={1}>
-          <BackupIcon color="primary" />
-          <Typography variant="h5" fontWeight={700}>Backups de base de datos</Typography>
-        </Box>
+    <>
+      <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => load()} disabled={loading}>
             Actualizar
@@ -214,7 +228,7 @@ export default function BackupsPage() {
       )}
       {status && !status.habilitado && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Los backups automáticos están deshabilitados (BACKUP_ENABLED=false). Podés generar uno
+          Los backups automáticos de esta sección están deshabilitados. Podés generar uno
           manualmente con "Realizar Backup Ahora".
         </Alert>
       )}
@@ -262,11 +276,11 @@ export default function BackupsPage() {
       <Paper sx={{ mb: 0 }}>
         <Tabs
           value={tab}
-          onChange={(_, v) => setTab(v as BackupTier)}
+          onChange={(_, v) => setTab(v as AnyBackupTier)}
           variant="scrollable"
           scrollButtons="auto"
         >
-          {TIERS.map((t) => {
+          {tiers.map((t) => {
             const r = status?.tiers?.find((s) => s.tier === t.code);
             const count = r?.cantidad ?? backups[t.code]?.length ?? 0;
             return (
@@ -360,6 +374,41 @@ export default function BackupsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+    </>
+  );
+}
+
+export default function BackupsPage() {
+  const [tipo, setTipo] = useState<TipoBackup>('db');
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <BackupIcon color="primary" />
+          <Typography variant="h5" fontWeight={700}>Backups</Typography>
+        </Box>
+        <ToggleButtonGroup
+          value={tipo}
+          exclusive
+          size="small"
+          onChange={(_, v: TipoBackup | null) => { if (v) setTipo(v); }}
+        >
+          <ToggleButton value="db">
+            <DnsIcon fontSize="small" sx={{ mr: 0.5 }} /> Base de datos
+          </ToggleButton>
+          <ToggleButton value="archivos">
+            <FolderZipIcon fontSize="small" sx={{ mr: 0.5 }} /> Documentos
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
+
+      {/* key={tipo}: remonta el panel al cambiar de tipo para aislar estado y polling. */}
+      {tipo === 'db' ? (
+        <BackupPanel key="db" api={backupApi} tiers={DB_TIERS} defaultTab="hourly" />
+      ) : (
+        <BackupPanel key="archivos" api={backupFilesApi} tiers={FILE_TIERS} defaultTab="daily" />
+      )}
     </Box>
   );
 }
