@@ -18,7 +18,6 @@ import {
 } from '@mui/material';
 import dayjs from 'dayjs';
 import { documentoApi } from '../../../api/services';
-import type { VentasVendedorMes } from '../../../api/services/documentoApi';
 import { useTenant } from '../../../context/TenantContext';
 
 interface CeldaMes {
