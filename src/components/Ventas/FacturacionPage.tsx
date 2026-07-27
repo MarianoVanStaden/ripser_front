@@ -84,7 +84,7 @@ const FacturacionPage = () => {
   const { empresaId, esSuperAdmin, rolActual } = useTenant();
   // Admins deben elegir explícitamente el vendedor al que se atribuye la venta
   // (reportes de unidades y bonos); el resto se autoasigna como hasta ahora.
-  const isAdmin = esSuperAdmin || rolActual === 'ADMIN' || rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO';
+  const isAdmin = esSuperAdmin || (rolActual as string) === 'ADMIN' || rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
