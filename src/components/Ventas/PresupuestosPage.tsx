@@ -87,7 +87,10 @@ import EditarColorDetalleDialog from './NotasPedido/dialogs/EditarColorDetalleDi
 
 const PresupuestosPage: React.FC = () => {
   const { user } = useAuth();
-  const { empresaId } = useTenant();
+  const { empresaId, esSuperAdmin, rolActual } = useTenant();
+  // Admins deben elegir explícitamente el vendedor al que se atribuye la venta
+  // (reportes de unidades y bonos); el resto se autoasigna como hasta ahora.
+  const isAdmin = esSuperAdmin || rolActual === 'ADMIN' || rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO';
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -599,6 +602,15 @@ const PresupuestosPage: React.FC = () => {
   const [gestionanteNombre, setGestionanteNombre] = useState('');
   const [gestionanteTelefono, setGestionanteTelefono] = useState('');
 
+  // Opciones del selector de vendedor: vendedores/supervisores activos de la
+  // empresa + el usuario logueado si no figura (autoasignación de OFICINA/GERENTE).
+  const usuarioOptions = useMemo(() => {
+    if (user?.id && !usuarios.some((u) => u.id === user.id)) {
+      return [...usuarios, { id: user.id, nombre: user.nombre || '' } as Usuario];
+    }
+    return usuarios;
+  }, [usuarios, user]);
+
   const handleOpenDialog = useCallback((presupuesto?: DocumentoComercial, readOnlyMode = false) => {
     setReadOnly(readOnlyMode);
     setHasUnsavedChanges(false);
@@ -646,7 +658,7 @@ const PresupuestosPage: React.FC = () => {
       );
     } else {
       setEditingPresupuesto(null);
-      setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
+      setFormData({ ...initialFormData, usuarioId: isAdmin ? '' : (user?.id ?? 0).toString() });
       setDestinatarioMode('CLIENTE');
       setCanalVenta('');
       setGestionanteNombre('');
@@ -655,7 +667,7 @@ const PresupuestosPage: React.FC = () => {
       setDetalles([{ ...initialDetalle }]);
     }
     setDialogOpen(true);
-  }, [user]);
+  }, [user, isAdmin]);
 
   // Deep-link desde el detalle de lead: /ventas/presupuestos?leadId=123 abre el
   // dialog de alta con el lead preseleccionado. Se consume una sola vez y se
@@ -691,7 +703,7 @@ const PresupuestosPage: React.FC = () => {
     } else {
       setDialogOpen(false);
       setEditingPresupuesto(null);
-      setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
+      setFormData({ ...initialFormData, usuarioId: isAdmin ? '' : (user?.id ?? 0).toString() });
       setSelectedCliente(null);
       setDestinatarioMode('CLIENTE');
       setDetalles([]);
@@ -699,7 +711,7 @@ const PresupuestosPage: React.FC = () => {
       setHasUnsavedChanges(false);
       deudaYaConfirmadaRef.current = false;
     }
-  }, [hasUnsavedChanges, user, readOnly]);
+  }, [hasUnsavedChanges, user, isAdmin, readOnly]);
 
   const handleOpenViewDialog = useCallback((presupuesto: DocumentoComercial) => {
     setViewingPresupuesto(presupuesto);
@@ -731,7 +743,7 @@ const PresupuestosPage: React.FC = () => {
     setConfirmDialogOpen(false);
     setDialogOpen(false);
     setEditingPresupuesto(null);
-    setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
+    setFormData({ ...initialFormData, usuarioId: isAdmin ? '' : (user?.id ?? 0).toString() });
     setSelectedCliente(null);
     setDestinatarioMode('CLIENTE');
     setDetalles([]);
@@ -739,7 +751,7 @@ const PresupuestosPage: React.FC = () => {
     setHasUnsavedChanges(false);
     setConfirmDialogAction(null);
     deudaYaConfirmadaRef.current = false;
-  }, [user]);
+  }, [user, isAdmin]);
 
   const handleSavePresupuesto = useCallback(async () => {
     // Re-entry guard: descarta clicks repetidos en el botón de confirmar mientras
@@ -756,6 +768,12 @@ const PresupuestosPage: React.FC = () => {
     if (!editingPresupuesto && confirmDialogAction !== 'create') {
       setConfirmDialogAction('create');
       setConfirmDialogOpen(true);
+      return;
+    }
+
+    // Admin: la atribución de la venta es explícita, sin fallback silencioso al logueado.
+    if (isAdmin && !formData.usuarioId) {
+      setError("Debe seleccionar un vendedor");
       return;
     }
 
@@ -925,7 +943,7 @@ const PresupuestosPage: React.FC = () => {
       // confirmación/deuda). El segundo click ya fue descartado de forma síncrona.
       guardandoPresupuestoRef.current = false;
     }
-  }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose, checkClienteDeuda]);
+  }, [user, isAdmin, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose, checkClienteDeuda]);
 
   // Financiamiento handlers
   const handleOpenFinanciamiento = useCallback(async (presupuesto: DocumentoComercial) => {
@@ -1583,22 +1601,22 @@ const PresupuestosPage: React.FC = () => {
                 )}
               </Box>
 
-              {editingPresupuesto && usuarios.length > 0 && (
+              {usuarioOptions.length > 0 && (
                 <TextField
                   fullWidth
                   select
-                  label="Usuario"
+                  required={isAdmin}
+                  label="Vendedor"
                   value={formData.usuarioId}
                   onChange={(e) => {
-                    console.log("Usuario seleccionado:", e.target.value);
                     setFormData({ ...formData, usuarioId: e.target.value });
                     setHasUnsavedChanges(true);
                   }}
                   margin="normal"
                   disabled={readOnly}
                 >
-                  <MenuItem value="">Seleccionar usuario</MenuItem>
-                  {usuarios.map((usuario) => (
+                  <MenuItem value="">Seleccionar vendedor</MenuItem>
+                  {usuarioOptions.map((usuario) => (
                     <MenuItem key={usuario.id} value={usuario.id.toString()}>
                       {usuario.nombre}
                     </MenuItem>

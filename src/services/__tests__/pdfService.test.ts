@@ -112,4 +112,64 @@ describe('generarCreditoPDF — pagos informados en el estado de cuenta', () => 
 
     expect(cuotaRows()[0][COL.estado]).toBe('Vencida');
   });
+
+  it('cascadea el excedente de un informe a la cuota siguiente como "Pago parcial"', () => {
+    // Informa $200.000 sobre una cuota de $164.850: excedente $35.150 a la cuota 2.
+    const cuotas = [
+      cuota({ id: 1, numeroCuota: 1, estado: 'PAGO_INFORMADO', montoInformado: 200000 }),
+      cuota({ id: 2, numeroCuota: 2, estado: 'PENDIENTE' }),
+    ];
+    generarCreditoPDF(basePrestamo, cuotas);
+
+    const [row1, row2] = cuotaRows();
+    expect(row1[COL.estado]).toBe('Pagada');
+    expect(row1[COL.pagado]).toBe(money(164850));
+    expect(row1[COL.saldo]).toBe(money(0));
+    expect(row2[COL.estado]).toBe('Pago parcial');
+    expect(row2[COL.pagado]).toBe(money(35150));
+    expect(row2[COL.saldo]).toBe(money(129700)); // 164850 - 35150
+  });
+
+  it('un excedente que cubre entera la cuota siguiente la marca "Pagada" y sigue cascadeando', () => {
+    // $400.000 informados: cuota 1 pagada, cuota 2 pagada entera, $70.300 a la cuota 3.
+    const cuotas = [
+      cuota({ id: 1, numeroCuota: 1, estado: 'PAGO_INFORMADO', montoInformado: 400000 }),
+      cuota({ id: 2, numeroCuota: 2, estado: 'PENDIENTE' }),
+      cuota({ id: 3, numeroCuota: 3, estado: 'PENDIENTE' }),
+    ];
+    generarCreditoPDF(basePrestamo, cuotas);
+
+    const [row1, row2, row3] = cuotaRows();
+    expect(row1[COL.estado]).toBe('Pagada');
+    expect(row2[COL.estado]).toBe('Pagada');
+    expect(row2[COL.saldo]).toBe(money(0));
+    expect(row3[COL.estado]).toBe('Pago parcial');
+    expect(row3[COL.pagado]).toBe(money(70300)); // 400000 - 164850*2
+    expect(row3[COL.saldo]).toBe(money(94550));  // 164850 - 70300
+  });
+
+  it('el excedente también alcanza a una cuota siguiente VENCIDA', () => {
+    const cuotas = [
+      cuota({ id: 1, numeroCuota: 1, estado: 'PAGO_INFORMADO', montoInformado: 200000 }),
+      cuota({ id: 2, numeroCuota: 2, estado: 'VENCIDA' }),
+    ];
+    generarCreditoPDF(basePrestamo, cuotas);
+
+    const row2 = cuotaRows()[1];
+    expect(row2[COL.estado]).toBe('Pago parcial');
+    expect(row2[COL.pagado]).toBe(money(35150));
+  });
+
+  it('el excedente en la última cuota se descarta sin agregar filas ni romper', () => {
+    const cuotas = [
+      cuota({ id: 3, numeroCuota: 3, estado: 'PAGO_INFORMADO', montoInformado: 300000 }),
+    ];
+    generarCreditoPDF(basePrestamo, cuotas);
+
+    const rows = cuotaRows();
+    expect(rows).toHaveLength(1);
+    expect(rows[0][COL.estado]).toBe('Pagada');
+    expect(rows[0][COL.pagado]).toBe(money(164850)); // capeado a la cuota
+    expect(rows[0][COL.saldo]).toBe(money(0));
+  });
 });

@@ -10,6 +10,7 @@ export const initialConvertForm: ConvertFormData = {
   tipoIva: 'EXENTO',
   descuentoTipo: 'NONE',
   descuentoValor: 0,
+  excluirDeBono: false,
 };
 
 /**

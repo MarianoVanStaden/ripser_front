@@ -61,6 +61,10 @@ export interface DocumentoComercial {
   /** Quien gestiona la compra si NO es el titular. Null = gestiona el cliente. */
   gestionanteNombre?: string | null;
   gestionanteTelefono?: string | null;
+  /** true = no computa para el bono de ventas (venta rehecha tras NC). */
+  excluirDeBono?: boolean | null;
+  /** Trazabilidad: id del documento anulado que esta venta reemplaza. */
+  documentoReemplazaId?: number | null;
   detalles: DetalleDocumento[];
   opcionesFinanciamiento?: OpcionFinanciamiento[];
   opcionFinanciamientoSeleccionadaId?: number;

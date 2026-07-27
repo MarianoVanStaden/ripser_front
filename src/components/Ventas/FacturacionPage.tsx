@@ -81,7 +81,10 @@ const FacturacionPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const { user } = useAuth();
-  const { empresaId } = useTenant();
+  const { empresaId, esSuperAdmin, rolActual } = useTenant();
+  // Admins deben elegir explícitamente el vendedor al que se atribuye la venta
+  // (reportes de unidades y bonos); el resto se autoasigna como hasta ahora.
+  const isAdmin = esSuperAdmin || rolActual === 'ADMIN' || rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -98,7 +101,7 @@ const FacturacionPage = () => {
   // Manual invoice form
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const selectedClientId: number | '' = selectedCliente?.id ?? '';
-  const [selectedUsuarioId, setSelectedUsuarioId] = useState<number | ''>(user?.id ?? '');
+  const [selectedUsuarioId, setSelectedUsuarioId] = useState<number | ''>('');
   const [paymentMethod, setPaymentMethod] = useState<MetodoPago>('EFECTIVO');
   const [cajaContadoRef, setCajaContadoRef] = useState<CajaRef | null>(null);
   const [cantidadCuotas, setCantidadCuotas] = useState<number | null>(null);
@@ -364,19 +367,18 @@ const FacturacionPage = () => {
     setError(null);
     try {
       const [usuariosResponse, productsData, recetasData, plantillasData] = await Promise.all([
-        usuarioApi.getAll().catch((err: any) => {
-          if (err?.response?.status === 403) return { content: [] };
-          return { content: [] };
-        }),
+        usuarioApi.getVendedores().catch(() => []),
         productApi.getAll({ page: 0, size: 10000 }).catch(() => []),
         recetaFabricacionApi.findDisponiblesParaVenta().catch(() => []),
         opcionFinanciamientoTemplateApi.obtenerActivas().catch(() => []),
       ]);
 
-      // Handle paginated response from usuarioApi
-      const usuariosArray = Array.isArray(usuariosResponse)
-        ? usuariosResponse
-        : (usuariosResponse?.content || []);
+      // Vendedores/supervisores activos + el usuario logueado si no figura
+      // (autoasignación de OFICINA/GERENTE, igual que la validación del backend).
+      const usuariosArray: Usuario[] = Array.isArray(usuariosResponse) ? [...usuariosResponse] : [];
+      if (user?.id && !usuariosArray.some((u) => u.id === user.id)) {
+        usuariosArray.push({ id: user.id, nombre: user.nombre || '' } as Usuario);
+      }
       setUsuarios(usuariosArray);
 
       const productsList = Array.isArray(productsData) ? productsData : (productsData as any)?.content || [];
@@ -400,7 +402,7 @@ const FacturacionPage = () => {
 
   useEffect(() => {
     loadData();
-  }, [empresaId]); // Re-fetch when tenant changes
+  }, [empresaId, user?.id]); // Re-fetch when tenant changes (user?.id: append del logueado a la lista de vendedores)
 
   // Carga opciones de financiamiento solo para las notas visibles. El backend
   // hace una request por nota (N+1) pero N = page size = 12, no el total.
@@ -440,10 +442,11 @@ const FacturacionPage = () => {
   }, [notasPedido]);
 
   useEffect(() => {
-    if (user?.id && !selectedUsuarioId) {
+    // Admin: sin preselección — debe elegir el vendedor explícitamente.
+    if (!isAdmin && user?.id && !selectedUsuarioId) {
       setSelectedUsuarioId(user.id);
     }
-  }, [user?.id]);
+  }, [user?.id, isAdmin]);
 
   const subtotalVenta = useMemo(() => {
     return cart.reduce((sum, item) => {
@@ -1106,7 +1109,7 @@ const FacturacionPage = () => {
 
   const handleSubmitManualInvoice = async () => {
     if (!selectedClientId) return setError('Debe seleccionar un cliente.');
-    if (!selectedUsuarioId) return setError('Debe seleccionar un usuario.');
+    if (!selectedUsuarioId) return setError('Debe seleccionar un vendedor.');
     if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
 
     if (!isFinanciamiento(paymentMethod) && metodoPagoRequiereCaja(paymentMethod) && !cajaContadoRef) {

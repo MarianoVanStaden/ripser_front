@@ -772,6 +772,8 @@ export interface Sueldo {
   kmMonto?: number;
   bonoProduccion?: number;
   bonoVentas?: number;
+  /** Unidades vendidas que justificaron bonoVentas al liquidar (null = sueldo previo al snapshot). */
+  unidadesBonoVentas?: number | null;
   bonoEspecial?: number;
 
   totalBruto: number;

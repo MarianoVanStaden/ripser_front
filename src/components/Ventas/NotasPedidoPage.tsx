@@ -79,7 +79,8 @@ import ConfirmDialog from '../common/ConfirmDialog';
 
 const NotasPedidoPage: React.FC = () => {
   const navigate = useNavigate();
-  const { empresaId } = useTenant();
+  const { empresaId, esSuperAdmin, rolActual } = useTenant();
+  const isAdmin = esSuperAdmin || (rolActual as string) === 'ADMIN' || rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO';
   const { user } = useAuth();
   // Días de entrega estimados (parámetro de sistema) para pre-cargar la fecha objetivo al facturar.
   const { value: diasEntrega } = useParametroSistema('DIAS_ENTREGA_ESTIMADA', 25, parseIntOr(25));
@@ -274,6 +275,10 @@ const NotasPedidoPage: React.FC = () => {
   // Editar color de líneas EQUIPO (informado post-creación).
   const [colorDialogOpen, setColorDialogOpen] = useState(false);
   const [notaParaColor, setNotaParaColor] = useState<DocumentoComercial | null>(null);
+
+  // Aviso "¿venta rehecha?": el cliente del presupuesto tiene una NC emitida
+  // en los últimos 45 días. Solo informativo, no bloquea ni automatiza nada.
+  const [ncRecienteWarning, setNcRecienteWarning] = useState<string | null>(null);
 
   // Deuda cliente confirmation
   const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
@@ -509,6 +514,7 @@ const NotasPedidoPage: React.FC = () => {
   const handleOpenConvertDialog = useCallback(() => {
     setConvertForm(initialConvertForm);
     setSelectedPresupuesto(null);
+    setNcRecienteWarning(null);
     setConvertDialogOpen(true);
   }, []);
 
@@ -516,6 +522,7 @@ const NotasPedidoPage: React.FC = () => {
     setConvertDialogOpen(false);
     setConvertForm(initialConvertForm);
     setSelectedPresupuesto(null);
+    setNcRecienteWarning(null);
     setOpcionesConvertDialog([]);
     setSelectedOpcionConvertId(null);
     setError(null);
@@ -573,8 +580,33 @@ const NotasPedidoPage: React.FC = () => {
     }
 
     // Debt check on selection so the warning appears before the user fills the form
+    setNcRecienteWarning(null);
     const clienteId = presupuesto?.clienteId;
     if (!clienteId) return;
+
+    // Aviso "¿venta rehecha?": NC del cliente emitida en los últimos 45 días.
+    // Solo para admins (son quienes pueden marcar "sin imputación a bono").
+    if (isAdmin) {
+      try {
+        const docsCliente = await documentoApi.getByCliente(clienteId);
+        const hace45dias = new Date();
+        hace45dias.setDate(hace45dias.getDate() - 45);
+        const ncReciente = (docsCliente || [])
+          .filter(d => d.tipoDocumento === 'NOTA_CREDITO' && new Date(d.fechaEmision) >= hace45dias)
+          .sort((a, b) => new Date(b.fechaEmision).getTime() - new Date(a.fechaEmision).getTime())[0];
+        if (ncReciente) {
+          setNcRecienteWarning(
+            `Este cliente tiene la Nota de Crédito ${ncReciente.numeroDocumento} emitida el ` +
+            `${new Date(ncReciente.fechaEmision).toLocaleDateString('es-AR')}. ` +
+            `¿Esta venta reemplaza una anulada? Si es así, marcá "Sin imputación a bono de ventas" ` +
+            `para no pagar dos veces el bono.`
+          );
+        }
+      } catch {
+        // Non-fatal: el aviso es best-effort
+      }
+    }
+
     try {
       const [prestamos, ccPage] = await Promise.all([
         prestamoPersonalApi.getByCliente(clienteId),
@@ -605,7 +637,7 @@ const NotasPedidoPage: React.FC = () => {
     } catch {
       // Non-fatal: debt will be caught by backend if needed
     }
-  }, [presupuestos]);
+  }, [presupuestos, isAdmin]);
 
 
   const handleConvertToNotaPedido = useCallback(async (confirmarConDeudaPendiente?: boolean) => {
@@ -731,6 +763,7 @@ const NotasPedidoPage: React.FC = () => {
         descuentoTipo: convertForm.descuentoTipo,
         descuentoValor: convertForm.descuentoTipo === 'NONE' ? 0 : convertForm.descuentoValor,
         ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
+        ...(convertForm.excluirDeBono && { excluirDeBono: true }),
       };
 
       // Backend now returns { documento, resolucionesEquipo } and resolves stock
@@ -1708,6 +1741,8 @@ const NotasPedidoPage: React.FC = () => {
         opcionesFinanciamiento={opcionesConvertDialog}
         selectedOpcionId={selectedOpcionConvertId}
         onSelectOpcion={setSelectedOpcionConvertId}
+        showExcluirBono={isAdmin}
+        ncRecienteWarning={ncRecienteWarning}
       />
 
       <VerNotaPedidoDialog

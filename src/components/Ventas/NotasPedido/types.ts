@@ -18,6 +18,8 @@ export interface ConvertFormData {
   tipoIva: TipoIva;
   descuentoTipo: TipoDescuento;
   descuentoValor: number;
+  /** Venta rehecha tras NC: la NP no computa para el bono de ventas. Solo admin. */
+  excluirDeBono: boolean;
 }
 
 /**

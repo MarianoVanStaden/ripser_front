@@ -450,6 +450,8 @@ export const documentoApi = {
     confirmarConDeudaPendiente?: boolean;
     cajaPesosId?: number | null;
     cajaAhorroId?: number | null;
+    excluirDeBono?: boolean;
+    documentoReemplazaId?: number | null;
   }): Promise<ConvertToNotaPedidoResult> => {
     const response = await api.post<ConvertToNotaPedidoResult>('/api/documentos/nota-pedido', dto);
     return response.data;

@@ -61,6 +61,9 @@ interface RowState {
   observaciones: string;
   /** Si ya hay un Sueldo existente para este empleado+período (vamos a updatear, no crear). */
   existingId?: number;
+  /** Unidades persistidas al liquidar el sueldo existente. Cuando hay snapshot,
+   *  el bono de ventas se calcula con este valor y NO con el conteo en vivo. */
+  unidadesBonoVentasSnapshot?: number | null;
   /** Marca para incluir o no en el bulk submit. */
   incluir: boolean;
 }
@@ -237,6 +240,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
           fechaPago: sueldoExistente.fechaPago ?? fechaPagoDefault,
           observaciones: sueldoExistente.observaciones ?? '',
           existingId: sueldoExistente.id,
+          unidadesBonoVentasSnapshot: sueldoExistente.unidadesBonoVentas ?? null,
           incluir: false,
         };
       }
@@ -296,17 +300,24 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     return m;
   }, [ventasPorVendedora]);
 
+  // Unidades vendidas que gobiernan el bono de ventas de la fila. Si el sueldo
+  // ya fue liquidado con snapshot, manda el snapshot (lo que se pagó no cambia
+  // aunque hoy el conteo en vivo dé otra cosa). Sin snapshot: si el empleado
+  // figura en el desglose de ventas usa SU conteo de heladeras; si no, cae al
+  // valor global editable (override / empleados sin venta atribuida).
+  const getVendidasRow = useCallback((row: RowState): number => {
+    if (row.unidadesBonoVentasSnapshot != null) return row.unidadesBonoVentasSnapshot;
+    return ventasMap.has(row.empleadoId)
+      ? ventasMap.get(row.empleadoId)!
+      : unidadesVendidas;
+  }, [ventasMap, unidadesVendidas]);
+
   const computeRow = useCallback((row: RowState) => {
     const categoria = getCategoria(row.categoriaSalarialId);
     if (!categoria) return null;
     const bonosProdCat = bonosProduccion.filter(b => b.categoriaSalarialId === categoria.id);
     const bonosVentasCat = bonosVentas.filter(b => b.categoriaSalarialId === categoria.id);
-    // Si el empleado figura en el desglose de ventas, su bono usa SU conteo de
-    // heladeras; si no, cae al valor global editable (override / empleados sin
-    // venta atribuida en el sistema).
-    const vendidasRow = ventasMap.has(row.empleadoId)
-      ? ventasMap.get(row.empleadoId)!
-      : unidadesVendidas;
+    const vendidasRow = getVendidasRow(row);
     return calcularRemuneracion({
       categoria,
       presentismoPct: row.presentismoPct,
@@ -324,7 +335,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       descuentosOtros: row.descuentosOtros,
       adelantos: row.adelantos,
     });
-  }, [getCategoria, bonosProduccion, bonosVentas, unidadesProducidas, unidadesVendidas, ventasMap]);
+  }, [getCategoria, bonosProduccion, bonosVentas, unidadesProducidas, getVendidasRow]);
 
   // Filas filtradas para mostrar
   const filteredRows = useMemo(() => {
@@ -414,6 +425,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
           kmMonto: calc.kmMonto,
           bonoProduccion: calc.bonoProduccion,
           bonoVentas: calc.bonoVentas,
+          unidadesBonoVentas: getVendidasRow(row),
           bonoEspecial: calc.bonoEspecial,
           totalBruto: calc.totalBruto,
           descuentosLegales: calc.descuentosLegales,

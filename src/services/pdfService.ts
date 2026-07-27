@@ -1152,24 +1152,59 @@ export const generarCreditoPDF = (
 
   // ---- Cálculos ajustados: PAGO_INFORMADO se trata como pagado en el PDF ----
   // informar() en el backend NO toca montoPagado: el monto declarado vive en
-  // montoInformado. El acumulado real de una cuota con pago informado es entonces
-  // montoPagado (confirmado previo) + montoInformado (recién informado). Si ese
-  // acumulado cubre la cuota, es un informe TOTAL (se muestra "Pagada"); si no,
-  // es PARCIAL (se muestra "Pago parcial" con el acumulado y su saldo).
+  // montoInformado. Al confirmar, registrarPago() cascadea el excedente (lo
+  // informado por encima de la cuota) a las cuotas siguientes no pagadas
+  // (aplicarPagoACuota los marca PAGADA/PARCIAL). El PDF simula ese mismo
+  // resultado por adelantado: la cuota informada se muestra "Pagada" y la(s)
+  // siguiente(s) "Pago parcial" / "Pagada" según lo que cubra el excedente,
+  // aunque la confirmación interna demore.
   const EPS = 0.01;
-  const acumuladoInformado = (c: CuotaPrestamoDTO): number =>
-    Number(c.montoPagado ?? 0) + Number(c.montoInformado ?? 0);
-  const esInformadoTotal = (c: CuotaPrestamoDTO): boolean =>
-    c.estado === 'PAGO_INFORMADO' && acumuladoInformado(c) >= Number(c.montoCuota) - EPS;
-
   const cuotasOrdenadas = [...cuotas].sort((a, b) => a.numeroCuota - b.numeroCuota);
+
+  // Pagado simulado por cuota (clave: numeroCuota): montoPagado confirmado
+  // + montoInformado propio + excedente recibido de cuotas anteriores.
+  const pagadoSim = new Map<number, number>(
+    cuotasOrdenadas.map(c => [
+      c.numeroCuota,
+      Number(c.montoPagado ?? 0) +
+        (c.estado === 'PAGO_INFORMADO' ? Number(c.montoInformado ?? 0) : 0),
+    ]),
+  );
+  cuotasOrdenadas.forEach((c, i) => {
+    if (c.estado !== 'PAGO_INFORMADO') return;
+    let excedente = (pagadoSim.get(c.numeroCuota) ?? 0) - Number(c.montoCuota);
+    if (excedente <= EPS) return;
+    pagadoSim.set(c.numeroCuota, Number(c.montoCuota));
+    for (const sig of cuotasOrdenadas.slice(i + 1)) {
+      if (excedente <= EPS) break;
+      // REFINANCIADA no recibe excedente en el PDF: su deuda vive en el plan nuevo.
+      if (sig.estado === 'PAGADA' || sig.estado === 'REFINANCIADA') continue;
+      const saldoSig = Number(sig.montoCuota) - (pagadoSim.get(sig.numeroCuota) ?? 0);
+      if (saldoSig <= 0) continue;
+      const aplicado = Math.min(excedente, saldoSig);
+      pagadoSim.set(sig.numeroCuota, (pagadoSim.get(sig.numeroCuota) ?? 0) + aplicado);
+      excedente -= aplicado;
+    }
+    // Si sobra excedente tras la última cuota, se descarta en la tabla; el
+    // total cobrado igual lo incluye vía montoPagoInformado.
+  });
+
+  const cubiertaTotal = (c: CuotaPrestamoDTO): boolean =>
+    (pagadoSim.get(c.numeroCuota) ?? 0) >= Number(c.montoCuota) - EPS;
+  // Recibió plata simulada (informe propio parcial o excedente ajeno) sin cubrir el total.
+  const parcialSim = (c: CuotaPrestamoDTO): boolean =>
+    !cubiertaTotal(c) &&
+    (pagadoSim.get(c.numeroCuota) ?? 0) > Number(c.montoPagado ?? 0) + EPS;
+
   // El crédito al cliente por pagos informados es lo declarado (montoInformado),
   // no el valor nominal de la cuota — así un parcial suma solo lo informado.
   const montoPagoInformado = cuotasOrdenadas
     .filter(c => c.estado === 'PAGO_INFORMADO')
     .reduce((sum, c) => sum + Number(c.montoInformado ?? 0), 0);
-  // Solo los informes TOTALES cuentan como cuota saldada en "Cuotas x/y".
-  const cuotasPagoInformadoCount = cuotasOrdenadas.filter(esInformadoTotal).length;
+  // Cuotas saldadas en la simulación que el backend aún no computa como pagadas
+  // (informes totales + cuotas siguientes cubiertas enteras por excedente).
+  const cuotasPagoInformadoCount = cuotasOrdenadas
+    .filter(c => c.estado !== 'PAGADA' && cubiertaTotal(c)).length;
   const cobradoAjustado = Number(prestamo.montoPagado) + montoPagoInformado;
   const saldoAjustado = Math.max(0, Number(prestamo.saldoPendiente) - montoPagoInformado);
 
@@ -1201,11 +1236,12 @@ export const generarCreditoPDF = (
     : 'Pendiente de entrega';
   doc.text(`Fecha entrega: ${fechaEntregaTxt}`, c3, y + 17);
 
-  // Días vencido excluyendo cuotas con pago informado (actúan como pagadas en el PDF)
+  // Días vencido excluyendo cuotas saldadas en la simulación (pago informado
+  // total o cubiertas por excedente actúan como pagadas en el PDF).
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const diasVencidoPDF = cuotasOrdenadas
-    .filter(c => (c.estado === 'VENCIDA' || c.estado === 'PARCIAL') && c.fechaVencimiento)
+    .filter(c => (c.estado === 'VENCIDA' || c.estado === 'PARCIAL') && !cubiertaTotal(c) && c.fechaVencimiento)
     .reduce((max, c) => {
       const venc = new Date(c.fechaVencimiento + 'T00:00:00');
       const dias = Math.floor((hoy.getTime() - venc.getTime()) / 86400000);
@@ -1274,21 +1310,19 @@ export const generarCreditoPDF = (
 
   // ---- Tabla de cuotas ----
   // En el PDF que envía Cobranzas, una cuota cuyo pago fue informado pero aún no
-  // confirmado por Administración se muestra como "Pagada" (informe TOTAL) o
-  // "Pago parcial" (informe parcial): el cliente ve el estado al día aunque la
-  // confirmación interna demore. El estado real en el sistema sigue siendo
-  // PAGO_INFORMADO en ambos casos.
-  const estadoLabelPDF = (c: CuotaPrestamoDTO): string =>
-    c.estado === 'PAGO_INFORMADO'
-      ? (esInformadoTotal(c) ? 'Pagada' : 'Pago parcial')
-      : (ESTADO_CUOTA_LABELS[c.estado] || c.estado);
+  // confirmado por Administración se muestra como "Pagada" (cubierta entera) o
+  // "Pago parcial" — y lo mismo vale para las cuotas siguientes alcanzadas por
+  // el excedente simulado: el cliente ve el estado al día aunque la confirmación
+  // interna demore. El estado real en el sistema no cambia.
+  const estadoLabelPDF = (c: CuotaPrestamoDTO): string => {
+    if (c.estado !== 'PAGADA' && cubiertaTotal(c)) return 'Pagada';
+    if (parcialSim(c)) return 'Pago parcial';
+    return ESTADO_CUOTA_LABELS[c.estado] || c.estado;
+  };
 
   const rows = cuotasOrdenadas.map(c => {
     const esPagoInformado = c.estado === 'PAGO_INFORMADO';
-    // Informe total → cuota saldada; informe parcial → acumulado real y su saldo.
-    const pagado = esPagoInformado
-      ? (esInformadoTotal(c) ? Number(c.montoCuota) : acumuladoInformado(c))
-      : Number(c.montoPagado);
+    const pagado = pagadoSim.get(c.numeroCuota) ?? Number(c.montoPagado);
     const saldo = Math.max(0, Number(c.montoCuota) - pagado);
     const fechaPagoDisplay = esPagoInformado
       ? (c.fechaPagoInformada ? formatDate(c.fechaPagoInformada) : '-')
@@ -1336,16 +1370,17 @@ export const generarCreditoPDF = (
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 7) {
         const cuota = cuotasOrdenadas[data.row.index];
-        const estado = cuota?.estado;
-        // Informe TOTAL se pinta como PAGADA (verde); informe PARCIAL como PARCIAL (naranja).
-        if (estado === 'PAGADA' || (estado === 'PAGO_INFORMADO' && cuota && esInformadoTotal(cuota))) {
+        if (!cuota) return;
+        const estado = cuota.estado;
+        // Cubierta entera (real o simulada) → verde; con pago a cuenta → naranja.
+        if (estado === 'PAGADA' || cubiertaTotal(cuota)) {
           data.cell.styles.textColor = [0, 128, 0];
           data.cell.styles.fontStyle = 'bold';
+        } else if (estado === 'PARCIAL' || estado === 'PAGO_INFORMADO' || parcialSim(cuota)) {
+          data.cell.styles.textColor = [200, 130, 0];
         } else if (estado === 'VENCIDA') {
           data.cell.styles.textColor = [200, 0, 0];
           data.cell.styles.fontStyle = 'bold';
-        } else if (estado === 'PARCIAL' || estado === 'PAGO_INFORMADO') {
-          data.cell.styles.textColor = [200, 130, 0];
         } else if (estado === 'REFINANCIADA') {
           data.cell.styles.textColor = [120, 60, 160];
         }
@@ -1363,9 +1398,9 @@ export const generarCreditoPDF = (
     yT = margin + 5;
   }
 
-  const cuotasPagadas = cuotasOrdenadas.filter(c => c.estado === 'PAGADA' || esInformadoTotal(c)).length;
-  const cuotasVencidas = cuotasOrdenadas.filter(c => c.estado === 'VENCIDA').length;
-  const cuotasPendientes = cuotasOrdenadas.filter(c => c.estado === 'PENDIENTE').length;
+  const cuotasPagadas = cuotasOrdenadas.filter(c => c.estado === 'PAGADA' || cubiertaTotal(c)).length;
+  const cuotasVencidas = cuotasOrdenadas.filter(c => c.estado === 'VENCIDA' && !cubiertaTotal(c)).length;
+  const cuotasPendientes = cuotasOrdenadas.filter(c => c.estado === 'PENDIENTE' && !cubiertaTotal(c)).length;
 
   doc.setFillColor(...COLORS.white);
   doc.rect(margin + 1, yT, pageWidth - (margin * 2) - 2, 22, 'F');
@@ -1382,9 +1417,10 @@ export const generarCreditoPDF = (
   doc.text(`Pendientes: ${cuotasPendientes}`, c2, yT + 11);
   doc.text(`Vencidas: ${cuotasVencidas}`, c3, yT + 11);
 
-  // Próximo vence = primera cuota sin pago (excluye PAGADA, PAGO_INFORMADO, REFINANCIADA)
+  // Próximo vence = primera cuota con saldo en la simulación (excluye PAGADA,
+  // REFINANCIADA y las cubiertas enteras por informe/excedente).
   const proximaVence = cuotasOrdenadas.find(
-    c => c.estado !== 'PAGADA' && c.estado !== 'PAGO_INFORMADO' && c.estado !== 'REFINANCIADA'
+    c => c.estado !== 'PAGADA' && c.estado !== 'REFINANCIADA' && !cubiertaTotal(c)
   );
 
   doc.setFont('helvetica', 'bold');

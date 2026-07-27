@@ -4,9 +4,11 @@
 import React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
+  Alert,
   Autocomplete,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -51,6 +53,10 @@ interface Props {
   opcionesFinanciamiento: OpcionFinanciamientoDTO[];
   selectedOpcionId: number | null;
   onSelectOpcion: (id: number) => void;
+  /** Solo admins ven el checkbox "Sin imputación a bono de ventas". */
+  showExcluirBono?: boolean;
+  /** Aviso: el cliente tiene una NC reciente — posible venta rehecha. */
+  ncRecienteWarning?: string | null;
 }
 
 const ConvertirPresupuestoDialog: React.FC<Props> = ({
@@ -66,6 +72,8 @@ const ConvertirPresupuestoDialog: React.FC<Props> = ({
   opcionesFinanciamiento,
   selectedOpcionId,
   onSelectOpcion,
+  showExcluirBono = false,
+  ncRecienteWarning = null,
 }) => {
   // Totales de la conversión, incluyendo el descuento extra que se aplica en
   // este diálogo. Se calculan una sola vez para que tanto el desglose de
@@ -197,6 +205,35 @@ const ConvertirPresupuestoDialog: React.FC<Props> = ({
                 </Typography>
               )}
             </Paper>
+          )}
+
+          {showExcluirBono && ncRecienteWarning && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              {ncRecienteWarning}
+            </Alert>
+          )}
+
+          {showExcluirBono && selectedPresupuesto && (
+            <FormControlLabel
+              sx={{ mt: 1, display: 'flex' }}
+              control={
+                <Checkbox
+                  checked={form.excluirDeBono}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, excluirDeBono: e.target.checked }))
+                  }
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body2">Sin imputación a bono de ventas</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Marcar solo si esta venta reemplaza una anulada por Nota de Crédito
+                    cuyo bono ya se pagó (evita pagarlo dos veces).
+                  </Typography>
+                </Box>
+              }
+            />
           )}
 
           {opcionesFinanciamiento.length > 0 ? (
