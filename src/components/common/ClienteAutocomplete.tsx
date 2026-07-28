@@ -70,8 +70,6 @@ export interface ClienteAutocompleteProps {
   margin?: 'none' | 'dense' | 'normal';
   sucursalId?: number | null;
   pageSize?: number;
-  /** Show only ACTIVO clients in suggestions */
-  onlyActivos?: boolean;
 }
 
 const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
@@ -88,7 +86,6 @@ const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
   margin = 'none',
   sucursalId,
   pageSize = 20,
-  onlyActivos = false,
 }) => {
   const [inputValue, setInputValue] = useState<string>('');
   const [options, setOptions] = useState<Cliente[]>([]);
@@ -120,16 +117,11 @@ const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
           ? await clienteApi.searchByQuery(term, pageSize, controller.signal)
           : await clienteApi.getAll(
               { page: 0, size: pageSize, sort: 'fechaActualizacion,desc' },
-              {
-                ...(sucursalId != null ? { sucursalId } : {}),
-                ...(onlyActivos ? { estado: 'ACTIVO' as EstadoCliente } : {}),
-              }
+              sucursalId != null ? { sucursalId } : {}
             );
         if (reqId !== requestIdRef.current) return;
-        let list = Array.isArray(res?.content) ? res.content : [];
-        if (onlyActivos) list = list.filter(c => c.estado === 'ACTIVO');
-        // Backend ahora maneja búsqueda completa (nombre, apellido, razón social, CUIT, teléfono, email)
-        // No aplicamos filtrado local adicional
+        // Sin `estado` explícito el backend ya excluye INACTIVO (duplicados fusionados)
+        const list = Array.isArray(res?.content) ? res.content : [];
         setOptions(list);
       } catch (err) {
         const e = err as { name?: string; code?: string };
@@ -142,7 +134,7 @@ const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
     run();
 
     return () => controller.abort();
-  }, [debouncedInput, open, pageSize, sucursalId, onlyActivos]);
+  }, [debouncedInput, open, pageSize, sucursalId]);
 
   return (
     <Autocomplete<Cliente, false, false, false>

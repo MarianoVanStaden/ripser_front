@@ -171,7 +171,8 @@ const CuentaCorrientePage: React.FC = () => {
       ]);
       setSelectedCliente(clienteActualizado);
     } catch (err) {
-      setLocalError('Error al guardar el movimiento. Verifique los datos e intente de nuevo.');
+      const backendMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setLocalError(backendMessage || 'Error al guardar el movimiento. Verifique los datos e intente de nuevo.');
       console.error('Error saving movement:', err);
     }
   };
@@ -205,7 +206,8 @@ const CuentaCorrientePage: React.FC = () => {
       ]);
       setSelectedCliente(clienteActualizado);
     } catch (err) {
-      setLocalError('Error al guardar la corrección. Verifique los datos e intente de nuevo.');
+      const backendMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setLocalError(backendMessage || 'Error al guardar la corrección. Verifique los datos e intente de nuevo.');
       console.error('Error saving adjustment:', err);
     }
   };
