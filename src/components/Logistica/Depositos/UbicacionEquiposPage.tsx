@@ -14,6 +14,8 @@ import {
   Chip,
   Tabs,
   Tab,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import {
   LocationOn as LocationOnIcon,
@@ -33,11 +35,13 @@ const TIPO_LABEL: Record<string, string> = {
 const TIPO_ORDER: TipoEquipo[] = ['HELADERA', 'COOLBOX', 'EXHIBIDOR', 'OTRO'];
 
 type TabValue = 'stock' | 'vendidos';
+type VerNumeros = 'disponibles' | 'asignados';
 
 const UbicacionEquiposPage: React.FC = () => {
   const { tienePermiso } = usePermisos();
 
   const [tab, setTab] = useState<TabValue>('stock');
+  const [verNumeros, setVerNumeros] = useState<VerNumeros>('disponibles');
   const [desgloseStock, setDesgloseStock] = useState<DesgloseModeloDTO[]>([]);
   const [desgloseVendidos, setDesgloseVendidos] = useState<DesgloseModeloVendidosDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,7 +161,24 @@ const UbicacionEquiposPage: React.FC = () => {
         stockAgrupado.length === 0 ? (
           <Alert severity="info">No hay equipos en stock</Alert>
         ) : (
-          stockAgrupado.map(({ tipo, label, modelos, totalTipo }) => (
+          <>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Ver números de:
+            </Typography>
+            <ToggleButtonGroup
+              value={verNumeros}
+              exclusive
+              size="small"
+              onChange={(_, v) => {
+                if (v !== null) setVerNumeros(v as VerNumeros);
+              }}
+            >
+              <ToggleButton value="disponibles">Disponibles</ToggleButton>
+              <ToggleButton value="asignados">Asignados</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+          {stockAgrupado.map(({ tipo, label, modelos, totalTipo }) => (
             <Box key={tipo} sx={{ mb: 4 }}>
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
@@ -194,7 +215,10 @@ const UbicacionEquiposPage: React.FC = () => {
                         <TableCell sx={{ typography: 'caption', maxWidth: 300, wordBreak: 'break-word' }}>
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                             <Box sx={{ color: 'text.secondary' }}>
-                              {row.numerosDisponibles.join(', ') || '—'}
+                              {(verNumeros === 'disponibles'
+                                ? row.numerosDisponibles
+                                : row.numerosAsignados ?? []
+                              ).join(', ') || '—'}
                             </Box>
                             {row.numerosEnService && row.numerosEnService.length > 0 && (
                               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexWrap: 'wrap' }}>
@@ -239,7 +263,8 @@ const UbicacionEquiposPage: React.FC = () => {
                 </Table>
               </TableContainer>
             </Box>
-          ))
+          ))}
+          </>
         )
       ) : vendidosAgrupado.length === 0 ? (
         <Alert severity="info">No hay equipos vendidos ni en tránsito</Alert>

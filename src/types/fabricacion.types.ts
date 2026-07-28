@@ -453,6 +453,8 @@ export interface DesgloseModeloDTO {
   disponibles: number;
   /** Lista de numeroHeladera de los equipos disponibles (para columna NUMEROS) */
   numerosDisponibles: string[];
+  /** Lista de numeroHeladera asignados (RESERVADO | FACTURADO), formato "numero (Cliente)" */
+  numerosAsignados?: string[];
   /** Lista de numeroHeladera de los equipos con OrdenServicio activa (se muestran en naranja) */
   numerosEnService?: string[];
 }
