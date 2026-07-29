@@ -11,7 +11,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import {
-  ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS, TipoFinanciacion,
+  ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS, TipoFinanciacion, EstadoCuota,
 } from '../../types/prestamo.types';
 import type { CuotaPrestamoDTO, PrestamoPersonalDTO } from '../../types/prestamo.types';
 
@@ -142,17 +142,15 @@ export const EditarFechaEntregaDialog: React.FC<Props> = ({
 
           {!esAnclajeInicial && cambioReal && aplicarShift && (
             <Alert severity="info">
-              Se aplicará un desplazamiento de <strong>{deltaDias > 0 ? '+' : ''}{deltaDias} días</strong> a las
-              cuotas pendientes. Las cuotas pagadas, parciales y vencidas no se moverán.
+              Se reprograma todo el cronograma a partir de la nueva fecha de entrega: las cuotas no
+              pagadas (pendientes y vencidas) pasan a vencer en <strong>fecha de entrega + N períodos</strong>.
+              Las que estaban vencidas sólo por la fecha anterior dejan de estar en mora; las pagadas
+              y parciales no se tocan.
             </Alert>
           )}
 
-          {aplicarShift && esAnclajeInicial && nuevaFecha && (
+          {aplicarShift && (esAnclajeInicial || cambioReal) && nuevaFecha && (
             <PreviewAnclaje cuotas={cuotas} fechaEntrega={nuevaFecha} tipo={prestamo.tipoFinanciacion} />
-          )}
-
-          {aplicarShift && !esAnclajeInicial && cambioReal && (
-            <PreviewCuotas cuotas={cuotas} deltaDias={deltaDias} />
           )}
 
           {error && <Alert severity="error">{error}</Alert>}
@@ -172,82 +170,59 @@ export const EditarFechaEntregaDialog: React.FC<Props> = ({
   );
 };
 
-const PreviewCuotas: React.FC<{ cuotas: CuotaPrestamoDTO[]; deltaDias: number }> = ({ cuotas, deltaDias }) => (
-  <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 320 }}>
-    <Table size="small" stickyHeader>
-      <TableHead>
-        <TableRow>
-          <TableCell>N.</TableCell>
-          <TableCell>Estado</TableCell>
-          <TableCell>Vencimiento actual</TableCell>
-          <TableCell>Vencimiento nuevo</TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {cuotas.map(c => {
-          const seMueve = c.estado === 'PENDIENTE' && !!c.fechaVencimiento;
-          const nueva = seMueve
-            ? dayjs(c.fechaVencimiento).add(deltaDias, 'day').format('DD/MM/YYYY')
-            : null;
-          return (
-            <TableRow key={c.id} sx={!seMueve ? { opacity: 0.5 } : {}}>
-              <TableCell>{c.numeroCuota}</TableCell>
-              <TableCell>
-                <Chip
-                  label={ESTADO_CUOTA_LABELS[c.estado]}
-                  size="small"
-                  sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
-                />
-              </TableCell>
-              <TableCell>
-                {c.fechaVencimiento ? dayjs(c.fechaVencimiento).format('DD/MM/YYYY') : <em>—</em>}
-              </TableCell>
-              <TableCell>
-                {seMueve ? <strong>{nueva}</strong> : <em>no se modifica</em>}
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  </TableContainer>
-);
-
 const PreviewAnclaje: React.FC<{
   cuotas: CuotaPrestamoDTO[];
   fechaEntrega: Dayjs;
   tipo: TipoFinanciacion | undefined;
-}> = ({ cuotas, fechaEntrega, tipo }) => (
-  <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 320 }}>
-    <Table size="small" stickyHeader>
-      <TableHead>
-        <TableRow>
-          <TableCell>N.</TableCell>
-          <TableCell>Estado</TableCell>
-          <TableCell>Fecha calculada</TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {cuotas.map(c => {
-          const seAncla = c.estado === 'PENDIENTE';
-          const nueva = seAncla ? anclarFecha(fechaEntrega, tipo, c.numeroCuota).format('DD/MM/YYYY') : null;
-          return (
-            <TableRow key={c.id} sx={!seAncla ? { opacity: 0.5 } : {}}>
-              <TableCell>{c.numeroCuota}</TableCell>
-              <TableCell>
-                <Chip
-                  label={ESTADO_CUOTA_LABELS[c.estado]}
-                  size="small"
-                  sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
-                />
-              </TableCell>
-              <TableCell>
-                {seAncla ? <strong>{nueva}</strong> : <em>no se modifica</em>}
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  </TableContainer>
-);
+}> = ({ cuotas, fechaEntrega, tipo }) => {
+  // Espeja el guard del backend: reancla toda cuota no pagada (PENDIENTE/VENCIDA sin pago) y
+  // recomputa su estado contra hoy. Las pagadas/parciales quedan intactas.
+  const hoy = dayjs().startOf('day');
+  return (
+    <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 320 }}>
+      <Table size="small" stickyHeader>
+        <TableHead>
+          <TableRow>
+            <TableCell>N.</TableCell>
+            <TableCell>Estado actual</TableCell>
+            <TableCell>Vencimiento nuevo</TableCell>
+            <TableCell>Estado nuevo</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {cuotas.map(c => {
+            const seAncla = (c.estado === 'PENDIENTE' || c.estado === 'VENCIDA') && c.montoPagado === 0;
+            const nueva = seAncla ? anclarFecha(fechaEntrega, tipo, c.numeroCuota) : null;
+            const estadoNuevo: EstadoCuota | null = nueva
+              ? (nueva.isBefore(hoy) ? EstadoCuota.VENCIDA : EstadoCuota.PENDIENTE)
+              : null;
+            return (
+              <TableRow key={c.id} sx={!seAncla ? { opacity: 0.5 } : {}}>
+                <TableCell>{c.numeroCuota}</TableCell>
+                <TableCell>
+                  <Chip
+                    label={ESTADO_CUOTA_LABELS[c.estado]}
+                    size="small"
+                    sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
+                  />
+                </TableCell>
+                <TableCell>
+                  {nueva ? <strong>{nueva.format('DD/MM/YYYY')}</strong> : <em>no se modifica</em>}
+                </TableCell>
+                <TableCell>
+                  {estadoNuevo ? (
+                    <Chip
+                      label={ESTADO_CUOTA_LABELS[estadoNuevo]}
+                      size="small"
+                      sx={{ bgcolor: ESTADO_CUOTA_COLORS[estadoNuevo], color: 'white' }}
+                    />
+                  ) : <em>—</em>}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
