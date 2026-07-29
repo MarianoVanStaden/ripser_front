@@ -2,6 +2,7 @@ import api from '../config';
 import type {
   PrestamoPersonalDTO,
   CreatePrestamoPersonalDTO,
+  UpdatePrestamoPersonalDTO,
   CuotaPrestamoDTO,
   ResumenPrestamosDTO,
   EstadoPrestamo,
@@ -58,7 +59,7 @@ export const prestamoPersonalApi = {
     return response.data;
   },
 
-  update: async (id: number, data: CreatePrestamoPersonalDTO): Promise<PrestamoPersonalDTO> => {
+  update: async (id: number, data: UpdatePrestamoPersonalDTO): Promise<PrestamoPersonalDTO> => {
     const response = await api.put<PrestamoPersonalDTO>(`${BASE_PATH}/${id}`, data);
     return response.data;
   },

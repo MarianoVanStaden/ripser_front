@@ -71,24 +71,31 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
   const montoTotal = (formData.cantidadCuotas || 0) * (formData.valorCuota || 0);
 
   const handleSave = async () => {
-    if (!formData.clienteId || formData.clienteId === 0) {
-      setError('Debe seleccionar un cliente');
-      return;
-    }
-    if (!formData.cantidadCuotas || formData.cantidadCuotas <= 0) {
-      setError('La cantidad de cuotas debe ser mayor a 0');
-      return;
-    }
-    if (!formData.valorCuota || formData.valorCuota <= 0) {
-      setError('El valor de cuota debe ser mayor a 0');
-      return;
+    // En edición solo se corrige metadata (categoría/observaciones); el plan
+    // no se toca acá, así que estas validaciones aplican solo al alta.
+    if (!isEdit) {
+      if (!formData.clienteId || formData.clienteId === 0) {
+        setError('Debe seleccionar un cliente');
+        return;
+      }
+      if (!formData.cantidadCuotas || formData.cantidadCuotas <= 0) {
+        setError('La cantidad de cuotas debe ser mayor a 0');
+        return;
+      }
+      if (!formData.valorCuota || formData.valorCuota <= 0) {
+        setError('El valor de cuota debe ser mayor a 0');
+        return;
+      }
     }
 
     try {
       setSaving(true);
       setError(null);
       if (isEdit && prestamo) {
-        await prestamoPersonalApi.update(prestamo.id, formData);
+        await prestamoPersonalApi.update(prestamo.id, {
+          categoria: formData.categoria,
+          observaciones: formData.observaciones,
+        });
       } else {
         await prestamoPersonalApi.create(formData);
       }
@@ -108,53 +115,57 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
         <Box sx={{ mt: 2 }}>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <ClienteAutocomplete
-                size="medium"
-                value={selectedCliente}
-                onChange={(cliente) => {
-                  setSelectedCliente(cliente);
-                  handleChange('clienteId', cliente?.id || 0);
-                }}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Cantidad de Cuotas"
-                type="number"
-                required
-                value={formData.cantidadCuotas || ''}
-                onChange={(e) => handleChange('cantidadCuotas', parseInt(e.target.value) || 0)}
-                inputProps={{ min: 1 }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Valor de Cuota"
-                type="number"
-                required
-                value={formData.valorCuota || ''}
-                onChange={(e) => handleChange('valorCuota', parseFloat(e.target.value) || 0)}
-                inputProps={{ min: 0.01, step: 0.01 }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                select
-                label="Tipo de Financiación"
-                value={formData.tipoFinanciacion || ''}
-                onChange={(e) => handleChange('tipoFinanciacion', e.target.value || undefined)}
-              >
-                <MenuItem value="">Sin especificar</MenuItem>
-                {Object.entries(TIPO_FINANCIACION_LABELS).map(([key, label]) => (
-                  <MenuItem key={key} value={key}>{label}</MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+            {!isEdit && (
+              <>
+                <Grid item xs={12}>
+                  <ClienteAutocomplete
+                    size="medium"
+                    value={selectedCliente}
+                    onChange={(cliente) => {
+                      setSelectedCliente(cliente);
+                      handleChange('clienteId', cliente?.id || 0);
+                    }}
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Cantidad de Cuotas"
+                    type="number"
+                    required
+                    value={formData.cantidadCuotas || ''}
+                    onChange={(e) => handleChange('cantidadCuotas', parseInt(e.target.value) || 0)}
+                    inputProps={{ min: 1 }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Valor de Cuota"
+                    type="number"
+                    required
+                    value={formData.valorCuota || ''}
+                    onChange={(e) => handleChange('valorCuota', parseFloat(e.target.value) || 0)}
+                    inputProps={{ min: 0.01, step: 0.01 }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Tipo de Financiación"
+                    value={formData.tipoFinanciacion || ''}
+                    onChange={(e) => handleChange('tipoFinanciacion', e.target.value || undefined)}
+                  >
+                    <MenuItem value="">Sin especificar</MenuItem>
+                    {Object.entries(TIPO_FINANCIACION_LABELS).map(([key, label]) => (
+                      <MenuItem key={key} value={key}>{label}</MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+              </>
+            )}
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
@@ -169,22 +180,26 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Código Cliente Rojas"
-                value={formData.codigoClienteRojas || ''}
-                onChange={(e) => handleChange('codigoClienteRojas', e.target.value || undefined)}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Número de Comprobante"
-                value={formData.numeroComprobante || ''}
-                onChange={(e) => handleChange('numeroComprobante', e.target.value || undefined)}
-              />
-            </Grid>
+            {!isEdit && (
+              <>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Código Cliente Rojas"
+                    value={formData.codigoClienteRojas || ''}
+                    onChange={(e) => handleChange('codigoClienteRojas', e.target.value || undefined)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Número de Comprobante"
+                    value={formData.numeroComprobante || ''}
+                    onChange={(e) => handleChange('numeroComprobante', e.target.value || undefined)}
+                  />
+                </Grid>
+              </>
+            )}
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -195,25 +210,27 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                 onChange={(e) => handleChange('observaciones', e.target.value || undefined)}
               />
             </Grid>
-            <Grid item xs={12}>
-              <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                <Typography variant="subtitle2" gutterBottom>Resumen del Cálculo</Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={4}>
-                    <Typography variant="caption" color="text.secondary">Cuotas</Typography>
-                    <Typography variant="body1" fontWeight="medium">{formData.cantidadCuotas || 0}</Typography>
+            {!isEdit && (
+              <Grid item xs={12}>
+                <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" gutterBottom>Resumen del Cálculo</Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={4}>
+                      <Typography variant="caption" color="text.secondary">Cuotas</Typography>
+                      <Typography variant="body1" fontWeight="medium">{formData.cantidadCuotas || 0}</Typography>
+                    </Grid>
+                    <Grid item xs={4}>
+                      <Typography variant="caption" color="text.secondary">Valor Cuota</Typography>
+                      <Typography variant="body1" fontWeight="medium">{formatPrice(formData.valorCuota || 0)}</Typography>
+                    </Grid>
+                    <Grid item xs={4}>
+                      <Typography variant="caption" color="text.secondary">Monto Total</Typography>
+                      <Typography variant="body1" fontWeight="bold" color="primary">{formatPrice(montoTotal)}</Typography>
+                    </Grid>
                   </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="caption" color="text.secondary">Valor Cuota</Typography>
-                    <Typography variant="body1" fontWeight="medium">{formatPrice(formData.valorCuota || 0)}</Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="caption" color="text.secondary">Monto Total</Typography>
-                    <Typography variant="body1" fontWeight="bold" color="primary">{formatPrice(montoTotal)}</Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-            </Grid>
+                </Box>
+              </Grid>
+            )}
           </Grid>
         </Box>
       </DialogContent>

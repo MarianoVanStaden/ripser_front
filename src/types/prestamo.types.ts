@@ -225,6 +225,15 @@ export interface CreatePrestamoPersonalDTO {
   numeroComprobante?: string;
 }
 
+/**
+ * Edición de un préstamo existente. Solo metadata liviana: categoría y
+ * observaciones. El cambio de plan (cantidad/valor de cuota) va por Refinanciar.
+ */
+export interface UpdatePrestamoPersonalDTO {
+  categoria?: CategoriaPrestamo;
+  observaciones?: string;
+}
+
 export interface ResumenPrestamosDTO {
   totalPrestamos: number;
   prestamosActivos: number;
