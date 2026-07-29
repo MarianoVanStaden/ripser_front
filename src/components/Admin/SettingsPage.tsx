@@ -308,7 +308,7 @@ const SettingsPage: React.FC = () => {
 
       {/* Ayuda Rápida - Metas de unidades refrigeradas (Heladeras y Coolbox) */}
       {(() => {
-        const metasRefrigerados: { clave: string; valor: string; tipo: string; titulo: string; ayuda: string; descripcion: string }[] = [
+        const metasRefrigerados: { clave: string; valor: string; tipo: 'STRING' | 'BOOLEAN' | 'INTEGER' | 'DECIMAL'; titulo: string; ayuda: string; descripcion: string }[] = [
           {
             clave: 'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR',
             valor: '8',
