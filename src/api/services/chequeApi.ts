@@ -142,6 +142,16 @@ export const chequeApi = {
   },
 
   /**
+   * PUT /api/cheques/{id}/revertir-estado
+   * Revierte la última transición de estado del cheque, deshaciendo su efecto
+   * monetario (caja/cartera) y dejando traza en el historial. Solo ADMIN/SUPER_ADMIN.
+   */
+  revertirEstado: async (id: number, motivo: string): Promise<Cheque> => {
+    const response = await api.put(`/api/cheques/${id}/revertir-estado`, { motivo });
+    return response.data;
+  },
+
+  /**
    * GET /api/cheques/{id}/historial
    * Obtiene el historial de cambios de estado de un cheque
    */

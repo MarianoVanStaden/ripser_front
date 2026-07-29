@@ -176,6 +176,7 @@ export interface HistorialEstadoChequeDTO {
   usuarioId?: number;
   usuarioNombre?: string;
   fechaCambio: string;
+  esReversion?: boolean;
 }
 
 // Parámetros de filtro para el endpoint principal GET /api/cheques/buscar

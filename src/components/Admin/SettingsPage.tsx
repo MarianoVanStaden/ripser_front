@@ -306,6 +306,71 @@ const SettingsPage: React.FC = () => {
         </Alert>
       ) : null}
 
+      {/* Ayuda Rápida - Metas de unidades refrigeradas (Heladeras y Coolbox) */}
+      {!parameters.find(p => p.clave === 'META_MENSUAL_UNIDADES_REFRIGERADAS') || !parameters.find(p => p.clave === 'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR') ? (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            🧊 Metas de Unidades Refrigeradas (Heladeras y Coolbox)
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Para ver el cumplimiento de metas en "Unidades por Vendedor" (Registro de Ventas) y en el dashboard, cree los siguientes parámetros:
+          </Typography>
+          <Box sx={{ ml: 2, mb: 2 }}>
+            <Typography variant="body2" fontWeight="600">• META_MENSUAL_UNIDADES_REFRIGERADAS</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Meta mensual de la empresa: unidades netas de heladeras + coolbox por mes
+            </Typography>
+            <br/>
+            <Typography variant="body2" fontWeight="600" sx={{ mt: 1 }}>• META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Meta mensual por vendedor (mismo valor para todos): unidades netas de heladeras + coolbox
+            </Typography>
+          </Box>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            {!parameters.find(p => p.clave === 'META_MENSUAL_UNIDADES_REFRIGERADAS') && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                fullWidth={isMobile}
+                onClick={() => {
+                  setEditingParameter(null);
+                  setFormData({
+                    clave: 'META_MENSUAL_UNIDADES_REFRIGERADAS',
+                    valor: '40',
+                    descripcion: 'Meta mensual de la empresa de unidades netas de equipos refrigerados (heladeras + coolbox). Usada en Unidades por Vendedor y el dashboard.',
+                    tipo: 'INTEGER',
+                  });
+                  setDialogOpen(true);
+                }}
+              >
+                Crear META_MENSUAL_UNIDADES_REFRIGERADAS
+              </Button>
+            )}
+            {!parameters.find(p => p.clave === 'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR') && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                fullWidth={isMobile}
+                onClick={() => {
+                  setEditingParameter(null);
+                  setFormData({
+                    clave: 'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR',
+                    valor: '10',
+                    descripcion: 'Meta mensual por vendedor de unidades netas de equipos refrigerados (heladeras + coolbox). Mismo valor para todos los vendedores.',
+                    tipo: 'INTEGER',
+                  });
+                  setDialogOpen(true);
+                }}
+              >
+                Crear META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR
+              </Button>
+            )}
+          </Stack>
+        </Alert>
+      ) : null}
+
       {/* Ayuda Rápida - Parámetros de Cálculo de Precios */}
       {!parameters.find(p => p.clave === 'PORCENTAJE_GANANCIA') || !parameters.find(p => p.clave === 'REDONDEO_PRECIO') ? (
         <Alert severity="info" sx={{ mb: 3 }}>

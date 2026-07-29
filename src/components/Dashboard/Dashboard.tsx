@@ -53,6 +53,7 @@ import VendedorDashboard from './VendedorDashboard';
 import ProduccionDashboard from './ProduccionDashboard';
 import TallerDashboard from './TallerDashboard';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 
 interface DashboardStats {
   totalClients: number;
@@ -194,6 +195,14 @@ const Dashboard: React.FC = () => {
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [metaVentasMensuales, setMetaVentasMensuales] = useState<number>(50); // Default 50
+  const [unidadesRefrigeradasMes, setUnidadesRefrigeradasMes] = useState<number | null>(null);
+
+  // 0 o inexistente = sin meta configurada → el KPI no se muestra.
+  const { value: metaUnidadesRefrigeradas } = useParametroSistema(
+    'META_MENSUAL_UNIDADES_REFRIGERADAS',
+    0,
+    parseIntOr(0)
+  );
 
   const userRole = (() => {
     const r = user?.rol ?? user?.roles?.[0];
@@ -218,6 +227,26 @@ const Dashboard: React.FC = () => {
     }
     if (isAdminRole) loadMetaVentas();
   }, [empresaId, isAdminRole, hasSpecificDashboard]); // Re-fetch when tenant changes
+
+  // Unidades refrigeradas (H+C) netas del mes actual para el KPI vs meta.
+  useEffect(() => {
+    if (!isAdminRole || metaUnidadesRefrigeradas <= 0) return;
+    let cancelled = false;
+    const mesActual = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+    documentoApi
+      .getVentasEquiposPorVendedor(mesActual, mesActual)
+      .then((rows) => {
+        if (!cancelled) {
+          setUnidadesRefrigeradasMes(rows.reduce((acc, r) => acc + r.totalNeto, 0));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setUnidadesRefrigeradasMes(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [empresaId, isAdminRole, metaUnidadesRefrigeradas]);
 
   const loadMetaVentas = async () => {
     try {
@@ -860,6 +889,25 @@ const Dashboard: React.FC = () => {
                           sx={{ height: 8, borderRadius: 4 }}
                         />
                       </Box>
+
+                      {metaUnidadesRefrigeradas > 0 && unidadesRefrigeradasMes !== null && (
+                        <Box>
+                          <Box display="flex" justifyContent="space-between" mb={0.5}>
+                            <Typography variant="body2" color="text.secondary">
+                              Unidades Refrigeradas del Mes (Meta: {metaUnidadesRefrigeradas})
+                            </Typography>
+                            <Typography variant="body2" fontWeight="600">
+                              {unidadesRefrigeradasMes} — {Math.max(0, Math.min(100, (unidadesRefrigeradasMes / metaUnidadesRefrigeradas) * 100)).toFixed(0)}%
+                            </Typography>
+                          </Box>
+                          <LinearProgress
+                            variant="determinate"
+                            value={Math.max(0, Math.min(100, (unidadesRefrigeradasMes / metaUnidadesRefrigeradas) * 100))}
+                            sx={{ height: 8, borderRadius: 4 }}
+                            color="secondary"
+                          />
+                        </Box>
+                      )}
 
                       <Box>
                         <Box display="flex" justifyContent="space-between" mb={0.5}>

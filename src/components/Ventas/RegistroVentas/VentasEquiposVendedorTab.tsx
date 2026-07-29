@@ -19,6 +19,8 @@ import {
 import dayjs from 'dayjs';
 import { documentoApi } from '../../../api/services';
 import { useTenant } from '../../../context/TenantContext';
+import { useParametroSistema, parseIntOr } from '../../../hooks/useParametroSistema';
+import DetalleVentasVendedorDialog from './DetalleVentasVendedorDialog';
 
 interface CeldaMes {
   heladerasVendidas: number;
@@ -59,10 +61,29 @@ const NetoTexto: React.FC<{ valor: number; anuladas: number }> = ({ valor, anula
   </Typography>
 );
 
+interface DetalleSeleccionado {
+  usuarioId: number;
+  vendedorNombre: string;
+  mes: string; // 'YYYY-MM'
+}
+
 const VentasEquiposVendedorTab: React.FC = () => {
   const { empresaId } = useTenant();
   const [desde, setDesde] = useState(dayjs().subtract(11, 'month').format('YYYY-MM'));
   const [hasta, setHasta] = useState(dayjs().format('YYYY-MM'));
+  const [detalle, setDetalle] = useState<DetalleSeleccionado | null>(null);
+
+  // 0 o inexistente = sin meta configurada → no se muestra cumplimiento.
+  const { value: metaEmpresa } = useParametroSistema(
+    'META_MENSUAL_UNIDADES_REFRIGERADAS',
+    0,
+    parseIntOr(0)
+  );
+  const { value: metaVendedor } = useParametroSistema(
+    'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR',
+    0,
+    parseIntOr(0)
+  );
 
   const rangoValido =
     dayjs(desde, 'YYYY-MM').isValid() &&
@@ -143,7 +164,7 @@ const VentasEquiposVendedorTab: React.FC = () => {
     return { filas: ordenadas, totalPorMes: totales };
   }, [data]);
 
-  const renderCelda = (celda: CeldaMes | undefined) => {
+  const renderCelda = (celda: CeldaMes | undefined, meta?: number, onClick?: () => void) => {
     if (!celda) {
       return (
         <Typography variant="body2" color="text.disabled">
@@ -165,10 +186,20 @@ const VentasEquiposVendedorTab: React.FC = () => {
               Coolboxes: {celda.coolboxesVendidas} vendidas, −{celda.coolboxesAnuladasNc} por NC,
               −{celda.coolboxesAnuladasRechazo} por rechazo
             </Typography>
+            {!!meta && meta > 0 && (
+              <Typography variant="caption" display="block">
+                Meta: {meta} — cumplimiento {Math.round((celda.totalNeto / meta) * 100)}%
+              </Typography>
+            )}
+            {onClick && (
+              <Typography variant="caption" display="block" sx={{ fontStyle: 'italic' }}>
+                Click para ver el detalle
+              </Typography>
+            )}
           </Box>
         }
       >
-        <Box sx={{ whiteSpace: 'nowrap' }}>
+        <Box sx={{ whiteSpace: 'nowrap', cursor: onClick ? 'pointer' : 'default' }} onClick={onClick}>
           <Typography variant="body2" component="div">
             H: <NetoTexto valor={celda.heladerasNeto} anuladas={anuladasH} />
           </Typography>
@@ -265,7 +296,18 @@ const VentasEquiposVendedorTab: React.FC = () => {
                       </TableCell>
                       {meses.map((m) => (
                         <TableCell key={m} align="center">
-                          {renderCelda(fila.porMes.get(m))}
+                          {renderCelda(
+                            fila.porMes.get(m),
+                            metaVendedor,
+                            fila.usuarioId !== null && fila.porMes.get(m)
+                              ? () =>
+                                  setDetalle({
+                                    usuarioId: fila.usuarioId as number,
+                                    vendedorNombre: fila.vendedorNombre,
+                                    mes: m,
+                                  })
+                              : undefined
+                          )}
                         </TableCell>
                       ))}
                       <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
@@ -278,6 +320,12 @@ const VentasEquiposVendedorTab: React.FC = () => {
                         <Typography variant="body2" component="div" sx={{ fontWeight: 600 }}>
                           = <NetoTexto valor={fila.totalNeto} anuladas={0} />
                         </Typography>
+                        {fila.usuarioId !== null && metaVendedor > 0 && meses.length > 0 && (
+                          <Typography variant="caption" color="text.secondary" component="div">
+                            {Math.round((fila.totalNeto / (metaVendedor * meses.length)) * 100)}% de
+                            meta
+                          </Typography>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -301,6 +349,54 @@ const VentasEquiposVendedorTab: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   )}
+                  {filas.length > 0 && metaEmpresa > 0 && (
+                    <TableRow>
+                      <TableCell
+                        sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper' }}
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          Meta empresa ({metaEmpresa}/mes)
+                        </Typography>
+                      </TableCell>
+                      {meses.map((m) => {
+                        const neto = totalPorMes.get(m)?.totalNeto;
+                        return (
+                          <TableCell key={m} align="center">
+                            {neto === undefined ? (
+                              <Typography variant="body2" color="text.disabled">
+                                —
+                              </Typography>
+                            ) : (
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color:
+                                    neto >= metaEmpresa
+                                      ? 'success.main'
+                                      : neto >= metaEmpresa * 0.75
+                                        ? 'warning.main'
+                                        : 'error.main',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {Math.round((neto / metaEmpresa) * 100)}%
+                              </Typography>
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell align="center">
+                        <Typography variant="body2" color="text.secondary">
+                          {Math.round(
+                            (filas.reduce((acc, f) => acc + f.totalNeto, 0) /
+                              (metaEmpresa * meses.length)) *
+                              100
+                          )}
+                          %
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -312,6 +408,14 @@ const VentasEquiposVendedorTab: React.FC = () => {
             </Typography>
           </>
         )}
+
+        <DetalleVentasVendedorDialog
+          open={detalle !== null}
+          onClose={() => setDetalle(null)}
+          usuarioId={detalle?.usuarioId ?? null}
+          vendedorNombre={detalle?.vendedorNombre ?? ''}
+          mes={detalle?.mes ?? dayjs().format('YYYY-MM')}
+        />
       </CardContent>
     </Card>
   );

@@ -79,6 +79,22 @@ export interface VentasVendedorMes {
   totalNeto: number;
 }
 
+// Detalle de una celda vendedor+mes: cada equipo vendido (NP aprobada) y cada
+// anulación (NC o rechazo) del mes, con su documento. Para ANULACION_NC,
+// documentoOrigen* es la factura sobre la que se emitió la NC.
+export interface VentaEquipoDetalle {
+  tipoMovimiento: 'VENTA' | 'ANULACION_NC' | 'RECHAZO';
+  fecha: string;
+  documentoId: number;
+  numeroDocumento: string;
+  tipoDocumento: string;
+  documentoOrigenId: number | null;
+  documentoOrigenNumero: string | null;
+  recetaNombre: string;
+  tipoEquipo: 'HELADERA' | 'COOLBOX';
+  cantidad: number;
+}
+
 export interface ImportarFacturasResult {
   dryRun: boolean;
   totalFilas: number;
@@ -230,6 +246,19 @@ export const documentoApi = {
     const response = await api.get<VentasVendedorMes[]>(
       '/api/documentos/ventas-equipos/vendedores',
       { params: { desde, hasta } }
+    );
+    return response.data;
+  },
+
+  // Detalle de una celda vendedor+mes del reporte de unidades.
+  getDetalleVentasEquiposVendedor: async (
+    usuarioId: number,
+    anio: number,
+    mes: number
+  ): Promise<VentaEquipoDetalle[]> => {
+    const response = await api.get<VentaEquipoDetalle[]>(
+      '/api/documentos/ventas-equipos/vendedores/detalle',
+      { params: { usuarioId, anio, mes } }
     );
     return response.data;
   },

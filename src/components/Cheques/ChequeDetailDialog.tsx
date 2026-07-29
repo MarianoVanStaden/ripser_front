@@ -23,6 +23,7 @@ import ChequeEndososChain from './ChequeEndososChain';
 import EndosarChequeDialog from './EndosarChequeDialog';
 import { CajaSelector } from '../common/CajaSelector';
 import type { CajaRef } from '../../types/caja.types';
+import { usePermisos } from '../../hooks/usePermisos';
 
 interface Props {
   open: boolean;
@@ -32,12 +33,16 @@ interface Props {
 }
 
 const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }) => {
+  const { esAdmin, esSuperAdmin } = usePermisos();
+  const puedeRevertir = esAdmin || esSuperAdmin;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [motivoRechazo, setMotivoRechazo] = useState('');
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
+  const [motivoReversion, setMotivoReversion] = useState('');
   const [showRechazoInput, setShowRechazoInput] = useState(false);
   const [showAnulacionInput, setShowAnulacionInput] = useState(false);
+  const [showReversionInput, setShowReversionInput] = useState(false);
   const [showDepositoInput, setShowDepositoInput] = useState(false);
   const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
   const [endososChain, setEndososChain] = useState<CadenaEndososDTO | null>(null);
@@ -55,6 +60,8 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
       setEndososChain(null);
       setShowDepositoInput(false);
       setCajaRef(null);
+      setShowReversionInput(false);
+      setMotivoReversion('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cheque]);
@@ -163,6 +170,27 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
       setLoading(false);
       setShowAnulacionInput(false);
       setMotivoAnulacion('');
+    }
+  };
+
+  const handleRevertir = async () => {
+    if (!motivoReversion.trim()) {
+      setError('Debe ingresar un motivo de la reversión');
+      return;
+    }
+    try {
+      setLoading(true);
+      setError(null);
+      await chequeApi.revertirEstado(cheque.id, motivoReversion);
+      onUpdate();
+      onClose();
+    } catch (err: any) {
+      console.error('Error revirtiendo estado del cheque:', err);
+      setError(err.response?.data?.message || 'Error al revertir el estado del cheque');
+    } finally {
+      setLoading(false);
+      setShowReversionInput(false);
+      setMotivoReversion('');
     }
   };
 
@@ -552,11 +580,59 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
                 </Box>
               </Grid>
             )}
+
+            {/* Input para revertir la última transición (herramienta de corrección) */}
+            {showReversionInput && (
+              <Grid item xs={12}>
+                {(() => {
+                  const ultima = [...historial]
+                    .reverse()
+                    .find((h) => h.estadoAnterior != null && !h.esReversion);
+                  return (
+                    <Alert severity="warning" sx={{ mb: 1 }}>
+                      {ultima
+                        ? `Se revertirá el último cambio: ${ultima.estadoNuevo} → ${ultima.estadoAnterior}. Se deshará su impacto en caja/cuenta corriente.`
+                        : 'Se revertirá el último cambio de estado y su impacto asociado.'}
+                    </Alert>
+                  );
+                })()}
+                <TextField
+                  fullWidth
+                  label="Motivo de la reversión"
+                  value={motivoReversion}
+                  onChange={(e) => setMotivoReversion(e.target.value)}
+                  multiline
+                  rows={2}
+                  required
+                />
+                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                  <Button
+                    onClick={handleRevertir}
+                    variant="contained"
+                    color="warning"
+                    disabled={loading || !motivoReversion.trim()}
+                    size="small"
+                  >
+                    Confirmar Reversión
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowReversionInput(false);
+                      setMotivoReversion('');
+                    }}
+                    size="small"
+                    disabled={loading}
+                  >
+                    Cancelar
+                  </Button>
+                </Box>
+              </Grid>
+            )}
           </Grid>
         </DialogContent>
         <DialogActions>
           {/* Acciones basadas en el estado actual */}
-          {cheque.estado === 'EN_CARTERA' && cheque.puedeDepositarse && !showDepositoInput && (
+          {cheque.estado === 'EN_CARTERA' && cheque.puedeDepositarse && !showDepositoInput && !showReversionInput && (
             <Button
               onClick={() => setShowDepositoInput(true)}
               variant="contained"
@@ -566,7 +642,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               Depositar
             </Button>
           )}
-          {cheque.estado === 'DEPOSITADO' && cheque.puedeCobrarse && (
+          {cheque.estado === 'DEPOSITADO' && cheque.puedeCobrarse && !showReversionInput && (
             <Button
               onClick={handleCobrar}
               variant="contained"
@@ -576,7 +652,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               Marcar como Cobrado
             </Button>
           )}
-          {(cheque.estado === 'EN_CARTERA' || cheque.estado === 'DEPOSITADO') && !showRechazoInput && !showAnulacionInput && !showDepositoInput && (
+          {(cheque.estado === 'EN_CARTERA' || cheque.estado === 'DEPOSITADO') && !showRechazoInput && !showAnulacionInput && !showDepositoInput && !showReversionInput && (
             <Button
               onClick={() => setShowRechazoInput(true)}
               variant="outlined"
@@ -586,7 +662,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               Rechazar
             </Button>
           )}
-          {cheque.estado !== 'ANULADO' && cheque.estado !== 'COBRADO' && !showRechazoInput && !showAnulacionInput && !showDepositoInput && (
+          {cheque.estado !== 'ANULADO' && cheque.estado !== 'COBRADO' && !showRechazoInput && !showAnulacionInput && !showDepositoInput && !showReversionInput && (
             <Button
               onClick={() => setShowAnulacionInput(true)}
               variant="outlined"
@@ -596,6 +672,23 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               Anular
             </Button>
           )}
+
+          {/* Revertir último cambio - herramienta de corrección ADMIN/SUPER_ADMIN */}
+          {puedeRevertir &&
+            historial.some((h) => h.estadoAnterior != null && !h.esReversion) &&
+            !showRechazoInput &&
+            !showAnulacionInput &&
+            !showDepositoInput &&
+            !showReversionInput && (
+              <Button
+                onClick={() => setShowReversionInput(true)}
+                variant="text"
+                color="warning"
+                disabled={loading}
+              >
+                Revertir último cambio
+              </Button>
+            )}
 
           {/* Botón de Endosar - solo para TERCEROS en RECIBIDO o EN_CARTERA */}
           {cheque.tipo === 'TERCEROS' &&
