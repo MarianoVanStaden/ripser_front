@@ -307,69 +307,87 @@ const SettingsPage: React.FC = () => {
       ) : null}
 
       {/* Ayuda Rápida - Metas de unidades refrigeradas (Heladeras y Coolbox) */}
-      {!parameters.find(p => p.clave === 'META_MENSUAL_UNIDADES_REFRIGERADAS') || !parameters.find(p => p.clave === 'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR') ? (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          <Typography variant="subtitle2" gutterBottom>
-            🧊 Metas de Unidades Refrigeradas (Heladeras y Coolbox)
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            Para ver el cumplimiento de metas en "Unidades por Vendedor" (Registro de Ventas) y en el dashboard, cree los siguientes parámetros:
-          </Typography>
-          <Box sx={{ ml: 2, mb: 2 }}>
-            <Typography variant="body2" fontWeight="600">• META_MENSUAL_UNIDADES_REFRIGERADAS</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Meta mensual de la empresa: unidades netas de heladeras + coolbox por mes
+      {(() => {
+        const metasRefrigerados: { clave: string; valor: string; tipo: string; titulo: string; ayuda: string; descripcion: string }[] = [
+          {
+            clave: 'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR',
+            valor: '8',
+            tipo: 'INTEGER',
+            titulo: 'Meta base por vendedor',
+            ayuda: 'Unidades netas (heladeras + coolbox) por vendedor/a por mes (ej: 8)',
+            descripcion: 'Meta base mensual por vendedor de unidades netas de equipos refrigerados (heladeras + coolbox). Mismo valor para todos los vendedores.',
+          },
+          {
+            clave: 'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR_PRIMER_MES',
+            valor: '5',
+            tipo: 'INTEGER',
+            titulo: 'Meta primer mes',
+            ayuda: 'Meta reducida para vendedores en su primer mes de venta, por curva de aprendizaje (ej: 5)',
+            descripcion: 'Meta mensual de unidades refrigeradas para vendedores en su primer mes de venta (curva de aprendizaje).',
+          },
+          {
+            clave: 'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR_SUPERADORA',
+            valor: '20',
+            tipo: 'INTEGER',
+            titulo: 'Meta superadora',
+            ayuda: 'Meta superadora individual por vendedor/a (ej: 20)',
+            descripcion: 'Meta superadora mensual por vendedor de unidades netas de equipos refrigerados.',
+          },
+          {
+            clave: 'META_MENSUAL_UNIDADES_REFRIGERADAS_TRAMOS',
+            valor: '35-39,40-45,46-50,51-55,56-60',
+            tipo: 'STRING',
+            titulo: 'Metas grupales (tramos)',
+            ayuda: 'Tramos de meta grupal como "min-max" separados por coma; cada tramo es Meta 1, Meta 2, ... (ej: 35-39,40-45,46-50,51-55,56-60)',
+            descripcion: 'Tramos de meta grupal mensual de unidades refrigeradas, formato "min-max" separados por coma. Cada tramo es Meta 1, Meta 2, etc.',
+          },
+        ];
+        const faltantes = metasRefrigerados.filter(m => !parameters.find(p => p.clave === m.clave));
+        if (faltantes.length === 0) return null;
+        return (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              🧊 Metas de Unidades Refrigeradas (Heladeras y Coolbox)
             </Typography>
-            <br/>
-            <Typography variant="body2" fontWeight="600" sx={{ mt: 1 }}>• META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Meta mensual por vendedor (mismo valor para todos): unidades netas de heladeras + coolbox
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              Para ver el cumplimiento de metas individuales y grupales en "Unidades por Vendedor" (Registro de Ventas) y en el dashboard, cree los siguientes parámetros:
             </Typography>
-          </Box>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-            {!parameters.find(p => p.clave === 'META_MENSUAL_UNIDADES_REFRIGERADAS') && (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddIcon />}
-                fullWidth={isMobile}
-                onClick={() => {
-                  setEditingParameter(null);
-                  setFormData({
-                    clave: 'META_MENSUAL_UNIDADES_REFRIGERADAS',
-                    valor: '40',
-                    descripcion: 'Meta mensual de la empresa de unidades netas de equipos refrigerados (heladeras + coolbox). Usada en Unidades por Vendedor y el dashboard.',
-                    tipo: 'INTEGER',
-                  });
-                  setDialogOpen(true);
-                }}
-              >
-                Crear META_MENSUAL_UNIDADES_REFRIGERADAS
-              </Button>
-            )}
-            {!parameters.find(p => p.clave === 'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR') && (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddIcon />}
-                fullWidth={isMobile}
-                onClick={() => {
-                  setEditingParameter(null);
-                  setFormData({
-                    clave: 'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR',
-                    valor: '10',
-                    descripcion: 'Meta mensual por vendedor de unidades netas de equipos refrigerados (heladeras + coolbox). Mismo valor para todos los vendedores.',
-                    tipo: 'INTEGER',
-                  });
-                  setDialogOpen(true);
-                }}
-              >
-                Crear META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR
-              </Button>
-            )}
-          </Stack>
-        </Alert>
-      ) : null}
+            <Box sx={{ ml: 2, mb: 2 }}>
+              {faltantes.map(m => (
+                <Box key={m.clave} sx={{ mb: 1 }}>
+                  <Typography variant="body2" fontWeight="600">• {m.clave}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {m.titulo}: {m.ayuda}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+              {faltantes.map(m => (
+                <Button
+                  key={m.clave}
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  fullWidth={isMobile}
+                  onClick={() => {
+                    setEditingParameter(null);
+                    setFormData({
+                      clave: m.clave,
+                      valor: m.valor,
+                      descripcion: m.descripcion,
+                      tipo: m.tipo,
+                    });
+                    setDialogOpen(true);
+                  }}
+                >
+                  Crear {m.titulo}
+                </Button>
+              ))}
+            </Stack>
+          </Alert>
+        );
+      })()}
 
       {/* Ayuda Rápida - Parámetros de Cálculo de Precios */}
       {!parameters.find(p => p.clave === 'PORCENTAJE_GANANCIA') || !parameters.find(p => p.clave === 'REDONDEO_PRECIO') ? (

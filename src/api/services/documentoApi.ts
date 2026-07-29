@@ -77,6 +77,9 @@ export interface VentasVendedorMes {
   heladerasNeto: number;
   coolboxesNeto: number;
   totalNeto: number;
+  // Mes 'YYYY-MM' de la primera NP aprobada del vendedor (histórico). Se usa
+  // para aplicar la meta reducida de "primer mes". Null en "Sin vendedor".
+  primerMesVenta: string | null;
 }
 
 // Detalle de una celda vendedor+mes: cada equipo vendido (NP aprobada) y cada

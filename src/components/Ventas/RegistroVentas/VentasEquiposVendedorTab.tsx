@@ -19,7 +19,7 @@ import {
 import dayjs from 'dayjs';
 import { documentoApi } from '../../../api/services';
 import { useTenant } from '../../../context/TenantContext';
-import { useParametroSistema, parseIntOr } from '../../../hooks/useParametroSistema';
+import { useParametroSistema, parseIntOr, parseTramos } from '../../../hooks/useParametroSistema';
 import DetalleVentasVendedorDialog from './DetalleVentasVendedorDialog';
 
 interface CeldaMes {
@@ -41,6 +41,7 @@ interface FilaVendedor {
   totalHeladeras: number;
   totalCoolboxes: number;
   totalNeto: number;
+  primerMesVenta: string | null; // 'YYYY-MM' de la primera venta histórica
 }
 
 const SIN_VENDEDOR = 'Sin vendedor';
@@ -73,17 +74,40 @@ const VentasEquiposVendedorTab: React.FC = () => {
   const [hasta, setHasta] = useState(dayjs().format('YYYY-MM'));
   const [detalle, setDetalle] = useState<DetalleSeleccionado | null>(null);
 
-  // 0 o inexistente = sin meta configurada → no se muestra cumplimiento.
-  const { value: metaEmpresa } = useParametroSistema(
-    'META_MENSUAL_UNIDADES_REFRIGERADAS',
-    0,
-    parseIntOr(0)
-  );
-  const { value: metaVendedor } = useParametroSistema(
+  // 0 / vacío o inexistente = sin meta configurada → no se muestra cumplimiento.
+  const { value: metaBase } = useParametroSistema(
     'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR',
     0,
     parseIntOr(0)
   );
+  const { value: metaPrimerMes } = useParametroSistema(
+    'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR_PRIMER_MES',
+    0,
+    parseIntOr(0)
+  );
+  const { value: metaSuperadora } = useParametroSistema(
+    'META_MENSUAL_UNIDADES_REFRIGERADAS_VENDEDOR_SUPERADORA',
+    0,
+    parseIntOr(0)
+  );
+  const { value: tramosGrupales } = useParametroSistema(
+    'META_MENSUAL_UNIDADES_REFRIGERADAS_TRAMOS',
+    [],
+    parseTramos
+  );
+
+  /** Meta individual del mes: la de primer mes si es el primer mes de venta del vendedor. */
+  const metaDelMes = (fila: FilaVendedor, mes: string): number =>
+    fila.primerMesVenta === mes && metaPrimerMes > 0 ? metaPrimerMes : metaBase;
+
+  /** Tramo grupal alcanzado por un neto mensual: índice en tramosGrupales, -1 si no llega. */
+  const tramoAlcanzado = (neto: number): number => {
+    let alcanzado = -1;
+    tramosGrupales.forEach((t, i) => {
+      if (neto >= t.min) alcanzado = i;
+    });
+    return alcanzado;
+  };
 
   const rangoValido =
     dayjs(desde, 'YYYY-MM').isValid() &&
@@ -125,6 +149,7 @@ const VentasEquiposVendedorTab: React.FC = () => {
           totalHeladeras: 0,
           totalCoolboxes: 0,
           totalNeto: 0,
+          primerMesVenta: item.primerMesVenta ?? null,
         };
         porVendedor.set(claveVendedor, fila);
       }
@@ -189,6 +214,11 @@ const VentasEquiposVendedorTab: React.FC = () => {
             {!!meta && meta > 0 && (
               <Typography variant="caption" display="block">
                 Meta: {meta} — cumplimiento {Math.round((celda.totalNeto / meta) * 100)}%
+              </Typography>
+            )}
+            {metaSuperadora > 0 && celda.totalNeto >= metaSuperadora && (
+              <Typography variant="caption" display="block" sx={{ fontWeight: 600 }}>
+                🏆 Meta superadora ({metaSuperadora}) alcanzada
               </Typography>
             )}
             {onClick && (
@@ -298,7 +328,7 @@ const VentasEquiposVendedorTab: React.FC = () => {
                         <TableCell key={m} align="center">
                           {renderCelda(
                             fila.porMes.get(m),
-                            metaVendedor,
+                            fila.usuarioId !== null ? metaDelMes(fila, m) : 0,
                             fila.usuarioId !== null && fila.porMes.get(m)
                               ? () =>
                                   setDetalle({
@@ -320,12 +350,24 @@ const VentasEquiposVendedorTab: React.FC = () => {
                         <Typography variant="body2" component="div" sx={{ fontWeight: 600 }}>
                           = <NetoTexto valor={fila.totalNeto} anuladas={0} />
                         </Typography>
-                        {fila.usuarioId !== null && metaVendedor > 0 && meses.length > 0 && (
-                          <Typography variant="caption" color="text.secondary" component="div">
-                            {Math.round((fila.totalNeto / (metaVendedor * meses.length)) * 100)}% de
-                            meta
-                          </Typography>
-                        )}
+                        {fila.usuarioId !== null &&
+                          metaBase > 0 &&
+                          (() => {
+                            // Solo cuentan para la meta los meses desde su primera venta.
+                            const mesesActivos = meses.filter(
+                              (m) => !fila.primerMesVenta || m >= fila.primerMesVenta
+                            );
+                            if (mesesActivos.length === 0) return null;
+                            const metaPeriodo = mesesActivos.reduce(
+                              (acc, m) => acc + metaDelMes(fila, m),
+                              0
+                            );
+                            return (
+                              <Typography variant="caption" color="text.secondary" component="div">
+                                {Math.round((fila.totalNeto / metaPeriodo) * 100)}% de meta
+                              </Typography>
+                            );
+                          })()}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -349,50 +391,68 @@ const VentasEquiposVendedorTab: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   )}
-                  {filas.length > 0 && metaEmpresa > 0 && (
+                  {filas.length > 0 && tramosGrupales.length > 0 && (
                     <TableRow>
                       <TableCell
                         sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper' }}
                       >
-                        <Typography variant="body2" color="text.secondary">
-                          Meta empresa ({metaEmpresa}/mes)
-                        </Typography>
+                        <Tooltip
+                          title={
+                            <Box>
+                              {tramosGrupales.map((t, i) => (
+                                <Typography key={t.min} variant="caption" display="block">
+                                  Meta {i + 1}: {t.min}–{t.max} equipos
+                                </Typography>
+                              ))}
+                            </Box>
+                          }
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            Meta grupal
+                          </Typography>
+                        </Tooltip>
                       </TableCell>
                       {meses.map((m) => {
                         const neto = totalPorMes.get(m)?.totalNeto;
-                        return (
-                          <TableCell key={m} align="center">
-                            {neto === undefined ? (
+                        if (neto === undefined) {
+                          return (
+                            <TableCell key={m} align="center">
                               <Typography variant="body2" color="text.disabled">
                                 —
                               </Typography>
-                            ) : (
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color:
-                                    neto >= metaEmpresa
-                                      ? 'success.main'
-                                      : neto >= metaEmpresa * 0.75
-                                        ? 'warning.main'
-                                        : 'error.main',
-                                  fontWeight: 600,
-                                }}
+                            </TableCell>
+                          );
+                        }
+                        const idx = tramoAlcanzado(neto);
+                        return (
+                          <TableCell key={m} align="center">
+                            {idx < 0 ? (
+                              <Tooltip
+                                title={`Faltan ${tramosGrupales[0].min - neto} para Meta 1 (${tramosGrupales[0].min}–${tramosGrupales[0].max})`}
                               >
-                                {Math.round((neto / metaEmpresa) * 100)}%
-                              </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  &lt; Meta 1
+                                </Typography>
+                              </Tooltip>
+                            ) : (
+                              <Tooltip
+                                title={`${neto} equipos — tramo ${tramosGrupales[idx].min}–${tramosGrupales[idx].max}`}
+                              >
+                                <Typography
+                                  variant="body2"
+                                  sx={{ color: 'success.main', fontWeight: 600 }}
+                                >
+                                  Meta {idx + 1}
+                                  {neto > tramosGrupales[tramosGrupales.length - 1].max ? '+' : ''}
+                                </Typography>
+                              </Tooltip>
                             )}
                           </TableCell>
                         );
                       })}
                       <TableCell align="center">
-                        <Typography variant="body2" color="text.secondary">
-                          {Math.round(
-                            (filas.reduce((acc, f) => acc + f.totalNeto, 0) /
-                              (metaEmpresa * meses.length)) *
-                              100
-                          )}
-                          %
+                        <Typography variant="body2" color="text.disabled">
+                          —
                         </Typography>
                       </TableCell>
                     </TableRow>
