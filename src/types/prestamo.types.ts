@@ -317,6 +317,17 @@ export interface RegistrarPagoCuotaDTO {
   numeroComprobante?: string;
 }
 
+export interface ImputarChequeCuotaRequest {
+  prestamoId: number;
+  /** Opcional: sin cuotaId se imputa a la primera cuota impaga. */
+  cuotaId?: number;
+  chequeId: number;
+  /** Opcional: default = monto total del cheque. */
+  monto?: number;
+  fechaPago?: string;
+  numeroComprobante?: string;
+}
+
 // ==================== PAGO INFORMADO (workflow cobranzas → admin) ====================
 
 export interface PagoInformadoDTO {

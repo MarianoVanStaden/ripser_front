@@ -26,13 +26,17 @@ import {
   Close as CloseIcon,
   ReceiptLong as ChequeIcon,
 } from '@mui/icons-material';
-import type { MetodoPago } from '../../types/prestamo.types';
+import type { MetodoPago, PrestamoPersonalDTO } from '../../types/prestamo.types';
 import type { Banco, DetalleRendicion, RendicionViajeDTO } from '../../types';
 import { METODO_PAGO_LABELS } from '../../types/venta.types';
 import { cajaEsDefaultPara, type CajaUnificada } from '../../types/caja.types';
 import { cajasApi } from '../../api/services/cajasApi';
 import { bancoApi } from '../../api/services/bancoApi';
 import { viajeApi } from '../../api/services/viajeApi';
+import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
+
+// Un crédito con deuda pendiente admite imputación de cheque; los cerrados no.
+const ESTADOS_PRESTAMO_IMPUTABLES = new Set(['ACTIVO', 'EN_MORA', 'EN_LEGAL']);
 
 const fmt = (n: number) => `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -54,6 +58,10 @@ interface ChequeForm {
   cuit: string;
   fechaEmision: string;
   fechaCobro: string;
+  /** Cliente de la entrega — necesario para imputar el cheque a su crédito. */
+  clienteId: number | null;
+  /** Préstamo elegido para imputar el cheque en el mismo acto (opcional). */
+  prestamoId: number | '';
 }
 
 // Reparto de una Transferencia Bancaria en varias cajas/cuentas (los clientes
@@ -99,6 +107,8 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
   const [bancos, setBancos] = useState<Banco[]>([]);
   // Reparto de la Transferencia Bancaria en varias cajas.
   const [transferAllocs, setTransferAllocs] = useState<TransferAlloc[]>([]);
+  // Créditos activos por cliente, para el selector opcional de imputación de cheque.
+  const [prestamosPorCliente, setPrestamosPorCliente] = useState<Record<number, PrestamoPersonalDTO[]>>({});
 
   const totalTransfer = arsGrupos.find((g) => g.metodo === TRANSFER)?.total ?? 0;
 
@@ -126,6 +136,7 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
                   monto,
                   numero: '', bancoId: '', titular: e.clienteNombre ?? '',
                   cuit: '', fechaEmision: '', fechaCobro: '',
+                  clienteId: e.clienteId ?? null, prestamoId: '',
                 });
               }
             } else if (d.metodoPago === 'DOLARES') {
@@ -173,6 +184,23 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cheques.length]);
+
+  // Cargar los créditos activos de cada cliente con cheque, para el selector de imputación.
+  useEffect(() => {
+    const clienteIds = Array.from(
+      new Set(cheques.map((c) => c.clienteId).filter((id): id is number => id != null))
+    );
+    clienteIds.forEach((clienteId) => {
+      if (prestamosPorCliente[clienteId] !== undefined) return;
+      prestamoPersonalApi.getByCliente(clienteId)
+        .then((list) => setPrestamosPorCliente((prev) => ({
+          ...prev,
+          [clienteId]: list.filter((p) => ESTADOS_PRESTAMO_IMPUTABLES.has(p.estado)),
+        })))
+        .catch(() => setPrestamosPorCliente((prev) => ({ ...prev, [clienteId]: [] })));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cheques]);
 
   // ── Auto-seleccionar caja default cuando llegan las cajas ──
   useEffect(() => {
@@ -260,6 +288,8 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
       detalles.push({
         metodoPago: 'CHEQUE',
         monto: c.monto,
+        clienteId: c.clienteId ?? undefined,
+        prestamoId: c.prestamoId === '' ? undefined : Number(c.prestamoId),
         cheque: {
           numeroCheque: c.numero.trim(),
           bancoId: c.bancoId === '' ? null : Number(c.bancoId),
@@ -504,6 +534,27 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
                       onChange={(e) => updateCheque(c.id, { fechaCobro: e.target.value })}
                     />
                   </Stack>
+                  {c.clienteId != null && (prestamosPorCliente[c.clienteId]?.length ?? 0) > 0 && (
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Imputar a crédito (opcional)</InputLabel>
+                      <Select
+                        value={c.prestamoId}
+                        label="Imputar a crédito (opcional)"
+                        onChange={(e) => updateCheque(c.id, {
+                          prestamoId: e.target.value === '' ? '' : Number(e.target.value),
+                        })}
+                      >
+                        <MenuItem value=""><em>No imputar</em></MenuItem>
+                        {prestamosPorCliente[c.clienteId]!.map((p) => (
+                          <MenuItem key={p.id} value={p.id}>
+                            #{p.id}{p.numeroComprobante ? ` — ${p.numeroComprobante}` : ''}
+                            {' — '}{p.cuotasPagadas}/{p.cantidadCuotas} cuotas
+                            {' — saldo '}{fmt(p.saldoPendiente)}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
                 </Stack>
               ))}
             </Stack>

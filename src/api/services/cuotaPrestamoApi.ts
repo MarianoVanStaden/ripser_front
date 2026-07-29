@@ -1,5 +1,5 @@
 import api from '../config';
-import type { CuotaPrestamoDTO, RegistrarPagoCuotaDTO, RevertirPagoCuotaRequest } from '../../types/prestamo.types';
+import type { CuotaPrestamoDTO, RegistrarPagoCuotaDTO, RevertirPagoCuotaRequest, ImputarChequeCuotaRequest } from '../../types/prestamo.types';
 
 const BASE_PATH = '/api/cuotas-prestamo';
 
@@ -16,6 +16,11 @@ export const cuotaPrestamoApi = {
 
   revertirPago: async (data: RevertirPagoCuotaRequest): Promise<CuotaPrestamoDTO> => {
     const response = await api.post<CuotaPrestamoDTO>(`${BASE_PATH}/revertir-pago`, data);
+    return response.data;
+  },
+
+  imputarCheque: async (data: ImputarChequeCuotaRequest): Promise<CuotaPrestamoDTO> => {
+    const response = await api.post<CuotaPrestamoDTO>(`${BASE_PATH}/imputar-cheque`, data);
     return response.data;
   },
 

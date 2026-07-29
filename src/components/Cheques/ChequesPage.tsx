@@ -33,12 +33,14 @@ import {
   Search as SearchIcon,
   AccountBalance as AccountBalanceIcon,
   Warning as WarningIcon,
+  Link as LinkIcon,
 } from '@mui/icons-material';
 import { chequeApi } from '../../api/services/chequeApi';
 import { usePermisos } from '../../hooks/usePermisos';
 import type { Cheque, ChequeResumenDTO } from '../../types';
 import ChequeFormDialog from './ChequeFormDialog';
 import ChequeDetailDialog from './ChequeDetailDialog';
+import ImputarChequeACreditoDialog from './ImputarChequeACreditoDialog';
 import ChequeEstadoChip from './ChequeEstadoChip';
 import ChequeTipoChip from './ChequeTipoChip';
 
@@ -56,6 +58,8 @@ const ChequesPage: React.FC = () => {
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedCheque, setSelectedCheque] = useState<Cheque | null>(null);
+  const [imputarDialogOpen, setImputarDialogOpen] = useState(false);
+  const [chequeParaImputar, setChequeParaImputar] = useState<Cheque | null>(null);
 
   // Paginación
   const [page, setPage] = useState(0);
@@ -470,6 +474,18 @@ const ChequesPage: React.FC = () => {
                             </IconButton>
                           </Tooltip>
                         )}
+                        {cheque.tipo === 'TERCEROS'
+                          && cheque.clienteId
+                          && (cheque.estado === 'EN_CARTERA' || cheque.estado === 'ENDOSADO') && (
+                          <Tooltip title="Imputar a crédito personal">
+                            <IconButton
+                              size="small"
+                              onClick={() => { setChequeParaImputar(cheque); setImputarDialogOpen(true); }}
+                            >
+                              <LinkIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
@@ -507,6 +523,17 @@ const ChequesPage: React.FC = () => {
         cheque={selectedCheque}
         onClose={handleCloseDetail}
         onUpdate={handleDetailUpdate}
+      />
+
+      <ImputarChequeACreditoDialog
+        open={imputarDialogOpen}
+        cheque={chequeParaImputar}
+        onClose={() => { setImputarDialogOpen(false); setChequeParaImputar(null); }}
+        onSaved={async () => {
+          await Promise.all([loadCheques(), loadResumen()]);
+          setSuccess('Cheque imputado al crédito correctamente');
+          setTimeout(() => setSuccess(null), 3000);
+        }}
       />
     </Box>
   );

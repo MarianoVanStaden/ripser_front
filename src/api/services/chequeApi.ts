@@ -184,6 +184,16 @@ export const chequeApi = {
   },
 
   /**
+   * GET /api/cheques/imputables?clienteId=
+   * Cheques del cliente imputables a un préstamo personal: TERCEROS en cartera o
+   * endosados, aún no imputados a ninguna cuota. Alimenta el picker de "imputar cheque".
+   */
+  getImputables: async (clienteId: number): Promise<Cheque[]> => {
+    const response = await api.get('/api/cheques/imputables', { params: { clienteId } });
+    return response.data;
+  },
+
+  /**
    * GET /api/cheques/proveedor/{proveedorId}
    * Busca cheques por proveedor
    */

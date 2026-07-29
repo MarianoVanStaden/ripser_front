@@ -39,6 +39,7 @@ import type { Cliente } from '../../types';
 import { formatPrice } from '../../utils/priceCalculations';
 import { PrestamoFormDialog } from './PrestamoFormDialog';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
+import { ImputarChequeDialog } from './ImputarChequeDialog';
 import { RevertirPagoDialog } from './RevertirPagoDialog';
 import { SeguimientoFormDialog } from './SeguimientoFormDialog';
 import { RecordatorioFormDialog } from './RecordatorioFormDialog';
@@ -100,6 +101,8 @@ export const PrestamoDetailPage: React.FC = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [pagoDialogOpen, setPagoDialogOpen] = useState(false);
   const [selectedCuota, setSelectedCuota] = useState<CuotaPrestamoDTO | null>(null);
+  const [imputarChequeOpen, setImputarChequeOpen] = useState(false);
+  const [cuotaParaImputarCheque, setCuotaParaImputarCheque] = useState<CuotaPrestamoDTO | null>(null);
   const [seguimientoOpen, setSeguimientoOpen] = useState(false);
   const [recordatorioOpen, setRecordatorioOpen] = useState(false);
   const [recordatorioCuotaId, setRecordatorioCuotaId] = useState<number>(0);
@@ -665,6 +668,13 @@ export const PrestamoDetailPage: React.FC = () => {
                             </IconButton>
                           </Tooltip>
                         )}
+                        {c.estado !== 'PAGADA' && (
+                          <Tooltip title="Imputar cheque en cartera">
+                            <IconButton size="small" onClick={() => { setCuotaParaImputarCheque(c); setImputarChequeOpen(true); }}>
+                              <Receipt fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         {(c.estado === 'PAGADA' || c.estado === 'PARCIAL') && c.montoPagado > 0 && (
                           <Tooltip title="Revertir pago">
                             <IconButton size="small" color="warning" onClick={() => { setSelectedCuotaRevertir(c); setRevertirOpen(true); }}>
@@ -872,6 +882,15 @@ export const PrestamoDetailPage: React.FC = () => {
         onClose={() => setPagoDialogOpen(false)}
         onSaved={handlePagoSaved}
         cuota={selectedCuota}
+        clienteId={prestamo?.clienteId ?? 0}
+        prestamoId={prestamoId}
+        allCuotas={cuotas}
+      />
+      <ImputarChequeDialog
+        open={imputarChequeOpen}
+        onClose={() => { setImputarChequeOpen(false); setCuotaParaImputarCheque(null); }}
+        onSaved={handlePagoSaved}
+        cuota={cuotaParaImputarCheque}
         clienteId={prestamo?.clienteId ?? 0}
         prestamoId={prestamoId}
         allCuotas={cuotas}

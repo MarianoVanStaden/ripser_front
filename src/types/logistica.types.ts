@@ -435,6 +435,7 @@ export type EstadoRendicion = 'CONFIRMADA' | 'CON_DIFERENCIA';
 
 export interface RendicionEntregaDTO {
   entregaId: number;
+  clienteId?: number | null;
   clienteNombre?: string;
   numeroDocumento?: string;
   montoEsperado?: number | null;
@@ -492,6 +493,10 @@ export interface DetalleRendicion {
   comprobanteCobro?: string | null;
   cheque?: ChequeRendicion | null;
   clienteId?: number | null;
+  /** Solo líneas CHEQUE: préstamo al que imputar el cheque en el mismo acto. */
+  prestamoId?: number | null;
+  /** Cuota destino de la imputación (opcional; default = primera impaga). */
+  cuotaId?: number | null;
 }
 
 export interface RendicionRequest {
