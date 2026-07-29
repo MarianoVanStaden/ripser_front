@@ -57,6 +57,8 @@ const SettingsPage: React.FC = () => {
     tipo: 'STRING' as 'STRING' | 'INTEGER' | 'DECIMAL' | 'BOOLEAN',
   });
   const [unsavedChanges, setUnsavedChanges] = useState<Record<number, string>>({});
+  const [deleteTarget, setDeleteTarget] = useState<ParametroSistema | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -130,21 +132,20 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (parameter: ParametroSistema) => {
-    if (
-      !window.confirm(
-        `¿Eliminar el parámetro ${parameter.clave}? Las pantallas que lo usan dejarán de mostrar su métrica/meta.`
-      )
-    ) {
-      return;
-    }
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await parametroSistemaApi.delete(parameter.id);
+      setDeleting(true);
+      await parametroSistemaApi.delete(deleteTarget.id);
       setSuccess('Parámetro eliminado');
+      setDeleteTarget(null);
       await loadData();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al eliminar el parámetro');
       console.error('Error deleting parameter:', err);
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -687,7 +688,7 @@ const SettingsPage: React.FC = () => {
                             </IconButton>
                             <IconButton
                               size="small"
-                              onClick={() => handleDelete(param)}
+                              onClick={() => setDeleteTarget(param)}
                               color="error"
                             >
                               <DeleteIcon fontSize="small" />
@@ -775,6 +776,36 @@ const SettingsPage: React.FC = () => {
           </Button>
           <Button onClick={handleSave} variant="contained" startIcon={<SaveIcon />}>
             Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog de confirmación de eliminación */}
+      <Dialog
+        open={deleteTarget !== null}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Eliminar parámetro</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            ¿Eliminar el parámetro <strong>{deleteTarget?.clave}</strong>? Las pantallas que lo
+            usan dejarán de mostrar su métrica/meta.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteTarget(null)} color="inherit" disabled={deleting}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            startIcon={<DeleteIcon />}
+            disabled={deleting}
+          >
+            Eliminar
           </Button>
         </DialogActions>
       </Dialog>
