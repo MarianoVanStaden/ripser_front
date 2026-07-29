@@ -21,6 +21,8 @@ import ChequeEstadoChip from './ChequeEstadoChip';
 import ChequeTipoChip from './ChequeTipoChip';
 import ChequeEndososChain from './ChequeEndososChain';
 import EndosarChequeDialog from './EndosarChequeDialog';
+import { CajaSelector } from '../common/CajaSelector';
+import type { CajaRef } from '../../types/caja.types';
 
 interface Props {
   open: boolean;
@@ -36,6 +38,8 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
   const [showRechazoInput, setShowRechazoInput] = useState(false);
   const [showAnulacionInput, setShowAnulacionInput] = useState(false);
+  const [showDepositoInput, setShowDepositoInput] = useState(false);
+  const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
   const [endososChain, setEndososChain] = useState<CadenaEndososDTO | null>(null);
   const [loadingEndosos, setLoadingEndosos] = useState(false);
   const [showEndosarDialog, setShowEndosarDialog] = useState(false);
@@ -49,6 +53,8 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
     if (!open) {
       setHistorial([]);
       setEndososChain(null);
+      setShowDepositoInput(false);
+      setCajaRef(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cheque]);
@@ -88,7 +94,9 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
     try {
       setLoading(true);
       setError(null);
-      await chequeApi.depositar(cheque.id);
+      const cajaPesosId = cajaRef?.tipo === 'PESOS' ? cajaRef.id : null;
+      const cajaAhorroId = cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null;
+      await chequeApi.depositar(cheque.id, undefined, undefined, cajaPesosId, cajaAhorroId);
       onUpdate();
       onClose();
     } catch (err: any) {
@@ -96,6 +104,8 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
       setError(err.response?.data?.message || 'Error al depositar el cheque');
     } finally {
       setLoading(false);
+      setShowDepositoInput(false);
+      setCajaRef(null);
     }
   };
 
@@ -434,6 +444,43 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               </>
             )}
 
+            {/* Selección de caja destino para el depósito */}
+            {showDepositoInput && (
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Depositar en una caja propia
+                </Typography>
+                <CajaSelector
+                  metodoPago="TRANSFERENCIA_BANCARIA"
+                  value={cajaRef}
+                  onChange={setCajaRef}
+                  direccion="ingreso"
+                  disabled={loading}
+                />
+                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                  <Button
+                    onClick={handleDepositar}
+                    variant="contained"
+                    color="info"
+                    disabled={loading}
+                    size="small"
+                  >
+                    Confirmar Depósito
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowDepositoInput(false);
+                      setCajaRef(null);
+                    }}
+                    size="small"
+                    disabled={loading}
+                  >
+                    Cancelar
+                  </Button>
+                </Box>
+              </Grid>
+            )}
+
             {/* Input para motivo de rechazo */}
             {showRechazoInput && (
               <Grid item xs={12}>
@@ -509,9 +556,9 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
         </DialogContent>
         <DialogActions>
           {/* Acciones basadas en el estado actual */}
-          {cheque.estado === 'EN_CARTERA' && cheque.puedeDepositarse && (
+          {cheque.estado === 'EN_CARTERA' && cheque.puedeDepositarse && !showDepositoInput && (
             <Button
-              onClick={handleDepositar}
+              onClick={() => setShowDepositoInput(true)}
               variant="contained"
               color="info"
               disabled={loading || showRechazoInput || showAnulacionInput}
@@ -524,12 +571,12 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               onClick={handleCobrar}
               variant="contained"
               color="success"
-              disabled={loading || showRechazoInput || showAnulacionInput}
+              disabled={loading || showRechazoInput || showAnulacionInput || showDepositoInput}
             >
               Marcar como Cobrado
             </Button>
           )}
-          {(cheque.estado === 'EN_CARTERA' || cheque.estado === 'DEPOSITADO') && !showRechazoInput && !showAnulacionInput && (
+          {(cheque.estado === 'EN_CARTERA' || cheque.estado === 'DEPOSITADO') && !showRechazoInput && !showAnulacionInput && !showDepositoInput && (
             <Button
               onClick={() => setShowRechazoInput(true)}
               variant="outlined"
@@ -539,7 +586,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               Rechazar
             </Button>
           )}
-          {cheque.estado !== 'ANULADO' && cheque.estado !== 'COBRADO' && !showRechazoInput && !showAnulacionInput && (
+          {cheque.estado !== 'ANULADO' && cheque.estado !== 'COBRADO' && !showRechazoInput && !showAnulacionInput && !showDepositoInput && (
             <Button
               onClick={() => setShowAnulacionInput(true)}
               variant="outlined"
@@ -554,7 +601,8 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
           {cheque.tipo === 'TERCEROS' &&
             (cheque.estado === 'RECIBIDO' || cheque.estado === 'EN_CARTERA') &&
             !showRechazoInput &&
-            !showAnulacionInput && (
+            !showAnulacionInput &&
+            !showDepositoInput && (
               <Button
                 onClick={() => setShowEndosarDialog(true)}
                 variant="contained"
