@@ -100,7 +100,8 @@ const ImputarChequeACreditoDialog: React.FC<ImputarChequeACreditoDialogProps> = 
                   >
                     {prestamos.map(p => (
                       <MenuItem key={p.id} value={p.id}>
-                        #{p.id}{p.numeroComprobante ? ` — ${p.numeroComprobante}` : ''}
+                        {`${p.clienteNombre ?? ''} ${p.clienteApellido ?? ''}`.trim()}
+                        {' — #'}{p.id}{p.numeroComprobante ? ` (${p.numeroComprobante})` : ''}
                         {' — '}{p.cuotasPagadas}/{p.cantidadCuotas} cuotas
                         {' — saldo '}{p.saldoPendiente.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                       </MenuItem>
