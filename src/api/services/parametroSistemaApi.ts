@@ -24,5 +24,10 @@ export const parametroSistemaApi = {
   update: async (id: number, parametro: ParametroSistema): Promise<ParametroSistema> => {
     const response = await api.put(`/api/admin/parametros/${id}`, parametro);
     return response.data;
+  },
+
+  // Delete parametro
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/api/admin/parametros/${id}`);
   }
 };

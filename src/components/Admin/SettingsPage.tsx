@@ -31,6 +31,7 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon,
+  Delete as DeleteIcon,
   Edit as EditIcon,
   Settings as SettingsIcon,
   ExpandMore as ExpandMoreIcon,
@@ -126,6 +127,24 @@ const SettingsPage: React.FC = () => {
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al guardar el parámetro');
       console.error('Error saving parameter:', err);
+    }
+  };
+
+  const handleDelete = async (parameter: ParametroSistema) => {
+    if (
+      !window.confirm(
+        `¿Eliminar el parámetro ${parameter.clave}? Las pantallas que lo usan dejarán de mostrar su métrica/meta.`
+      )
+    ) {
+      return;
+    }
+    try {
+      await parametroSistemaApi.delete(parameter.id);
+      setSuccess('Parámetro eliminado');
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al eliminar el parámetro');
+      console.error('Error deleting parameter:', err);
     }
   };
 
@@ -666,6 +685,13 @@ const SettingsPage: React.FC = () => {
                             >
                               <EditIcon fontSize="small" />
                             </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDelete(param)}
+                              color="error"
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
                           </TableCell>
                         </TableRow>
                       );
@@ -701,7 +727,7 @@ const SettingsPage: React.FC = () => {
               value={formData.clave}
               onChange={(e) => setFormData({ ...formData, clave: e.target.value.toUpperCase() })}
               disabled={!!editingParameter}
-              helperText="Identificador único del parámetro (ej: META_VENTAS_MENSUALES)"
+              helperText="Identificador único del parámetro (ej: META_MENSUAL_LEADS)"
               required
             />
 

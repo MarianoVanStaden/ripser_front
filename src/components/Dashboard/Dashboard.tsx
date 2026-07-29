@@ -40,7 +40,7 @@ import {
   Schedule as ScheduleIcon,
   Assessment as AssessmentIcon,
 } from '@mui/icons-material';
-import { clientApi, productApi, documentoApi, parametroSistemaApi } from '../../api/services';
+import { clientApi, productApi, documentoApi } from '../../api/services';
 import RecentActivity from './RecentActivity';
 import QuickActions from './QuickActions';
 import { testConnection } from '../../api/testConnection';
@@ -194,7 +194,6 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
-  const [metaVentasMensuales, setMetaVentasMensuales] = useState<number>(50); // Default 50
   const [unidadesRefrigeradasMes, setUnidadesRefrigeradasMes] = useState<number | null>(null);
 
   // Tramos de meta grupal ("35-39,40-45,..."); vacío o inexistente → el KPI no se muestra.
@@ -225,7 +224,6 @@ const Dashboard: React.FC = () => {
     } else {
       setLoading(false);
     }
-    if (isAdminRole) loadMetaVentas();
   }, [empresaId, isAdminRole, hasSpecificDashboard]); // Re-fetch when tenant changes
 
   // Unidades refrigeradas (H+C) netas del mes actual para el KPI vs meta grupal.
@@ -247,15 +245,6 @@ const Dashboard: React.FC = () => {
       cancelled = true;
     };
   }, [empresaId, isAdminRole, tramosUnidadesRefrigeradas.length]);
-
-  const loadMetaVentas = async () => {
-    try {
-      const parametro = await parametroSistemaApi.getByClave('META_VENTAS_MENSUALES');
-      setMetaVentasMensuales(parseInt(parametro.valor));
-    } catch (error) {
-      console.warn('No se pudo cargar META_VENTAS_MENSUALES, usando valor por defecto (50)');
-    }
-  };
 
   const checkConnection = async () => {
     try {
@@ -874,22 +863,6 @@ const Dashboard: React.FC = () => {
                       Indicadores de Rendimiento
                     </Typography>
                     <Stack spacing={2.5}>
-                      <Box>
-                        <Box display="flex" justifyContent="space-between" mb={0.5}>
-                          <Typography variant="body2" color="text.secondary">
-                            Cumplimiento de Ventas Mensuales (Meta: {metaVentasMensuales})
-                          </Typography>
-                          <Typography variant="body2" fontWeight="600">
-                            {stats.monthlySalesCount > 0 ? Math.min(100, (stats.monthlySalesCount / metaVentasMensuales) * 100).toFixed(0) : 0}%
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={stats.monthlySalesCount > 0 ? Math.min(100, (stats.monthlySalesCount / metaVentasMensuales) * 100) : 0}
-                          sx={{ height: 8, borderRadius: 4 }}
-                        />
-                      </Box>
-
                       {tramosUnidadesRefrigeradas.length > 0 && unidadesRefrigeradasMes !== null && (() => {
                         const tramos = tramosUnidadesRefrigeradas;
                         const unidades = unidadesRefrigeradasMes;
