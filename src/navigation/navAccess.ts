@@ -21,7 +21,8 @@ export const platformOwnerOnlyPaths = ['/platform/ops'];
 // Rutas denegadas para el rol VENDEDOR.
 export const vendedorDeniedPaths = [
   '/ventas/facturacion',
-  '/ventas/notas-credito',
+  // '/ventas/notas-credito' NO se deniega: la página unificada muestra a
+  // VENDEDOR solo el tab de Anulaciones (el tab Crear se oculta por rol).
   '/ventas/informes',
   '/ventas/cheques',
   '/ventas/opciones-financiamiento',

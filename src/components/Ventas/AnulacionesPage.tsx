@@ -28,7 +28,6 @@ import {
   DialogActions,
 } from '@mui/material';
 import {
-  Block as BlockIcon,
   PeopleAlt as PeopleAltIcon,
   GetApp as GetAppIcon,
   Search as SearchIcon,
@@ -178,11 +177,6 @@ const AnulacionesPage: React.FC = () => {
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
-      <Typography variant="h4" display="flex" alignItems="center" gap={1} mb={3}
-        sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-        <BlockIcon /> Anulaciones (Notas de Crédito)
-      </Typography>
-
       {/* Filtros de período */}
       <Card sx={{ mb: 3 }}>
         <CardContent>

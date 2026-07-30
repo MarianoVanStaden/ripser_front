@@ -102,6 +102,7 @@ const DetalleVentasVendedorDialog: React.FC<Props> = ({
                 <TableCell sx={{ fontWeight: 600 }}>Movimiento</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Documento</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Equipo</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Código</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 600 }}>
                   Tipo
                 </TableCell>
@@ -129,6 +130,23 @@ const DetalleVentasVendedorDialog: React.FC<Props> = ({
                       )}
                     </TableCell>
                     <TableCell>{d.recetaNombre}</TableCell>
+                    <TableCell>
+                      {d.codigoVenta ? (
+                        d.codigoVenta.split(',').map((c) => (
+                          <Chip
+                            key={c.trim()}
+                            size="small"
+                            label={c.trim()}
+                            variant="outlined"
+                            sx={{ mr: 0.5, mb: 0.5, fontFamily: 'monospace' }}
+                          />
+                        ))
+                      ) : (
+                        <Typography variant="caption" color="text.disabled">
+                          {d.tipoMovimiento === 'VENTA' ? 'Sin facturar' : '—'}
+                        </Typography>
+                      )}
+                    </TableCell>
                     <TableCell align="center">{d.tipoEquipo === 'HELADERA' ? 'H' : 'C'}</TableCell>
                     <TableCell
                       align="right"
@@ -140,7 +158,7 @@ const DetalleVentasVendedorDialog: React.FC<Props> = ({
                 );
               })}
               <TableRow sx={{ '& td': { fontWeight: 600, borderTop: 2, borderColor: 'divider' } }}>
-                <TableCell colSpan={5}>Neto del mes</TableCell>
+                <TableCell colSpan={6}>Neto del mes</TableCell>
                 <TableCell align="right" sx={{ color: neto < 0 ? 'error.main' : 'text.primary' }}>
                   {neto < 0 ? `−${Math.abs(neto)}` : neto}
                 </TableCell>

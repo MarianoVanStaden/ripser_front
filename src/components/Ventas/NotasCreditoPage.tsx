@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import {
   CheckCircle, Receipt, Inventory, Warning,
-  CreditCard, Description, ErrorOutline, SwapHoriz,
+  Description, ErrorOutline, SwapHoriz,
   AddCircleOutline, RemoveCircleOutline,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
@@ -526,20 +526,6 @@ const NotasCreditoPage: React.FC = () => {
   return (
     <Box>
       <LoadingOverlay open={creating} message="Creando nota de crédito..." />
-
-      {/* Header */}
-      <Box display="flex" alignItems="center" gap={2} mb={3} pb={2}
-        sx={{ borderBottom: `1px solid ${theme.palette.divider}` }}>
-        <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.warning.main, 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <CreditCard sx={{ fontSize: 28, color: 'warning.main' }} />
-        </Box>
-        <Box>
-          <Typography variant="h5" fontWeight="600">Notas de Crédito</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Generar notas de crédito por devolución de equipos o error de facturación
-          </Typography>
-        </Box>
-      </Box>
 
       {alert.open && (
         <Alert severity={alert.severity} onClose={() => setAlert(a => ({ ...a, open: false }))} sx={{ mb: 3, borderRadius: 2 }}>

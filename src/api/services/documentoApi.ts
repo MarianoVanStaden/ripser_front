@@ -66,6 +66,9 @@ export interface ClienteAnulado {
 export interface VentasVendedorMes {
   usuarioId: number | null;
   vendedorNombre: string | null;
+  // Estado de alta del vendedor (Usuario.activo). Default true en backend; false
+  // = vendedor dado de baja. Para "Sin vendedor" viene true y no se usa.
+  vendedorActivo: boolean;
   anio: number;
   mes: number;
   heladerasVendidas: number;
@@ -96,6 +99,10 @@ export interface VentaEquipoDetalle {
   recetaNombre: string;
   tipoEquipo: 'HELADERA' | 'COOLBOX';
   cantidad: number;
+  // Códigos de venta de los equipos físicos (best-effort). Solo para VENTA y
+  // solo si la NP ya fue facturada con equipos asignados; null en otro caso.
+  // Puede traer varios códigos separados por coma.
+  codigoVenta: string | null;
 }
 
 export interface ImportarFacturasResult {

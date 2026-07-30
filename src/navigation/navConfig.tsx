@@ -52,7 +52,6 @@ export const navigation: NavModule[] = [
       { text: 'Notas de Pedido', icon: <AssignmentIcon />, path: '/ventas/notas-pedido' },
       { text: 'Facturación', icon: <AssignmentIcon />, path: '/ventas/facturacion' },
       { text: 'Notas de Crédito', icon: <AssignmentIcon />, path: '/ventas/notas-credito' },
-      { text: 'Anulaciones', icon: <BarChartIcon />, path: '/ventas/anulaciones' },
       { text: 'Registro Ventas', icon: <AssignmentIcon />, path: '/ventas/registro' },
       { text: 'Informes', icon: <AssignmentIcon />, path: '/ventas/informes' },
       { text: 'Cheques', icon: <AccountBalanceIcon />, path: '/ventas/cheques' },

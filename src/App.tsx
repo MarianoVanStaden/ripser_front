@@ -158,8 +158,7 @@ const ConfiguracionFinanciamiento = lazy(() => import('./components/Ventas/Confi
 const RegistroVentasPage = lazy(() => import('./components/Ventas/RegistroVentasPage'));
 const FacturacionPage = lazy(() => import('./components/Ventas/FacturacionPage'));
 const InformesVentasPage = lazy(() => import('./components/Ventas/InformesVentasPage'));
-const NotasCreditoPage = lazy(() => import('./components/Ventas/NotasCreditoPage'));
-const AnulacionesPage = lazy(() => import('./components/Ventas/AnulacionesPage'));
+const NotasCreditoContainer = lazy(() => import('./components/Ventas/NotasCreditoContainer'));
 
 // Préstamos / cobranzas
 const PrestamosResumenPage = lazyNamed(() => import('./components/Prestamos/PrestamosResumenPage'), 'PrestamosResumenPage');
@@ -380,8 +379,7 @@ function App() {
                   <Route path="ventas/configuracion-financiamiento" element={priv(<ConfiguracionFinanciamiento />)} />
                   <Route path="ventas/registro" element={priv(<RegistroVentasPage />)} />
                   <Route path="ventas/facturacion" element={priv(<FacturacionPage />)} />
-                  <Route path="ventas/notas-credito" element={priv(<NotasCreditoPage />)} />
-                  <Route path="ventas/anulaciones" element={priv(<AnulacionesPage />)} />
+                  <Route path="ventas/notas-credito" element={priv(<NotasCreditoContainer />)} />
                   <Route path="ventas/informes" element={priv(<InformesVentasPage />)} />
                   <Route path="ventas/cheques" element={priv(<ChequesPage />)} />
 

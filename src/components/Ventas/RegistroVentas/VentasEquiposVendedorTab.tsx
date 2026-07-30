@@ -5,6 +5,7 @@ import {
   Box,
   Card,
   CardContent,
+  Chip,
   CircularProgress,
   Table,
   TableBody,
@@ -37,11 +38,19 @@ interface CeldaMes {
 interface FilaVendedor {
   usuarioId: number | null;
   vendedorNombre: string;
+  vendedorActivo: boolean;
   porMes: Map<string, CeldaMes>; // clave 'YYYY-MM'
   totalHeladeras: number;
   totalCoolboxes: number;
   totalNeto: number;
   primerMesVenta: string | null; // 'YYYY-MM' de la primera venta histórica
+}
+
+/** Premio individual alcanzado por una celda vendedor+mes, o null si ninguno. */
+interface PremioIndividual {
+  label: string;
+  color: 'success' | 'warning';
+  icon: string;
 }
 
 const SIN_VENDEDOR = 'Sin vendedor';
@@ -100,6 +109,20 @@ const VentasEquiposVendedorTab: React.FC = () => {
   const metaDelMes = (fila: FilaVendedor, mes: string): number =>
     fila.primerMesVenta === mes && metaPrimerMes > 0 ? metaPrimerMes : metaBase;
 
+  /** Premio individual alcanzado por la celda: superadora > meta (base o primer mes) > ninguno. */
+  const premioDeCelda = (fila: FilaVendedor, mes: string, celda: CeldaMes): PremioIndividual | null => {
+    const neto = celda.totalNeto;
+    if (metaSuperadora > 0 && neto >= metaSuperadora) {
+      return { label: 'Superadora', color: 'warning', icon: '🏆' };
+    }
+    const esPrimer = fila.primerMesVenta === mes && metaPrimerMes > 0;
+    const meta = esPrimer ? metaPrimerMes : metaBase;
+    if (meta > 0 && neto >= meta) {
+      return { label: esPrimer ? 'Meta 1er mes' : 'Meta', color: 'success', icon: '✓' };
+    }
+    return null;
+  };
+
   /** Tramo grupal alcanzado por un neto mensual: índice en tramosGrupales, -1 si no llega. */
   const tramoAlcanzado = (neto: number): number => {
     let alcanzado = -1;
@@ -145,6 +168,7 @@ const VentasEquiposVendedorTab: React.FC = () => {
         fila = {
           usuarioId: item.usuarioId,
           vendedorNombre: item.vendedorNombre ?? SIN_VENDEDOR,
+          vendedorActivo: item.vendedorActivo ?? true,
           porMes: new Map(),
           totalHeladeras: 0,
           totalCoolboxes: 0,
@@ -189,7 +213,12 @@ const VentasEquiposVendedorTab: React.FC = () => {
     return { filas: ordenadas, totalPorMes: totales };
   }, [data]);
 
-  const renderCelda = (celda: CeldaMes | undefined, meta?: number, onClick?: () => void) => {
+  const renderCelda = (
+    celda: CeldaMes | undefined,
+    meta?: number,
+    onClick?: () => void,
+    premio?: PremioIndividual | null
+  ) => {
     if (!celda) {
       return (
         <Typography variant="body2" color="text.disabled">
@@ -236,6 +265,15 @@ const VentasEquiposVendedorTab: React.FC = () => {
           <Typography variant="body2" component="div">
             C: <NetoTexto valor={celda.coolboxesNeto} anuladas={anuladasC} />
           </Typography>
+          {premio && (
+            <Chip
+              size="small"
+              label={`${premio.icon} ${premio.label}`}
+              color={premio.color}
+              variant={premio.color === 'warning' ? 'filled' : 'outlined'}
+              sx={{ mt: 0.5, height: 20, '& .MuiChip-label': { px: 0.75, fontSize: '0.65rem' } }}
+            />
+          )}
         </Box>
       </Tooltip>
     );
@@ -322,7 +360,25 @@ const VentasEquiposVendedorTab: React.FC = () => {
                           fontStyle: fila.usuarioId === null ? 'italic' : 'normal',
                         }}
                       >
-                        {fila.vendedorNombre}
+                        <Box display="flex" alignItems="center" gap={0.75} sx={{ whiteSpace: 'nowrap' }}>
+                          <Typography
+                            variant="body2"
+                            component="span"
+                            sx={{
+                              color:
+                                fila.usuarioId !== null && !fila.vendedorActivo
+                                  ? 'text.secondary'
+                                  : 'text.primary',
+                            }}
+                          >
+                            {fila.vendedorNombre}
+                          </Typography>
+                          {fila.usuarioId !== null && !fila.vendedorActivo && (
+                            <Tooltip title="Vendedor dado de baja (inactivo). Se muestra por su historial de ventas.">
+                              <Chip size="small" label="Inactivo" variant="outlined" color="default" />
+                            </Tooltip>
+                          )}
+                        </Box>
                       </TableCell>
                       {meses.map((m) => (
                         <TableCell key={m} align="center">
@@ -336,7 +392,10 @@ const VentasEquiposVendedorTab: React.FC = () => {
                                     vendedorNombre: fila.vendedorNombre,
                                     mes: m,
                                   })
-                              : undefined
+                              : undefined,
+                            fila.usuarioId !== null && fila.porMes.get(m)
+                              ? premioDeCelda(fila, m, fila.porMes.get(m) as CeldaMes)
+                              : null
                           )}
                         </TableCell>
                       ))}
@@ -460,6 +519,30 @@ const VentasEquiposVendedorTab: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+            {(metaBase > 0 || metaPrimerMes > 0 || metaSuperadora > 0) && (
+              <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap" mt={1.5}>
+                <Typography variant="caption" color="text.secondary">
+                  Referencias:
+                </Typography>
+                {metaBase > 0 && (
+                  <Chip
+                    size="small"
+                    label="✓ Meta"
+                    color="success"
+                    variant="outlined"
+                    sx={{ height: 20 }}
+                  />
+                )}
+                {metaSuperadora > 0 && (
+                  <Chip size="small" label="🏆 Superadora" color="warning" sx={{ height: 20 }} />
+                )}
+                <Chip size="small" label="Inactivo" variant="outlined" sx={{ height: 20 }} />
+                <Typography variant="caption" color="text.secondary">
+                  El premio de cada celda es el mayor alcanzado ese mes (meta base, de primer mes o
+                  superadora). El neto en rojo con (−n) indica anulaciones.
+                </Typography>
+              </Box>
+            )}
             <Typography variant="caption" color="text.secondary" display="block" mt={2}>
               La venta cuenta en el mes de aprobación de la Nota de Pedido. Las anulaciones (Nota de
               Crédito o rechazo de una NP aprobada) restan en el mes en que ocurren, por lo que un mes
