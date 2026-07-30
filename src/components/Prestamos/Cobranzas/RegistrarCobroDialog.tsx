@@ -173,7 +173,6 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
                   <TableBody>
                     {filasVisibles.map((c) => {
                       const vencida = c.estado === EstadoCuota.VENCIDA || c.estado === EstadoCuota.PARCIAL;
-                      const informada = c.estado === EstadoCuota.PAGO_INFORMADO;
                       const pagada = c.estado === EstadoCuota.PAGADA;
                       return (
                         <TableRow
@@ -227,10 +226,9 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
                                 size="small"
                                 variant="contained"
                                 startIcon={<Payment />}
-                                disabled={informada}
                                 onClick={() => setPagoCuota(c)}
                               >
-                                {informada ? 'Informada' : 'Cobrar'}
+                                Cobrar
                               </Button>
                             )}
                           </TableCell>

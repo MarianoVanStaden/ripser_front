@@ -85,8 +85,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
 
   useEffect(() => {
     if (open && cuota) {
-      const saldoRestante = cuota.montoCuota - cuota.montoPagado;
-      setMontoPagado(saldoRestante > 0 ? saldoRestante : cuota.montoCuota);
+      // Default: lo que falta cubrir descontando informes pendientes de
+      // confirmación (puede haber varios; montoInformado es la suma). Si ya
+      // está todo informado, queda 0 y se tipea el monto del nuevo cobro.
+      const disponible = cuota.montoCuota - cuota.montoPagado - (cuota.montoInformado ?? 0);
+      setMontoPagado(disponible > 0 ? disponible : 0);
       setFechaPago(dayjs().format('YYYY-MM-DD'));
       // Si el plan original definió un medio de pago para esta cuota (ej. CHEQUE
       // para planes "X Cheques a 30/60/..."), lo usamos como default. Cae a
@@ -258,6 +261,14 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                   {formatPrice(saldoRestante)}
                 </Typography>
               </Grid>
+              {(cuota.montoInformado ?? 0) > 0 && (
+                <Grid item xs={4}>
+                  <Typography variant="caption" color="text.secondary">Informado pendiente</Typography>
+                  <Typography variant="body2" fontWeight="medium" color="warning.main">
+                    {formatPrice(cuota.montoInformado ?? 0)}
+                  </Typography>
+                </Grid>
+              )}
             </Grid>
           </Box>
           <Grid container spacing={3}>
