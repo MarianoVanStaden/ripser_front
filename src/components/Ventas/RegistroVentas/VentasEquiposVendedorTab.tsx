@@ -409,24 +409,8 @@ const VentasEquiposVendedorTab: React.FC = () => {
                         <Typography variant="body2" component="div" sx={{ fontWeight: 600 }}>
                           = <NetoTexto valor={fila.totalNeto} anuladas={0} />
                         </Typography>
-                        {fila.usuarioId !== null &&
-                          metaBase > 0 &&
-                          (() => {
-                            // Solo cuentan para la meta los meses desde su primera venta.
-                            const mesesActivos = meses.filter(
-                              (m) => !fila.primerMesVenta || m >= fila.primerMesVenta
-                            );
-                            if (mesesActivos.length === 0) return null;
-                            const metaPeriodo = mesesActivos.reduce(
-                              (acc, m) => acc + metaDelMes(fila, m),
-                              0
-                            );
-                            return (
-                              <Typography variant="caption" color="text.secondary" component="div">
-                                {Math.round((fila.totalNeto / metaPeriodo) * 100)}% de meta
-                              </Typography>
-                            );
-                          })()}
+                        {/* Sin "% de meta" acumulado: la meta es mensual (ver chips por celda),
+                            no hay meta de período/año. El total solo suma unidades. */}
                       </TableCell>
                     </TableRow>
                   ))}
