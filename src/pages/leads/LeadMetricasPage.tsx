@@ -35,6 +35,7 @@ import type {
 import { parametroSistemaApi, usuarioApi } from '../../api/services';
 import type { Usuario } from '../../types';
 import { useTenant } from '../../context/TenantContext';
+import { useAuth } from '../../context/AuthContext';
 import { EmbudoVentasChart } from '../../components/metricas/EmbudoVentasChart';
 import { MetricasCanalChart } from '../../components/metricas/MetricasCanalChart';
 import { MetricasPrioridadChart } from '../../components/metricas/MetricasPrioridadChart';
@@ -50,6 +51,12 @@ dayjs.locale('es');
 
 export const LeadMetricasPage = () => {
   const { sucursalFiltro, sucursales } = useTenant();
+  const { user } = useAuth();
+
+  // El rol SUPERVISOR ve el dashboard pero no los montos de dinero de la empresa,
+  // solo cantidades, tasas y cumplimiento de metas de unidades/leads.
+  const esSupervisor =
+    (user?.rol || user?.roles?.[0])?.toString().trim().toUpperCase() === 'SUPERVISOR';
   
   // Obtener nombre de la sucursal actual
   const sucursalActualNombre = sucursalFiltro 
@@ -175,7 +182,7 @@ export const LeadMetricasPage = () => {
 
     try {
       const nombreArchivo = generarNombreArchivo('xlsx');
-      await exportarMetricasExcel(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre);
+      await exportarMetricasExcel(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre, esSupervisor);
       setError(null); // Limpiar errores previos si fue exitoso
     } catch (err: any) {
       console.error('Error al exportar métricas a Excel:', err);
@@ -196,7 +203,8 @@ export const LeadMetricasPage = () => {
       const nombreArchivo = generarNombreArchivo('pdf');
       await exportarMetricasPDF(
         metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre,
-        { embudoImgData, canalImgData, prioridadImgData, tendenciasImgData }
+        { embudoImgData, canalImgData, prioridadImgData, tendenciasImgData },
+        esSupervisor
       );
       setError(null);
     } catch (err: any) {
@@ -413,7 +421,8 @@ export const LeadMetricasPage = () => {
               </Card>
             </Grid>
 
-            {/* Presupuesto vs Meta */}
+            {/* Presupuesto vs Meta (oculto para SUPERVISOR: es monto de dinero) */}
+            {!esSupervisor && (
             <Grid item xs={12} md={4}>
               <Card>
                 <CardContent>
@@ -449,6 +458,7 @@ export const LeadMetricasPage = () => {
                 </CardContent>
               </Card>
             </Grid>
+            )}
 
             {/* Meta de Leads */}
             <Grid item xs={12} md={4}>
@@ -487,7 +497,8 @@ export const LeadMetricasPage = () => {
               </Card>
             </Grid>
 
-            {/* Valor Promedio por Conversión */}
+            {/* Valor Promedio por Conversión (oculto para SUPERVISOR: es monto de dinero) */}
+            {!esSupervisor && (
             <Grid item xs={12} md={4}>
               <Card>
                 <CardContent>
@@ -516,6 +527,7 @@ export const LeadMetricasPage = () => {
                 </CardContent>
               </Card>
             </Grid>
+            )}
 
             {/* Leads en Pipeline Activo */}
             <Grid item xs={12} md={4}>
@@ -560,14 +572,14 @@ export const LeadMetricasPage = () => {
             {/* Métricas por Canal */}
             <Grid item xs={12} md={6}>
               <div id="metricas-canal-chart" style={{ background: '#fff' }}>
-                <MetricasCanalChart data={metricas.metricasPorCanal} />
+                <MetricasCanalChart data={metricas.metricasPorCanal} ocultarMontos={esSupervisor} />
               </div>
             </Grid>
 
             {/* Métricas por Prioridad */}
             <Grid item xs={12} md={6}>
               <div id="metricas-prioridad-chart" style={{ background: '#fff' }}>
-                <MetricasPrioridadChart data={metricas.metricasPorPrioridad} />
+                <MetricasPrioridadChart data={metricas.metricasPorPrioridad} ocultarMontos={esSupervisor} />
               </div>
             </Grid>
 
@@ -580,17 +592,17 @@ export const LeadMetricasPage = () => {
 
             {/* Distribución Geográfica */}
             <Grid item xs={12}>
-              <DistribucionGeograficaTable data={metricas.distribucionGeografica} />
+              <DistribucionGeograficaTable data={metricas.distribucionGeografica} ocultarMontos={esSupervisor} />
             </Grid>
 
             {/* Productos de Interés */}
             <Grid item xs={12}>
-              <ProductosInteresTables data={metricas.productosInteres} />
+              <ProductosInteresTables data={metricas.productosInteres} ocultarMontos={esSupervisor} />
             </Grid>
 
             {/* Ranking de Vendedores */}
             <Grid item xs={12}>
-              <RankingVendedoresTable data={metricas.metricasPorVendedor} />
+              <RankingVendedoresTable data={metricas.metricasPorVendedor} ocultarMontos={esSupervisor} />
             </Grid>
           </Grid>
         )}

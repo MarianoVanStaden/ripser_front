@@ -3,9 +3,10 @@ import type { MetricaPorPrioridadDTO } from '../../api/services/leadMetricasApi'
 
 interface MetricasPrioridadChartProps {
   data: MetricaPorPrioridadDTO[];
+  ocultarMontos?: boolean;
 }
 
-export const MetricasPrioridadChart = ({ data }: MetricasPrioridadChartProps) => {
+export const MetricasPrioridadChart = ({ data, ocultarMontos = false }: MetricasPrioridadChartProps) => {
   // Debug: Ver qué datos están llegando
   console.log('🎯 MetricasPrioridadChart - Datos recibidos:', data);
   console.log('🎯 Tipo de data:', Array.isArray(data) ? 'array' : typeof data);
@@ -110,8 +111,10 @@ export const MetricasPrioridadChart = ({ data }: MetricasPrioridadChartProps) =>
                 </Box>
                 <Typography variant="caption" color="text.secondary" sx={{ ml: 3 }}>
                   Convertidos: {item.convertidos ?? 0} •
-                  Tasa: {(item.tasaConversion && !isNaN(item.tasaConversion)) ? item.tasaConversion.toFixed(1) : '0.0'}% •
-                  Valor prom: ${(item.promedioValorEstimado && !isNaN(item.promedioValorEstimado)) ? item.promedioValorEstimado.toFixed(0) : '0'}
+                  Tasa: {(item.tasaConversion && !isNaN(item.tasaConversion)) ? item.tasaConversion.toFixed(1) : '0.0'}%
+                  {!ocultarMontos && (
+                    <> • Valor prom: ${(item.promedioValorEstimado && !isNaN(item.promedioValorEstimado)) ? item.promedioValorEstimado.toFixed(0) : '0'}</>
+                  )}
                 </Typography>
               </Box>
             );

@@ -39,7 +39,8 @@ export const exportarMetricasExcel = async (
   nombreArchivo: string = 'metricas-leads.xlsx',
   metaMensualLeads?: number,
   metaPresupuestoMensual?: number,
-  sucursalNombre?: string
+  sucursalNombre?: string,
+  ocultarMontos: boolean = false
 ): Promise<void> => {
   const workbook = new ExcelJS.Workbook();
 
@@ -82,15 +83,17 @@ export const exportarMetricasExcel = async (
   resumenData.push(['Mínimo (días)', metricas.tiempoConversion?.minimoTiempo ?? 0]);
   resumenData.push(['Máximo (días)', metricas.tiempoConversion?.maximoTiempo ?? 0]);
   resumenData.push(['Mediana (días)', (metricas.tiempoConversion?.medianaGeneral ?? 0).toFixed(0)]);
-  resumenData.push([]);
-  resumenData.push(['Presupuesto vs Realizado']);
-  resumenData.push(['Presupuesto Estimado Total', (metricas.presupuestoVsRealizado?.presupuestoEstimadoTotal ?? 0).toFixed(2)]);
-  resumenData.push(['Valor Realizado Total', valorRealizado.toFixed(2)]);
-  resumenData.push(['Valor Promedio por Conversión', valorPromedioPorConversion.toFixed(2)]);
-  resumenData.push(['Diferencia', (metricas.presupuestoVsRealizado?.diferencia ?? 0).toFixed(2)]);
-  resumenData.push(['Tasa Realización (%)', (metricas.presupuestoVsRealizado?.tasaRealizacion ?? 0).toFixed(2)]);
-  resumenData.push(['Cant. Presupuestos Estimados', metricas.presupuestoVsRealizado?.cantidadPresupuestosEstimados ?? 0]);
-  resumenData.push(['Cant. Presupuestos Realizados', cantidadConversiones]);
+  if (!ocultarMontos) {
+    resumenData.push([]);
+    resumenData.push(['Presupuesto vs Realizado']);
+    resumenData.push(['Presupuesto Estimado Total', (metricas.presupuestoVsRealizado?.presupuestoEstimadoTotal ?? 0).toFixed(2)]);
+    resumenData.push(['Valor Realizado Total', valorRealizado.toFixed(2)]);
+    resumenData.push(['Valor Promedio por Conversión', valorPromedioPorConversion.toFixed(2)]);
+    resumenData.push(['Diferencia', (metricas.presupuestoVsRealizado?.diferencia ?? 0).toFixed(2)]);
+    resumenData.push(['Tasa Realización (%)', (metricas.presupuestoVsRealizado?.tasaRealizacion ?? 0).toFixed(2)]);
+    resumenData.push(['Cant. Presupuestos Estimados', metricas.presupuestoVsRealizado?.cantidadPresupuestosEstimados ?? 0]);
+    resumenData.push(['Cant. Presupuestos Realizados', cantidadConversiones]);
+  }
 
   // Agregar metas si están disponibles
   if (metaMensualLeads !== undefined && metaMensualLeads > 0) {
@@ -103,7 +106,7 @@ export const exportarMetricasExcel = async (
     );
   }
 
-  if (metaPresupuestoMensual !== undefined && metaPresupuestoMensual > 0) {
+  if (!ocultarMontos && metaPresupuestoMensual !== undefined && metaPresupuestoMensual > 0) {
     const cumplimientoPresupuesto = (valorRealizado / metaPresupuestoMensual * 100).toFixed(2);
     resumenData.push(
       [],
@@ -148,7 +151,7 @@ export const exportarMetricasExcel = async (
 
   // === Hoja 4: Métricas por Prioridad ===
   const prioridadData = [
-    ['Prioridad', 'Total Leads', 'Convertidos', 'Tasa Conv. (%)', 'Valor Prom. Estimado']
+    ['Prioridad', 'Total Leads', 'Convertidos', 'Tasa Conv. (%)', ...(ocultarMontos ? [] : ['Valor Prom. Estimado'])]
   ];
   metricas.metricasPorPrioridad.forEach((prio: MetricaPorPrioridadDTO) => {
     prioridadData.push([
@@ -156,7 +159,7 @@ export const exportarMetricasExcel = async (
       (prio.cantidad ?? 0).toString(),
       (prio.convertidos ?? 0).toString(),
       (prio.tasaConversion ?? 0).toFixed(2),
-      (prio.promedioValorEstimado ?? 0).toFixed(2)
+      ...(ocultarMontos ? [] : [(prio.promedioValorEstimado ?? 0).toFixed(2)])
     ]);
   });
   const wsPrioridad = workbook.addWorksheet('Por Prioridad');
@@ -164,7 +167,7 @@ export const exportarMetricasExcel = async (
 
   // === Hoja 5: Distribución Geográfica ===
   const geoData = [
-    ['Provincia', 'Total Leads', 'Convertidos', 'Tasa Conv. (%)', 'Valor Estimado Total']
+    ['Provincia', 'Total Leads', 'Convertidos', 'Tasa Conv. (%)', ...(ocultarMontos ? [] : ['Valor Estimado Total'])]
   ];
   metricas.distribucionGeografica.forEach((geo: MetricaGeograficaDTO) => {
     geoData.push([
@@ -172,7 +175,7 @@ export const exportarMetricasExcel = async (
       (geo.totalLeads ?? 0).toString(),
       (geo.leadsConvertidos ?? 0).toString(),
       (geo.tasaConversion ?? 0).toFixed(2),
-      (geo.valorEstimadoTotal ?? 0).toFixed(2)
+      ...(ocultarMontos ? [] : [(geo.valorEstimadoTotal ?? 0).toFixed(2)])
     ]);
   });
   const wsGeo = workbook.addWorksheet('Por Provincia');
@@ -180,7 +183,7 @@ export const exportarMetricasExcel = async (
 
   // === Hoja 6: Productos de Interés ===
   const productosData = [
-    ['Producto ID', 'Nombre', 'Cantidad Leads', 'Convertidos', 'Tasa Conv. (%)', 'Valor Estimado Total']
+    ['Producto ID', 'Nombre', 'Cantidad Leads', 'Convertidos', 'Tasa Conv. (%)', ...(ocultarMontos ? [] : ['Valor Estimado Total'])]
   ];
   metricas.productosInteres.productos.forEach((prod: ProductoInteresItemDTO) => {
     // Los campos pueden venir con diferentes nombres del backend, usar fallbacks
@@ -193,7 +196,7 @@ export const exportarMetricasExcel = async (
       cantidadLeads.toString(),
       cantidadConvertidos.toString(),
       (prod.tasaConversion ?? 0).toFixed(2),
-      (prod.valorEstimadoTotal ?? 0).toFixed(2)
+      ...(ocultarMontos ? [] : [(prod.valorEstimadoTotal ?? 0).toFixed(2)])
     ]);
   });
   const wsProductos = workbook.addWorksheet('Productos');
@@ -221,7 +224,7 @@ export const exportarMetricasExcel = async (
 
   // === Hoja 8: Vendedores ===
   const vendedoresData = [
-    ['Vendedor ID', 'Nombre', 'Total Leads', 'Convertidos', 'Tasa Conv. (%)', 'Valor Estimado', 'Valor Realizado']
+    ['Vendedor ID', 'Nombre', 'Total Leads', 'Convertidos', 'Tasa Conv. (%)', ...(ocultarMontos ? [] : ['Valor Estimado', 'Valor Realizado'])]
   ];
   metricas.metricasPorVendedor.forEach((vend: MetricaPorVendedorDTO) => {
     vendedoresData.push([
@@ -230,8 +233,7 @@ export const exportarMetricasExcel = async (
       (vend.totalLeads ?? 0).toString(),
       (vend.leadsConvertidos ?? 0).toString(),
       (vend.tasaConversion ?? 0).toFixed(2),
-      (vend.valorEstimadoTotal ?? 0).toFixed(2),
-      (vend.valorRealizado ?? 0).toFixed(2)
+      ...(ocultarMontos ? [] : [(vend.valorEstimadoTotal ?? 0).toFixed(2), (vend.valorRealizado ?? 0).toFixed(2)])
     ]);
   });
   const wsVendedores = workbook.addWorksheet('Vendedores');
@@ -323,7 +325,8 @@ export const exportarMetricasPDF = async (
     canalImgData?: string | null;
     prioridadImgData?: string | null;
     tendenciasImgData?: string | null;
-  }
+  },
+  ocultarMontos: boolean = false
 ): Promise<void> => {
   try {
     const doc = new jsPDF('p', 'mm', 'a4');
@@ -376,16 +379,18 @@ export const exportarMetricasPDF = async (
       kpiRows.push(['Cumplimiento Meta Leads', `${cumplimientoLeads}%`]);
     }
 
-    kpiRows.push(['Valor Estimado Total', `$${(metricas.presupuestoVsRealizado?.presupuestoEstimadoTotal ?? 0).toLocaleString('es-AR')}`]);
-    kpiRows.push(['Valor Realizado Total', `$${valorRealizado.toLocaleString('es-AR')}`]);
-    kpiRows.push(['Valor Promedio por Conversión', `$${valorPromedioPorConversion.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`]);
-    kpiRows.push(['% Realización (Est vs Real)', `${(metricas.presupuestoVsRealizado?.tasaRealizacion ?? 0).toFixed(1)}%`]);
+    if (!ocultarMontos) {
+      kpiRows.push(['Valor Estimado Total', `$${(metricas.presupuestoVsRealizado?.presupuestoEstimadoTotal ?? 0).toLocaleString('es-AR')}`]);
+      kpiRows.push(['Valor Realizado Total', `$${valorRealizado.toLocaleString('es-AR')}`]);
+      kpiRows.push(['Valor Promedio por Conversión', `$${valorPromedioPorConversion.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`]);
+      kpiRows.push(['% Realización (Est vs Real)', `${(metricas.presupuestoVsRealizado?.tasaRealizacion ?? 0).toFixed(1)}%`]);
 
-    // Agregar meta de presupuesto si está disponible
-    if (metaPresupuestoMensual !== undefined && metaPresupuestoMensual > 0) {
-      const cumplimientoPresupuesto = (valorRealizado / metaPresupuestoMensual * 100).toFixed(1);
-      kpiRows.push(['Meta de Ventas', `$${metaPresupuestoMensual.toLocaleString('es-AR')}`]);
-      kpiRows.push(['Cumplimiento Meta Ventas', `${cumplimientoPresupuesto}%`]);
+      // Agregar meta de presupuesto si está disponible
+      if (metaPresupuestoMensual !== undefined && metaPresupuestoMensual > 0) {
+        const cumplimientoPresupuesto = (valorRealizado / metaPresupuestoMensual * 100).toFixed(1);
+        kpiRows.push(['Meta de Ventas', `$${metaPresupuestoMensual.toLocaleString('es-AR')}`]);
+        kpiRows.push(['Cumplimiento Meta Ventas', `${cumplimientoPresupuesto}%`]);
+      }
     }
 
     autoTable(doc, {
@@ -534,13 +539,13 @@ export const exportarMetricasPDF = async (
 
     autoTable(doc, {
       startY: yPosition,
-      head: [['Prioridad', 'Total Leads', 'Convertidos', 'Tasa Conv.', 'Valor Prom.']],
+      head: [['Prioridad', 'Total Leads', 'Convertidos', 'Tasa Conv.', ...(ocultarMontos ? [] : ['Valor Prom.'])]],
       body: metricas.metricasPorPrioridad.map((prio: MetricaPorPrioridadDTO) => [
         prio.prioridad || 'Sin especificar',
         (prio.cantidad ?? 0).toString(),
         (prio.convertidos ?? 0).toString(),
         `${(prio.tasaConversion ?? 0).toFixed(1)}%`,
-        `$${(prio.promedioValorEstimado ?? 0).toLocaleString('es-AR')}`
+        ...(ocultarMontos ? [] : [`$${(prio.promedioValorEstimado ?? 0).toLocaleString('es-AR')}`])
       ]),
       theme: 'plain',
       headStyles: { 
@@ -642,7 +647,7 @@ export const exportarMetricasPDF = async (
 
       autoTable(doc, {
         startY: yPosition,
-        head: [['Producto', 'Leads', 'Convertidos', 'Tasa Conv.', 'Valor Est.']],
+        head: [['Producto', 'Leads', 'Convertidos', 'Tasa Conv.', ...(ocultarMontos ? [] : ['Valor Est.'])]],
         body: topProductos.map((prod: ProductoInteresItemDTO) => {
           const cantidadLeads = prod.cantidadLeads ?? prod.cantidad ?? prod.cantidadSolicitudes ?? 0;
           const cantidadConvertidos = prod.cantidadConvertidos ?? prod.convertidos ?? prod.cantidadConvertida ?? 0;
@@ -652,7 +657,7 @@ export const exportarMetricasPDF = async (
             cantidadLeads.toString(),
             cantidadConvertidos.toString(),
             `${(prod.tasaConversion ?? 0).toFixed(1)}%`,
-            `$${(prod.valorEstimadoTotal ?? 0).toLocaleString('es-AR')}`
+            ...(ocultarMontos ? [] : [`$${(prod.valorEstimadoTotal ?? 0).toLocaleString('es-AR')}`])
           ];
         }),
         theme: 'plain',
@@ -693,14 +698,13 @@ export const exportarMetricasPDF = async (
 
       autoTable(doc, {
         startY: yPosition,
-        head: [['Vendedor', 'Leads', 'Conv.', 'Tasa', 'Val. Est.', 'Val. Real.']],
+        head: [['Vendedor', 'Leads', 'Conv.', 'Tasa', ...(ocultarMontos ? [] : ['Val. Est.', 'Val. Real.'])]],
         body: topVendedores.map((vend: MetricaPorVendedorDTO) => [
           vend.vendedorNombre || 'Sin nombre',
           (vend.totalLeads ?? 0).toString(),
           (vend.leadsConvertidos ?? 0).toString(),
           `${(vend.tasaConversion ?? 0).toFixed(1)}%`,
-          `$${((vend.valorEstimadoTotal ?? 0) / 1000).toFixed(0)}k`,
-          `$${((vend.valorRealizado ?? 0) / 1000).toFixed(0)}k`
+          ...(ocultarMontos ? [] : [`$${((vend.valorEstimadoTotal ?? 0) / 1000).toFixed(0)}k`, `$${((vend.valorRealizado ?? 0) / 1000).toFixed(0)}k`])
         ]),
         theme: 'plain',
         headStyles: { 

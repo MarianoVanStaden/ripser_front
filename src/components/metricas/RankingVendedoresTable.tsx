@@ -19,9 +19,10 @@ import type { MetricaPorVendedorDTO } from '../../api/services/leadMetricasApi';
 
 interface RankingVendedoresTableProps {
   data: MetricaPorVendedorDTO[];
+  ocultarMontos?: boolean;
 }
 
-export const RankingVendedoresTable = ({ data }: RankingVendedoresTableProps) => {
+export const RankingVendedoresTable = ({ data, ocultarMontos = false }: RankingVendedoresTableProps) => {
   // Ordenar por tasa de conversión descendente
   const sortedData = [...data].sort((a, b) => b.tasaConversion - a.tasaConversion);
 
@@ -48,8 +49,8 @@ export const RankingVendedoresTable = ({ data }: RankingVendedoresTableProps) =>
                 <TableCell align="right"><strong>Total Leads</strong></TableCell>
                 <TableCell align="right"><strong>Convertidos</strong></TableCell>
                 <TableCell align="right"><strong>Tasa Conv.</strong></TableCell>
-                <TableCell align="right"><strong>Valor Estimado</strong></TableCell>
-                <TableCell align="right"><strong>Valor Realizado</strong></TableCell>
+                {!ocultarMontos && <TableCell align="right"><strong>Valor Estimado</strong></TableCell>}
+                {!ocultarMontos && <TableCell align="right"><strong>Valor Realizado</strong></TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -83,23 +84,27 @@ export const RankingVendedoresTable = ({ data }: RankingVendedoresTableProps) =>
                       icon={(vendedor.tasaConversion ?? 0) >= 40 ? <TrendingUpIcon /> : undefined}
                     />
                   </TableCell>
-                  <TableCell align="right">
-                    ${(vendedor.valorEstimadoTotal ?? 0).toLocaleString()}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography
-                      variant="body2"
-                      color={(vendedor.valorRealizado ?? 0) >= (vendedor.valorEstimadoTotal ?? 0) ? 'success.main' : 'text.primary'}
-                      fontWeight="medium"
-                    >
-                      ${(vendedor.valorRealizado ?? 0).toLocaleString()}
-                    </Typography>
-                  </TableCell>
+                  {!ocultarMontos && (
+                    <TableCell align="right">
+                      ${(vendedor.valorEstimadoTotal ?? 0).toLocaleString()}
+                    </TableCell>
+                  )}
+                  {!ocultarMontos && (
+                    <TableCell align="right">
+                      <Typography
+                        variant="body2"
+                        color={(vendedor.valorRealizado ?? 0) >= (vendedor.valorEstimadoTotal ?? 0) ? 'success.main' : 'text.primary'}
+                        fontWeight="medium"
+                      >
+                        ${(vendedor.valorRealizado ?? 0).toLocaleString()}
+                      </Typography>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
               {sortedData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={ocultarMontos ? 5 : 7} align="center">
                     No hay datos de vendedores
                   </TableCell>
                 </TableRow>

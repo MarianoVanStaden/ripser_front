@@ -14,9 +14,10 @@ import type { MetricaGeograficaDTO } from '../../api/services/leadMetricasApi';
 
 interface DistribucionGeograficaTableProps {
   data: MetricaGeograficaDTO[];
+  ocultarMontos?: boolean;
 }
 
-export const DistribucionGeograficaTable = ({ data }: DistribucionGeograficaTableProps) => {
+export const DistribucionGeograficaTable = ({ data, ocultarMontos = false }: DistribucionGeograficaTableProps) => {
   // Ordenar por total de leads descendente
   const sortedData = [...data].sort((a, b) => (b.totalLeads || b.cantidad || 0) - (a.totalLeads || a.cantidad || 0));
 
@@ -37,7 +38,7 @@ export const DistribucionGeograficaTable = ({ data }: DistribucionGeograficaTabl
                 <TableCell align="right"><strong>Total Leads</strong></TableCell>
                 <TableCell align="right"><strong>Convertidos</strong></TableCell>
                 <TableCell align="right"><strong>Tasa Conv.</strong></TableCell>
-                <TableCell align="right"><strong>Valor Estimado</strong></TableCell>
+                {!ocultarMontos && <TableCell align="right"><strong>Valor Estimado</strong></TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -61,14 +62,16 @@ export const DistribucionGeograficaTable = ({ data }: DistribucionGeograficaTabl
                       color={(row.tasaConversion ?? 0) >= 30 ? 'success' : 'default'}
                     />
                   </TableCell>
-                  <TableCell align="right">
-                    ${(row.valorEstimadoTotal ?? 0).toLocaleString()}
-                  </TableCell>
+                  {!ocultarMontos && (
+                    <TableCell align="right">
+                      ${(row.valorEstimadoTotal ?? 0).toLocaleString()}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
               {sortedData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={ocultarMontos ? 4 : 5} align="center">
                     No hay datos disponibles
                   </TableCell>
                 </TableRow>

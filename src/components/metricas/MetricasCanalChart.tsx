@@ -3,9 +3,10 @@ import type { MetricaPorCanalDTO } from '../../api/services/leadMetricasApi';
 
 interface MetricasCanalChartProps {
   data: MetricaPorCanalDTO[];
+  ocultarMontos?: boolean;
 }
 
-export const MetricasCanalChart = ({ data }: MetricasCanalChartProps) => {
+export const MetricasCanalChart = ({ data, ocultarMontos = false }: MetricasCanalChartProps) => {
   console.log('📈 MetricasCanalChart - Datos recibidos:', data);
   console.log('📈 Ejemplo de dato completo:', JSON.stringify(data[0], null, 2));
   
@@ -68,7 +69,7 @@ export const MetricasCanalChart = ({ data }: MetricasCanalChartProps) => {
                 <Box sx={{ display: 'flex', gap: 2, fontSize: '0.75rem', color: 'text.secondary' }}>
                   <span>Convertidos: {canal.leadsConvertidos ?? 0}</span>
                   <span>Tasa: {canal.tasaConversion?.toFixed(1) ?? '0.0'}%</span>
-                  {canal.valorTotalGenerado != null && canal.valorTotalGenerado > 0 && (
+                  {!ocultarMontos && canal.valorTotalGenerado != null && canal.valorTotalGenerado > 0 && (
                     <span>Valor: ${canal.valorTotalGenerado.toLocaleString()}</span>
                   )}
                 </Box>

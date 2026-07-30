@@ -17,9 +17,10 @@ import type { ProductosInteresDTO } from '../../api/services/leadMetricasApi';
 
 interface ProductosInteresTablesProps {
   data: ProductosInteresDTO;
+  ocultarMontos?: boolean;
 }
 
-export const ProductosInteresTables = ({ data }: ProductosInteresTablesProps) => {
+export const ProductosInteresTables = ({ data, ocultarMontos = false }: ProductosInteresTablesProps) => {
   const [tabValue, setTabValue] = useState(0);
 
   console.log('⭐ Productos/Equipos - Datos recibidos:', {
@@ -107,7 +108,7 @@ export const ProductosInteresTables = ({ data }: ProductosInteresTablesProps) =>
                   <TableCell align="right"><strong>Leads</strong></TableCell>
                   <TableCell align="right"><strong>Convertidos</strong></TableCell>
                   <TableCell align="right"><strong>Tasa Conv.</strong></TableCell>
-                  <TableCell align="right"><strong>Valor Estimado</strong></TableCell>
+                  {!ocultarMontos && <TableCell align="right"><strong>Valor Estimado</strong></TableCell>}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -132,14 +133,16 @@ export const ProductosInteresTables = ({ data }: ProductosInteresTablesProps) =>
                         color={(producto.tasaConversion ?? 0) >= 30 ? 'success' : 'default'}
                       />
                     </TableCell>
-                    <TableCell align="right">
-                      ${(producto.valorEstimadoTotal ?? 0).toLocaleString()}
-                    </TableCell>
+                    {!ocultarMontos && (
+                      <TableCell align="right">
+                        ${(producto.valorEstimadoTotal ?? 0).toLocaleString()}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
                 {sortedProductos.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
+                    <TableCell colSpan={ocultarMontos ? 5 : 6} align="center">
                       No hay datos de productos
                     </TableCell>
                   </TableRow>
