@@ -9,8 +9,9 @@ const OfertasPrecioPage = lazy(() => import('./OfertasPrecioPage'));
 const ImportadorPreciosPage = lazy(() => import('./ImportadorPreciosPage'));
 const CostosEnvioPage = lazy(() => import('./CostosEnvioPage'));
 const PreciosEquiposPage = lazy(() => import('./PreciosEquiposPage'));
+const NivelesFidelizacionPage = lazy(() => import('../../components/Clientes/NivelesFidelizacionPage'));
 
-type TabKey = 'precios-equipos' | 'ofertas' | 'importador' | 'costos-envio';
+type TabKey = 'precios-equipos' | 'ofertas' | 'importador' | 'costos-envio' | 'fidelizacion';
 
 // Cambiar precios de equipos es solo para admins (el backend rechaza igual con 403);
 // COORDINADORA_COMPRAS/LOGISTICA ven la página pero no esta tab.
@@ -24,6 +25,14 @@ export default function PreciosOfertasPage() {
     [user, esSuperAdmin]
   );
 
+  // Niveles de fidelización: solo ADMIN o superior (el backend exige lo mismo
+  // para escribir). Más estricto que puedeGestionarPrecios: excluye
+  // ADMIN_EMPRESA_LIMITADO.
+  const puedeGestionarFidelizacion = useMemo(
+    () => esSuperAdmin || (user?.roles ?? []).some((r) => r === 'SUPER_ADMIN' || r === 'ADMIN'),
+    [user, esSuperAdmin]
+  );
+
   const tabDefs: Array<{ key: TabKey; label: string }> = useMemo(
     () => [
       ...(puedeGestionarPrecios
@@ -32,8 +41,11 @@ export default function PreciosOfertasPage() {
       { key: 'ofertas', label: 'Ofertas Mensuales' },
       { key: 'importador', label: 'Importador de Precios' },
       { key: 'costos-envio', label: 'Costos de Envío' },
+      ...(puedeGestionarFidelizacion
+        ? [{ key: 'fidelizacion' as TabKey, label: 'Niveles de Fidelización' }]
+        : []),
     ],
-    [puedeGestionarPrecios]
+    [puedeGestionarPrecios, puedeGestionarFidelizacion]
   );
 
   const [tab, setTab] = useState<TabKey>(puedeGestionarPrecios ? 'precios-equipos' : 'ofertas');
@@ -61,6 +73,7 @@ export default function PreciosOfertasPage() {
         {tab === 'ofertas' && <OfertasPrecioPage />}
         {tab === 'importador' && <ImportadorPreciosPage />}
         {tab === 'costos-envio' && <CostosEnvioPage />}
+        {tab === 'fidelizacion' && puedeGestionarFidelizacion && <NivelesFidelizacionPage />}
       </Suspense>
     </Box>
   );

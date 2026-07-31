@@ -139,7 +139,6 @@ const AgendaVisitasPage = lazy(() => import('./components/Clientes/AgendaVisitas
 const CarpetaClientePage = lazy(() => import('./components/Clientes/CarpetaClientePage'));
 const CarpetaClienteSelector = lazy(() => import('./components/Clientes/CarpetaClienteSelector'));
 const CuentaCorrientePage = lazy(() => import('./components/Clientes/CuentaCorrientePage'));
-const NivelesFidelizacionPage = lazy(() => import('./components/Clientes/NivelesFidelizacionPage'));
 
 // Leads
 const LeadsTablePage = lazyNamed(() => import('./pages/leads/LeadsTablePage'), 'LeadsTablePage');
@@ -393,8 +392,6 @@ function App() {
                   <Route path="clientes/carpeta/:id" element={priv(<CarpetaClientePage />)} />
                   <Route path="clientes/agenda" element={priv(<AgendaVisitasPage />)} />
                   <Route path="clientes/cuenta-corriente" element={priv(<CuentaCorrientePage />)} />
-                  <Route path="clientes/niveles-fidelizacion" element={priv(<ProtectedRoute requiredRoles={['ADMIN', 'SUPER_ADMIN']}><NivelesFidelizacionPage /></ProtectedRoute>)} />
-
                   {/* PRÉSTAMOS */}
                   <Route path="prestamos/resumen" element={priv(<PrestamosResumenPage />)} />
                   <Route path="prestamos/lista" element={priv(<PrestamosListPage />)} />

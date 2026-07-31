@@ -14,11 +14,6 @@
 // Rutas que solo pueden ver los SUPER_ADMIN.
 export const superAdminOnlyPaths = ['/admin/tenant-selector'];
 
-// Rutas visibles solo para ADMIN o superior (SUPER_ADMIN). Se ocultan del menú
-// para cualquier otro rol; el acceso directo por URL lo bloquea ProtectedRoute
-// con requiredRoles en App.tsx.
-export const adminOnlyPaths = ['/clientes/niveles-fidelizacion'];
-
 // Rutas exclusivas del PLATFORM_OWNER (operador del SaaS): nunca visibles
 // para admins de tenant, ni siquiera SUPER_ADMIN sin el flag.
 export const platformOwnerOnlyPaths = ['/platform/ops'];
