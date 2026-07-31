@@ -29,7 +29,7 @@ import {
 } from '@mui/icons-material';
 import type { NivelFidelizacion, NivelFidelizacionRequest } from '../../types';
 import { nivelFidelizacionApi } from '../../api/services/nivelFidelizacionApi';
-import ConfirmDialog from '../common/ConfirmDialog';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const EMPTY_FORM: NivelFidelizacionRequest = { nivel: 1, minCompras: 1, descuentoSugerido: 0, nombre: '' };
 

@@ -9,7 +9,7 @@ const OfertasPrecioPage = lazy(() => import('./OfertasPrecioPage'));
 const ImportadorPreciosPage = lazy(() => import('./ImportadorPreciosPage'));
 const CostosEnvioPage = lazy(() => import('./CostosEnvioPage'));
 const PreciosEquiposPage = lazy(() => import('./PreciosEquiposPage'));
-const NivelesFidelizacionPage = lazy(() => import('../../components/Clientes/NivelesFidelizacionPage'));
+const NivelesFidelizacionPage = lazy(() => import('./NivelesFidelizacionPage'));
 
 type TabKey = 'precios-equipos' | 'ofertas' | 'importador' | 'costos-envio' | 'fidelizacion';
 

@@ -332,7 +332,10 @@ export const PrestamoDetailPage: React.FC = () => {
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
         <Button startIcon={<ArrowBack />} onClick={() => navigate(backToLista)}>Volver</Button>
         <Typography variant="h4" sx={{ flexGrow: 1 }}>
-          Crédito Personal - {prestamo.clienteNombre}
+          Crédito Personal - {(cliente
+            ? `${cliente.nombre} ${cliente.apellido ?? ''}`
+            : `${prestamo.clienteNombre} ${prestamo.clienteApellido ?? ''}`).trim()}
+          {cliente?.razonSocial ? ` - ${cliente.razonSocial}` : ''}
         </Typography>
         {prestamo.documentoId && (
           <Button variant="outlined" color="secondary" startIcon={<Receipt />} onClick={() => navigate('/ventas/registro')}>
@@ -383,12 +386,6 @@ export const PrestamoDetailPage: React.FC = () => {
                   {cliente.ciudad && (
                     <Typography variant="body2" color="text.secondary">Localidad: {cliente.ciudad}</Typography>
                   )}
-                  <Box display="flex" alignItems="center" gap={1} mt={0.5} flexWrap="wrap">
-                    <Typography variant="body2" color="text.secondary">
-                      Compras: {cliente.cantidadComprasValidas ?? 0}
-                    </Typography>
-                    <NivelFidelizacionChip cliente={cliente} />
-                  </Box>
                 </>
               )}
             </Grid>
@@ -475,6 +472,17 @@ export const PrestamoDetailPage: React.FC = () => {
               >
                 {prestamo.numeroComprobante || 'Sin comprobante'}
               </Typography>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary">Fidelización</Typography>
+              <Typography variant="body1">
+                Compras: {cliente?.cantidadComprasValidas ?? '-'} · Equipos: {equipos.reduce((s, e) => s + (e.cantidad ?? 0), 0)}
+              </Typography>
+              {cliente && (
+                <Box sx={{ mt: 0.5 }}>
+                  <NivelFidelizacionChip cliente={cliente} />
+                </Box>
+              )}
             </Grid>
             {prestamo.observaciones && (
               <Grid item xs={12}>
