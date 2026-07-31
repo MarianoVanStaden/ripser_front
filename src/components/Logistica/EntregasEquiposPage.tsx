@@ -173,7 +173,10 @@ const EntregasEquiposPage2: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const facturas = await documentoApi.getByTipo('FACTURA');
+      // Una factura ANULADA (por Nota de Crédito) no se entrega, aunque sus
+      // equipos sigan FACTURADO hasta que se liberen.
+      const facturas = (await documentoApi.getByTipo('FACTURA'))
+        .filter(f => f.estado !== 'ANULADA');
 
       // Collect all unique equipo IDs across all facturas in one pass
       const facturaEquipoIdsMap = new Map<number, number[]>();

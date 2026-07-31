@@ -55,6 +55,8 @@ const EquipoForm: React.FC = () => {
   const [selectedResponsable, setSelectedResponsable] = useState<any>(null);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [estado, setEstado] = useState<EstadoFabricacion>('PENDIENTE');
+  // PK real del equipo (el route param :id es el numeroHeladera, no la primary key).
+  const [equipoId, setEquipoId] = useState<number | null>(null);
   const [modoFabricacion, setModoFabricacion] = useState<'COMPLETO' | 'BASE'>('COMPLETO');
 
   const [snackbar, setSnackbar] = useState<{
@@ -168,6 +170,7 @@ const EquipoForm: React.FC = () => {
         observaciones: data.observaciones || '',
       });
       setEstado(data.estado);
+      setEquipoId(data.id);
 
       if (data.recetaId) {
         const receta = recetas.find(r => r.id === data.recetaId);
@@ -258,6 +261,9 @@ const EquipoForm: React.FC = () => {
       setLoading(true);
 
       if (isEdit && numeroHeladera) {
+        if (equipoId == null) {
+          throw new Error('No se pudo determinar el id del equipo a editar');
+        }
         const updateData: EquipoFabricadoUpdateDTO = {
           tipo: data.tipo,
           modelo: data.modelo,
@@ -272,7 +278,7 @@ const EquipoForm: React.FC = () => {
           clienteId: selectedCliente?.id,
         };
         
-        const response = await equipoFabricadoApi.update(Number(numeroHeladera), updateData);
+        const response = await equipoFabricadoApi.update(equipoId, updateData);
         console.log('✅ Equipo updated successfully:', response);
         
         // Guardar info del equipo editado para el modal
@@ -476,6 +482,7 @@ const EquipoForm: React.FC = () => {
               getOptionLabel={(option) => `${option.nombre} (${option.codigo})`}
               value={selectedReceta}
               onChange={(_, newValue) => setSelectedReceta(newValue)}
+              disabled={isEdit && estado !== 'PENDIENTE'}
               renderInput={(params) => <TextField {...params} label="Receta Base (opcional)" />}
             />
 
@@ -490,6 +497,7 @@ const EquipoForm: React.FC = () => {
                   error={!!errors.tipo}
                   helperText={errors.tipo?.message}
                   fullWidth
+                  disabled={isEdit && estado !== 'PENDIENTE'}
                 >
                   <MenuItem value="HELADERA">Heladera</MenuItem>
                   <MenuItem value="COOLBOX">Coolbox</MenuItem>
@@ -509,6 +517,7 @@ const EquipoForm: React.FC = () => {
                   error={!!errors.modelo}
                   helperText={errors.modelo?.message}
                   fullWidth
+                  disabled={isEdit && estado !== 'PENDIENTE'}
                 />
               )}
             />
@@ -547,6 +556,7 @@ const EquipoForm: React.FC = () => {
                     value={field.value ?? undefined}
                     onChange={(id) => field.onChange(id ?? null)}
                     label="Medida"
+                    disabled={isEdit}
                   />
                 )}
               />
@@ -575,6 +585,7 @@ const EquipoForm: React.FC = () => {
                     helperText={isEdit ? errors.cantidad?.message : errors.cantidad?.message || "Se creará un registro individual por cada unidad"}
                     InputProps={{ inputProps: { min: 1 } }}
                     fullWidth
+                    disabled={isEdit}
                   />
                 )}
               />
@@ -605,11 +616,13 @@ const EquipoForm: React.FC = () => {
                 label="Estado"
                 select
                 value={estado}
-                onChange={(e) => setEstado(e.target.value as EstadoFabricacion)}
                 fullWidth
+                disabled
+                helperText="El estado se cambia desde las acciones de fabricación (iniciar / completar / cancelar)"
               >
                 <MenuItem value="PENDIENTE">Pendiente</MenuItem>
                 <MenuItem value="EN_PROCESO">En Proceso</MenuItem>
+                <MenuItem value="PENDIENTE_CONTROL_CALIDAD">Pendiente Control de Calidad</MenuItem>
                 <MenuItem value="COMPLETADO">Completado</MenuItem>
                 <MenuItem value="CANCELADO">Cancelado</MenuItem>
                 <MenuItem value="FABRICADO_SIN_TERMINACION">Fabricado Sin Terminación</MenuItem>

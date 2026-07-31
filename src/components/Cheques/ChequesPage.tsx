@@ -476,7 +476,7 @@ const ChequesPage: React.FC = () => {
                         )}
                         {cheque.tipo === 'TERCEROS'
                           && cheque.clienteId
-                          && (cheque.estado === 'EN_CARTERA' || cheque.estado === 'ENDOSADO') && (
+                          && ['EN_CARTERA', 'ENDOSADO', 'DEPOSITADO', 'COBRADO'].includes(cheque.estado) && (
                           <Tooltip title="Imputar a crédito personal">
                             <IconButton
                               size="small"

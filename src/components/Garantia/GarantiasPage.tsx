@@ -126,7 +126,11 @@ const GarantiasPage: React.FC = () => {
         setEquipos(Array.isArray(equiposContent) ? equiposContent : []);
       }
       if (facturasData.status === 'fulfilled') {
-        setFacturas(Array.isArray(facturasData.value) ? facturasData.value : []);
+        // No se carga una garantía contra una factura ANULADA (venta revertida por NC).
+        const facturasValidas = Array.isArray(facturasData.value)
+          ? facturasData.value.filter(f => f.estado !== 'ANULADA')
+          : [];
+        setFacturas(facturasValidas);
       }
       setFormOptionsLoaded(true);
     } catch (err) {
