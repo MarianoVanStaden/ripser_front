@@ -19,6 +19,7 @@ import { seguimientoPrestamoApi } from '../../api/services/seguimientoPrestamoAp
 import { recordatorioCuotaApi } from '../../api/services/recordatorioCuotaApi';
 import { pagoInformadoApi } from '../../api/services/pagoInformadoApi';
 import { clienteApi } from '../../api/services/clienteApi';
+import NivelFidelizacionChip from '../common/NivelFidelizacionChip';
 import { documentoApi } from '../../api/services/documentoApi';
 import {
   ESTADO_PRESTAMO_LABELS, ESTADO_PRESTAMO_COLORS,
@@ -382,6 +383,12 @@ export const PrestamoDetailPage: React.FC = () => {
                   {cliente.ciudad && (
                     <Typography variant="body2" color="text.secondary">Localidad: {cliente.ciudad}</Typography>
                   )}
+                  <Box display="flex" alignItems="center" gap={1} mt={0.5} flexWrap="wrap">
+                    <Typography variant="body2" color="text.secondary">
+                      Compras: {cliente.cantidadComprasValidas ?? 0}
+                    </Typography>
+                    <NivelFidelizacionChip cliente={cliente} />
+                  </Box>
                 </>
               )}
             </Grid>

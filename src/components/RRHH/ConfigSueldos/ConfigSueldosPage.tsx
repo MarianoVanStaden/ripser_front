@@ -3,6 +3,7 @@ import { Box, Tabs, Tab, Typography, Paper } from '@mui/material';
 import {
   Category as CategoryIcon,
   Factory as FactoryIcon,
+  Sell as SellIcon,
 } from '@mui/icons-material';
 import CategoriasSalarialesTab from './CategoriasSalarialesTab';
 import BonosUmbralTab from './BonosUmbralTab';
@@ -16,8 +17,9 @@ const ConfigSueldosPage: React.FC = () => {
         Configuración de Sueldos
       </Typography>
       <Typography variant="body2" color="textSecondary" mb={3}>
-        Categorías salariales y tabla de bono por producción usadas por la calculadora de sueldos.
-        El bono de ventas se calcula por las metas mensuales (parámetros en Configuración del sistema).
+        Categorías salariales y tablas de bono (producción y ventas) por categoría, usadas por la calculadora de sueldos.
+        El bono de ventas se paga al alcanzar la meta mensual de unidades (umbrales en Configuración del sistema);
+        el monto sale del tramo por categoría cargado acá, con fallback al monto plano de Configuración del sistema.
       </Typography>
 
       <Paper sx={{ mb: 3 }}>
@@ -29,11 +31,13 @@ const ConfigSueldosPage: React.FC = () => {
         >
           <Tab icon={<CategoryIcon />} iconPosition="start" label="Categorías" />
           <Tab icon={<FactoryIcon />} iconPosition="start" label="Bonos Producción" />
+          <Tab icon={<SellIcon />} iconPosition="start" label="Bono Ventas" />
         </Tabs>
       </Paper>
 
       {tab === 0 && <CategoriasSalarialesTab />}
       {tab === 1 && <BonosUmbralTab variant="PRODUCCION" />}
+      {tab === 2 && <BonosUmbralTab variant="VENTAS" />}
     </Box>
   );
 };

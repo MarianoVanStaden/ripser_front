@@ -460,6 +460,22 @@ const ClientesPage: React.FC = () => {
                 </Typography>
                 <Typography><strong>Límite de Crédito:</strong> ${selectedCliente.limiteCredito?.toLocaleString() || 'N/A'}</Typography>
                 <Typography><strong>Saldo Actual:</strong> ${selectedCliente.saldoActual?.toLocaleString() || '0'}</Typography>
+                <Typography><strong>Compras válidas:</strong> {selectedCliente.cantidadComprasValidas ?? 0}</Typography>
+                <Box display="flex" alignItems="center" gap={1} mt={0.5}>
+                  <Typography><strong>Fidelización:</strong></Typography>
+                  {selectedCliente.nivelFidelizacion != null ? (
+                    <>
+                      <NivelFidelizacionChip cliente={selectedCliente} />
+                      {selectedCliente.descuentoSugerido != null && (
+                        <Typography variant="body2" color="text.secondary">
+                          Descuento sugerido: {selectedCliente.descuentoSugerido}%
+                        </Typography>
+                      )}
+                    </>
+                  ) : (
+                    <Typography color="text.secondary">Sin nivel</Typography>
+                  )}
+                </Box>
                 <Box display="flex" alignItems="center" mt={1}>
                   <Typography variant="body2" color="text.secondary" mr={1}>
                     Calificación:

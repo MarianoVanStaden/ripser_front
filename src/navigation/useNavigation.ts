@@ -5,6 +5,7 @@ import { navigation } from './navConfig';
 import type { NavModule } from './navConfig.types';
 import {
   superAdminOnlyPaths,
+  adminOnlyPaths,
   platformOwnerOnlyPaths,
   vendedorDeniedPaths,
   cobranzasAllowedPaths,
@@ -46,6 +47,11 @@ export const useNavigation = (): NavModule[] => {
           // Si es la sección de ADMIN, filtrar items según el rol
           if (section.modulo === 'ADMIN' && !esSuperAdmin) {
             filteredItems = filteredItems.filter((item) => !superAdminOnlyPaths.includes(item.path));
+          }
+
+          // Rutas solo-ADMIN: ocultas para todo rol que no sea ADMIN o SUPER_ADMIN.
+          if (!esSuperAdmin && !tieneRol('ADMIN')) {
+            filteredItems = filteredItems.filter((item) => !adminOnlyPaths.includes(item.path));
           }
 
           // Herramientas de plataforma: solo el platform owner las ve en el menú.
