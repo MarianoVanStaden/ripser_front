@@ -255,8 +255,10 @@ export function useTripWizard(opts: UseTripWizardOptions) {
   const facturasEnFormIds = new Set(
     tripDeliveries.map(d => d.facturaId).filter((id): id is number => id != null)
   );
+  // Una factura ANULADA (por Nota de Crédito) no se entrega: fuera del selector.
   const facturasDisponibles = facturas.filter(
-    f => !facturasAsignadasIds.has(f.id) && !facturasEnFormIds.has(f.id)
+    f => f.estado !== 'ANULADA'
+      && !facturasAsignadasIds.has(f.id) && !facturasEnFormIds.has(f.id)
   );
 
   // ── Helpers de catálogo ────────────────────────────────────────────────────
