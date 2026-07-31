@@ -43,6 +43,7 @@ import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useSessionState } from '../../hooks/useSessionState';
 import LoadingOverlay from '../common/LoadingOverlay';
+import NivelFidelizacionChip from '../common/NivelFidelizacionChip';
 import { RUBRO_LABELS } from '../../types/rubro.types';
 
 const ClientesPage: React.FC = () => {
@@ -343,7 +344,7 @@ const ClientesPage: React.FC = () => {
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary" mb={2}>
-                  Compras: {cliente.cantidadCompras ?? 0}
+                  Compras: {cliente.cantidadComprasValidas ?? cliente.cantidadCompras ?? 0}
                   {cliente.fechaUltimaCompra
                     ? ` · Última: ${new Date(cliente.fechaUltimaCompra + 'T00:00:00').toLocaleDateString('es-AR')}`
                     : ''}
@@ -351,6 +352,17 @@ const ClientesPage: React.FC = () => {
                     ? ` · Canal: ${CANAL_LABELS[cliente.canalAdquisicion as CanalEnum] ?? cliente.canalAdquisicion}`
                     : ''}
                 </Typography>
+
+                {cliente.nivelFidelizacion != null && (
+                  <Box display="flex" alignItems="center" gap={1} mb={2}>
+                    <NivelFidelizacionChip cliente={cliente} />
+                    {cliente.descuentoSugerido != null && (
+                      <Typography variant="body2" color="text.secondary">
+                        Desc. sugerido: {cliente.descuentoSugerido}%
+                      </Typography>
+                    )}
+                  </Box>
+                )}
 
                 <Box display="flex" alignItems="center" mt={1} mb={2}>
                   <Typography variant="body2" color="text.secondary" mr={1}>

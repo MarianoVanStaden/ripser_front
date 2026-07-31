@@ -69,6 +69,7 @@ export const navigation: NavModule[] = [
       { text: 'Carpeta Cliente', icon: <PeopleIcon />, path: '/clientes/carpeta' },
       { text: 'Agenda Visitas', icon: <PeopleIcon />, path: '/clientes/agenda' },
       { text: 'Cuenta Corriente', icon: <PeopleIcon />, path: '/clientes/cuenta-corriente' },
+      { text: 'Niveles Fidelización', icon: <SettingsIcon />, path: '/clientes/niveles-fidelizacion' },
       { text: 'Métricas de Leads', icon: <AssignmentIcon />, path: '/leads/metricas' },
     ],
   },

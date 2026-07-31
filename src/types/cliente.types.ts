@@ -62,9 +62,33 @@ export interface Cliente {
   fechaBaja?: string;
   enRiesgoChurn?: boolean;
   segmentoAutomatico?: SegmentoCliente;
+  // Fidelización (calculado server-side, solo en GET): compras válidas =
+  // facturas no anuladas; nivel/descuento según config de la empresa.
+  cantidadComprasValidas?: number;
+  nivelFidelizacion?: number;
+  nivelFidelizacionNombre?: string;
+  descuentoSugerido?: number; // % sugerido, no se aplica automáticamente
   contactos?: ContactoCliente[];
   cuentaCorriente?: CuentaCorriente[];
   ventas?: Venta[];
+}
+
+// Configuración de niveles de fidelización (por empresa).
+// GET: roles de ventas; POST/PUT/DELETE: solo ADMIN/SUPER_ADMIN.
+export interface NivelFidelizacion {
+  id: number;
+  empresaId: number;
+  nivel: number;
+  minCompras: number;
+  descuentoSugerido: number; // 0.00 a 100.00
+  nombre?: string;
+}
+
+export interface NivelFidelizacionRequest {
+  nivel: number;        // >= 1, único por empresa
+  minCompras: number;   // >= 1, único por empresa
+  descuentoSugerido: number; // 0 a 100
+  nombre?: string;      // max 50
 }
 
 export type SegmentoCliente = 'VIP' | 'PREMIUM' | 'STANDARD' | 'BASICO';

@@ -42,6 +42,7 @@ import { ContactosTab, CuentaCorrienteTab } from './index';
 import { HistoricoComercialTab } from './HistoricoComercial';
 import DocumentManager from '../shared/DocumentManager';
 import LoadingOverlay from '../common/LoadingOverlay';
+import NivelFidelizacionChip from '../common/NivelFidelizacionChip';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -199,6 +200,7 @@ const ClienteDetailPage: React.FC = () => {
               color={getEstadoColor(cliente.estado)}
               size="small"
             />
+            <NivelFidelizacionChip cliente={cliente} />
           </Box>
         </Box>
         <Button
@@ -304,6 +306,16 @@ const ClienteDetailPage: React.FC = () => {
               <Typography>
                 <strong>Límite de Crédito:</strong> ${cliente.limiteCredito?.toLocaleString() || 'N/A'}
               </Typography>
+              <Typography>
+                <strong>Compras válidas:</strong> {cliente.cantidadComprasValidas ?? 0}
+              </Typography>
+              {cliente.nivelFidelizacion != null && (
+                <Typography>
+                  <strong>Fidelización:</strong> Nivel {cliente.nivelFidelizacion}
+                  {cliente.nivelFidelizacionNombre ? ` (${cliente.nivelFidelizacionNombre})` : ''}
+                  {' · Descuento sugerido: '}{cliente.descuentoSugerido ?? 0}%
+                </Typography>
+              )}
               <Typography>
                 <strong>Saldo Actual:</strong> ${cliente.saldoActual?.toLocaleString() || '0'}
               </Typography>

@@ -17,6 +17,7 @@ import {
 import { clienteApi } from '../../api/services/clienteApi';
 import type { Cliente, EstadoCliente } from '../../types';
 import { useDebounce } from '../../hooks/useDebounce';
+import NivelFidelizacionChip from './NivelFidelizacionChip';
 
 const ESTADO_COLOR: Record<EstadoCliente, 'success' | 'default' | 'warning' | 'error'> = {
   ACTIVO: 'success',
@@ -216,6 +217,12 @@ const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
                     variant="outlined"
                     sx={{ height: 18, fontSize: '0.65rem' }}
                   />
+                )}
+                <NivelFidelizacionChip cliente={option} dense />
+                {option.descuentoSugerido != null && (
+                  <Typography variant="caption" color="secondary.main" sx={{ fontWeight: 600 }}>
+                    {option.descuentoSugerido}% sug.
+                  </Typography>
                 )}
               </Box>
               {secondary.length > 0 && (
