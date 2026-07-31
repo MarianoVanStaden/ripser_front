@@ -317,7 +317,10 @@ const DeliveriesPage2: React.FC = () => {
 
       try {
         facturasData = await documentoApi.getByTipo('FACTURA');
-        facturasData = facturasData.filter(f => f.numeroDocumento?.startsWith('FAC-'));
+        // Solo facturas vigentes: una ANULADA (por Nota de Crédito) no se entrega.
+        facturasData = facturasData.filter(
+          f => f.numeroDocumento?.startsWith('FAC-') && f.estado !== 'ANULADA'
+        );
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
         errors.push(`Facturas: ${errorMsg}`);
