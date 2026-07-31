@@ -361,6 +361,22 @@ const SettingsPage: React.FC = () => {
             ayuda: 'Tramos de meta grupal como "min-max" separados por coma; cada tramo es Meta 1, Meta 2, ... (ej: 35-39,40-45,46-50,51-55,56-60)',
             descripcion: 'Tramos de meta grupal mensual de unidades refrigeradas, formato "min-max" separados por coma. Cada tramo es Meta 1, Meta 2, etc.',
           },
+          {
+            clave: 'BONO_VENTAS_META_BASE',
+            valor: '0',
+            tipo: 'DECIMAL',
+            titulo: 'Bono $ por meta base',
+            ayuda: 'Monto del bono de ventas al alcanzar la meta base o de primer mes (0 = sin bono)',
+            descripcion: 'Monto del bono de ventas en la liquidación de sueldos cuando la vendedora alcanza su meta individual (base o primer mes).',
+          },
+          {
+            clave: 'BONO_VENTAS_META_SUPERADORA',
+            valor: '0',
+            tipo: 'DECIMAL',
+            titulo: 'Bono $ por meta superadora',
+            ayuda: 'Monto del bono al alcanzar la meta superadora; reemplaza al de base (0 = sin bono)',
+            descripcion: 'Monto del bono de ventas en la liquidación de sueldos cuando la vendedora alcanza la meta superadora. Reemplaza al bono base (se cobra el mayor).',
+          },
         ];
         const faltantes = metasRefrigerados.filter(m => !parameters.find(p => p.clave === m.clave));
         if (faltantes.length === 0) return null;

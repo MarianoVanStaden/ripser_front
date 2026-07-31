@@ -11,7 +11,7 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import type {
-  Adelanto, BonoProduccionTabla, BonoVentasTabla, CategoriaSalarial,
+  Adelanto, BonoProduccionTabla, CategoriaSalarial,
   ConceptoSueldo, Empleado, Sueldo,
 } from '../../../types';
 import { CONCEPTO_SUELDO_LABELS, CONCEPTOS_SUELDO } from '../../../types/remuneraciones.types';
@@ -24,7 +24,6 @@ interface Props {
   empleados: Empleado[];
   categorias: CategoriaSalarial[];
   bonosProduccion: BonoProduccionTabla[];
-  bonosVentas: BonoVentasTabla[];
   editing: Sueldo | null;
   onClose: () => void;
   onSubmit: (payload: any) => Promise<void>;
@@ -40,7 +39,8 @@ interface FormState {
   horasAusenteCant: number;
   kmCant: number;
   unidadesProducidas: number;
-  unidadesVendidas: number;
+  /** Bono de ventas (monto), editable. Sugerido por las metas en la masiva; acá se ajusta a mano. */
+  bonoVentas: number;
   bonificaciones: number;
   comisiones: number;
   bonoEspecial: number;
@@ -61,7 +61,7 @@ const buildEmptyForm = (): FormState => ({
   horasAusenteCant: 0,
   kmCant: 0,
   unidadesProducidas: 0,
-  unidadesVendidas: 0,
+  bonoVentas: 0,
   bonificaciones: 0,
   comisiones: 0,
   bonoEspecial: 0,
@@ -73,7 +73,7 @@ const buildEmptyForm = (): FormState => ({
 });
 
 const SueldoFormDialog: React.FC<Props> = ({
-  open, empleados, categorias, bonosProduccion, bonosVentas,
+  open, empleados, categorias, bonosProduccion,
   editing, onClose, onSubmit,
 }) => {
   const theme = useTheme();
@@ -100,7 +100,7 @@ const SueldoFormDialog: React.FC<Props> = ({
         horasAusenteCant: Number(editing.horasAusenteCant ?? 0),
         kmCant: Number(editing.kmCant ?? 0),
         unidadesProducidas: 0,
-        unidadesVendidas: 0,
+        bonoVentas: Number(editing.bonoVentas ?? 0),
         bonificaciones: Number(editing.bonificaciones ?? 0),
         comisiones: Number(editing.comisiones ?? 0),
         bonoEspecial: Number(editing.bonoEspecial ?? 0),
@@ -149,11 +149,6 @@ const SueldoFormDialog: React.FC<Props> = ({
     () => bonosProduccion.filter(b => b.categoriaSalarialId === form.categoriaSalarialId),
     [bonosProduccion, form.categoriaSalarialId],
   );
-  const bonosVentasCategoria = useMemo(
-    () => bonosVentas.filter(b => b.categoriaSalarialId === form.categoriaSalarialId),
-    [bonosVentas, form.categoriaSalarialId],
-  );
-
   const calc = useMemo(() => {
     if (!categoria) return null;
     return calcularRemuneracion({
@@ -163,9 +158,8 @@ const SueldoFormDialog: React.FC<Props> = ({
       horasAusenteCant: form.horasAusenteCant,
       kmCant: form.kmCant,
       unidadesProducidas: form.unidadesProducidas,
-      unidadesVendidas: form.unidadesVendidas,
       bonosProduccion: bonosProdCategoria,
-      bonosVentas: bonosVentasCategoria,
+      bonoVentas: form.bonoVentas,
       bonificaciones: form.bonificaciones,
       comisiones: form.comisiones,
       bonoEspecial: form.bonoEspecial,
@@ -173,7 +167,7 @@ const SueldoFormDialog: React.FC<Props> = ({
       descuentosOtros: form.descuentosOtros,
       adelantos: form.adelantos,
     });
-  }, [categoria, form, bonosProdCategoria, bonosVentasCategoria]);
+  }, [categoria, form, bonosProdCategoria]);
 
   const setNumberField = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
@@ -374,11 +368,9 @@ const SueldoFormDialog: React.FC<Props> = ({
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <TextField fullWidth type="number" label="Unidades vendidas"
-              value={form.unidadesVendidas} onChange={setNumberField('unidadesVendidas')}
-              helperText={bonosVentasCategoria.length > 0
-                ? `Tabla: ${bonosVentasCategoria.map(b => b.umbralUnidades).join(', ')}`
-                : 'Sin tabla configurada'}
+            <TextField fullWidth type="number" label="Bono ventas ($)"
+              value={form.bonoVentas} onChange={setNumberField('bonoVentas')}
+              helperText="Sugerido por las metas en la liquidación masiva; editable acá."
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>

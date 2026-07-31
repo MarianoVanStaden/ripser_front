@@ -7,7 +7,6 @@
 
 import type {
   BonoProduccionTabla,
-  BonoVentasTabla,
   CategoriaSalarial,
 } from '../types';
 
@@ -20,11 +19,11 @@ export interface RemuneracionInput {
   horasAusenteCant: number;
   kmCant: number;
 
-  // Bonos automáticos por umbrales
+  // Bono de producción: automático por umbral de unidades producidas.
   unidadesProducidas?: number;
-  unidadesVendidas?: number;
   bonosProduccion?: BonoProduccionTabla[];
-  bonosVentas?: BonoVentasTabla[];
+  // Bono de ventas: monto ya resuelto por las metas mensuales (backend), editable.
+  bonoVentas?: number;
 
   // Manuales
   bonificaciones?: number;  // bonificación libre adicional
@@ -89,7 +88,8 @@ function pickBonoPorUmbral(
  *   - Hora extra: tarifa de la categoría × cantidad de horas.
  *   - Hora ausente: tarifa de la categoría × cantidad de horas (descuento).
  *   - KM: tarifa × cantidad de km recorridos.
- *   - Bono producción/ventas: tomar el monto del mayor umbral <= unidades.
+ *   - Bono producción: tomar el monto del mayor umbral <= unidades producidas.
+ *   - Bono ventas: monto ya resuelto por las metas mensuales (backend), editable.
  */
 export function calcularRemuneracion(input: RemuneracionInput): RemuneracionOutput {
   const cat = input.categoria;
@@ -108,7 +108,8 @@ export function calcularRemuneracion(input: RemuneracionInput): RemuneracionOutp
   const kmMonto = round2(kmCant * (Number(cat.kmValor) || 0));
 
   const bonoProduccion = pickBonoPorUmbral(input.bonosProduccion, input.unidadesProducidas);
-  const bonoVentas = pickBonoPorUmbral(input.bonosVentas, input.unidadesVendidas);
+  // El bono de ventas ya viene resuelto por las metas mensuales (backend); es editable.
+  const bonoVentas = round2(Number(input.bonoVentas) || 0);
 
   const bonificaciones = Number(input.bonificaciones) || 0;
   const comisiones = Number(input.comisiones) || 0;

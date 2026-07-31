@@ -4,12 +4,19 @@ import type { PageResponse, PaginationParams } from '../../types/pagination.type
 
 const BASE_URL = '/api/sueldos';
 
-/** Heladeras (no exhibidores) vendidas por una vendedora en el mes. */
+/** Ventas netas de equipos refrigerados de una vendedora en el mes y su bono por meta. */
 export interface VentaVendedora {
   usuarioId: number | null;
   empleadoId: number | null;
   nombre: string;
+  /** Unidades netas (HELADERA + COOLBOX) del reporte "Unidades por Vendedor". */
+  unidadesNetas: number;
+  /** Alias legacy de unidadesNetas (mismo valor). */
   heladerasVendidas: number;
+  /** Meta individual alcanzada: 'NINGUNA' | 'BASE' | 'SUPERADORA'. */
+  metaAlcanzada: string;
+  /** Bono sugerido por la meta alcanzada (0 si ninguna o sin monto configurado). */
+  bonoSugerido: number;
 }
 
 /**
@@ -37,6 +44,10 @@ export interface UnidadesMes {
   vendidas: number;
   ventasPorVendedora: VentaVendedora[];
   asistenciaPorEmpleado: AsistenciaLiquidacionEmpleado[];
+  /** Total neto de equipos refrigerados del equipo en el mes (meta grupal, informativa). */
+  totalEquipoNeto: number;
+  /** Índice del tramo grupal alcanzado (0-based), -1 si ninguno. Informativo. */
+  tramoGrupalAlcanzado: number;
 }
 
 export const sueldoApi = {
@@ -122,7 +133,10 @@ export const sueldoApi = {
           usuarioId: v.usuarioId ?? null,
           empleadoId: v.empleadoId ?? null,
           nombre: v.nombre ?? '',
-          heladerasVendidas: Number(v.heladerasVendidas) || 0,
+          unidadesNetas: Number(v.unidadesNetas ?? v.heladerasVendidas) || 0,
+          heladerasVendidas: Number(v.heladerasVendidas ?? v.unidadesNetas) || 0,
+          metaAlcanzada: v.metaAlcanzada ?? 'NINGUNA',
+          bonoSugerido: Number(v.bonoSugerido) || 0,
         })),
       asistenciaPorEmpleado: (Array.isArray(data.asistenciaPorEmpleado) ? data.asistenciaPorEmpleado : [])
         .map(a => ({
@@ -138,6 +152,8 @@ export const sueldoApi = {
           sinHorario: Boolean(a.sinHorario),
           avisos: Array.isArray(a.avisos) ? a.avisos : [],
         })),
+      totalEquipoNeto: Number(data.totalEquipoNeto) || 0,
+      tramoGrupalAlcanzado: Number.isFinite(data.tramoGrupalAlcanzado) ? data.tramoGrupalAlcanzado : -1,
     };
   },
 

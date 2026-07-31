@@ -29,9 +29,8 @@ import { employeeApi } from '../../api/services/employeeApi';
 import { getNombreCompleto } from '../../utils/userDisplay';
 import { categoriaSalarialApi } from '../../api/services/categoriaSalarialApi';
 import { bonoProduccionApi } from '../../api/services/bonoProduccionApi';
-import { bonoVentasApi } from '../../api/services/bonoVentasApi';
 import type {
-  Sueldo, Empleado, CategoriaSalarial, BonoProduccionTabla, BonoVentasTabla,
+  Sueldo, Empleado, CategoriaSalarial, BonoProduccionTabla,
 } from '../../types';
 import { CONCEPTO_SUELDO_LABELS } from '../../types/remuneraciones.types';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -76,7 +75,6 @@ const SueldosPage: React.FC = () => {
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [categorias, setCategorias] = useState<CategoriaSalarial[]>([]);
   const [bonosProduccion, setBonosProduccion] = useState<BonoProduccionTabla[]>([]);
-  const [bonosVentas, setBonosVentas] = useState<BonoVentasTabla[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,12 +97,11 @@ const SueldosPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [sueldosResp, empleadosData, cats, bonosP, bonosV] = await Promise.all([
+      const [sueldosResp, empleadosData, cats, bonosP] = await Promise.all([
         sueldoApi.getAll(),
         employeeApi.getAllList(),
         categoriaSalarialApi.getAll().catch(() => []),
         bonoProduccionApi.getAll().catch(() => []),
-        bonoVentasApi.getAll().catch(() => []),
       ]);
 
       // sueldoApi.getAll devuelve PageResponse<Sueldo> o array según servidor
@@ -133,7 +130,6 @@ const SueldosPage: React.FC = () => {
       setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
       setCategorias(Array.isArray(cats) ? cats : []);
       setBonosProduccion(Array.isArray(bonosP) ? bonosP : []);
-      setBonosVentas(Array.isArray(bonosV) ? bonosV : []);
     } catch (err) {
       console.error('Error loading sueldos:', err);
       setError('Error al cargar los datos');
@@ -586,7 +582,6 @@ const SueldosPage: React.FC = () => {
         empleados={empleados}
         categorias={categorias}
         bonosProduccion={bonosProduccion}
-        bonosVentas={bonosVentas}
         editing={editingSueldo}
         onClose={() => { setOpenForm(false); setEditingSueldo(null); }}
         onSubmit={handleSubmitSueldo}

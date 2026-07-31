@@ -30,10 +30,9 @@ import { sueldoApi, type VentaVendedora, type AsistenciaLiquidacionEmpleado } fr
 import { employeeApi } from '../../../api/services/employeeApi';
 import { categoriaSalarialApi } from '../../../api/services/categoriaSalarialApi';
 import { bonoProduccionApi } from '../../../api/services/bonoProduccionApi';
-import { bonoVentasApi } from '../../../api/services/bonoVentasApi';
 import { adelantoApi } from '../../../api/services/adelantoApi';
 import type {
-  Adelanto, BonoProduccionTabla, BonoVentasTabla,
+  Adelanto, BonoProduccionTabla,
   CategoriaSalarial, ConceptoSueldo, Empleado, Sueldo,
 } from '../../../types';
 import { CONCEPTO_SUELDO_LABELS, CONCEPTOS_SUELDO } from '../../../types/remuneraciones.types';
@@ -61,9 +60,11 @@ interface RowState {
   observaciones: string;
   /** Si ya hay un Sueldo existente para este empleado+período (vamos a updatear, no crear). */
   existingId?: number;
-  /** Unidades persistidas al liquidar el sueldo existente. Cuando hay snapshot,
-   *  el bono de ventas se calcula con este valor y NO con el conteo en vivo. */
+  /** Unidades netas persistidas al liquidar el sueldo existente (traza). */
   unidadesBonoVentasSnapshot?: number | null;
+  /** Bono de ventas persistido al liquidar el sueldo existente. Cuando hay
+   *  snapshot, el bono NO se recalcula con las metas en vivo (lo pagado no cambia). */
+  bonoVentasSnapshot?: number | null;
   /** Marca para incluir o no en el bulk submit. */
   incluir: boolean;
 }
@@ -84,11 +85,12 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
   const [concepto, setConcepto] = useState<ConceptoSueldo>('SALARIO');
   const [fechaPagoDefault, setFechaPagoDefault] = useState<string>('');
   const [unidadesProducidas, setUnidadesProducidas] = useState<number>(0);
-  const [unidadesVendidas, setUnidadesVendidas] = useState<number>(0);
   // Auto-conteo del backend (referencia para mostrar al usuario y permitir override).
   const [unidadesAutoProducidas, setUnidadesAutoProducidas] = useState<number | null>(null);
-  const [unidadesAutoVendidas, setUnidadesAutoVendidas] = useState<number | null>(null);
   const [loadingUnidades, setLoadingUnidades] = useState<boolean>(false);
+  // Meta grupal (informativa): total neto del equipo en el mes y tramo alcanzado.
+  const [totalEquipoNeto, setTotalEquipoNeto] = useState<number>(0);
+  const [tramoGrupal, setTramoGrupal] = useState<number>(-1);
   // Desglose de heladeras vendidas por vendedora (quien convirtió la nota de
   // pedido). Cada asesora cobra su bono de ventas según SU propio conteo.
   const [ventasPorVendedora, setVentasPorVendedora] = useState<VentaVendedora[]>([]);
@@ -107,7 +109,6 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [categorias, setCategorias] = useState<CategoriaSalarial[]>([]);
   const [bonosProduccion, setBonosProduccion] = useState<BonoProduccionTabla[]>([]);
-  const [bonosVentas, setBonosVentas] = useState<BonoVentasTabla[]>([]);
   const [sueldosExistentes, setSueldosExistentes] = useState<Sueldo[]>([]);
   const [adelantosPeriodo, setAdelantosPeriodo] = useState<Adelanto[]>([]);
 
@@ -122,16 +123,14 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     try {
       setLoading(true);
       setError(null);
-      const [empleadosData, catsData, bonosP, bonosV] = await Promise.all([
+      const [empleadosData, catsData, bonosP] = await Promise.all([
         employeeApi.getAllList(),
         categoriaSalarialApi.getAll().catch(() => [] as CategoriaSalarial[]),
         bonoProduccionApi.getAll().catch(() => [] as BonoProduccionTabla[]),
-        bonoVentasApi.getAll().catch(() => [] as BonoVentasTabla[]),
       ]);
       setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
       setCategorias(Array.isArray(catsData) ? catsData : []);
       setBonosProduccion(Array.isArray(bonosP) ? bonosP : []);
-      setBonosVentas(Array.isArray(bonosV) ? bonosV : []);
     } catch (err) {
       console.error(err);
       setError('Error al cargar datos iniciales');
@@ -174,11 +173,11 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       .then(r => {
         if (cancelado) return;
         setUnidadesAutoProducidas(r.producidas);
-        setUnidadesAutoVendidas(r.vendidas);
         setUnidadesProducidas(r.producidas);
-        setUnidadesVendidas(r.vendidas);
         setVentasPorVendedora(r.ventasPorVendedora);
         setAsistenciaMes(r.asistenciaPorEmpleado);
+        setTotalEquipoNeto(r.totalEquipoNeto);
+        setTramoGrupal(r.tramoGrupalAlcanzado);
       })
       .catch(() => {/* mantener 0 si falla */})
       .finally(() => { if (!cancelado) setLoadingUnidades(false); });
@@ -187,7 +186,6 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
 
   const resetUnidadesAuto = () => {
     if (unidadesAutoProducidas != null) setUnidadesProducidas(unidadesAutoProducidas);
-    if (unidadesAutoVendidas != null) setUnidadesVendidas(unidadesAutoVendidas);
   };
 
   // empleadoId → asistencia del mes (fichadas del terminal). Se usa para
@@ -241,6 +239,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
           observaciones: sueldoExistente.observaciones ?? '',
           existingId: sueldoExistente.id,
           unidadesBonoVentasSnapshot: sueldoExistente.unidadesBonoVentas ?? null,
+          bonoVentasSnapshot: sueldoExistente.bonoVentas ?? null,
           incluir: false,
         };
       }
@@ -290,34 +289,34 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     [categorias],
   );
 
-  // empleadoId → heladeras (no exhibidores) vendidas en el período. Sólo entran
-  // las vendedoras cuyo usuario está vinculado a un empleado.
+  // empleadoId → venta neta + bono sugerido de la vendedora en el período. Sólo
+  // entran las vendedoras cuyo usuario está vinculado a un empleado.
   const ventasMap = useMemo(() => {
-    const m = new Map<number, number>();
+    const m = new Map<number, VentaVendedora>();
     ventasPorVendedora.forEach(v => {
-      if (v.empleadoId != null) m.set(v.empleadoId, v.heladerasVendidas);
+      if (v.empleadoId != null) m.set(v.empleadoId, v);
     });
     return m;
   }, [ventasPorVendedora]);
 
-  // Unidades vendidas que gobiernan el bono de ventas de la fila. Si el sueldo
-  // ya fue liquidado con snapshot, manda el snapshot (lo que se pagó no cambia
-  // aunque hoy el conteo en vivo dé otra cosa). Sin snapshot: si el empleado
-  // figura en el desglose de ventas usa SU conteo de heladeras; si no, cae al
-  // valor global editable (override / empleados sin venta atribuida).
-  const getVendidasRow = useCallback((row: RowState): number => {
+  // Unidades netas del mes (traza que se persiste). Snapshot si ya se liquidó.
+  const getUnidadesNetasRow = useCallback((row: RowState): number => {
     if (row.unidadesBonoVentasSnapshot != null) return row.unidadesBonoVentasSnapshot;
-    return ventasMap.has(row.empleadoId)
-      ? ventasMap.get(row.empleadoId)!
-      : unidadesVendidas;
-  }, [ventasMap, unidadesVendidas]);
+    return ventasMap.get(row.empleadoId)?.unidadesNetas ?? 0;
+  }, [ventasMap]);
+
+  // Bono de ventas de la fila = el sugerido por las metas mensuales (backend).
+  // Si el sueldo ya fue liquidado, manda el snapshot del monto (lo que se pagó
+  // no cambia aunque hoy el conteo en vivo dé otra cosa).
+  const getBonoVentasRow = useCallback((row: RowState): number => {
+    if (row.bonoVentasSnapshot != null) return row.bonoVentasSnapshot;
+    return ventasMap.get(row.empleadoId)?.bonoSugerido ?? 0;
+  }, [ventasMap]);
 
   const computeRow = useCallback((row: RowState) => {
     const categoria = getCategoria(row.categoriaSalarialId);
     if (!categoria) return null;
     const bonosProdCat = bonosProduccion.filter(b => b.categoriaSalarialId === categoria.id);
-    const bonosVentasCat = bonosVentas.filter(b => b.categoriaSalarialId === categoria.id);
-    const vendidasRow = getVendidasRow(row);
     return calcularRemuneracion({
       categoria,
       presentismoPct: row.presentismoPct,
@@ -325,9 +324,8 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       horasAusenteCant: row.horasAusenteCant,
       kmCant: row.kmCant,
       unidadesProducidas,
-      unidadesVendidas: vendidasRow,
       bonosProduccion: bonosProdCat,
-      bonosVentas: bonosVentasCat,
+      bonoVentas: getBonoVentasRow(row),
       bonificaciones: row.bonificaciones,
       comisiones: row.comisiones,
       bonoEspecial: row.bonoEspecial,
@@ -335,7 +333,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       descuentosOtros: row.descuentosOtros,
       adelantos: row.adelantos,
     });
-  }, [getCategoria, bonosProduccion, bonosVentas, unidadesProducidas, getVendidasRow]);
+  }, [getCategoria, bonosProduccion, unidadesProducidas, getBonoVentasRow]);
 
   // Filas filtradas para mostrar
   const filteredRows = useMemo(() => {
@@ -425,7 +423,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
           kmMonto: calc.kmMonto,
           bonoProduccion: calc.bonoProduccion,
           bonoVentas: calc.bonoVentas,
-          unidadesBonoVentas: getVendidasRow(row),
+          unidadesBonoVentas: getUnidadesNetasRow(row),
           bonoEspecial: calc.bonoEspecial,
           totalBruto: calc.totalBruto,
           descuentosLegales: calc.descuentosLegales,
@@ -597,17 +595,15 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
             </Grid>
             <Grid item xs={6} sm={4} md={2}>
               <TextField
-                fullWidth size="small" type="number" label="Unidades vendidas"
-                value={unidadesVendidas}
-                onChange={(e) => setUnidadesVendidas(Number(e.target.value) || 0)}
+                fullWidth size="small" label="Meta de equipo (neto)"
+                value={loadingUnidades ? '' : totalEquipoNeto}
+                InputProps={{ readOnly: true }}
                 helperText={
                   loadingUnidades
                     ? 'Cargando...'
-                    : ventasMap.size > 0
-                      ? `Cada vendedora cobra por sus heladeras (${ventasMap.size} con ventas). Este valor aplica al resto.`
-                      : unidadesAutoVendidas != null
-                        ? `Auto: ${unidadesAutoVendidas} unid. en notas aprobadas`
-                        : 'Dispara bono ventas'
+                    : tramoGrupal >= 0
+                      ? `Tramo grupal alcanzado: Meta ${tramoGrupal + 1} (informativo)`
+                      : 'Total neto del equipo — sin tramo grupal alcanzado'
                 }
               />
             </Grid>
@@ -622,8 +618,8 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                 >
                   Recargar
                 </Button>
-                {(unidadesAutoProducidas != null || unidadesAutoVendidas != null) && (
-                  <Tooltip title="Restaurar valores auto (equipos fabricados / notas aprobadas)">
+                {unidadesAutoProducidas != null && (
+                  <Tooltip title="Restaurar valor auto (equipos fabricados)">
                     <span>
                       <Button
                         variant="text"
@@ -842,13 +838,25 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                         <Typography variant="body2" color={calc && calc.bonoVentas > 0 ? 'success.main' : 'textSecondary'} fontWeight={calc && calc.bonoVentas > 0 ? 600 : 400}>
                           ${(calc?.bonoVentas ?? 0).toLocaleString('es-AR')}
                         </Typography>
-                        {ventasMap.has(row.empleadoId) && (
-                          <Tooltip title="Heladeras (no exhibidores) vendidas por esta vendedora en el período — disparan su bono de ventas.">
-                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block', lineHeight: 1 }}>
-                              {ventasMap.get(row.empleadoId)} hel.
-                            </Typography>
-                          </Tooltip>
-                        )}
+                        {ventasMap.has(row.empleadoId) && (() => {
+                          const v = ventasMap.get(row.empleadoId)!;
+                          const meta = v.metaAlcanzada;
+                          return (
+                            <Tooltip title={`${v.unidadesNetas} unid. netas (heladeras + coolboxes) vendidas en el período — gobiernan la meta y el bono.`}>
+                              <Box sx={{ lineHeight: 1 }}>
+                                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', lineHeight: 1 }}>
+                                  {v.unidadesNetas} unid.
+                                </Typography>
+                                {meta === 'SUPERADORA' && (
+                                  <Chip label="🏆 Superadora" size="small" color="warning" sx={{ height: 18, mt: 0.25, '& .MuiChip-label': { px: 0.5, fontSize: '0.6rem' } }} />
+                                )}
+                                {meta === 'BASE' && (
+                                  <Chip label="✓ Meta" size="small" color="success" variant="outlined" sx={{ height: 18, mt: 0.25, '& .MuiChip-label': { px: 0.5, fontSize: '0.6rem' } }} />
+                                )}
+                              </Box>
+                            </Tooltip>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell align="center">{renderNumCell(idx, 'bonoEspecial', 100)}</TableCell>
                       <TableCell align="center">{renderNumCell(idx, 'descuentosLegales', 100)}</TableCell>
