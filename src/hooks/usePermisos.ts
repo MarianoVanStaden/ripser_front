@@ -8,6 +8,10 @@ type PermisosMap = Record<TipoRol, Modulo[]>;
 
 // Matriz de permisos: debe coincidir con la configuración del backend
 const PERMISOS_POR_ROL: PermisosMap = {
+  // SuperAdmin de plataforma: acceso total. En la práctica los guards usan el
+  // flag esSuperAdmin del AuthResponse, pero el rol también llega en roles[].
+  SUPER_ADMIN: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'RRHH', 'ADMINISTRACION', 'PRESTAMOS'],
+
   ADMIN: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'RRHH', 'PRESTAMOS'],
 
   OFICINA: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'LOGISTICA', 'GARANTIAS', 'PRESTAMOS'],
