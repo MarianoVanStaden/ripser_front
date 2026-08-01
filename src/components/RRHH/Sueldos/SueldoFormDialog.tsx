@@ -18,6 +18,7 @@ import { CONCEPTO_SUELDO_LABELS, CONCEPTOS_SUELDO } from '../../../types/remuner
 import { calcularRemuneracion } from '../../../utils/remuneracionesCalc';
 import { getNombreCompleto } from '../../../utils/userDisplay';
 import { adelantoApi } from '../../../api/services/adelantoApi';
+import { sueldoApi } from '../../../api/services/sueldoApi';
 
 interface Props {
   open: boolean;
@@ -84,6 +85,8 @@ const SueldoFormDialog: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
   const [loadingAdelantos, setLoadingAdelantos] = useState(false);
   const [adelantosDelMes, setAdelantosDelMes] = useState<Adelanto[]>([]);
+  // Sugerencia de bono de ventas (por meta alcanzada) para el empleado+período.
+  const [bonoVentasSugerido, setBonoVentasSugerido] = useState<{ monto: number; meta: string } | null>(null);
 
   // Reset form on open / editing change
   useEffect(() => {
@@ -136,6 +139,30 @@ const SueldoFormDialog: React.FC<Props> = ({
       })
       .catch(() => {/* silencioso, sigue con el valor actual */})
       .finally(() => { if (!cancelado) setLoadingAdelantos(false); });
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.empleadoId, form.periodo]);
+
+  // Cargar el bono de ventas sugerido (por meta alcanzada) del empleado+período,
+  // mismo patrón que adelantos. El monto sale de las metas de la masiva.
+  useEffect(() => {
+    if (!form.empleadoId || !form.periodo) {
+      setBonoVentasSugerido(null);
+      return;
+    }
+    let cancelado = false;
+    sueldoApi.getUnidadesMes(form.periodo)
+      .then(r => {
+        if (cancelado) return;
+        const venta = r.ventasPorVendedora.find(v => v.empleadoId === form.empleadoId);
+        if (!venta) { setBonoVentasSugerido(null); return; }
+        setBonoVentasSugerido({ monto: venta.bonoSugerido, meta: venta.metaAlcanzada });
+        // Solo auto-precargar si no se está editando un valor previo (o es 0).
+        if (!editing || Number(editing.bonoVentas ?? 0) === 0) {
+          setForm(prev => ({ ...prev, bonoVentas: venta.bonoSugerido }));
+        }
+      })
+      .catch(() => { if (!cancelado) setBonoVentasSugerido(null); });
     return () => { cancelado = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.empleadoId, form.periodo]);
@@ -370,7 +397,13 @@ const SueldoFormDialog: React.FC<Props> = ({
           <Grid item xs={12} sm={6} md={3}>
             <TextField fullWidth type="number" label="Bono ventas ($)"
               value={form.bonoVentas} onChange={setNumberField('bonoVentas')}
-              helperText="Sugerido por las metas en la liquidación masiva; editable acá."
+              helperText={
+                bonoVentasSugerido && bonoVentasSugerido.meta !== 'NINGUNA'
+                  ? bonoVentasSugerido.monto > 0
+                    ? `Sugerido: $${bonoVentasSugerido.monto.toLocaleString('es-AR')} (meta ${bonoVentasSugerido.meta}) — editable.`
+                    : `Meta ${bonoVentasSugerido.meta} alcanzada pero sin monto configurado (Parámetros → BONO). Editable.`
+                  : 'Sugerido por las metas en la liquidación masiva; editable acá.'
+              }
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
