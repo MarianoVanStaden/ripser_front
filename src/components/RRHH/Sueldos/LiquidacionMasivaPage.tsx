@@ -179,7 +179,11 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
         setTotalEquipoNeto(r.totalEquipoNeto);
         setTramoGrupal(r.tramoGrupalAlcanzado);
       })
-      .catch(() => {/* mantener 0 si falla */})
+      .catch((err) => {
+        if (cancelado) return;
+        console.error('getUnidadesMes falló', err);
+        setError('No se pudieron cargar los datos automáticos del mes (producción, ventas, asistencia). Revisá los parámetros de bono/metas en Configuración del sistema.');
+      })
       .finally(() => { if (!cancelado) setLoadingUnidades(false); });
     return () => { cancelado = true; };
   }, [periodo]);
