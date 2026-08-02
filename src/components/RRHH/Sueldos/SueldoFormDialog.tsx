@@ -401,7 +401,7 @@ const SueldoFormDialog: React.FC<Props> = ({
                 bonoVentasSugerido && bonoVentasSugerido.meta !== 'NINGUNA'
                   ? bonoVentasSugerido.monto > 0
                     ? `Sugerido: $${bonoVentasSugerido.monto.toLocaleString('es-AR')} (meta ${bonoVentasSugerido.meta}) — editable.`
-                    : `Meta ${bonoVentasSugerido.meta} alcanzada pero sin monto configurado (Parámetros → BONO). Editable.`
+                    : `Meta ${bonoVentasSugerido.meta} alcanzada pero sin tramo de bono para su categoría/unidades (Config. de Sueldos → Bono Ventas). Editable.`
                   : 'Sugerido por las metas en la liquidación masiva; editable acá.'
               }
             />

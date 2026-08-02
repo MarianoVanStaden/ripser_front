@@ -19,7 +19,7 @@ const ConfigSueldosPage: React.FC = () => {
       <Typography variant="body2" color="textSecondary" mb={3}>
         Categorías salariales y tablas de bono (producción y ventas) por categoría, usadas por la calculadora de sueldos.
         El bono de ventas se paga al alcanzar la meta mensual de unidades (umbrales en Configuración del sistema);
-        el monto sale del tramo por categoría cargado acá, con fallback al monto plano de Configuración del sistema.
+        el monto sale exclusivamente del tramo por categoría cargado acá (el mayor umbral ≤ unidades netas).
       </Typography>
 
       <Paper sx={{ mb: 3 }}>
