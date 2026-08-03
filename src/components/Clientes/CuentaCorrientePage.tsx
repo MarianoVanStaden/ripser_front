@@ -63,10 +63,11 @@ const CuentaCorrientePage: React.FC = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { esAdmin, tieneRol, esSuperAdmin } = usePermisos();
-  // Backdating de movimientos: solo ADMIN o superior (coincide con esAdmin() del backend).
+  const { esAdmin, esSuperAdmin } = usePermisos();
+  // Backdating de movimientos: solo ADMIN pleno o SUPER_ADMIN (coincide con esAdmin() del
+  // backend). Excluye ADMIN_EMPRESA_LIMITADO por pedido del dueño (control de arqueos de caja).
   // Tope hacia atrás: 1° del mes anterior (no tocar períodos ya cerrados).
-  const puedeBackdatear = esSuperAdmin || tieneRol('ADMIN', 'ADMIN_EMPRESA_LIMITADO');
+  const puedeBackdatear = esAdmin || esSuperAdmin;
   const minFechaMovimiento = dayjs().startOf('month').subtract(1, 'month');
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);

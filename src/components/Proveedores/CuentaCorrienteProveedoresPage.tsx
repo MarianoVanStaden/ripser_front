@@ -51,6 +51,7 @@ import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
 import { CajaSelector } from '../common/CajaSelector';
 import { generateCuentaCorrienteProveedorPDF } from '../../utils/pdfExportUtils';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { usePermisos } from '../../hooks/usePermisos';
 
 dayjs.locale('es');
 
@@ -64,6 +65,11 @@ interface Proveedor {
 const CuentaCorrienteProveedoresPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { esAdmin, esSuperAdmin } = usePermisos();
+  // Backdating solo ADMIN pleno o SUPER_ADMIN (coincide con esAdmin() del backend); excluye
+  // ADMIN_EMPRESA_LIMITADO por pedido del dueño (control de arqueos). Tope: 1° del mes anterior.
+  const puedeBackdatear = esAdmin || esSuperAdmin;
+  const minFechaMovimiento = dayjs().startOf('month').subtract(1, 'month');
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [selectedProveedor, setSelectedProveedor] = useState<Proveedor | null>(null);
   const [movimientos, setMovimientos] = useState<CuentaCorrienteProveedor[]>([]);
@@ -82,6 +88,8 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
     metodoPago: 'EFECTIVO' as MetodoPago,
   });
   const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
+  // Fecha del movimiento (fecha de negocio). Default hoy; editable solo si puedeBackdatear.
+  const [fechaMovimiento, setFechaMovimiento] = useState<Dayjs>(dayjs());
 
   const esPago = newMovimiento.tipo === 'CREDITO';
   const requiereCaja = esPago && metodoPagoRequiereCaja(newMovimiento.metodoPago);
@@ -158,7 +166,10 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const localDateTime = dayjs().format('YYYY-MM-DDTHH:mm:ss');
+      // Backdate solo para ADMIN+; el backend revalida rol y tope (1° del mes anterior).
+      const localDateTime = puedeBackdatear && fechaMovimiento.isValid()
+        ? fechaMovimiento.format('YYYY-MM-DD') + 'T' + dayjs().format('HH:mm:ss')
+        : dayjs().format('YYYY-MM-DDTHH:mm:ss');
 
       const payload = {
         proveedorId: selectedProveedor.id,
@@ -182,6 +193,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
         metodoPago: 'EFECTIVO',
       });
       setCajaRef(null);
+      setFechaMovimiento(dayjs());
       setOpenMovimientoDialog(false);
 
       // Refresh data
@@ -537,6 +549,28 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
                 <MenuItem value="DEBITO">Débito - Compra/Deuda (+)</MenuItem>
                 <MenuItem value="CREDITO">Crédito - Pago al proveedor (-)</MenuItem>
               </TextField>
+
+              {puedeBackdatear && (
+                <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+                  <DatePicker
+                    label="Fecha del movimiento"
+                    value={fechaMovimiento}
+                    onChange={(v) => {
+                      // Guard: tipeo parcial produce "Invalid Date"; no lo propagamos.
+                      if (v && v.isValid()) setFechaMovimiento(v);
+                    }}
+                    minDate={minFechaMovimiento}
+                    maxDate={dayjs()}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        margin: 'normal',
+                        helperText: 'Solo admins. Impacta el flujo de caja en esta fecha (tope: 1° del mes anterior).',
+                      },
+                    }}
+                  />
+                </LocalizationProvider>
+              )}
 
               <TextField
                 fullWidth

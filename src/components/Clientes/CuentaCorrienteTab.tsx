@@ -42,9 +42,10 @@ interface CuentaCorrienteTabProps {
 }
 
 const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) => {
-  const { tieneRol, esSuperAdmin } = usePermisos();
-  // Backdating solo ADMIN+ (coincide con esAdmin() del backend); tope: 1° del mes anterior.
-  const puedeBackdatear = esSuperAdmin || tieneRol('ADMIN', 'ADMIN_EMPRESA_LIMITADO');
+  const { esAdmin, esSuperAdmin } = usePermisos();
+  // Backdating solo ADMIN pleno o SUPER_ADMIN (coincide con esAdmin() del backend); excluye
+  // ADMIN_EMPRESA_LIMITADO por pedido del dueño (control de arqueos). Tope: 1° del mes anterior.
+  const puedeBackdatear = esAdmin || esSuperAdmin;
   const minFecha = dayjs().startOf('month').subtract(1, 'month').format('YYYY-MM-DD');
   const hoy = dayjs().format('YYYY-MM-DD');
   const [movimientos, setMovimientos] = useState<CuentaCorriente[]>([]);
