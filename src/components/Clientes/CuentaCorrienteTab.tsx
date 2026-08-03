@@ -35,12 +35,18 @@ import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
 import { CajaSelector } from '../common/CajaSelector';
 import { cuentaCorrienteApiWithFallback as cuentaCorrienteApi } from '../../api/services/apiWithFallback';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { usePermisos } from '../../hooks/usePermisos';
 
 interface CuentaCorrienteTabProps {
   clienteId: number;
 }
 
 const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) => {
+  const { tieneRol, esSuperAdmin } = usePermisos();
+  // Backdating solo ADMIN+ (coincide con esAdmin() del backend); tope: 1° del mes anterior.
+  const puedeBackdatear = esSuperAdmin || tieneRol('ADMIN', 'ADMIN_EMPRESA_LIMITADO');
+  const minFecha = dayjs().startOf('month').subtract(1, 'month').format('YYYY-MM-DD');
+  const hoy = dayjs().format('YYYY-MM-DD');
   const [movimientos, setMovimientos] = useState<CuentaCorriente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -131,9 +137,11 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
 
     try {
       const currentTime = dayjs().format('HH:mm:ss');
+      // No-admin: el backend rechaza backdate, así que forzamos hoy desde el front.
+      const fechaMov = puedeBackdatear ? formData.fecha : hoy;
       const requestData = {
         ...formData,
-        fecha: `${formData.fecha}T${currentTime}`,
+        fecha: `${fechaMov}T${currentTime}`,
         cajaPesosId: esCobro && cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
         cajaAhorroId: esCobro && cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
       };
@@ -333,14 +341,18 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
                   <MenuItem value="DEBITO">Débito (Cargo)</MenuItem>
                   <MenuItem value="CREDITO">Crédito (Pago)</MenuItem>
                 </TextField>
-                <TextField
-                  type="date"
-                  label="Fecha"
-                  value={formData.fecha}
-                  onChange={handleInputChange('fecha')}
-                  required
-                  InputLabelProps={{ shrink: true }}
-                />
+                {puedeBackdatear && (
+                  <TextField
+                    type="date"
+                    label="Fecha"
+                    value={formData.fecha}
+                    onChange={handleInputChange('fecha')}
+                    required
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: minFecha, max: hoy }}
+                    helperText="Solo admins. Tope: 1° del mes anterior."
+                  />
+                )}
               </Box>
               
               <TextField

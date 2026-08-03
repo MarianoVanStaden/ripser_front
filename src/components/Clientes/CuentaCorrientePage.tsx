@@ -63,7 +63,11 @@ const CuentaCorrientePage: React.FC = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { esAdmin } = usePermisos();
+  const { esAdmin, tieneRol, esSuperAdmin } = usePermisos();
+  // Backdating de movimientos: solo ADMIN o superior (coincide con esAdmin() del backend).
+  // Tope hacia atrás: 1° del mes anterior (no tocar períodos ya cerrados).
+  const puedeBackdatear = esSuperAdmin || tieneRol('ADMIN', 'ADMIN_EMPRESA_LIMITADO');
+  const minFechaMovimiento = dayjs().startOf('month').subtract(1, 'month');
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,6 +86,8 @@ const CuentaCorrientePage: React.FC = () => {
     metodoPago: 'EFECTIVO' as MetodoPago,
   });
   const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
+  // Fecha del movimiento (fecha de negocio). Default hoy; editable solo si puedeBackdatear.
+  const [fechaMovimiento, setFechaMovimiento] = useState<Dayjs>(dayjs());
 
   // Corrección ADMIN (ajuste de saldo sin impacto en caja)
   const [openAjusteDialog, setOpenAjusteDialog] = useState(false);
@@ -145,9 +151,13 @@ const CuentaCorrientePage: React.FC = () => {
     }
 
     try {
+      // Backdate solo para ADMIN+; el backend revalida rol y tope (1° del mes anterior).
+      const fecha = puedeBackdatear && fechaMovimiento.isValid()
+        ? fechaMovimiento.format('YYYY-MM-DD') + 'T' + dayjs().format('HH:mm:ss')
+        : dayjs().format('YYYY-MM-DDTHH:mm:ss');
       const payload = {
         clienteId: selectedCliente.id,
-        fecha: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
+        fecha,
         tipo: newMovimiento.tipo,
         importe: newMovimiento.importe,
         concepto: newMovimiento.concepto,
@@ -161,6 +171,7 @@ const CuentaCorrientePage: React.FC = () => {
 
       setNewMovimiento({ tipo: 'CREDITO', importe: 0, concepto: '', numeroComprobante: '', metodoPago: 'EFECTIVO' });
       setCajaRef(null);
+      setFechaMovimiento(dayjs());
       setOpenMovimientoDialog(false);
 
       // Invalidar movimientos (React Query refetchea automáticamente)
@@ -563,6 +574,28 @@ const CuentaCorrientePage: React.FC = () => {
                 <MenuItem value="DEBITO">Débito - Cliente debe (+)</MenuItem>
                 <MenuItem value="CREDITO">Crédito - Cliente paga (-)</MenuItem>
               </TextField>
+
+              {puedeBackdatear && (
+                <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+                  <DatePicker
+                    label="Fecha del movimiento"
+                    value={fechaMovimiento}
+                    onChange={(v) => {
+                      // Guard: tipeo parcial produce "Invalid Date"; no lo propagamos.
+                      if (v && v.isValid()) setFechaMovimiento(v);
+                    }}
+                    minDate={minFechaMovimiento}
+                    maxDate={dayjs()}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        margin: 'normal',
+                        helperText: 'Solo admins. Impacta el flujo de caja en esta fecha (tope: 1° del mes anterior).',
+                      },
+                    }}
+                  />
+                </LocalizationProvider>
+              )}
 
               <TextField
                 fullWidth
