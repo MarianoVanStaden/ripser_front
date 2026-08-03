@@ -34,7 +34,10 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps chromium
     - name: Run Playwright tests
-      run: npx playwright test
+      # Solo el proyecto `smoke` (specs autocontenidos con API mockeada, sin
+      # backend real) — es lo que corría la vieja config raíz. La suite POM de
+      # módulos necesita backend y se corre aparte con `npm run test:e2e`.
+      run: npx playwright test --config=e2e/playwright.config.ts --project=smoke
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
