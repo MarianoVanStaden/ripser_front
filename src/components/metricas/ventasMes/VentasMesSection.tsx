@@ -25,6 +25,8 @@ import { AnulacionesPorMotivoChart } from './AnulacionesPorMotivoChart';
 interface Props {
   empresaId: number | null;
   sucursalId: number | null;
+  /** Filtro por vendedor asignado del documento (null = todos). */
+  usuarioId?: number | null;
   /** ISO yyyy-mm-dd, inclusive. */
   desde: string;
   hasta: string;
@@ -60,10 +62,11 @@ const StatCard: React.FC<{
  * del período (solo counts, sin montos). Requiere rol de gestión — no montar
  * para VENDEDOR (el endpoint devuelve 403).
  */
-export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, desde, hasta }) => {
+export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuarioId, desde, hasta }) => {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['ventas-dashboard', empresaId, sucursalId, desde, hasta],
-    queryFn: () => documentoApi.getDashboardVentas(desde, hasta, sucursalId ?? undefined),
+    queryKey: ['ventas-dashboard', empresaId, sucursalId, usuarioId, desde, hasta],
+    queryFn: () =>
+      documentoApi.getDashboardVentas(desde, hasta, sucursalId ?? undefined, usuarioId ?? undefined),
     refetchInterval: 5 * 60_000,
   });
 
@@ -73,7 +76,7 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, desde
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <PointOfSaleIcon color="primary" sx={{ mr: 1 }} />
           <Typography variant="h6" fontWeight={600}>
-            Ventas del Mes
+            Ventas del Período
           </Typography>
         </Box>
 

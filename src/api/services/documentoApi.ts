@@ -258,10 +258,11 @@ export const documentoApi = {
   getDashboardVentas: async (
     desde: string,
     hasta: string,
-    sucursalId?: number
+    sucursalId?: number,
+    usuarioId?: number
   ): Promise<VentasDashboardDTO> => {
     const response = await api.get<VentasDashboardDTO>('/api/documentos/dashboard-ventas', {
-      params: { desde, hasta, sucursalId },
+      params: { desde, hasta, sucursalId, usuarioId },
     });
     return response.data;
   },

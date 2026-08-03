@@ -15,7 +15,12 @@ import {
   LinearProgress,
   IconButton,
   Skeleton,
+  Autocomplete,
+  TextField,
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import {
   Refresh as RefreshIcon,
   TrendingUp as TrendingUpIcon,
@@ -44,6 +49,8 @@ import 'dayjs/locale/es';
 import { leadApi } from '../../api/services/leadApi';
 import { leadMetricasApi } from '../../api/services/leadMetricasApi';
 import { recordatorioLeadApi } from '../../api/services/recordatorioLeadApi';
+import { usuarioApi } from '../../api/services';
+import type { Usuario } from '../../types';
 import type { LeadDTO, RecordatorioLeadDTO } from '../../types/lead.types';
 import type { LeadMetricasResponseDTO } from '../../api/services/leadMetricasApi';
 import type { RecordatorioConLeadDTO } from '../../api/services/recordatorioLeadApi';
@@ -194,8 +201,18 @@ export const VentasDashboard = () => {
     ? sucursales.find(s => s.id === sucursalFiltro)?.nombre || 'Sucursal'
     : 'Todas las sucursales';
 
-  const [fechaInicio] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
-  const [fechaFin] = useState(dayjs().endOf('month').format('YYYY-MM-DD'));
+  // Filtros del dashboard: período (default mes actual) y vendedor (solo gestión).
+  const [fechaInicio, setFechaInicio] = useState<dayjs.Dayjs | null>(dayjs().startOf('month'));
+  const [fechaFin, setFechaFin] = useState<dayjs.Dayjs | null>(dayjs().endOf('month'));
+  const [vendedores, setVendedores] = useState<Usuario[]>([]);
+  const [vendedorSeleccionado, setVendedorSeleccionado] = useState<Usuario | null>(null);
+
+  useEffect(() => {
+    if (isVendedor) return;
+    usuarioApi.getVendedores()
+      .then(setVendedores)
+      .catch((err) => console.warn('No se pudieron cargar vendedores:', err));
+  }, [isVendedor]);
 
   // Reminders for today (overdue + today) — shown in "Foco de hoy"
   const focusItems = useMemo(() => {
@@ -219,7 +236,7 @@ export const VentasDashboard = () => {
     loadDashboardData();
     const interval = setInterval(loadDashboardData, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [empresaId, sucursalFiltro, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [empresaId, sucursalFiltro, user?.id, fechaInicio, fechaFin, vendedorSeleccionado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadDashboardData = async () => {
     try {
@@ -251,10 +268,12 @@ export const VentasDashboard = () => {
       const [allLeadsResponse, metricasData, recordatoriosData] = await Promise.all([
         leadApi.getAll({}, params),
         leadMetricasApi.obtenerMetricasCompletas({
-          fechaInicio,
-          fechaFin,
+          fechaInicio: (fechaInicio ?? dayjs().startOf('month')).format('YYYY-MM-DD'),
+          fechaFin: (fechaFin ?? dayjs().endOf('month')).format('YYYY-MM-DD'),
           sucursalId: sucursalFiltro !== null ? sucursalFiltro : undefined,
-          usuarioAsignadoId: user?.id,
+          // VENDEDOR ve solo lo suyo; gestión ve todo o filtra por el vendedor elegido.
+          // (Antes se pasaba siempre user?.id y un admin veía métricas vacías.)
+          usuarioAsignadoId: isVendedor ? user?.id : vendedorSeleccionado?.id,
         }),
         recordatoriosPromise,
       ]);
@@ -420,6 +439,57 @@ export const VentasDashboard = () => {
           {error}
         </Alert>
       )}
+
+      {/* ── FILTROS (período + vendedor) ── */}
+      <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
+            <DatePicker
+              label="Desde"
+              value={fechaInicio}
+              onChange={(v) => {
+                if (v && !v.isValid()) return;
+                setFechaInicio(v);
+              }}
+              slotProps={{ textField: { size: 'small', sx: { minWidth: 160 } } }}
+            />
+            <DatePicker
+              label="Hasta"
+              value={fechaFin}
+              onChange={(v) => {
+                if (v && !v.isValid()) return;
+                setFechaFin(v);
+              }}
+              slotProps={{ textField: { size: 'small', sx: { minWidth: 160 } } }}
+            />
+            {!isVendedor && (
+              <Autocomplete
+                options={vendedores}
+                value={vendedorSeleccionado}
+                onChange={(_, v) => setVendedorSeleccionado(v)}
+                getOptionLabel={(u) => u.username || `Usuario #${u.id}`}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                renderInput={(params) => (
+                  <TextField {...params} label="Vendedor" size="small" placeholder="Todos" />
+                )}
+                sx={{ minWidth: 220 }}
+                clearOnEscape
+              />
+            )}
+            <Button
+              size="small"
+              onClick={() => {
+                setFechaInicio(dayjs().startOf('month'));
+                setFechaFin(dayjs().endOf('month'));
+                setVendedorSeleccionado(null);
+              }}
+              sx={{ textTransform: 'none', alignSelf: { xs: 'flex-start', sm: 'center' } }}
+            >
+              Mes actual
+            </Button>
+          </Stack>
+        </LocalizationProvider>
+      </Paper>
 
       {/* ── KPI CARDS ── */}
       <Box sx={{
@@ -923,8 +993,9 @@ export const VentasDashboard = () => {
         <VentasMesSection
           empresaId={empresaId}
           sucursalId={sucursalFiltro}
-          desde={fechaInicio}
-          hasta={fechaFin}
+          usuarioId={vendedorSeleccionado?.id ?? null}
+          desde={(fechaInicio ?? dayjs().startOf('month')).format('YYYY-MM-DD')}
+          hasta={(fechaFin ?? dayjs().endOf('month')).format('YYYY-MM-DD')}
         />
       )}
 
