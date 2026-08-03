@@ -1290,7 +1290,6 @@ const FacturacionPage = () => {
         tipoFinanciacion: notaTipoFinanciacion,
         tasaInteres: tasaInteresParaEnviar,
         ...resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega),
-        ...buildCajaPayload(selectedNotaPedido?.metodoPago ?? '', cajaContadoRef),
       });
 
       if (notaEntregaInicial && notaMontoEntregaCalculado > 0) {
@@ -1337,7 +1336,6 @@ const FacturacionPage = () => {
               tipoFinanciacion: capturedTipoFin,
               tasaInteres: capturedTasaInteres,
               ...resolveEntregaFields(capturedMetodoPago, capturedEntregaInicial, capturedUsePorcentaje, capturedPorcentajeEntrega, capturedMontoFijoEntrega),
-              ...buildCajaPayload(capturedMetodoPago, cajaContadoRef),
             });
             if (capturedEntregaInicial && capturedMontoEntrega > 0) {
               setFacturaEntregaInfo({
@@ -1625,7 +1623,6 @@ const FacturacionPage = () => {
           tipoFinanciacion: notaTipoFinanciacion,
           tasaInteres: notaTasaInteres,
           ...resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega),
-          ...buildCajaPayload(selectedNotaPedido?.metodoPago ?? '', cajaContadoRef),
         });
         if (notaEntregaInicial && notaMontoEntregaCalculado > 0) {
           setFacturaEntregaInfo({ montoEntrega: notaMontoEntregaCalculado, montoFinanciado: notaMontoFinanciado, cantidadCuotas: notaCantidadCuotas });
