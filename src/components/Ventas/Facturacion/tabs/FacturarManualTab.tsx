@@ -278,6 +278,10 @@ const FacturarManualTab: React.FC<Props> = ({
                   onChange={onChangeCajaContado}
                   direccion="ingreso"
                 />
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                  Solo si el cobro entra ahora (pago en el local). Dejala vacía si la plata
+                  ingresa con la rendición del viaje de entrega.
+                </Typography>
               </Grid>
             )}
 

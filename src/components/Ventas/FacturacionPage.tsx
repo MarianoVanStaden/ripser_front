@@ -40,7 +40,7 @@ import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
 import SuccessDialog from "../common/SuccessDialog";
 import LoadingOverlay from "../common/LoadingOverlay";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
-import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
+import { type CajaRef } from '../../types/caja.types';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import type {
@@ -1112,9 +1112,9 @@ const FacturacionPage = () => {
     if (!selectedUsuarioId) return setError('Debe seleccionar un vendedor.');
     if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
 
-    if (!isFinanciamiento(paymentMethod) && metodoPagoRequiereCaja(paymentMethod) && !cajaContadoRef) {
-      return setError('Seleccioná la caja donde ingresa el pago al contado.');
-    }
+    // La caja al contado es OPCIONAL: se elige solo si la plata entra en el acto.
+    // Sin caja, el backend no genera depósito y el ingreso físico llega con la
+    // rendición del viaje que entrega los equipos.
 
     if (isFinanciamiento(paymentMethod)) {
       if (cantidadCuotas != null && cantidadCuotas < 1) return setError('Mínimo 1 cuota');
