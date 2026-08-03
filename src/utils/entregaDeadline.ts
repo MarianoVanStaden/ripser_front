@@ -31,6 +31,21 @@ export function defaultFechaEntregaISO(diasEntrega: number): string {
 }
 
 /**
+ * Parsea una fecha del backend a su fecha de CALENDARIO local, sin corrimiento
+ * por timezone. `new Date('2026-07-15')` la parsea como UTC-midnight y en un
+ * huso al oeste (America/Argentina, UTC-3) `getDate()` la retrocede al día 14.
+ * Extraemos año/mes/día del string para anclarla al calendario correcto. Acepta
+ * tanto date-only ('yyyy-mm-dd') como ISO con hora (usa sólo la parte de fecha,
+ * que es lo único que importa para el indicador de días).
+ */
+function parseFechaLocal(fecha: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(fecha);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const d = new Date(fecha);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
  * Calcula los días restantes hasta la entrega estimada.
  * @param fechaEmision  ISO string de la fechaEmision de la factura
  * @param diasLimite    Parámetro configurable DIAS_ENTREGA_ESTIMADA (default 25)
@@ -40,8 +55,8 @@ export function calcEntregaInfo(
   diasLimite: number
 ): EntregaInfo | null {
   if (!fechaEmision) return null;
-  const base = new Date(fechaEmision);
-  if (isNaN(base.getTime())) return null;
+  const base = parseFechaLocal(fechaEmision);
+  if (!base) return null;
 
   const hoy = new Date();
   const dBase = Date.UTC(base.getFullYear(), base.getMonth(), base.getDate());
@@ -49,7 +64,9 @@ export function calcEntregaInfo(
   const dEst = dBase + diasLimite * DIA_MS;
 
   return {
-    fecha: new Date(dEst).toLocaleDateString('es-AR'),
+    // dEst es un ancla en UTC (Date.UTC + días); formatearlo en la TZ local
+    // volvería a correr el día un paso. Lo leemos en UTC para que coincida.
+    fecha: new Date(dEst).toLocaleDateString('es-AR', { timeZone: 'UTC' }),
     transcurridos: Math.max(0, Math.round((dHoy - dBase) / DIA_MS)),
     restantes: Math.round((dEst - dHoy) / DIA_MS),
   };

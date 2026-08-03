@@ -1,10 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   calculateSellingPrice,
   calculateMarginPercentage,
   formatPrice,
+  loadPriceCalculationParams,
   PRECIO_PARAMETROS,
 } from '../priceCalculations';
+
+vi.mock('../../api/services/parametroSistemaApi', () => ({
+  parametroSistemaApi: { getByClave: vi.fn() },
+}));
+import { parametroSistemaApi } from '../../api/services/parametroSistemaApi';
+const mockedParametro = vi.mocked(parametroSistemaApi);
 
 describe('priceCalculations', () => {
   describe('calculateSellingPrice', () => {
@@ -99,6 +106,43 @@ describe('priceCalculations', () => {
     it('has the expected parameter keys', () => {
       expect(PRECIO_PARAMETROS.PORCENTAJE_GANANCIA).toBe('PORCENTAJE_GANANCIA');
       expect(PRECIO_PARAMETROS.REDONDEO_PRECIO).toBe('REDONDEO_PRECIO');
+    });
+  });
+
+  describe('loadPriceCalculationParams', () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      vi.clearAllMocks();
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+    afterEach(() => warnSpy.mockRestore());
+
+    it('lee ambos parámetros del backend cuando existen', async () => {
+      mockedParametro.getByClave.mockImplementation(async (clave: string) =>
+        clave === PRECIO_PARAMETROS.PORCENTAJE_GANANCIA
+          ? ({ valor: '30' } as never)
+          : ({ valor: '50' } as never),
+      );
+      const params = await loadPriceCalculationParams();
+      expect(params).toEqual({ porcentajeGanancia: 30, redondeo: 50 });
+    });
+
+    it('cae a los defaults si el backend falla (no propaga el error)', async () => {
+      mockedParametro.getByClave.mockRejectedValue(new Error('404'));
+      const params = await loadPriceCalculationParams();
+      // DEFAULTS del módulo: 27.671993 / 100
+      expect(params.porcentajeGanancia).toBeCloseTo(27.671993, 6);
+      expect(params.redondeo).toBe(100);
+    });
+
+    it('mezcla valor del backend con default cuando sólo uno falla', async () => {
+      mockedParametro.getByClave.mockImplementation(async (clave: string) => {
+        if (clave === PRECIO_PARAMETROS.PORCENTAJE_GANANCIA) return { valor: '35' } as never;
+        throw new Error('no redondeo');
+      });
+      const params = await loadPriceCalculationParams();
+      expect(params.porcentajeGanancia).toBe(35);
+      expect(params.redondeo).toBe(100); // default
     });
   });
 });

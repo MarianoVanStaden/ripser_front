@@ -200,6 +200,7 @@ describe('AuthContext', () => {
         email: 'test@test.com',
         roles: ['VENDEDOR'],
         esSuperAdmin: false,
+        esPlatformOwner: false,
       });
       expect(result.current.token).toBe('new-access-token');
       expect(result.current.esSuperAdmin).toBe(false);

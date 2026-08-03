@@ -145,5 +145,44 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     css: false,
     include: ['src/**/*.test.{ts,tsx}'],
+    // Pin TZ: la app es America/Argentina/Buenos_Aires (UTC-3). Sin esto, los
+    // tests de fecha pasan/fallan según la TZ del runner (dev vs CI) — una bomba
+    // de tiempo. Fijarla acá hace que dayjs y `new Date()` sean deterministas.
+    env: { TZ: 'America/Argentina/Buenos_Aires' },
+    // x-date-pickers/esm hace un directory-import de '@mui/material/styles' que
+    // Node no resuelve al externalizarlo; inlinearlo hace que Vite lo transforme
+    // y resuelva bien (necesario para LocalizationProvider en renderWithProviders).
+    server: { deps: { inline: [/@mui\/x-date-pickers/] } },
+    coverage: {
+      provider: 'v8',
+      // Emitir el reporte incluso si algún test falla; sin esto Vitest descarta
+      // todo el coverage ante un solo fallo y los thresholds no se chequean.
+      reportOnFailure: true,
+      reporter: ['text-summary', 'html', 'clover', 'json-summary'],
+      // Sólo medimos lo que puede tener lógica testeable. Excluimos infra de
+      // test, tipos, barrels y assets que inflarían el denominador sin señal.
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/test/**',
+        'src/**/*.d.ts',
+        'src/types/**',
+        'src/**/index.ts',
+        'src/main.tsx',
+        'src/sentry.ts',
+        'src/theme/**',
+      ],
+      // Thresholds calibrados al piso real medido (ago 2026, denominador = toda
+      // la app): stmts 3.56 / branch 2.25 / func 2.66 / lines 3.66. Se fijan
+      // apenas por debajo como candado anti-regresión — SUBEN con cada bloque de
+      // tests, nunca bajan. Cobertura global baja a propósito: la deuda histórica
+      // es real, el objetivo es que no empeore.
+      thresholds: {
+        statements: 3.5,
+        branches: 2.2,
+        functions: 2.6,
+        lines: 3.6,
+      },
+    },
   },
 })

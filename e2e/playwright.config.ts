@@ -16,23 +16,19 @@ dotenv.config({
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173';
 
+// Config ÚNICA de E2E (antes había una segunda en la raíz para smoke sin auth;
+// ahora ese smoke vive en e2e/smoke/ como el proyecto `smoke`).
+// Convención: los specs son *.spec.ts. Los *.page.ts son POMs y *.setup.ts es
+// el setup de auth — ninguno de esos matchea como test.
 export default defineConfig({
-  // All tests live under e2e/modules/
-  testDir: './modules',
+  // Raíz de e2e: cada proyecto acota qué corre con su propio testMatch.
+  testDir: '.',
 
-  // Fully parallel — each test runs in its own worker
   fullyParallel: true,
-
-  // Fail fast on test.only left in source (critical for CI)
   forbidOnly: !!process.env.CI,
-
-  // Retry on CI and locally to absorb rendering flakiness on heavy ERP pages
   retries: process.env.CI ? 2 : 1,
-
-  // CI: 2 workers to stay within resource limits; local: auto
   workers: process.env.CI ? 2 : undefined,
 
-  // Reporters: HTML for local review, JSON for CI artifact parsing, GitHub for PR annotations
   reporter: [
     ['html', { outputFolder: '../playwright-report/e2e', open: 'never' }],
     ['json', { outputFile: '../playwright-report/e2e/results.json' }],
@@ -40,81 +36,65 @@ export default defineConfig({
   ],
 
   use: {
-    // All relative page.goto() calls use this base
     baseURL: BASE_URL,
-
-    // Attribute used by getByTestId() — must match what's in the components
     testIdAttribute: 'data-testid',
-
-    // Capture on failure for debugging
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-
-    // Trace: record on first retry so CI has a trace to inspect on flakes
     trace: 'on-first-retry',
-
-    // Generous timeouts for the ERP's heavier pages
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
 
   projects: [
     /**
-     * SETUP PROJECT
-     * Runs auth.setup.ts once before any other project.
-     * Logs in with real credentials and saves auth state to .auth/user.json.
-     * All authenticated projects depend on this.
+     * SETUP — corre una vez antes de los módulos autenticados. Loguea con
+     * credenciales reales y guarda el estado en e2e/.auth/user.json.
      */
     {
       name: 'setup',
-      testMatch: /.*auth\.setup\.ts/,
+      testMatch: /modules\/auth\/auth\.setup\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
 
     /**
-     * AUTH TESTS
-     * Tests that validate the login UI itself — must start unauthenticated.
-     * Does NOT depend on the setup project.
-     * auth.test.ts overrides storageState to empty to ensure clean state.
+     * AUTH — valida la UI de login; debe arrancar SIN sesión.
+     * auth.spec.ts fuerza storageState vacío. No depende de setup.
      */
     {
       name: 'auth',
-      testMatch: /.*auth\/auth\.test\.ts/,
+      testMatch: /modules\/auth\/auth\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
 
     /**
-     * MAIN CHROMIUM PROJECT
-     * All other modules run here, authenticated via storageState.
-     * Depends on 'setup' having completed successfully.
+     * SMOKE — humo de rutas públicas / navegación, SIN autenticación.
+     * Migrado desde la antigua config raíz (tests/). No depende de setup.
+     */
+    {
+      name: 'smoke',
+      testMatch: /smoke\/.*\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    /**
+     * MÓDULOS — el resto de los specs, autenticados vía storageState.
+     * Depende de que 'setup' haya corrido. Ignora auth.spec.ts (lo corre 'auth').
      */
     {
       name: 'chromium',
+      testMatch: /modules\/.*\.spec\.ts/,
+      testIgnore: /modules\/auth\/auth\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'e2e/.auth/user.json',
       },
       dependencies: ['setup'],
-      testIgnore: [/.*auth\.setup\.ts/, /.*auth\/auth\.test\.ts/],
     },
-
-    // Uncomment for cross-browser coverage:
-    // {
-    //   name: 'firefox',
-    //   use: {
-    //     ...devices['Desktop Firefox'],
-    //     storageState: 'e2e/.auth/user.json',
-    //   },
-    //   dependencies: ['setup'],
-    //   testIgnore: [/.*auth\.setup\.ts/, /.*auth\/auth\.test\.ts/],
-    // },
   ],
 
-  // Start the Vite dev server automatically before tests
   webServer: {
     command: 'npm run dev',
     url: BASE_URL,
-    // Reuse a running server locally; always start fresh on CI
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
