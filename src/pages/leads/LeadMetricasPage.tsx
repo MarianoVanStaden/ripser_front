@@ -35,7 +35,6 @@ import type {
 import { parametroSistemaApi, usuarioApi } from '../../api/services';
 import type { Usuario } from '../../types';
 import { useTenant } from '../../context/TenantContext';
-import { useAuth } from '../../context/AuthContext';
 import { EmbudoVentasChart } from '../../components/metricas/EmbudoVentasChart';
 import { MetricasCanalChart } from '../../components/metricas/MetricasCanalChart';
 import { MetricasPrioridadChart } from '../../components/metricas/MetricasPrioridadChart';
@@ -51,13 +50,13 @@ dayjs.locale('es');
 
 export const LeadMetricasPage = () => {
   const { sucursalFiltro, sucursales } = useTenant();
-  const { user } = useAuth();
 
-  // El rol SUPERVISOR ve el dashboard pero no los montos de dinero de la empresa,
-  // solo cantidades, tasas y cumplimiento de metas de unidades/leads.
-  const esSupervisor =
-    (user?.rol || user?.roles?.[0])?.toString().trim().toUpperCase() === 'SUPERVISOR';
-  
+  // Este dashboard no muestra montos de dinero a NINGÚN rol (decisión ago 2026):
+  // es una herramienta del equipo comercial; la facturación vive en Flujo de Caja.
+  // El backend además redacta los montos server-side.
+  const ocultarMontos = true;
+
+
   // Obtener nombre de la sucursal actual
   const sucursalActualNombre = sucursalFiltro 
     ? sucursales.find(s => s.id === sucursalFiltro)?.nombre || 'Sucursal desconocida'
@@ -182,7 +181,7 @@ export const LeadMetricasPage = () => {
 
     try {
       const nombreArchivo = generarNombreArchivo('xlsx');
-      await exportarMetricasExcel(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre, esSupervisor);
+      await exportarMetricasExcel(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre, ocultarMontos);
       setError(null); // Limpiar errores previos si fue exitoso
     } catch (err: any) {
       console.error('Error al exportar métricas a Excel:', err);
@@ -204,7 +203,7 @@ export const LeadMetricasPage = () => {
       await exportarMetricasPDF(
         metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre,
         { embudoImgData, canalImgData, prioridadImgData, tendenciasImgData },
-        esSupervisor
+        ocultarMontos
       );
       setError(null);
     } catch (err: any) {
@@ -421,8 +420,8 @@ export const LeadMetricasPage = () => {
               </Card>
             </Grid>
 
-            {/* Presupuesto vs Meta (oculto para SUPERVISOR: es monto de dinero) */}
-            {!esSupervisor && (
+            {/* Cumplimiento de Meta de Ventas: solo el % (calculado server-side);
+                los montos de facturación no se muestran a ningún rol. */}
             <Grid item xs={12} md={4}>
               <Card>
                 <CardContent>
@@ -433,23 +432,18 @@ export const LeadMetricasPage = () => {
                     variant="h3"
                     component="div"
                     color={
-                      ((metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0) / metaPresupuestoMensual * 100) >= 100
+                      (metricas.presupuestoVsRealizado?.cumplimientoMetaVentas ?? 0) >= 100
                         ? 'success.main'
-                        : ((metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0) / metaPresupuestoMensual * 100) >= 70
+                        : (metricas.presupuestoVsRealizado?.cumplimientoMetaVentas ?? 0) >= 70
                           ? 'warning.main'
                           : 'error.main'
                     }
                   >
-                    {metaPresupuestoMensual > 0
-                      ? ((metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0) / metaPresupuestoMensual * 100).toFixed(0)
-                      : '0'}%
+                    {(metricas.presupuestoVsRealizado?.cumplimientoMetaVentas ?? 0).toFixed(0)}%
                   </Typography>
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="body2">
-                      Realizado: ${(metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0).toLocaleString()}
-                    </Typography>
-                    <Typography variant="body2">
-                      Meta mensual: ${metaPresupuestoMensual.toLocaleString()}
+                      % de la meta mensual de facturación
                     </Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
                       {metricas.presupuestoVsRealizado?.cantidadPresupuestosRealizados ?? 0} de {metricas.presupuestoVsRealizado?.cantidadPresupuestosEstimados ?? 0} presupuestos convertidos
@@ -458,7 +452,6 @@ export const LeadMetricasPage = () => {
                 </CardContent>
               </Card>
             </Grid>
-            )}
 
             {/* Meta de Leads */}
             <Grid item xs={12} md={4}>
@@ -496,38 +489,6 @@ export const LeadMetricasPage = () => {
                 </CardContent>
               </Card>
             </Grid>
-
-            {/* Valor Promedio por Conversión (oculto para SUPERVISOR: es monto de dinero) */}
-            {!esSupervisor && (
-            <Grid item xs={12} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
-                    Valor Promedio por Conversión
-                  </Typography>
-                  <Typography variant="h3" component="div" color="info.main">
-                    ${(
-                      (metricas.presupuestoVsRealizado?.cantidadPresupuestosRealizados ?? 0) > 0
-                        ? (metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0) /
-                          (metricas.presupuestoVsRealizado?.cantidadPresupuestosRealizados ?? 1)
-                        : 0
-                    ).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </Typography>
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="body2">
-                      Conversiones: {metricas.presupuestoVsRealizado?.cantidadPresupuestosRealizados ?? 0}
-                    </Typography>
-                    <Typography variant="body2">
-                      Total facturado: ${(metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0).toLocaleString()}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                      Ticket promedio de venta
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            )}
 
             {/* Leads en Pipeline Activo */}
             <Grid item xs={12} md={4}>
@@ -572,14 +533,14 @@ export const LeadMetricasPage = () => {
             {/* Métricas por Canal */}
             <Grid item xs={12} md={6}>
               <div id="metricas-canal-chart" style={{ background: '#fff' }}>
-                <MetricasCanalChart data={metricas.metricasPorCanal} ocultarMontos={esSupervisor} />
+                <MetricasCanalChart data={metricas.metricasPorCanal} ocultarMontos={ocultarMontos} />
               </div>
             </Grid>
 
             {/* Métricas por Prioridad */}
             <Grid item xs={12} md={6}>
               <div id="metricas-prioridad-chart" style={{ background: '#fff' }}>
-                <MetricasPrioridadChart data={metricas.metricasPorPrioridad} ocultarMontos={esSupervisor} />
+                <MetricasPrioridadChart data={metricas.metricasPorPrioridad} ocultarMontos={ocultarMontos} />
               </div>
             </Grid>
 
@@ -592,17 +553,17 @@ export const LeadMetricasPage = () => {
 
             {/* Distribución Geográfica */}
             <Grid item xs={12}>
-              <DistribucionGeograficaTable data={metricas.distribucionGeografica} ocultarMontos={esSupervisor} />
+              <DistribucionGeograficaTable data={metricas.distribucionGeografica} ocultarMontos={ocultarMontos} />
             </Grid>
 
             {/* Productos de Interés */}
             <Grid item xs={12}>
-              <ProductosInteresTables data={metricas.productosInteres} ocultarMontos={esSupervisor} />
+              <ProductosInteresTables data={metricas.productosInteres} ocultarMontos={ocultarMontos} />
             </Grid>
 
             {/* Ranking de Vendedores */}
             <Grid item xs={12}>
-              <RankingVendedoresTable data={metricas.metricasPorVendedor} ocultarMontos={esSupervisor} />
+              <RankingVendedoresTable data={metricas.metricasPorVendedor} ocultarMontos={ocultarMontos} />
             </Grid>
           </Grid>
         )}

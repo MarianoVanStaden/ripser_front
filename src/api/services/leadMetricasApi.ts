@@ -134,12 +134,16 @@ export interface TendenciasTemporalesDTO {
 
 // DTO: Presupuesto vs Realizado
 export interface PresupuestoVsRealizadoDTO {
-  presupuestoEstimadoTotal: number;
-  valorRealizadoTotal: number;
-  tasaRealizacion: number;
+  // Los campos monetarios llegan SIEMPRE en null: el backend los redacta para
+  // todos los roles (este dashboard no expone facturación).
+  presupuestoEstimadoTotal: number | null;
+  valorRealizadoTotal: number | null;
+  tasaRealizacion: number | null;
   cantidadPresupuestosEstimados: number;
   cantidadPresupuestosRealizados: number;
-  diferencia: number;
+  diferencia: number | null;
+  /** % de cumplimiento de META_PRESUPUESTO_MENSUAL, calculado server-side. */
+  cumplimientoMetaVentas: number | null;
 }
 
 // DTO: Respuesta Principal con todas las métricas

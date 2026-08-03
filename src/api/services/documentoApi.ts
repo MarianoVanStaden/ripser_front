@@ -130,6 +130,22 @@ function serializeDocumentoFilters(
   return merged;
 }
 
+// Métricas agregadas de la sección "Ventas del mes" del Dashboard de Ventas.
+// Solo cantidades, sin montos. "Venta" = FACTURA no anulada del período.
+export interface VentasDashboardDTO {
+  totalVentas: number;
+  /** Saldo real cero: CC del documento neteada, o préstamo finalizado si es financiada. */
+  ventasCobradasTotal: number;
+  ventasFinanciadas: number;
+  financiadasPorPlan: { plan: string; cantidad: number }[];
+  /** Unidades por modelo (receta), orden descendente. No netea NC. */
+  topModelos: { recetaId: number; modelo: string; tipoEquipo: string | null; unidades: number }[];
+  ventasPorProvincia: { provincia: string; cantidad: number }[];
+  totalAnulaciones: number;
+  /** NC previas a la migración vienen como "SIN_ESPECIFICAR". */
+  anulacionesPorMotivo: { motivo: string; cantidad: number }[];
+}
+
 // Narrow DTO for creating presupuesto in current backend
 export type CreatePresupuestoPayload = {
   clienteId?: number;
@@ -234,6 +250,19 @@ export const documentoApi = {
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
+    return response.data;
+  },
+
+  // Métricas de "Ventas del mes" del Dashboard de Ventas. Fechas ISO yyyy-mm-dd.
+  // Requiere rol de gestión (VENDEDOR recibe 403).
+  getDashboardVentas: async (
+    desde: string,
+    hasta: string,
+    sucursalId?: number
+  ): Promise<VentasDashboardDTO> => {
+    const response = await api.get<VentasDashboardDTO>('/api/documentos/dashboard-ventas', {
+      params: { desde, hasta, sucursalId },
+    });
     return response.data;
   },
 

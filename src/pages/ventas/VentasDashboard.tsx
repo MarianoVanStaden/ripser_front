@@ -54,6 +54,7 @@ import { usePermisos } from '../../hooks/usePermisos';
 import { EmbudoVentasChart } from '../../components/metricas/EmbudoVentasChart';
 import { MetricasCanalChart } from '../../components/metricas/MetricasCanalChart';
 import { MetricasPrioridadChart } from '../../components/metricas/MetricasPrioridadChart';
+import { VentasMesSection } from '../../components/metricas/ventasMes/VentasMesSection';
 
 dayjs.locale('es');
 
@@ -915,6 +916,16 @@ export const VentasDashboard = () => {
             </Box>
           </CardContent>
         </Card>
+      )}
+
+      {/* ── VENTAS DEL MES (facturación) — vista de gestión, oculta a VENDEDOR ── */}
+      {!isVendedor && (
+        <VentasMesSection
+          empresaId={empresaId}
+          sucursalId={sucursalFiltro}
+          desde={fechaInicio}
+          hasta={fechaFin}
+        />
       )}
 
       {/* ── ACCIONES RÁPIDAS ── */}

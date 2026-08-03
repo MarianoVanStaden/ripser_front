@@ -283,9 +283,9 @@ export const exportarMetricasCSV = (
     ['Leads Convertidos', metricas.tasaConversion.leadsConvertidos.toString()],
     ['Tasa de Conversión (%)', metricas.tasaConversion.tasaConversion.toFixed(2)],
     ['Tiempo Prom. Conversión (días)', metricas.tiempoConversion.promedioGeneral.toFixed(0)],
-    ['Presupuesto Estimado Total', metricas.presupuestoVsRealizado.presupuestoEstimadoTotal.toFixed(2)],
-    ['Valor Realizado Total', metricas.presupuestoVsRealizado.valorRealizadoTotal.toFixed(2)],
-    ['Tasa Realización (%)', metricas.presupuestoVsRealizado.tasaRealizacion.toFixed(2)]
+    // Sin montos: el dashboard no expone facturación (el backend además los redacta).
+    ['Presupuestos Convertidos', (metricas.presupuestoVsRealizado.cantidadPresupuestosRealizados ?? 0).toString()],
+    ['Cumplimiento Meta Ventas (%)', (metricas.presupuestoVsRealizado.cumplimientoMetaVentas ?? 0).toFixed(2)]
   ];
 
   const csv = csvData.map(row => row.join(',')).join('\n');
