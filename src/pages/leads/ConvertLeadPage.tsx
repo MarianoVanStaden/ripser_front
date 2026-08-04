@@ -65,7 +65,8 @@ export const ConvertLeadPage = () => {
     rubroCliente: undefined,
     rubroDetalleCliente: '',
     apellidoCliente: '',
-    cuitCliente: ''
+    cuitCliente: '',
+    observacionesCliente: ''
   });
 
   useEffect(() => {
@@ -105,7 +106,8 @@ export const ConvertLeadPage = () => {
         telefonoAlternativoCliente: leadData.telefonoAlternativo || '',
         rubroCliente: leadData.rubro,
         rubroDetalleCliente: leadData.rubroDetalle || '',
-        apellidoCliente: leadData.apellido || ''
+        apellidoCliente: leadData.apellido || '',
+        observacionesCliente: leadData.notas || ''
       }));
 
       // Pre-seleccionar producto/receta si está disponible
@@ -626,6 +628,18 @@ export const ConvertLeadPage = () => {
                       />
                     </Grid>
                   )}
+
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      label="Observaciones"
+                      value={conversionData.observacionesCliente || ''}
+                      onChange={handleChange('observacionesCliente')}
+                      helperText="Se copian del lead; podés editarlas antes de convertir."
+                    />
+                  </Grid>
 
                   <Grid item xs={12}>
                     <Autocomplete

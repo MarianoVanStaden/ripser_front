@@ -169,6 +169,7 @@ export interface ConversionLeadRequest {
   rubroDetalleCliente?: string;
   apellidoCliente?: string;
   cuitCliente?: string;
+  observacionesCliente?: string;
 }
 
 export interface ConversionLeadResponse {
