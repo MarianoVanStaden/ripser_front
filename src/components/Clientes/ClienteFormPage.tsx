@@ -66,6 +66,7 @@ const ClienteFormPage: React.FC = () => {
     estado: 'ACTIVO' as EstadoCliente,
     limiteCredito: 0,
     calificacion: 0,
+    observaciones: '',
   });
 
   const [itemOptions, setItemOptions] = useState<ItemCompradoOption[]>([]);
@@ -121,6 +122,7 @@ const ClienteFormPage: React.FC = () => {
         estado: cliente.estado,
         limiteCredito: cliente.limiteCredito ?? 0,
         calificacion: cliente.calificacion ?? 0,
+        observaciones: cliente.observaciones || '',
       });
 
       if (cliente.recetaCompradaId) {
@@ -239,6 +241,7 @@ const ClienteFormPage: React.FC = () => {
           estado: 'ACTIVO',
           limiteCredito: 0,
           calificacion: 0,
+          observaciones: '',
         });
       }
     } catch (err: any) {
@@ -524,6 +527,18 @@ const ClienteFormPage: React.FC = () => {
                 value={formData.calificacion}
                 onChange={handleRatingChange}
                 precision={0.5}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                size="small"
+                multiline
+                minRows={2}
+                label="Observaciones"
+                name="observaciones"
+                value={formData.observaciones}
+                onChange={handleFormChange}
               />
             </Grid>
 

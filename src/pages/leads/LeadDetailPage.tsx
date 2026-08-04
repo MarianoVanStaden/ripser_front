@@ -357,6 +357,17 @@ export const LeadDetailPage = () => {
                   </Typography>
                 </Box>
               )}
+
+              {lead.notas && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Observaciones
+                  </Typography>
+                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {lead.notas}
+                  </Typography>
+                </Box>
+              )}
             </CardContent>
           </Card>
 

@@ -424,6 +424,18 @@ const ClienteDetailPage: React.FC = () => {
                 </Box>
               </Box>
             </Box>
+
+            {cliente.observaciones && (
+              <>
+                <Divider />
+                <Box>
+                  <Typography variant="h6" gutterBottom>
+                    Observaciones
+                  </Typography>
+                  <Typography sx={{ whiteSpace: 'pre-wrap' }}>{cliente.observaciones}</Typography>
+                </Box>
+              </>
+            )}
           </Box>
         </TabPanel>
 

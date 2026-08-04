@@ -128,6 +128,7 @@ export const LeadFormPage = () => {
     colorEquipoInteresId: undefined,
     medidaEquipoInteresId: undefined,
     equipoInteresadoId: undefined,
+    notas: '',
     recordatorios: []
   });
 
@@ -721,6 +722,20 @@ export const LeadFormPage = () => {
                   }}
                   error={Boolean(errors.fechaPrimerContacto)}
                   helperText={errors.fechaPrimerContacto}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  label="Observaciones"
+                  placeholder="opcional"
+                  value={formData.notas ?? ''}
+                  onChange={handleChange('notas')}
+                  error={Boolean(errors.notas)}
+                  helperText={errors.notas}
                 />
               </Grid>
 
