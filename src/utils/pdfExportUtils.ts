@@ -2269,7 +2269,7 @@ export const generateReportesFabricacionPDF = async (
     pendienteControlCalidad: number;
     cancelados: number;
   },
-  fabricacionMensual: Array<{ anio: number; mes: number; completados: number }>,
+  fabricacionMensual: Array<{ anio: number; mes: number; ingresos: number; completados: number }>,
   filters: { fechaDesde: string; fechaHasta: string },
   chartImages?: {
     estadoChartImgData?: string | null;
@@ -2336,7 +2336,7 @@ export const generateReportesFabricacionPDF = async (
   }
   if (chartImages?.mensualChartImgData) {
     yPosition = insertChartImage(pdf, chartImages.mensualChartImgData,
-      'Equipos Completados por Mes', yPosition, pageWidth, pageHeight, margin);
+      'Producción por mes: ingresos vs. completados', yPosition, pageWidth, pageHeight, margin);
   }
 
   // Tabla mensual
@@ -2347,22 +2347,26 @@ export const generateReportesFabricacionPDF = async (
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(...COLORS.darkBlue);
-  pdf.text('Completados por mes:', margin, yPosition);
+  pdf.text('Producción por mes:', margin, yPosition);
   yPosition += 6;
 
+  const colIngresos = margin + 60;
+  const colCompletados = margin + 100;
   pdf.setFillColor(...COLORS.darkBlue);
   pdf.rect(margin, yPosition - 1, pageWidth - margin * 2, 5, 'F');
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(...COLORS.white);
   pdf.text('Mes', margin + 1, yPosition + 2.5);
-  pdf.text('Completados', margin + 60, yPosition + 2.5);
+  pdf.text('Ingresos', colIngresos, yPosition + 2.5);
+  pdf.text('Completados', colCompletados, yPosition + 2.5);
   yPosition += 5;
 
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(7.5);
   let rowAlt = false;
-  let totalPeriodo = 0;
+  let totalIngresos = 0;
+  let totalCompletados = 0;
   fabricacionMensual.forEach((m) => {
     if (yPosition > pageHeight - 20) {
       pdf.addPage();
@@ -2376,8 +2380,10 @@ export const generateReportesFabricacionPDF = async (
     pdf.setTextColor(...COLORS.black);
     const etiquetaMes = `${NOMBRE_MES[(m.mes - 1) % 12] || m.mes} ${m.anio}`;
     pdf.text(etiquetaMes, margin + 1, yPosition + 2);
-    pdf.text(String(m.completados), margin + 60, yPosition + 2);
-    totalPeriodo += m.completados;
+    pdf.text(String(m.ingresos), colIngresos, yPosition + 2);
+    pdf.text(String(m.completados), colCompletados, yPosition + 2);
+    totalIngresos += m.ingresos;
+    totalCompletados += m.completados;
     yPosition += 4;
   });
 
@@ -2385,7 +2391,8 @@ export const generateReportesFabricacionPDF = async (
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(...COLORS.darkBlue);
   pdf.text('Total del período', margin + 1, yPosition + 3);
-  pdf.text(String(totalPeriodo), margin + 60, yPosition + 3);
+  pdf.text(String(totalIngresos), colIngresos, yPosition + 3);
+  pdf.text(String(totalCompletados), colCompletados, yPosition + 3);
 
   addCorporateFooter(pdf);
   pdf.save(`fabricacion-por-mes-${new Date().toISOString().split('T')[0]}.pdf`);

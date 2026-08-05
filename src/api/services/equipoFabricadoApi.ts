@@ -23,6 +23,7 @@ import type {
   EquipoFabricadoFilterParams,
   EquipoResumenEstadosDTO,
   ResumenFabricacionMensualDTO,
+  ProduccionMensualDTO,
 } from '../../types';
 
 export interface RechazarEtapasDTO {
@@ -48,6 +49,20 @@ export interface ReasignacionStockResult {
   sinStock: number;
   sinVinculo: number;
   items: ReasignacionStockItem[];
+}
+
+export interface SaneoReservaItem {
+  equipoId: number;
+  numeroHeladera: string;
+  modelo: string;
+  /** Estado de asignación que tenía antes del saneo (RESERVADO | FACTURADO | PENDIENTE_TERMINACION). */
+  estadoAsignacionPrevio: string | null;
+}
+
+export interface SaneoReservasResult {
+  dryRun: boolean;
+  total: number;
+  items: SaneoReservaItem[];
 }
 
 
@@ -82,6 +97,22 @@ export const equipoFabricadoApi = {
   ): Promise<ResumenFabricacionMensualDTO[]> => {
     const response = await api.get<ResumenFabricacionMensualDTO[]>(
       '/api/equipos-fabricados/resumen-fabricacion-mensual',
+      { params: { ...(fechaInicio ? { fechaInicio } : {}), ...(fechaFin ? { fechaFin } : {}) } },
+    );
+    return response.data;
+  },
+
+  /**
+   * Producción por mes: ingresos a fabricación (por fechaCreacion) y completados
+   * (por fechaFinalizacion). Sin fechas usa los últimos 12 meses (default backend).
+   * Meses sin datos vienen omitidos — el consumidor rellena el eje en 0.
+   */
+  getProduccionMensual: async (
+    fechaInicio?: string,
+    fechaFin?: string,
+  ): Promise<ProduccionMensualDTO[]> => {
+    const response = await api.get<ProduccionMensualDTO[]>(
+      '/api/equipos-fabricados/produccion-mensual',
       { params: { ...(fechaInicio ? { fechaInicio } : {}), ...(fechaFin ? { fechaFin } : {}) } },
     );
     return response.data;
@@ -552,6 +583,21 @@ export const equipoFabricadoApi = {
   reasignarAutocreados: async (dryRun: boolean): Promise<ReasignacionStockResult> => {
     const response = await api.post<ReasignacionStockResult>(
       '/api/equipos-fabricados/reasignar-autocreados',
+      null,
+      { params: { dryRun } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Sanea reservas huérfanas: libera a DISPONIBLE los equipos con estado_asignacion
+   * comprometido pero sin compromiso real (asignado=false, sin cliente, sin vínculo).
+   * Solo toca asignaciones. Correr primero con dryRun=true para previsualizar.
+   * Solo ADMIN/SUPER_ADMIN.
+   */
+  sanearReservasHuerfanas: async (dryRun: boolean): Promise<SaneoReservasResult> => {
+    const response = await api.post<SaneoReservasResult>(
+      '/api/equipos-fabricados/sanear-reservas-huerfanas',
       null,
       { params: { dryRun } }
     );

@@ -70,28 +70,34 @@ const ReportesEstadosPage: React.FC = () => {
     queryFn: () => equipoFabricadoApi.getResumenEstados(),
   });
 
-  // Producción terminada (COMPLETADO) agrupada por mes de finalización, dentro del rango.
-  const { data: fabricacionMensual } = useQuery({
-    queryKey: ['equipos-fabricados', 'fabricacion-mensual', fechaInicio, fechaFin],
-    queryFn: () => equipoFabricadoApi.getResumenFabricacionMensual(fechaInicio, fechaFin),
+  // Producción por mes: ingresos (por fechaCreacion) y completados (por fechaFinalizacion).
+  const { data: produccionMensual } = useQuery({
+    queryKey: ['equipos-fabricados', 'produccion-mensual', fechaInicio, fechaFin],
+    queryFn: () => equipoFabricadoApi.getProduccionMensual(fechaInicio, fechaFin),
   });
 
-  // Rellena todos los meses del rango (los que no tienen producción quedan en 0).
+  // Rellena todos los meses del rango (los que no tienen datos quedan en 0).
   const mensualData = useMemo(() => {
     const start = dayjs(`${mesDesde}-01`).startOf('month');
     const end = dayjs(`${mesHasta}-01`).startOf('month');
-    const map = new Map<string, number>();
-    (fabricacionMensual ?? []).forEach((m) => map.set(`${m.anio}-${m.mes}`, m.completados));
-    const buckets: Array<{ anio: number; mes: number; label: string; completados: number }> = [];
+    const map = new Map<string, { ingresos: number; completados: number }>();
+    (produccionMensual ?? []).forEach((m) =>
+      map.set(`${m.anio}-${m.mes}`, { ingresos: m.ingresos, completados: m.completados }));
+    const buckets: Array<{ anio: number; mes: number; label: string; ingresos: number; completados: number }> = [];
     let cursor = start;
     while ((cursor.isBefore(end) || cursor.isSame(end, 'month')) && buckets.length <= 60) {
       const anio = cursor.year();
       const mes = cursor.month() + 1;
-      buckets.push({ anio, mes, label: cursor.format('MM/YY'), completados: map.get(`${anio}-${mes}`) ?? 0 });
+      const v = map.get(`${anio}-${mes}`);
+      buckets.push({
+        anio, mes, label: cursor.format('MM/YY'),
+        ingresos: v?.ingresos ?? 0,
+        completados: v?.completados ?? 0,
+      });
       cursor = cursor.add(1, 'month');
     }
     return buckets;
-  }, [fabricacionMensual, mesDesde, mesHasta]);
+  }, [produccionMensual, mesDesde, mesHasta]);
 
   const estadoFabData = useMemo(() => {
     if (!resumenEstados) return [] as Array<{ name: string; value: number; color: string }>;
@@ -114,7 +120,7 @@ const ReportesEstadosPage: React.FC = () => {
       ]);
       await generateReportesFabricacionPDF(
         resumenEstados,
-        mensualData.map(({ anio, mes, completados }) => ({ anio, mes, completados })),
+        mensualData.map(({ anio, mes, ingresos, completados }) => ({ anio, mes, ingresos, completados })),
         { fechaDesde: fechaInicio, fechaHasta: fechaFin },
         { estadoChartImgData: estadoImg, mensualChartImgData: mensualImg },
       );
@@ -583,7 +589,7 @@ const ReportesEstadosPage: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} mb={1}>
-                <Typography variant="h6">Equipos Completados por Mes</Typography>
+                <Typography variant="h6">Producción por mes: ingresos vs. completados</Typography>
                 <Box display="flex" gap={1}>
                   <TextField
                     size="small"
@@ -610,13 +616,15 @@ const ReportesEstadosPage: React.FC = () => {
                     <XAxis dataKey="label" />
                     <YAxis allowDecimals={false} />
                     <Tooltip />
+                    <Legend />
+                    <Bar dataKey="ingresos" name="Ingresaron" fill="#2196f3" />
                     <Bar dataKey="completados" name="Completados" fill="#4caf50" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <Typography variant="caption" color="text.secondary">
-                Solo equipos COMPLETADO por fecha de finalización. Sin terminación, en proceso y pendientes
-                se cuentan en el estado actual (arriba), no por mes.
+                Ingresos por fecha de creación (entraron a fabricación); completados por fecha de finalización.
+                El gap entre ambas ≈ variación de trabajo en curso. El estado actual por estado está arriba.
               </Typography>
             </CardContent>
           </Card>

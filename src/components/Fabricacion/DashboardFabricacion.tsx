@@ -10,12 +10,14 @@ import {
   Cancel,
   Inventory,
   AutoFixHigh,
+  HealthAndSafety,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { useAuth } from '../../context/AuthContext';
 import ReasignarAutocreadosDialog from './ReasignarAutocreadosDialog';
+import SanearReservasHuerfanasDialog from './SanearReservasHuerfanasDialog';
 
 interface KPI {
   label: string;
@@ -30,6 +32,7 @@ const DashboardFabricacion: React.FC = () => {
     (r) => r === 'ADMIN' || (r as string) === 'SUPER_ADMIN'
   );
   const [reasignarOpen, setReasignarOpen] = useState(false);
+  const [sanearOpen, setSanearOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [equipos, setEquipos] = useState<any[]>([]);
   const [fechaInicio, setFechaInicio] = useState(
@@ -148,22 +151,38 @@ const DashboardFabricacion: React.FC = () => {
           Dashboard de Fabricación
         </Typography>
         {esAdmin && (
-          <Button
-            variant="outlined"
-            startIcon={<AutoFixHigh />}
-            onClick={() => setReasignarOpen(true)}
-          >
-            Reasignar PENDIENTE a stock
-          </Button>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button
+              variant="outlined"
+              startIcon={<AutoFixHigh />}
+              onClick={() => setReasignarOpen(true)}
+            >
+              Reasignar PENDIENTE a stock
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<HealthAndSafety />}
+              onClick={() => setSanearOpen(true)}
+            >
+              Sanear reservas huérfanas
+            </Button>
+          </Stack>
         )}
       </Stack>
 
       {esAdmin && (
-        <ReasignarAutocreadosDialog
-          open={reasignarOpen}
-          onClose={() => setReasignarOpen(false)}
-          onApplied={() => loadData()}
-        />
+        <>
+          <ReasignarAutocreadosDialog
+            open={reasignarOpen}
+            onClose={() => setReasignarOpen(false)}
+            onApplied={() => loadData()}
+          />
+          <SanearReservasHuerfanasDialog
+            open={sanearOpen}
+            onClose={() => setSanearOpen(false)}
+            onApplied={() => loadData()}
+          />
+        </>
       )}
 
       {/* KPIs */}

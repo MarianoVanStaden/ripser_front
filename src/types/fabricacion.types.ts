@@ -247,6 +247,18 @@ export interface ResumenFabricacionMensualDTO {
   completados: number;
 }
 
+/**
+ * Producción por mes: ingresos a fabricación (por fechaCreacion) y completados
+ * (por fechaFinalizacion). Espejo de `ProduccionMensualDTO` del backend.
+ * Ambas señales son estables (no dependen del historial de transiciones).
+ */
+export interface ProduccionMensualDTO {
+  anio: number;
+  mes: number;
+  ingresos: number;
+  completados: number;
+}
+
 export interface EquipoFabricadoCreateDTO {
   recetaId?: number;
   tipo: TipoEquipo;
