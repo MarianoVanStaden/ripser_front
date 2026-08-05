@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
 
 // Info de git inyectada en build-time (el browser no tiene acceso a git).
@@ -39,7 +40,49 @@ const analyzePlugin = analyze
   : null
 
 export default defineConfig({
-  plugins: [react(), analyzePlugin].filter(Boolean),
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      manifest: {
+        lang: 'es',
+        name: 'Ripser App',
+        short_name: 'Ripser',
+        description: 'Sistema ERP Ripser',
+        display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
+        scope: '/',
+        theme_color: '#1976d2', // primary.main del theme MUI
+        background_color: '#ffffff',
+        icons: [
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+          {
+            src: '/maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        // El chunk `vendor` pesa ~1.8 MB raw — el límite default de precache
+        // (2 MiB) lo dejaría afuera con warning. Margen para que entre.
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        // El SW nunca debe responder navegaciones/requests de la API con el
+        // index.html cacheado.
+        navigateFallbackDenylist: [/^\/api\//],
+      },
+    }),
+    analyzePlugin,
+  ].filter(Boolean),
 
   // FRONT-005: marcamos los console.log/info/debug como pure para que el
   // minifier los elimine del bundle de producción. console.warn/error se
