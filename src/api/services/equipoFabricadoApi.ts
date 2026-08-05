@@ -22,6 +22,7 @@ import type {
   PaginationParams,
   EquipoFabricadoFilterParams,
   EquipoResumenEstadosDTO,
+  ResumenFabricacionMensualDTO,
 } from '../../types';
 
 export interface RechazarEtapasDTO {
@@ -67,6 +68,22 @@ export const equipoFabricadoApi = {
   // Conteos agregados globales de la empresa (para tarjetas de métricas y KPIs).
   getResumenEstados: async (): Promise<EquipoResumenEstadosDTO> => {
     const response = await api.get<EquipoResumenEstadosDTO>('/api/equipos-fabricados/resumen-estados');
+    return response.data;
+  },
+
+  /**
+   * Producción terminada por mes: cantidad de equipos COMPLETADO agrupados por
+   * año/mes de finalización. Sin fechas usa los últimos 12 meses (default backend).
+   * Meses sin producción vienen omitidos — el consumidor rellena el eje si hace falta.
+   */
+  getResumenFabricacionMensual: async (
+    fechaInicio?: string,
+    fechaFin?: string,
+  ): Promise<ResumenFabricacionMensualDTO[]> => {
+    const response = await api.get<ResumenFabricacionMensualDTO[]>(
+      '/api/equipos-fabricados/resumen-fabricacion-mensual',
+      { params: { ...(fechaInicio ? { fechaInicio } : {}), ...(fechaFin ? { fechaFin } : {}) } },
+    );
     return response.data;
   },
 

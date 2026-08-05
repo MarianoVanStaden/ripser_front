@@ -2250,6 +2250,147 @@ export const generateReportesEstadosPDF = async (
   pdf.save(`reporte-estados-equipos-${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
+const NOMBRE_MES = [
+  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+];
+
+/**
+ * Genera un PDF de "Fabricación por Mes" (producción terminada del último año)
+ * + snapshot actual por estado de fabricación.
+ */
+export const generateReportesFabricacionPDF = async (
+  resumenEstados: {
+    total: number;
+    completados: number;
+    sinTerminacion: number;
+    enProceso: number;
+    pendientes: number;
+    pendienteControlCalidad: number;
+    cancelados: number;
+  },
+  fabricacionMensual: Array<{ anio: number; mes: number; completados: number }>,
+  filters: { fechaDesde: string; fechaHasta: string },
+  chartImages?: {
+    estadoChartImgData?: string | null;
+    mensualChartImgData?: string | null;
+  }
+): Promise<void> => {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 15;
+
+  let yPosition = addCorporateHeader(pdf, 'Fabricación por Mes');
+
+  // Período
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text('Período:', margin, yPosition);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...COLORS.black);
+  pdf.text(`${filters.fechaDesde}  a  ${filters.fechaHasta}`, margin + 20, yPosition);
+  yPosition += 8;
+
+  // Snapshot actual por estado de fabricación (total histórico, no del período)
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text('Estado actual de fabricación (total):', margin, yPosition);
+  yPosition += 7;
+
+  const kpis = [
+    { label: 'Total Equipos', value: resumenEstados.total },
+    { label: 'Completados', value: resumenEstados.completados },
+    { label: 'Sin Terminación', value: resumenEstados.sinTerminacion },
+    { label: 'En Proceso', value: resumenEstados.enProceso },
+    { label: 'Pendientes', value: resumenEstados.pendientes },
+    { label: 'Control Calidad', value: resumenEstados.pendienteControlCalidad },
+    { label: 'Cancelados', value: resumenEstados.cancelados },
+  ];
+
+  const colW = (pageWidth - margin * 2) / 4;
+  let col = 0;
+  let rowY = yPosition;
+  kpis.forEach((kpi) => {
+    const x = margin + col * colW;
+    pdf.setFillColor(...COLORS.white);
+    pdf.rect(x, rowY, colW - 2, 10, 'F');
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.darkBlue);
+    pdf.text(kpi.label, x + 2, rowY + 4);
+    pdf.setFontSize(11);
+    pdf.setTextColor(...COLORS.black);
+    pdf.text(String(kpi.value), x + 2, rowY + 9);
+    col++;
+    if (col === 4) { col = 0; rowY += 13; }
+  });
+  yPosition = rowY + (col > 0 ? 13 : 0) + 5;
+
+  // Gráficos
+  if (chartImages?.estadoChartImgData) {
+    yPosition = insertChartImage(pdf, chartImages.estadoChartImgData,
+      'Distribución por Estado de Fabricación', yPosition, pageWidth, pageHeight, margin);
+  }
+  if (chartImages?.mensualChartImgData) {
+    yPosition = insertChartImage(pdf, chartImages.mensualChartImgData,
+      'Equipos Completados por Mes', yPosition, pageWidth, pageHeight, margin);
+  }
+
+  // Tabla mensual
+  if (yPosition + 20 > pageHeight - 20) {
+    pdf.addPage();
+    yPosition = 20;
+  }
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text('Completados por mes:', margin, yPosition);
+  yPosition += 6;
+
+  pdf.setFillColor(...COLORS.darkBlue);
+  pdf.rect(margin, yPosition - 1, pageWidth - margin * 2, 5, 'F');
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.white);
+  pdf.text('Mes', margin + 1, yPosition + 2.5);
+  pdf.text('Completados', margin + 60, yPosition + 2.5);
+  yPosition += 5;
+
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(7.5);
+  let rowAlt = false;
+  let totalPeriodo = 0;
+  fabricacionMensual.forEach((m) => {
+    if (yPosition > pageHeight - 20) {
+      pdf.addPage();
+      yPosition = 20;
+    }
+    if (rowAlt) {
+      pdf.setFillColor(240, 246, 252);
+      pdf.rect(margin, yPosition - 1, pageWidth - margin * 2, 4, 'F');
+    }
+    rowAlt = !rowAlt;
+    pdf.setTextColor(...COLORS.black);
+    const etiquetaMes = `${NOMBRE_MES[(m.mes - 1) % 12] || m.mes} ${m.anio}`;
+    pdf.text(etiquetaMes, margin + 1, yPosition + 2);
+    pdf.text(String(m.completados), margin + 60, yPosition + 2);
+    totalPeriodo += m.completados;
+    yPosition += 4;
+  });
+
+  // Total del período
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text('Total del período', margin + 1, yPosition + 3);
+  pdf.text(String(totalPeriodo), margin + 60, yPosition + 3);
+
+  addCorporateFooter(pdf);
+  pdf.save(`fabricacion-por-mes-${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
 /**
  * Genera un PDF del Reporte de Garantías
  */

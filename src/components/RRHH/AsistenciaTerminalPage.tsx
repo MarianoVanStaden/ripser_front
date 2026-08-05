@@ -6,6 +6,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Collapse,
   Divider,
   Paper,
   Stack,
@@ -19,12 +20,15 @@ import {
   Typography,
 } from '@mui/material';
 import {
+  Block as BlockIcon,
   CloudUpload as CloudUploadIcon,
   Refresh as RefreshIcon,
+  Restore as RestoreIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import {
   asistenciaTerminalApi,
+  type CodigoTerminalDescartado,
   type DiferenciaFichaje,
   type EnNoNoAsignado,
   type ImportResumen,
@@ -62,6 +66,12 @@ const AsistenciaTerminalPage: React.FC = () => {
   const [noAsignadas, setNoAsignadas] = useState<EnNoNoAsignado[]>([]);
   const [seleccion, setSeleccion] = useState<Record<string, number | ''>>({});
   const [asignando, setAsignando] = useState<string | null>(null);
+  const [motivoDescarte, setMotivoDescarte] = useState<Record<string, string>>({});
+  const [descartando, setDescartando] = useState<string | null>(null);
+
+  const [descartados, setDescartados] = useState<CodigoTerminalDescartado[]>([]);
+  const [restaurando, setRestaurando] = useState<string | null>(null);
+  const [mostrarDescartados, setMostrarDescartados] = useState(false);
 
   const [desde, setDesde] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
   const [hasta, setHasta] = useState(dayjs().format('YYYY-MM-DD'));
@@ -82,6 +92,14 @@ const AsistenciaTerminalPage: React.FC = () => {
     }
   }, []);
 
+  const cargarDescartados = useCallback(async () => {
+    try {
+      setDescartados(await asistenciaTerminalApi.getDescartados());
+    } catch {
+      /* silencioso: el panel simplemente queda vacío */
+    }
+  }, []);
+
   const cargarResumen = useCallback(async () => {
     setLoadingResumen(true);
     try {
@@ -96,7 +114,8 @@ const AsistenciaTerminalPage: React.FC = () => {
   useEffect(() => {
     employeeApi.getAllList().then(setEmpleados).catch(() => setEmpleados([]));
     cargarNoAsignadas();
-  }, [cargarNoAsignadas]);
+    cargarDescartados();
+  }, [cargarNoAsignadas, cargarDescartados]);
 
   const cargarDiferencias = useCallback(async () => {
     setLoadingDiferencias(true);
@@ -157,6 +176,39 @@ const AsistenciaTerminalPage: React.FC = () => {
       setError(err?.response?.data ?? 'Error al asignar el código.');
     } finally {
       setAsignando(null);
+    }
+  };
+
+  const handleDescartar = async (enNo: string) => {
+    setDescartando(enNo);
+    setError(null);
+    try {
+      await asistenciaTerminalApi.descartar(enNo, motivoDescarte[enNo]?.trim() || undefined);
+      setMotivoDescarte((prev) => {
+        const copia = { ...prev };
+        delete copia[enNo];
+        return copia;
+      });
+      await cargarNoAsignadas();
+      await cargarDescartados();
+    } catch (err: any) {
+      setError(err?.response?.data ?? 'Error al descartar el código.');
+    } finally {
+      setDescartando(null);
+    }
+  };
+
+  const handleRestaurar = async (enNo: string) => {
+    setRestaurando(enNo);
+    setError(null);
+    try {
+      await asistenciaTerminalApi.restaurar(enNo);
+      await cargarNoAsignadas();
+      await cargarDescartados();
+    } catch (err: any) {
+      setError(err?.response?.data ?? 'Error al restaurar el código.');
+    } finally {
+      setRestaurando(null);
     }
   };
 
@@ -303,9 +355,100 @@ const AsistenciaTerminalPage: React.FC = () => {
                 >
                   {asignando === n.enNo ? 'Asignando…' : 'Asignar'}
                 </Button>
+                <TextField
+                  size="small"
+                  placeholder="Motivo (opcional)"
+                  value={motivoDescarte[n.enNo] ?? ''}
+                  onChange={(e) =>
+                    setMotivoDescarte((prev) => ({ ...prev, [n.enNo]: e.target.value }))
+                  }
+                  sx={{ minWidth: 160 }}
+                />
+                <Button
+                  variant="text"
+                  size="small"
+                  color="warning"
+                  startIcon={<BlockIcon fontSize="small" />}
+                  disabled={descartando === n.enNo}
+                  onClick={() => handleDescartar(n.enNo)}
+                >
+                  {descartando === n.enNo ? 'Descartando…' : 'Descartar'}
+                </Button>
               </Stack>
             ))}
           </Stack>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            "Descartar" oculta el legajo (ex empleado / terminal de prueba) de esta lista y no
+            vuelve a aparecer en los próximos imports. Podés inspeccionarlo y restaurarlo abajo.
+          </Typography>
+        </Paper>
+      )}
+
+      {/* ── Legajos descartados (ex empleados) ── */}
+      {descartados.length > 0 && (
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: mostrarDescartados ? 1 : 0 }}>
+            <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
+              Legajos descartados ({descartados.length})
+            </Typography>
+            <Button size="small" onClick={() => setMostrarDescartados((v) => !v)}>
+              {mostrarDescartados ? 'Ocultar' : 'Ver / restaurar'}
+            </Button>
+          </Stack>
+          <Collapse in={mostrarDescartados}>
+            <Divider sx={{ mb: 1 }} />
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                    <TableCell>EnNo</TableCell>
+                    <TableCell>Nombre en terminal</TableCell>
+                    <TableCell align="right">Marcas</TableCell>
+                    <TableCell align="center">Rango de fechas</TableCell>
+                    <TableCell>Motivo</TableCell>
+                    <TableCell>Descartado por</TableCell>
+                    <TableCell align="center">Acción</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {descartados.map((d) => (
+                    <TableRow key={d.enNo} hover>
+                      <TableCell>
+                        <Chip size="small" label={`EnNo ${d.enNo}`} />
+                      </TableCell>
+                      <TableCell>
+                        {d.nombreTerminal ? `"${d.nombreTerminal}"` : <em>(sin nombre)</em>}
+                      </TableCell>
+                      <TableCell align="right">{d.cantidadMarcas}</TableCell>
+                      <TableCell align="center">
+                        {d.primeraMarca
+                          ? `${dayjs(d.primeraMarca).format('DD/MM/YY')} → ${d.ultimaMarca ? dayjs(d.ultimaMarca).format('DD/MM/YY') : '—'}`
+                          : '—'}
+                      </TableCell>
+                      <TableCell>{d.motivo ?? '—'}</TableCell>
+                      <TableCell>
+                        {d.descartadoPor ?? '—'}
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          {dayjs(d.fechaDescarte).format('DD/MM/YY HH:mm')}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<RestoreIcon fontSize="small" />}
+                          disabled={restaurando === d.enNo}
+                          onClick={() => handleRestaurar(d.enNo)}
+                        >
+                          {restaurando === d.enNo ? 'Restaurando…' : 'Restaurar'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Collapse>
         </Paper>
       )}
 

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Grid, Card, CardContent,
   TextField, MenuItem, Button, Chip, Table, TableBody,
@@ -9,10 +10,11 @@ import {
   Inventory, Assignment, CheckCircle, LocalShipping,
   TrendingUp, PieChart as PieChartIcon, GetApp as GetAppIcon,
 } from '@mui/icons-material';
-import { generateReportesEstadosPDF, captureElementAsImage } from '../../utils/pdfExportUtils';
+import { generateReportesEstadosPDF, generateReportesFabricacionPDF, captureElementAsImage } from '../../utils/pdfExportUtils';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import dayjs from 'dayjs';
 import api from '../../api/config';
+import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import type { EquipoFabricadoDTO, EstadoAsignacionEquipo } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 
@@ -53,6 +55,73 @@ const ReportesEstadosPage: React.FC = () => {
   // Paginación
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // ===== Sección "Fabricación por Mes" (estado de fabricación + histórico) =====
+  // Rango por defecto: últimos 12 meses.
+  const [mesDesde, setMesDesde] = useState(() => dayjs().subtract(11, 'month').format('YYYY-MM'));
+  const [mesHasta, setMesHasta] = useState(() => dayjs().format('YYYY-MM'));
+
+  const fechaInicio = dayjs(`${mesDesde}-01`).startOf('month').format('YYYY-MM-DD');
+  const fechaFin = dayjs(`${mesHasta}-01`).endOf('month').format('YYYY-MM-DD');
+
+  // Snapshot actual por estado de fabricación (total de la empresa, no del período).
+  const { data: resumenEstados } = useQuery({
+    queryKey: ['equipos-fabricados', 'resumen-estados'],
+    queryFn: () => equipoFabricadoApi.getResumenEstados(),
+  });
+
+  // Producción terminada (COMPLETADO) agrupada por mes de finalización, dentro del rango.
+  const { data: fabricacionMensual } = useQuery({
+    queryKey: ['equipos-fabricados', 'fabricacion-mensual', fechaInicio, fechaFin],
+    queryFn: () => equipoFabricadoApi.getResumenFabricacionMensual(fechaInicio, fechaFin),
+  });
+
+  // Rellena todos los meses del rango (los que no tienen producción quedan en 0).
+  const mensualData = useMemo(() => {
+    const start = dayjs(`${mesDesde}-01`).startOf('month');
+    const end = dayjs(`${mesHasta}-01`).startOf('month');
+    const map = new Map<string, number>();
+    (fabricacionMensual ?? []).forEach((m) => map.set(`${m.anio}-${m.mes}`, m.completados));
+    const buckets: Array<{ anio: number; mes: number; label: string; completados: number }> = [];
+    let cursor = start;
+    while ((cursor.isBefore(end) || cursor.isSame(end, 'month')) && buckets.length <= 60) {
+      const anio = cursor.year();
+      const mes = cursor.month() + 1;
+      buckets.push({ anio, mes, label: cursor.format('MM/YY'), completados: map.get(`${anio}-${mes}`) ?? 0 });
+      cursor = cursor.add(1, 'month');
+    }
+    return buckets;
+  }, [fabricacionMensual, mesDesde, mesHasta]);
+
+  const estadoFabData = useMemo(() => {
+    if (!resumenEstados) return [] as Array<{ name: string; value: number; color: string }>;
+    return [
+      { name: 'Completados', value: resumenEstados.completados, color: '#4caf50' },
+      { name: 'Sin Terminación', value: resumenEstados.sinTerminacion, color: '#ff9800' },
+      { name: 'En Proceso', value: resumenEstados.enProceso, color: '#2196f3' },
+      { name: 'Pendientes', value: resumenEstados.pendientes, color: '#9e9e9e' },
+      { name: 'Control Calidad', value: resumenEstados.pendienteControlCalidad, color: '#9c27b0' },
+      { name: 'Cancelados', value: resumenEstados.cancelados, color: '#f44336' },
+    ];
+  }, [resumenEstados]);
+
+  const handleExportFabricacionPDF = async () => {
+    if (!resumenEstados) return;
+    try {
+      const [estadoImg, mensualImg] = await Promise.all([
+        captureElementAsImage('fabricacion-estado-chart'),
+        captureElementAsImage('fabricacion-mensual-chart'),
+      ]);
+      await generateReportesFabricacionPDF(
+        resumenEstados,
+        mensualData.map(({ anio, mes, completados }) => ({ anio, mes, completados })),
+        { fechaDesde: fechaInicio, fechaHasta: fechaFin },
+        { estadoChartImgData: estadoImg, mensualChartImgData: mensualImg },
+      );
+    } catch (err) {
+      console.error('Error al generar PDF de fabricación:', err);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -435,6 +504,123 @@ const ReportesEstadosPage: React.FC = () => {
             </Card>
           </Grid>
         )}
+      </Grid>
+
+      {/* ====== Fabricación por Mes (estado de fabricación + histórico) ====== */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} mb={2}>
+        <Typography variant="h5" fontWeight="600">
+          Fabricación por Mes
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<GetAppIcon />}
+          onClick={handleExportFabricacionPDF}
+          disabled={!resumenEstados}
+        >
+          Exportar PDF (período)
+        </Button>
+      </Box>
+
+      {/* KPIs por estado de fabricación (snapshot actual) */}
+      <Grid container spacing={2} mb={3}>
+        {[
+          { label: 'Total', value: resumenEstados?.total ?? 0, bg: '#f5f5f5', color: 'grey.700' },
+          { label: 'Completados', value: resumenEstados?.completados ?? 0, bg: '#e8f5e9', color: 'success.main' },
+          { label: 'Sin Terminación', value: resumenEstados?.sinTerminacion ?? 0, bg: '#fff3e0', color: 'warning.main' },
+          { label: 'En Proceso', value: resumenEstados?.enProceso ?? 0, bg: '#e3f2fd', color: 'primary.main' },
+          { label: 'Pendientes', value: resumenEstados?.pendientes ?? 0, bg: '#f5f5f5', color: 'grey.700' },
+          { label: 'Control Calidad', value: resumenEstados?.pendienteControlCalidad ?? 0, bg: '#f3e5f5', color: '#9c27b0' },
+        ].map((k) => (
+          <Grid item xs={6} sm={4} md={2} key={k.label}>
+            <Card sx={{ bgcolor: k.bg }}>
+              <CardContent>
+                <Typography variant="caption" color="text.secondary">
+                  {k.label}
+                </Typography>
+                <Typography variant="h4" fontWeight="600" sx={{ color: k.color }}>
+                  {k.value}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Charts: estado de fabricación (pie) + histórico por mes (bar) */}
+      <Grid container spacing={3} mb={4}>
+        <Grid item xs={12} md={5}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
+                <PieChartIcon /> Distribución por Estado de Fabricación
+              </Typography>
+              <div id="fabricacion-estado-chart" style={{ background: '#fff' }}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={estadoFabData.filter((d) => d.value > 0)}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                      outerRadius={80}
+                      dataKey="value"
+                    >
+                      {estadoFabData.filter((d) => d.value > 0).map((entry, index) => (
+                        <Cell key={`cell-fab-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={7}>
+          <Card>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} mb={1}>
+                <Typography variant="h6">Equipos Completados por Mes</Typography>
+                <Box display="flex" gap={1}>
+                  <TextField
+                    size="small"
+                    label="Desde"
+                    type="month"
+                    InputLabelProps={{ shrink: true }}
+                    value={mesDesde}
+                    onChange={(e) => setMesDesde(e.target.value)}
+                  />
+                  <TextField
+                    size="small"
+                    label="Hasta"
+                    type="month"
+                    InputLabelProps={{ shrink: true }}
+                    value={mesHasta}
+                    onChange={(e) => setMesHasta(e.target.value)}
+                  />
+                </Box>
+              </Box>
+              <div id="fabricacion-mensual-chart" style={{ background: '#fff' }}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={mensualData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="completados" name="Completados" fill="#4caf50" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <Typography variant="caption" color="text.secondary">
+                Solo equipos COMPLETADO por fecha de finalización. Sin terminación, en proceso y pendientes
+                se cuentan en el estado actual (arriba), no por mes.
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
 
       {/* Filtros */}

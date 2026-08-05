@@ -237,6 +237,16 @@ export interface EquipoResumenEstadosDTO {
   porTipo: Record<string, number>;
 }
 
+/**
+ * Producción terminada por mes (equipos COMPLETADO agrupados por año/mes de
+ * finalización). Espejo de `ResumenFabricacionMensualDTO` del backend.
+ */
+export interface ResumenFabricacionMensualDTO {
+  anio: number;
+  mes: number;
+  completados: number;
+}
+
 export interface EquipoFabricadoCreateDTO {
   recetaId?: number;
   tipo: TipoEquipo;

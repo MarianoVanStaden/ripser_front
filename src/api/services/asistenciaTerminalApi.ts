@@ -43,6 +43,17 @@ export interface ResumenAsistenciaEmpleado {
   diasIncompletos: number;
 }
 
+export interface CodigoTerminalDescartado {
+  enNo: string;
+  nombreTerminal: string | null;
+  cantidadMarcas: number;
+  primeraMarca: string | null;
+  ultimaMarca: string | null;
+  motivo: string | null;
+  descartadoPor: string | null;
+  fechaDescarte: string;
+}
+
 const BASE = '/api/rrhh/asistencia-terminal';
 
 export const asistenciaTerminalApi = {
@@ -62,6 +73,19 @@ export const asistenciaTerminalApi = {
 
   asignar: async (empleadoId: number, enNo: string): Promise<void> => {
     await api.post(`${BASE}/asignar`, { empleadoId, enNo });
+  },
+
+  descartar: async (enNo: string, motivo?: string): Promise<void> => {
+    await api.post(`${BASE}/descartar`, { enNo, motivo: motivo ?? null });
+  },
+
+  getDescartados: async (): Promise<CodigoTerminalDescartado[]> => {
+    const { data } = await api.get(`${BASE}/descartados`);
+    return data;
+  },
+
+  restaurar: async (enNo: string): Promise<void> => {
+    await api.post(`${BASE}/restaurar`, { enNo });
   },
 
   getResumen: async (desde: string, hasta: string): Promise<ResumenAsistenciaEmpleado[]> => {
