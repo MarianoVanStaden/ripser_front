@@ -421,9 +421,7 @@ export const PrestamosListPage: React.FC = () => {
           <FormControlLabel
             sx={{ mt: 1 }}
             control={<Checkbox checked={descontarCc} onChange={(e) => setDescontarCc(e.target.checked)} />}
-            label={`Descontar de la cuenta corriente el saldo pendiente${
-              prestamoToDelete?.saldoPendiente != null ? ` (${formatPrice(prestamoToDelete.saldoPendiente)})` : ''
-            }`}
+            label="Descontar de la cuenta corriente la deuda del crédito (incluye la entrega inicial)"
           />
           <DialogContentText variant="caption" sx={{ display: 'block', mt: 0.5 }}>
             Destildá solo si es un crédito manual que no dejó deuda en la cuenta corriente.
