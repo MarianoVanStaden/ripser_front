@@ -52,6 +52,19 @@ const ESTADOS_ASIGNACION: Array<{
 const estadoCfg = (estado: EstadoAsignacionEquipo) =>
   ESTADOS_ASIGNACION.find((e) => e.key === estado);
 
+// Estados de fabricación en curso (snapshot actual): mismos colores que el donut de fabricación.
+const ESTADOS_FABRICACION_WIP: Array<{
+  key: string;
+  label: string;
+  hex: string;
+  bg: string;
+}> = [
+  { key: 'PENDIENTE', label: 'Pendiente', hex: '#1baf7a', bg: '#e6f7f0' },
+  { key: 'EN_PROCESO', label: 'En Proceso', hex: '#2a78d6', bg: '#e7f0fb' },
+  { key: 'PENDIENTE_CONTROL_CALIDAD', label: 'Control Calidad', hex: '#4a3aa7', bg: '#edeaf9' },
+  { key: 'FABRICADO_SIN_TERMINACION', label: 'Sin Terminación', hex: '#eda100', bg: '#fdf3dd' },
+];
+
 // Máximo de chips de códigos visibles por estado antes de colapsar en "+N más".
 const MAX_CODIGOS_VISIBLES = 60;
 
@@ -278,6 +291,18 @@ const ReportesEstadosPage: React.FC = () => {
     }
     return buckets;
   }, [produccionMensual, fechaInicio, fechaFin]);
+
+  // Códigos de equipos actualmente en fabricación, por estado. Snapshot sobre todos los
+  // equipos cargados: NO se filtra por mes — el trabajo en curso es de "ahora", venga del mes que venga.
+  const codigosEnFabricacion = useMemo(() => {
+    const grupos = new Map<string, EquipoFabricadoDTO[]>();
+    ESTADOS_FABRICACION_WIP.forEach((e) => grupos.set(e.key, []));
+    equipos.forEach((equipo) => {
+      if (grupos.has(equipo.estado)) grupos.get(equipo.estado)!.push(equipo);
+    });
+    grupos.forEach((lista) => lista.sort((a, b) => a.numeroHeladera.localeCompare(b.numeroHeladera)));
+    return grupos;
+  }, [equipos]);
 
   const estadoFabData = useMemo(() => {
     if (!resumenEstados) return [] as Array<{ name: string; value: number; color: string }>;
@@ -692,6 +717,66 @@ const ReportesEstadosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
+      </Grid>
+
+      {/* Códigos actualmente en fabricación (snapshot, sin filtro de mes) */}
+      <Box display="flex" alignItems="baseline" gap={1} mb={1.5}>
+        <Typography variant="h5" fontWeight="600">
+          En Fabricación Ahora
+        </Typography>
+        <Typography variant="subtitle1" color="text.secondary">
+          — pendientes y en proceso, de cualquier mes
+        </Typography>
+      </Box>
+      <Grid container spacing={2} mb={4}>
+        {ESTADOS_FABRICACION_WIP.map((cfg) => {
+          const lista = codigosEnFabricacion.get(cfg.key) ?? [];
+          if (lista.length === 0) return null;
+          const visibles = lista.slice(0, MAX_CODIGOS_VISIBLES);
+          const ocultos = lista.length - visibles.length;
+          return (
+            <Grid item xs={12} sm={6} key={cfg.key}>
+              <Card sx={{ height: '100%', borderTop: `3px solid ${cfg.hex}` }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Build sx={{ color: cfg.hex }} />
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        {cfg.label}
+                      </Typography>
+                    </Box>
+                    <Chip label={lista.length} size="small" sx={{ bgcolor: cfg.bg, fontWeight: 600 }} />
+                  </Box>
+                  <Divider sx={{ mb: 1.5 }} />
+                  <Box display="flex" flexWrap="wrap" gap={0.75}>
+                    {visibles.map((equipo) => (
+                      <MuiTooltip
+                        key={equipo.id}
+                        title={`${equipo.tipo} ${equipo.modelo} — creado ${dayjs(equipo.fechaCreacion).format('DD/MM/YYYY')}`}
+                      >
+                        <Chip label={equipo.numeroHeladera} size="small" variant="outlined" />
+                      </MuiTooltip>
+                    ))}
+                    {ocultos > 0 && (
+                      <Chip label={`+${ocultos} más`} size="small" sx={{ bgcolor: cfg.bg }} />
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
+        {ESTADOS_FABRICACION_WIP.every((cfg) => (codigosEnFabricacion.get(cfg.key) ?? []).length === 0) && (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary" align="center" py={2}>
+                  No hay equipos en fabricación en este momento
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
 
       {/* Tabla de equipos */}
