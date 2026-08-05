@@ -64,8 +64,13 @@ export const prestamoPersonalApi = {
     return response.data;
   },
 
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`${BASE_PATH}/${id}`);
+  /**
+   * Da de baja un crédito. `descontarCc` (default true) postea un CREDITO por el saldo
+   * pendiente en la CC del cliente; destildarlo omite el descuento (préstamos manuales
+   * sin deuda en CC). Solo ADMIN/SUPER_ADMIN (el backend responde 403 si no).
+   */
+  delete: async (id: number, descontarCc = true): Promise<void> => {
+    await api.delete(`${BASE_PATH}/${id}`, { params: { descontarCc } });
   },
 
   getActivos: async (): Promise<PrestamoPersonalDTO[]> => {

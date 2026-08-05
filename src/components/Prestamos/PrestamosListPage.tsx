@@ -4,7 +4,7 @@ import {
   TableHead, TableRow, TableSortLabel, TablePagination, IconButton, Typography,
   Tooltip, Alert, TextField, InputAdornment, CircularProgress,
   Chip, Stack, Button, Menu, MenuItem, Dialog, DialogTitle,
-  DialogContent, DialogContentText, DialogActions,
+  DialogContent, DialogContentText, DialogActions, FormControlLabel, Checkbox,
 } from '@mui/material';
 import {
   Visibility, Edit, Delete, Add, Search, FilterList,
@@ -73,6 +73,7 @@ export const PrestamosListPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [prestamoToDelete, setPrestamoToDelete] = useState<PrestamoPersonalDTO | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [descontarCc, setDescontarCc] = useState(true);
 
   // Solo ADMIN o superior puede dar de baja un crédito (el backend lo exige con 403).
   const { esAdmin, esSuperAdmin } = usePermisos();
@@ -144,7 +145,7 @@ export const PrestamosListPage: React.FC = () => {
     if (!prestamoToDelete) return;
     setDeleteError(null);
     try {
-      await prestamoPersonalApi.delete(prestamoToDelete.id);
+      await prestamoPersonalApi.delete(prestamoToDelete.id, descontarCc);
       setDeleteDialogOpen(false);
       setPrestamoToDelete(null);
       refresh();
@@ -361,7 +362,7 @@ export const PrestamosListPage: React.FC = () => {
                         </Tooltip>
                         {puedeBorrar && (
                           <Tooltip title="Eliminar">
-                            <IconButton size="small" onClick={() => { setPrestamoToDelete(p); setDeleteError(null); setDeleteDialogOpen(true); }}>
+                            <IconButton size="small" onClick={() => { setPrestamoToDelete(p); setDeleteError(null); setDescontarCc(true); setDeleteDialogOpen(true); }}>
                               <Delete fontSize="small" color="error" />
                             </IconButton>
                           </Tooltip>
@@ -415,7 +416,17 @@ export const PrestamosListPage: React.FC = () => {
         <DialogContent>
           <DialogContentText>
             ¿Está seguro que desea eliminar el crédito personal de <strong>{prestamoToDelete?.clienteNombre}{prestamoToDelete?.clienteApellido ? ` ${prestamoToDelete.clienteApellido}` : ''}</strong>?
-            Se descontará de la cuenta corriente del cliente el saldo pendiente del crédito. Si tiene cuotas pagas, el crédito queda anulado conservando los pagos.
+            Si tiene cuotas pagas, el crédito queda anulado conservando los pagos.
+          </DialogContentText>
+          <FormControlLabel
+            sx={{ mt: 1 }}
+            control={<Checkbox checked={descontarCc} onChange={(e) => setDescontarCc(e.target.checked)} />}
+            label={`Descontar de la cuenta corriente el saldo pendiente${
+              prestamoToDelete?.saldoPendiente != null ? ` (${formatPrice(prestamoToDelete.saldoPendiente)})` : ''
+            }`}
+          />
+          <DialogContentText variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+            Destildá solo si es un crédito manual que no dejó deuda en la cuenta corriente.
           </DialogContentText>
           {deleteError && <Alert severity="error" sx={{ mt: 2 }}>{deleteError}</Alert>}
         </DialogContent>
