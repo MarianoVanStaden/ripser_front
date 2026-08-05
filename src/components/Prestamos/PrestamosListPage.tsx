@@ -23,6 +23,7 @@ import { PrestamoFormDialog } from './PrestamoFormDialog';
 import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useUrlFilters } from '../../hooks/useUrlFilters';
+import { usePermisos } from '../../hooks/usePermisos';
 
 const ESTADO_VALUES = new Set<EstadoPrestamo>(Object.values(EstadoPrestamo));
 const CATEGORIA_VALUES = new Set<CategoriaPrestamo>(Object.values(CategoriaPrestamo));
@@ -71,6 +72,11 @@ export const PrestamosListPage: React.FC = () => {
   const [editingPrestamo, setEditingPrestamo] = useState<PrestamoPersonalDTO | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [prestamoToDelete, setPrestamoToDelete] = useState<PrestamoPersonalDTO | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Solo ADMIN o superior puede dar de baja un crédito (el backend lo exige con 403).
+  const { esAdmin, esSuperAdmin } = usePermisos();
+  const puedeBorrar = esAdmin || esSuperAdmin;
 
   // Estado change menu
   const [estadoMenuAnchor, setEstadoMenuAnchor] = useState<null | HTMLElement>(null);
@@ -136,6 +142,7 @@ export const PrestamosListPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!prestamoToDelete) return;
+    setDeleteError(null);
     try {
       await prestamoPersonalApi.delete(prestamoToDelete.id);
       setDeleteDialogOpen(false);
@@ -143,6 +150,13 @@ export const PrestamosListPage: React.FC = () => {
       refresh();
     } catch (err) {
       console.error('Error deleting prestamo:', err);
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const backendMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (status === 403) {
+        setDeleteError('Esta acción solo puede realizarla un usuario administrador.');
+      } else {
+        setDeleteError(backendMsg || 'No se pudo eliminar el crédito. Intente nuevamente.');
+      }
     }
   };
 
@@ -345,11 +359,13 @@ export const PrestamosListPage: React.FC = () => {
                             <Edit fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Eliminar">
-                          <IconButton size="small" onClick={() => { setPrestamoToDelete(p); setDeleteDialogOpen(true); }}>
-                            <Delete fontSize="small" color="error" />
-                          </IconButton>
-                        </Tooltip>
+                        {puedeBorrar && (
+                          <Tooltip title="Eliminar">
+                            <IconButton size="small" onClick={() => { setPrestamoToDelete(p); setDeleteError(null); setDeleteDialogOpen(true); }}>
+                              <Delete fontSize="small" color="error" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -399,8 +415,9 @@ export const PrestamosListPage: React.FC = () => {
         <DialogContent>
           <DialogContentText>
             ¿Está seguro que desea eliminar el crédito personal de <strong>{prestamoToDelete?.clienteNombre}{prestamoToDelete?.clienteApellido ? ` ${prestamoToDelete.clienteApellido}` : ''}</strong>?
-            Esta acción no se puede deshacer.
+            Se descontará de la cuenta corriente del cliente el saldo pendiente del crédito. Si tiene cuotas pagas, el crédito queda anulado conservando los pagos.
           </DialogContentText>
+          {deleteError && <Alert severity="error" sx={{ mt: 2 }}>{deleteError}</Alert>}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
