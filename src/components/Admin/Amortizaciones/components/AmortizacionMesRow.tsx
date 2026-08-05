@@ -61,6 +61,7 @@ export default function AmortizacionMesRow({ activo, amortizacion, anio, mes, on
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const esPorcentajeFijo = activo.metodo === 'PORCENTAJE_FIJO';
   const yaEjecutada = !!amortizacion?.ejecutadaAt;
   const puedeEjecutar =
     !!amortizacion &&
@@ -189,6 +190,13 @@ export default function AmortizacionMesRow({ activo, amortizacion, anio, mes, on
           {amortizacion ? 'Editar' : 'Registrar'} amortización — {activo.nombre}
         </DialogTitle>
         <DialogContent>
+          {esPorcentajeFijo && (
+            <Alert severity="info" sx={{ mt: 1 }}>
+              El monto amortizado de este activo se calcula como % del flujo de caja
+              en el <strong>Cierre de Mes</strong>. Acá el valor dólar es solo
+              informativo y no modifica el monto.
+            </Alert>
+          )}
           <TextField
             label="Valor dólar *"
             type="number"
@@ -215,17 +223,19 @@ export default function AmortizacionMesRow({ activo, amortizacion, anio, mes, on
             />
           )}
 
-          <TextField
-            label="Compras/mantenimiento del mes ($)"
-            type="number"
-            fullWidth
-            size="small"
-            value={comprasPesos}
-            onChange={(e) => setComprasPesos(e.target.value)}
-            inputProps={{ step: '0.01', min: '0' }}
-            sx={{ mt: 2 }}
-            disabled={saving}
-          />
+          {!esPorcentajeFijo && (
+            <TextField
+              label="Compras/mantenimiento del mes ($)"
+              type="number"
+              fullWidth
+              size="small"
+              value={comprasPesos}
+              onChange={(e) => setComprasPesos(e.target.value)}
+              inputProps={{ step: '0.01', min: '0' }}
+              sx={{ mt: 2 }}
+              disabled={saving}
+            />
+          )}
 
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </DialogContent>
