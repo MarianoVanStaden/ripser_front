@@ -27,7 +27,8 @@ import {
   ReceiptLong as ChequeIcon,
 } from '@mui/icons-material';
 import type { MetodoPago, PrestamoPersonalDTO } from '../../types/prestamo.types';
-import type { Banco, DetalleRendicion, RendicionViajeDTO } from '../../types';
+import type { Banco, Cliente, DetalleRendicion, RendicionViajeDTO } from '../../types';
+import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import { METODO_PAGO_LABELS } from '../../types/venta.types';
 import { cajaEsDefaultPara, type CajaUnificada } from '../../types/caja.types';
 import { cajasApi } from '../../api/services/cajasApi';
@@ -60,6 +61,10 @@ interface ChequeForm {
   fechaCobro: string;
   /** Cliente de la entrega — necesario para imputar el cheque a su crédito. */
   clienteId: number | null;
+  /** true si la entrega no trajo cliente: se muestra un picker y es obligatorio elegirlo. */
+  clienteManual: boolean;
+  /** Cliente elegido en el picker (solo cuando clienteManual). */
+  cliente: Cliente | null;
   /** Préstamo elegido para imputar el cheque en el mismo acto (opcional). */
   prestamoId: number | '';
 }
@@ -82,9 +87,11 @@ const newTransferAlloc = (overrides?: Partial<TransferAlloc>): TransferAlloc => 
 
 const TRANSFER = 'TRANSFERENCIA_BANCARIA';
 
+// clienteId obligatorio: sin él, el cheque queda huérfano en cartera (invisible
+// para el picker de imputación a créditos) y el backend rechaza la rendición.
 const chequeValido = (c: ChequeForm) =>
   c.numero.trim() !== '' && c.bancoId !== '' && c.titular.trim() !== '' &&
-  c.fechaEmision !== '' && c.fechaCobro !== '';
+  c.fechaEmision !== '' && c.fechaCobro !== '' && c.clienteId != null;
 
 interface Props {
   viajeId: number;
@@ -136,7 +143,10 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
                   monto,
                   numero: '', bancoId: '', titular: e.clienteNombre ?? '',
                   cuit: '', fechaEmision: '', fechaCobro: '',
-                  clienteId: e.clienteId ?? null, prestamoId: '',
+                  clienteId: e.clienteId ?? null,
+                  clienteManual: e.clienteId == null,
+                  cliente: null,
+                  prestamoId: '',
                 });
               }
             } else if (d.metodoPago === 'DOLARES') {
@@ -534,6 +544,22 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
                       onChange={(e) => updateCheque(c.id, { fechaCobro: e.target.value })}
                     />
                   </Stack>
+                  {c.clienteManual && (
+                    <ClienteAutocomplete
+                      value={c.cliente}
+                      onChange={(cliente) => updateCheque(c.id, {
+                        cliente,
+                        clienteId: cliente?.id ?? null,
+                        prestamoId: '',
+                      })}
+                      label="Cliente del cheque"
+                      required
+                      error={c.clienteId == null}
+                      helperText={c.clienteId == null
+                        ? 'La entrega no tiene cliente asociado: elegilo para poder imputar el cheque a sus créditos.'
+                        : undefined}
+                    />
+                  )}
                   {c.clienteId != null && (prestamosPorCliente[c.clienteId]?.length ?? 0) > 0 && (
                     <FormControl fullWidth size="small">
                       <InputLabel>Imputar a crédito (opcional)</InputLabel>
