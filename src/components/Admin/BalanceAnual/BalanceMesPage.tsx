@@ -285,7 +285,7 @@ export default function BalanceMesPage() {
           </Box>
           {calcError && <Alert severity="error" sx={{ mt: 1 }}>{calcError}</Alert>}
           <Typography variant="caption" color="text.secondary" mt={1} display="block">
-            Completa automáticamente los campos de <strong>flujo de caja</strong>. Los de <strong>posición patrimonial</strong> (stock, cuentas x cobrar/pagar, patrimonio) se ingresan manualmente.
+            Completa automáticamente los campos de <strong>flujo de caja</strong> y toma una foto de la <strong>posición patrimonial</strong> (stocks, cuentas x pagar, patrimonio fijo) con los valores actuales.
           </Typography>
         </Paper>
       )}

@@ -140,6 +140,7 @@ export const navigation: NavModule[] = [
     modulo: 'GARANTIAS',
     items: [
       { text: 'Dashboard Postventa', icon: <BarChartIcon />, path: '/postventa/dashboard', modulo: 'GARANTIAS' },
+      { text: 'Control de Calidad', icon: <FactCheckIcon />, path: '/postventa/comunicaciones-iniciales', modulo: 'GARANTIAS' },
       // GARANTÍAS
       { text: 'Registro Garantías', icon: <AssignmentIcon />, path: '/garantias/registro', modulo: 'GARANTIAS' },
       { text: 'Seguimiento Reclamos', icon: <AssignmentIcon />, path: '/garantias/reclamos', modulo: 'GARANTIAS' },

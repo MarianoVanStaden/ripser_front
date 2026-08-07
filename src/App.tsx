@@ -184,6 +184,7 @@ const GarantiasPage = lazy(() => import('./components/Garantia/GarantiasPage'));
 const ReclamosGarantiaPage = lazy(() => import('./components/Garantia/ReclamosGarantiaPage'));
 const GarantiaReportPage = lazy(() => import('./components/Garantia/GarantiaReportPage'));
 const PostventaDashboard = lazy(() => import('./components/Postventa/PostventaDashboard'));
+const ComunicacionesInicialesPage = lazy(() => import('./components/Postventa/ComunicacionesInicialesPage'));
 
 // Logística
 const StockPage = lazy(() => import('./components/Logistica/StockPage'));
@@ -425,6 +426,7 @@ function App() {
 
                   {/* POSTVENTA (Garantías + Taller unificados) */}
                   <Route path="postventa/dashboard" element={priv(<PostventaDashboard />)} />
+                  <Route path="postventa/comunicaciones-iniciales" element={priv(<ComunicacionesInicialesPage />)} />
 
                   {/* GARANTÍAS */}
                   <Route path="garantias/registro" element={priv(<GarantiasPage />)} />

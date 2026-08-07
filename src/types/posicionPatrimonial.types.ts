@@ -29,6 +29,8 @@ export interface PosicionPatrimonialDTO {
   empresaId: number;
   /** Disponibilidades: cajas en pesos OPERATIVAS activas. Suma al total de activos. */
   cajasPesosTotal: number;
+  /** Financiamiento/deuda: cajas tipo CREDITO activas (vive en negativo). Resta al total de activos. */
+  cajasCreditoTotal: number;
   /** Cajas de ahorro en USD activas. Informativo, no suma al total. */
   cajasDolaresTotal: number;
   stockMaterialesPesos: number;
@@ -38,7 +40,6 @@ export interface PosicionPatrimonialDTO {
   patrimonioFijoPesos: number;
   totalActivosPesos: number;
   cuentasXPagarPesos: number;
-  provisionesRRHHPesos: number;
   totalPasivosPesos: number;
   patrimonioNetoPesos: number;
   desgloseFijo: DesgloseFijoDTO;
