@@ -47,6 +47,10 @@ export interface ConfirmDialogProps {
   icon?: React.ReactNode;
   /** Texto a mostrar mientras loading=true. Si no se pasa, usa `${confirmLabel}…`. */
   loadingLabel?: string;
+  /** Contenido extra (ej. un TextField de motivo) debajo de la descripción. */
+  children?: React.ReactNode;
+  /** Deshabilita el botón de confirmar (ej. hasta completar un campo requerido). */
+  confirmDisabled?: boolean;
 }
 
 const ICON_BY_SEVERITY: Record<ConfirmDialogSeverity, React.ReactNode> = {
@@ -105,6 +109,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   loading = false,
   icon,
   loadingLabel,
+  children,
+  confirmDisabled = false,
 }) => {
   const handleClose = () => {
     if (loading) return;
@@ -146,6 +152,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             {itemDetails}
           </Box>
         )}
+        {children && <Box sx={{ mt: 2 }}>{children}</Box>}
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={loading}>
@@ -155,7 +162,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           variant="contained"
           color={BUTTON_COLOR_BY_SEVERITY[severity]}
           onClick={() => onConfirm()}
-          disabled={loading}
+          disabled={loading || confirmDisabled}
           startIcon={CONFIRM_ICON_BY_SEVERITY[severity]}
         >
           {loading ? (loadingLabel ?? `${confirmLabel}…`) : confirmLabel}

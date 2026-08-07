@@ -330,27 +330,35 @@ const FlujoCajaMovimientosTable: React.FC<FlujoCajaMovimientosTableProps> = ({
                     movimiento.origen === 'COBRO_EXTRA' ? (
                       movimiento.estado === 'ANULADO' ? (
                         <Chip label="Anulado" size="small" color="default" />
-                      ) : (
+                      ) : onEdit || onAnular ? (
                         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => onEdit && onEdit(movimiento)}
-                            title="Editar"
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() =>
-                              onAnular && movimiento.movimientoExtraId && onAnular(movimiento.movimientoExtraId)
-                            }
-                            title="Anular"
-                          >
-                            <CancelIcon fontSize="small" />
-                          </IconButton>
+                          {onEdit && (
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => onEdit(movimiento)}
+                              title="Editar"
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                          {onAnular && (
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() =>
+                                movimiento.movimientoExtraId && onAnular(movimiento.movimientoExtraId)
+                              }
+                              title="Anular"
+                            >
+                              <CancelIcon fontSize="small" />
+                            </IconButton>
+                          )}
                         </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          -
+                        </Typography>
                       )
                     ) : (
                       <Typography variant="body2" color="text.secondary">

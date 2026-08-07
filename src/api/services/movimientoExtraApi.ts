@@ -55,13 +55,14 @@ export const movimientoExtraApi = {
   },
 
   /**
-   * Cancels (soft delete) an extra movement.
+   * Cancels (soft delete) an extra movement. Requires a reason (motivo);
+   * the backend reverts the physical cash box impact and audits the action.
    * @param id - Movement ID
-   * @returns Promise<FlujoCajaMovimientoEnhanced> - Canceled movement
+   * @param motivo - Mandatory cancellation reason
+   * @returns Promise<void>
    */
-  anular: async (id: number): Promise<FlujoCajaMovimientoEnhanced> => {
-    const response = await api.put(`/api/movimientos-extra/${id}/anular`);
-    return response.data;
+  anular: async (id: number, motivo: string): Promise<void> => {
+    await api.put(`/api/movimientos-extra/${id}/anular`, { motivo });
   },
 
   /**

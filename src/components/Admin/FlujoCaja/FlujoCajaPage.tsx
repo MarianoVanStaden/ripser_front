@@ -7,6 +7,7 @@ import {
   Button,
   Paper,
   Divider,
+  TextField,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -24,6 +25,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { useFlujoCaja } from '../../../hooks/useFlujoCaja';
+import { usePermisos } from '../../../hooks/usePermisos';
 import { useSmartRefresh, formatLastUpdated } from '../../../hooks/useSmartRefresh';
 import type {
   MetodoPago,
@@ -79,7 +81,12 @@ const FlujoCajaPage: React.FC = () => {
   // Transferencia entre cajas pesos
   const [transferirDialogOpen, setTransferirDialogOpen] = useState(false);
   const [movimientoToAnular, setMovimientoToAnular] = useState<number | null>(null);
+  const [motivoAnulacion, setMotivoAnulacion] = useState('');
   const [anularLoading, setAnularLoading] = useState(false);
+
+  // Anular movimientos: solo ADMIN / SUPER_ADMIN (mismo criterio que el backend)
+  const { esAdmin, esSuperAdmin } = usePermisos();
+  const puedeAnular = esAdmin || esSuperAdmin;
 
   // React Query — datos del flujo de caja
   const {
@@ -231,16 +238,18 @@ const FlujoCajaPage: React.FC = () => {
   };
 
   const handleAnularMovimiento = (movimientoExtraId: number) => {
+    setMotivoAnulacion('');
     setMovimientoToAnular(movimientoExtraId);
   };
 
   const handleConfirmAnularMovimiento = async () => {
-    if (movimientoToAnular == null) return;
+    if (movimientoToAnular == null || !motivoAnulacion.trim()) return;
     setAnularLoading(true);
     try {
-      await movimientoExtraApi.anular(movimientoToAnular);
+      await movimientoExtraApi.anular(movimientoToAnular, motivoAnulacion.trim());
       invalidate();
       setMovimientoToAnular(null);
+      setMotivoAnulacion('');
     } catch (err: any) {
       console.error('Error al anular movimiento:', err);
       setLocalError('Error al anular el movimiento. Por favor intentá de nuevo.');
@@ -550,8 +559,8 @@ const FlujoCajaPage: React.FC = () => {
           <FlujoCajaMovimientosTable
             movimientos={movimientos}
             loading={isFetching}
-            onEdit={handleEditMovimiento}
-            onAnular={handleAnularMovimiento}
+            onEdit={puedeAnular ? handleEditMovimiento : undefined}
+            onAnular={puedeAnular ? handleAnularMovimiento : undefined}
           />
         </Box>
 
@@ -601,16 +610,32 @@ const FlujoCajaPage: React.FC = () => {
 
         <ConfirmDialog
           open={movimientoToAnular != null}
-          onClose={() => setMovimientoToAnular(null)}
+          onClose={() => {
+            setMovimientoToAnular(null);
+            setMotivoAnulacion('');
+          }}
           onConfirm={handleConfirmAnularMovimiento}
           title="¿Anular movimiento?"
           severity="warning"
-          warning="El movimiento dejará de impactar en el flujo de caja. Esta acción no se puede deshacer."
+          warning="El movimiento dejará de contar en el flujo de caja y se revertirá su impacto en la caja física. Esta acción no se puede deshacer."
           description="¿Estás seguro de que querés anular este movimiento del flujo de caja?"
           confirmLabel="Anular movimiento"
           loadingLabel="Anulando…"
           loading={anularLoading}
-        />
+          confirmDisabled={motivoAnulacion.trim().length === 0}
+        >
+          <TextField
+            label="Motivo de anulación"
+            required
+            fullWidth
+            multiline
+            minRows={2}
+            inputProps={{ maxLength: 500 }}
+            value={motivoAnulacion}
+            onChange={(e) => setMotivoAnulacion(e.target.value)}
+            disabled={anularLoading}
+          />
+        </ConfirmDialog>
       </Box>
     </LocalizationProvider>
   );

@@ -42,6 +42,7 @@ import ExtraerDialog from './dialogs/ExtraerDialog';
 const TIPO_LABEL: Record<TipoMovimientoCaja, string> = {
   DEPOSITO: 'Depósito',
   EXTRACCION: 'Extracción',
+  AJUSTE: 'Ajuste',
   CONVERSION_AMORTIZACION: 'Conversión amort.',
   TRANSFERENCIA_EGRESO: 'Transf. salida',
   TRANSFERENCIA_INGRESO: 'Transf. entrada',
@@ -50,6 +51,7 @@ const TIPO_LABEL: Record<TipoMovimientoCaja, string> = {
 const TIPO_COLOR: Record<TipoMovimientoCaja, 'success' | 'error' | 'info'> = {
   DEPOSITO: 'success',
   EXTRACCION: 'error',
+  AJUSTE: 'info',
   CONVERSION_AMORTIZACION: 'info',
   TRANSFERENCIA_EGRESO: 'error',
   TRANSFERENCIA_INGRESO: 'success',

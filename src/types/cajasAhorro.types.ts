@@ -4,6 +4,7 @@ export type EstadoCajaAhorro = 'ACTIVA' | 'INACTIVA';
 export type TipoMovimientoCaja =
   | 'DEPOSITO'
   | 'EXTRACCION'
+  | 'AJUSTE'
   | 'CONVERSION_AMORTIZACION'
   | 'TRANSFERENCIA_EGRESO'
   | 'TRANSFERENCIA_INGRESO';
