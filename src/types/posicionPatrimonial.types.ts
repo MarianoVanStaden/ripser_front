@@ -27,6 +27,10 @@ export interface DesgloseStockDTO {
 export interface PosicionPatrimonialDTO {
   calculadoEn: string;
   empresaId: number;
+  /** Disponibilidades: cajas en pesos OPERATIVAS activas. Suma al total de activos. */
+  cajasPesosTotal: number;
+  /** Cajas de ahorro en USD activas. Informativo, no suma al total. */
+  cajasDolaresTotal: number;
   stockMaterialesPesos: number;
   stockFabricacionPesos: number;
   stockComercializacionPesos: number;

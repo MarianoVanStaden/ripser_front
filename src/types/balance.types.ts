@@ -22,6 +22,10 @@ export interface BalanceMensualDTO {
   cuentasXPagarPesos: number;
   patrimonioPesos: number;
   resultadoPesos: number;
+  /** Derivado en backend: totalCobrado − totalGastos (sin amortización). */
+  saldoParcialPesos: number;
+  /** Derivado en backend: saldoParcial + stocks − cuentasXPagar. */
+  saldoTotalPesos: number;
 
   // Dólares
   saldoInicialDolares: number;
@@ -36,6 +40,8 @@ export interface BalanceMensualDTO {
   cuentasXPagarDolares: number;
   patrimonioDolares: number;
   resultadoDolares: number;
+  saldoParcialDolares: number;
+  saldoTotalDolares: number;
 
   fechaCreacion: string | null;
   fechaActualizacion: string | null;

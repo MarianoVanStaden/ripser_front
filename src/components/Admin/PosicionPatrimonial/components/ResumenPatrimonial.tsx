@@ -53,6 +53,7 @@ export default function ResumenPatrimonial({ data, formatPesos }: Props) {
           <Typography variant="overline" sx={{ display: 'block', color: 'primary.main', fontWeight: 700, mb: 1 }}>
             Activos
           </Typography>
+          <FilaActivo label="Disponibilidades (cajas en pesos)" valor={data.cajasPesosTotal} total={data.totalActivosPesos} formatPesos={formatPesos} />
           <FilaActivo label="Stock materiales" valor={data.stockMaterialesPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
           <FilaActivo label="Stock fabricación" valor={data.stockFabricacionPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
           <FilaActivo label="Stock comercialización" valor={data.stockComercializacionPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
@@ -60,6 +61,9 @@ export default function ResumenPatrimonial({ data, formatPesos }: Props) {
           <FilaActivo label="Patrimonio fijo" valor={data.patrimonioFijoPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
           <Divider sx={{ my: 1 }} />
           <FilaActivo label="TOTAL ACTIVOS" valor={data.totalActivosPesos} total={data.totalActivosPesos} formatPesos={formatPesos} bold />
+          <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+            Cajas en dólares: USD {formatPesos(data.cajasDolaresTotal)} (no incluido en el total)
+          </Typography>
         </Paper>
       </Grid>
 

@@ -48,14 +48,17 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
 
   const totales: TotalesAnuales = data.totalesAnuales;
 
-  const colHeader = (label: string) => (
-    <TableCell align="right" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+  // borde izquierdo = separador visual entre bloque flujo de dinero y bloque patrimonial
+  const bloquePatrimonial = { borderLeft: '2px solid', borderLeftColor: 'grey.300' };
+
+  const colHeader = (label: string, separador = false) => (
+    <TableCell align="right" sx={{ fontWeight: 700, whiteSpace: 'nowrap', ...(separador ? bloquePatrimonial : {}) }}>
       {label} ({simbolo})
     </TableCell>
   );
 
-  const cell = (value: number | undefined | null) => (
-    <TableCell align="right">{fmt(value)}</TableCell>
+  const cell = (value: number | undefined | null, separador = false) => (
+    <TableCell align="right" sx={separador ? bloquePatrimonial : undefined}>{fmt(value)}</TableCell>
   );
 
   return (
@@ -79,9 +82,12 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
               <TableCell align="right" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Dólar</TableCell>
               {colHeader('Cobrado')}
               {colHeader('Gastos')}
-              {colHeader('Amortizado')}
-              {colHeader('Resultado Neto')}
-              {colHeader('Saldo Final')}
+              {colHeader('Saldo Parcial')}
+              {colHeader('Cuentas x Pagar', true)}
+              {colHeader('Stock materiales')}
+              {colHeader('Stock Fabricación')}
+              {colHeader('Stock comercialización')}
+              {colHeader('Saldo Total')}
               <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Acciones</TableCell>
             </TableRow>
@@ -106,9 +112,12 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
                   {cell(m?.valorDolar)}
                   {cell(m ? (m as any)[`totalCobrado${suffix}`] : null)}
                   {cell(m ? (m as any)[`totalGastos${suffix}`] : null)}
-                  {cell(m ? (m as any)[`totalAmortizado${suffix}`] : null)}
-                  {cell(m ? (m as any)[`resultado${suffix}`] : null)}
-                  {cell(m ? (m as any)[`saldoFinal${suffix}`] : null)}
+                  {cell(m ? (m as any)[`saldoParcial${suffix}`] : null)}
+                  {cell(m ? (m as any)[`cuentasXPagar${suffix}`] : null, true)}
+                  {cell(m ? (m as any)[`stockMateriales${suffix}`] : null)}
+                  {cell(m ? (m as any)[`stockFabricacion${suffix}`] : null)}
+                  {cell(m ? (m as any)[`stockComercializacion${suffix}`] : null)}
+                  {cell(m ? (m as any)[`saldoTotal${suffix}`] : null)}
                   <TableCell>
                     {m ? <EstadoBalanceBadge estado={m.estado} /> : <Typography variant="caption" color="text.secondary">Sin datos</Typography>}
                   </TableCell>
@@ -144,8 +153,12 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
               <TableCell align="right">—</TableCell>
               {cell((totales as any)[`totalCobrado${suffix}`])}
               {cell((totales as any)[`totalGastos${suffix}`])}
-              {cell((totales as any)[`totalAmortizado${suffix}`])}
-              {cell((totales as any)[`resultado${suffix}`])}
+              {cell(((totales as any)[`totalCobrado${suffix}`] ?? 0) - ((totales as any)[`totalGastos${suffix}`] ?? 0))}
+              {/* stocks/CxP son fotos punto-en-tiempo: no tiene sentido sumarlas entre meses */}
+              <TableCell align="right" sx={bloquePatrimonial}>—</TableCell>
+              <TableCell align="right">—</TableCell>
+              <TableCell align="right">—</TableCell>
+              <TableCell align="right">—</TableCell>
               <TableCell align="right">—</TableCell>
               <TableCell />
               <TableCell />
