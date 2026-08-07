@@ -56,7 +56,6 @@ interface RowState {
   descuentosLegales: number;
   descuentosOtros: number;
   adelantos: number;
-  fechaPago: string;
   observaciones: string;
   /** Si ya hay un Sueldo existente para este empleado+período (vamos a updatear, no crear). */
   existingId?: number;
@@ -83,7 +82,6 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
   // ─── Filtros globales del período ───────────────────────────────────────
   const [periodo, setPeriodo] = useState<string>(dayjs().format('YYYY-MM'));
   const [concepto, setConcepto] = useState<ConceptoSueldo>('SALARIO');
-  const [fechaPagoDefault, setFechaPagoDefault] = useState<string>('');
   const [unidadesProducidas, setUnidadesProducidas] = useState<number>(0);
   // Auto-conteo del backend (referencia para mostrar al usuario y permitir override).
   const [unidadesAutoProducidas, setUnidadesAutoProducidas] = useState<number | null>(null);
@@ -239,7 +237,6 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
           descuentosLegales: Number(sueldoExistente.descuentosLegales ?? 0),
           descuentosOtros: Number(sueldoExistente.descuentosOtros ?? 0),
           adelantos: Number(sueldoExistente.adelantos ?? adelantoTotal),
-          fechaPago: sueldoExistente.fechaPago ?? fechaPagoDefault,
           observaciones: sueldoExistente.observaciones ?? '',
           existingId: sueldoExistente.id,
           unidadesBonoVentasSnapshot: sueldoExistente.unidadesBonoVentas ?? null,
@@ -269,7 +266,6 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
         descuentosLegales: 0,
         descuentosOtros: 0,
         adelantos: adelantoTotal,
-        fechaPago: fechaPagoDefault,
         observaciones: '',
         incluir: tieneCategoria,
       };
@@ -375,10 +371,6 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
   }, [rows, computeRow]);
 
   // ─── Acciones globales ─────────────────────────────────────────────────
-  const handleAplicarFechaPago = () => {
-    if (!fechaPagoDefault) return;
-    setRows(prev => prev.map(r => ({ ...r, fechaPago: fechaPagoDefault })));
-  };
   const handleAplicarConcepto = () => {
     setRows(prev => prev.map(r => ({ ...r, concepto })));
   };
@@ -437,7 +429,6 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
           adelantos: calc.adelantos,
           totalDescuentos: calc.totalDescuentos,
           sueldoNeto: calc.sueldoNeto,
-          fechaPago: row.fechaPago || null,
           observaciones: row.observaciones?.trim() || null,
         };
       });
@@ -561,27 +552,6 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                   ))}
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={4} md={2}>
-              <TextField
-                fullWidth size="small" type="date" label="Fecha de pago"
-                value={fechaPagoDefault}
-                onChange={(e) => setFechaPagoDefault(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Tooltip title="Aplicar a todas las filas">
-                        <span>
-                          <IconButton size="small" onClick={handleAplicarFechaPago} disabled={!fechaPagoDefault}>
-                            <AutoFixHighIcon fontSize="small" />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </InputAdornment>
-                  ),
-                }}
-              />
             </Grid>
             <Grid item xs={6} sm={4} md={2}>
               <TextField

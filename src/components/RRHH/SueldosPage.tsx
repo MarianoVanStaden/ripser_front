@@ -98,7 +98,9 @@ const SueldosPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const [sueldosResp, empleadosData, cats, bonosP] = await Promise.all([
-        sueldoApi.getAll(),
+        // size alto: el backend pagina con default 20 y la grilla filtra el
+        // período en cliente; sin esto se truncaba a 20 y se "perdían" sueldos.
+        sueldoApi.getAll({ page: 0, size: 10000 }),
         employeeApi.getAllList(),
         categoriaSalarialApi.getAll().catch(() => []),
         bonoProduccionApi.getAll().catch(() => []),

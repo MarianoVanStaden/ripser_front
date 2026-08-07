@@ -48,7 +48,6 @@ interface FormState {
   descuentosLegales: number;
   descuentosOtros: number;
   adelantos: number;
-  fechaPago: string;
   observaciones: string;
 }
 
@@ -69,7 +68,6 @@ const buildEmptyForm = (): FormState => ({
   descuentosLegales: 0,
   descuentosOtros: 0,
   adelantos: 0,
-  fechaPago: '',
   observaciones: '',
 });
 
@@ -110,7 +108,6 @@ const SueldoFormDialog: React.FC<Props> = ({
         descuentosLegales: Number(editing.descuentosLegales ?? 0),
         descuentosOtros: Number(editing.descuentosOtros ?? 0),
         adelantos: Number(editing.adelantos ?? 0),
-        fechaPago: editing.fechaPago ?? '',
         observaciones: editing.observaciones ?? '',
       });
     } else {
@@ -244,7 +241,6 @@ const SueldoFormDialog: React.FC<Props> = ({
         adelantos: calc.adelantos,
         totalDescuentos: calc.totalDescuentos,
         sueldoNeto: calc.sueldoNeto,
-        fechaPago: form.fechaPago || null,
         observaciones: form.observaciones?.trim() || null,
       };
 
@@ -338,15 +334,6 @@ const SueldoFormDialog: React.FC<Props> = ({
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth type="date" label="Fecha de Pago"
-              value={form.fechaPago}
-              onChange={(e) => setForm({ ...form, fechaPago: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-
           <Grid item xs={12}><Divider /></Grid>
 
           {/* Asistencia */}
