@@ -138,6 +138,15 @@ export function useHorizontalScroll(): HorizontalScrollRefs {
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
         hasDragged = false;
+        // Un drag no es un click: suprimir el click que el browser dispara tras
+        // el mouseup, para no activar filas clickeables (ej: navegación por fila).
+        const suppressClick = (ev: MouseEvent) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+        };
+        tc.addEventListener('click', suppressClick, { capture: true, once: true });
+        // Si el click nunca llega (mouseup fuera de la tabla), limpiar el listener.
+        setTimeout(() => tc.removeEventListener('click', suppressClick, { capture: true }), 0);
       }
     };
 

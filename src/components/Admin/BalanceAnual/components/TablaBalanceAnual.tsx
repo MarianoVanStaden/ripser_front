@@ -2,10 +2,8 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Box,
   Typography,
   FormControlLabel,
@@ -13,6 +11,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import { StickyScrollTable } from '../../../common/StickyScrollTable';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import LockIcon from '@mui/icons-material/Lock';
 import { useNavigate } from 'react-router-dom';
@@ -74,7 +73,7 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
           label="Ver en dólares"
         />
       </Box>
-      <TableContainer component={Paper} variant="outlined">
+      <StickyScrollTable minWidth={1400} sx={{ boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
         <Table size="small">
           <TableHead>
             <TableRow sx={{ bgcolor: 'grey.100' }}>
@@ -165,7 +164,7 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
             </TableRow>
           </TableBody>
         </Table>
-      </TableContainer>
+      </StickyScrollTable>
     </Box>
   );
 }
