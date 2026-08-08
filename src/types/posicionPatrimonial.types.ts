@@ -31,8 +31,12 @@ export interface PosicionPatrimonialDTO {
   cajasPesosTotal: number;
   /** Financiamiento/deuda: cajas tipo CREDITO activas (vive en negativo). Resta al total de activos. */
   cajasCreditoTotal: number;
-  /** Cajas de ahorro en USD activas. Informativo, no suma al total. */
+  /** Cajas de ahorro en USD activas (nativo en dólares). */
   cajasDolaresTotal: number;
+  /** cajasDolaresTotal × cotización oficial. Suma a activos; null si la API no respondió. */
+  cajasDolaresEnPesos: number | null;
+  /** Cotización usada. Null si la API no respondió. */
+  cotizacionDolar: number | null;
   stockMaterialesPesos: number;
   stockFabricacionPesos: number;
   stockComercializacionPesos: number;

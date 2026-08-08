@@ -37,4 +37,10 @@ export const balanceAnualApi = {
   cerrar: async (anio: number, mes: number): Promise<void> => {
     await api.patch(`${BASE}/${anio}/mes/${mes}/cerrar`);
   },
+
+  /** Cotización oficial venta (API externa); null si no está disponible (204). */
+  getCotizacionDolar: async (): Promise<number | null> => {
+    const res = await api.get<number>(`${BASE}/cotizacion-dolar`);
+    return res.status === 204 ? null : res.data;
+  },
 };

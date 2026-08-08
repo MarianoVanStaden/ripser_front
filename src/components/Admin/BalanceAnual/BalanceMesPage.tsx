@@ -169,6 +169,19 @@ export default function BalanceMesPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Prefill del valor dólar con la cotización oficial (editable; best-effort)
+  useEffect(() => {
+    let cancelado = false;
+    balanceAnualApi.getCotizacionDolar()
+      .then((venta) => {
+        if (!cancelado && venta != null) {
+          setValorDolarCalc((prev) => (prev === '' ? String(venta) : prev));
+        }
+      })
+      .catch(() => { /* sin cotización: el campo queda manual */ });
+    return () => { cancelado = true; };
+  }, []);
+
   const handleFieldChange = (key: keyof FormValues, val: number | undefined) => {
     setForm((prev) => ({ ...prev, [key]: val }));
   };
