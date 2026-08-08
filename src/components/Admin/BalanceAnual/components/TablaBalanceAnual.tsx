@@ -28,12 +28,17 @@ function fmt(n: number | undefined | null): string {
   return new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 
-/** Variación % vs el mes anterior: verde si subió, gris si igual, rojo si bajó. */
-function Variacion({ actual, anterior }: { actual: number | undefined | null; anterior: number | undefined | null }) {
+/**
+ * Variación % vs el mes anterior: verde si subió, gris si igual, rojo si bajó.
+ * `invertir` da vuelta los colores para métricas donde subir es malo (gastos, deuda).
+ */
+function Variacion({ actual, anterior, invertir }: { actual: number | undefined | null; anterior: number | undefined | null; invertir?: boolean }) {
   if (actual == null || anterior == null || anterior === 0) return null;
   const pct = ((actual - anterior) / Math.abs(anterior)) * 100;
   const igual = Math.abs(pct) < 0.05; // se mostraría como 0.0%
-  const color = igual ? 'text.secondary' : pct > 0 ? 'success.main' : 'error.main';
+  const subioColor = invertir ? 'error.main' : 'success.main';
+  const bajoColor = invertir ? 'success.main' : 'error.main';
+  const color = igual ? 'text.secondary' : pct > 0 ? subioColor : bajoColor;
   const flecha = igual ? '=' : pct > 0 ? '▲' : '▼';
   return (
     <Typography variant="caption" display="block" sx={{ color, lineHeight: 1.2 }}>
@@ -70,10 +75,10 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
     </TableCell>
   );
 
-  const cell = (value: number | undefined | null, separador = false, anterior?: number | undefined | null) => (
+  const cell = (value: number | undefined | null, separador = false, anterior?: number | undefined | null, invertir = false) => (
     <TableCell align="right" sx={separador ? bloquePatrimonial : undefined}>
       {fmt(value)}
-      <Variacion actual={value} anterior={anterior} />
+      <Variacion actual={value} anterior={anterior} invertir={invertir} />
     </TableCell>
   );
 
@@ -94,7 +99,7 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
           label="Ver en dólares"
         />
       </Box>
-      <StickyScrollTable minWidth={1400} sx={{ boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
+      <StickyScrollTable minWidth={1900} sx={{ boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
         <Table size="small">
           <TableHead>
             <TableRow sx={{ bgcolor: 'grey.100' }}>
@@ -107,6 +112,11 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
               {colHeader('Stock materiales')}
               {colHeader('Stock Fabricación')}
               {colHeader('Stock comercialización')}
+              {colHeader('Créditos a cobrar')}
+              {colHeader('Cajas')}
+              {/* Cajas USD siempre en dólares nativos, no la afecta el switch */}
+              <TableCell align="right" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Cajas (USD)</TableCell>
+              {colHeader('Financiamiento')}
               {colHeader('Saldo Total')}
               <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Acciones</TableCell>
@@ -132,12 +142,16 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
                   <TableCell sx={{ fontWeight: 500 }}>{nombre}</TableCell>
                   {cell(m?.valorDolar, false, prev?.valorDolar)}
                   {cell(v(m, 'totalCobrado'), false, v(prev, 'totalCobrado'))}
-                  {cell(v(m, 'totalGastos'), false, v(prev, 'totalGastos'))}
+                  {cell(v(m, 'totalGastos'), false, v(prev, 'totalGastos'), true)}
                   {cell(v(m, 'saldoParcial'), false, v(prev, 'saldoParcial'))}
-                  {cell(v(m, 'cuentasXPagar'), true, v(prev, 'cuentasXPagar'))}
+                  {cell(v(m, 'cuentasXPagar'), true, v(prev, 'cuentasXPagar'), true)}
                   {cell(v(m, 'stockMateriales'), false, v(prev, 'stockMateriales'))}
                   {cell(v(m, 'stockFabricacion'), false, v(prev, 'stockFabricacion'))}
                   {cell(v(m, 'stockComercializacion'), false, v(prev, 'stockComercializacion'))}
+                  {cell(v(m, 'creditosACobrar'), false, v(prev, 'creditosACobrar'))}
+                  {cell(v(m, 'disponibilidades'), false, v(prev, 'disponibilidades'))}
+                  {cell(m?.cajasUsdDolares, false, prev?.cajasUsdDolares)}
+                  {cell(v(m, 'financiamiento'), false, v(prev, 'financiamiento'))}
                   {cell(v(m, 'saldoTotal'), false, v(prev, 'saldoTotal'))}
                   <TableCell>
                     {m ? <EstadoBalanceBadge estado={m.estado} /> : <Typography variant="caption" color="text.secondary">Sin datos</Typography>}
@@ -175,8 +189,12 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
               {cell((totales as any)[`totalCobrado${suffix}`])}
               {cell((totales as any)[`totalGastos${suffix}`])}
               {cell(((totales as any)[`totalCobrado${suffix}`] ?? 0) - ((totales as any)[`totalGastos${suffix}`] ?? 0))}
-              {/* stocks/CxP son fotos punto-en-tiempo: no tiene sentido sumarlas entre meses */}
+              {/* rubros patrimoniales son fotos punto-en-tiempo: no tiene sentido sumarlos entre meses */}
               <TableCell align="right" sx={bloquePatrimonial}>—</TableCell>
+              <TableCell align="right">—</TableCell>
+              <TableCell align="right">—</TableCell>
+              <TableCell align="right">—</TableCell>
+              <TableCell align="right">—</TableCell>
               <TableCell align="right">—</TableCell>
               <TableCell align="right">—</TableCell>
               <TableCell align="right">—</TableCell>

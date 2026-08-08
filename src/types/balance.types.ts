@@ -22,6 +22,11 @@ export interface BalanceMensualDTO {
   cuentasXPagarPesos: number;
   patrimonioPesos: number;
   resultadoPesos: number;
+  creditosACobrarPesos: number | null;
+  /** Cajas en pesos operativas activas (snapshot). */
+  disponibilidadesPesos: number | null;
+  /** Cajas crédito (deuda de tesorería): vive en negativo. */
+  financiamientoPesos: number | null;
   /** Derivado en backend: totalCobrado − totalGastos (sin amortización). */
   saldoParcialPesos: number;
   /** Derivado en backend: saldoParcial + stocks − cuentasXPagar. */
@@ -40,6 +45,11 @@ export interface BalanceMensualDTO {
   cuentasXPagarDolares: number;
   patrimonioDolares: number;
   resultadoDolares: number;
+  creditosACobrarDolares: number | null;
+  disponibilidadesDolares: number | null;
+  /** Saldo nativo en USD de las cajas de ahorro. Nunca se convierte a pesos. */
+  cajasUsdDolares: number | null;
+  financiamientoDolares: number | null;
   saldoParcialDolares: number;
   saldoTotalDolares: number;
 
