@@ -150,7 +150,15 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
                   {cell(v(m, 'stockComercializacion'), false, v(prev, 'stockComercializacion'))}
                   {cell(v(m, 'creditosACobrar'), false, v(prev, 'creditosACobrar'))}
                   {cell(v(m, 'disponibilidades'), false, v(prev, 'disponibilidades'))}
-                  {cell(m?.cajasUsdDolares, false, prev?.cajasUsdDolares)}
+                  <TableCell align="right">
+                    {fmt(m?.cajasUsdDolares)}
+                    {m?.cajasUsdDolares != null && m?.valorDolar != null && (
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.2 }}>
+                        ≈ ${fmt(m.cajasUsdDolares * m.valorDolar)}
+                      </Typography>
+                    )}
+                    <Variacion actual={m?.cajasUsdDolares} anterior={prev?.cajasUsdDolares} />
+                  </TableCell>
                   {cell(v(m, 'financiamiento'), false, v(prev, 'financiamiento'))}
                   {cell(v(m, 'saldoTotal'), false, v(prev, 'saldoTotal'))}
                   <TableCell>
