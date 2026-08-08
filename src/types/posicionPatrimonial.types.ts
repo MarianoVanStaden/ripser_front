@@ -44,6 +44,8 @@ export interface PosicionPatrimonialDTO {
   patrimonioFijoPesos: number;
   totalActivosPesos: number;
   cuentasXPagarPesos: number;
+  /** Saldos a favor de clientes (pagaron de más / anticipos): pasivo. */
+  anticiposClientesPesos: number;
   totalPasivosPesos: number;
   patrimonioNetoPesos: number;
   desgloseFijo: DesgloseFijoDTO;
