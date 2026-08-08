@@ -1,24 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box, Grid, Card, CardContent, Typography, Alert, Button, Paper, Stack,
-  Chip, IconButton, Tooltip, Collapse, List, ListItem, ListItemText, Divider,
-  Badge, LinearProgress,
+  Chip, Divider, LinearProgress,
 } from '@mui/material';
 import {
-  AccountBalance, TrendingUp, Warning, Gavel, CheckCircle,
-  AttachMoney, MoneyOff, Schedule, Refresh, ExpandMore, ExpandLess,
-  Payment, NotificationsActive, ArrowForward, List as ListIcon,
+  TrendingUp, Warning, Gavel, CheckCircle,
+  AttachMoney, MoneyOff, Schedule, Refresh,
+  ArrowForward, List as ListIcon,
 } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import dayjs from 'dayjs';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
-import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
-import type { ResumenPrestamosDTO, CuotaPrestamoDTO } from '../../types/prestamo.types';
+import type { ResumenPrestamosDTO } from '../../types/prestamo.types';
 import {
   CategoriaPrestamo, CATEGORIA_PRESTAMO_LABELS, CATEGORIA_PRESTAMO_COLORS,
 } from '../../types/prestamo.types';
 import { formatPrice } from '../../utils/priceCalculations';
-import { RegistrarPagoDialog } from './RegistrarPagoDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { useAuth } from '../../context/AuthContext';
 import { getFirstName } from '../../utils/userDisplay';
@@ -104,31 +100,13 @@ export const PrestamosResumenPage: React.FC = () => {
   const [resumen, setResumen] = useState<ResumenPrestamosDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [vencidas, setVencidas] = useState<CuotaPrestamoDTO[]>([]);
-  const [proximas, setProximas] = useState<CuotaPrestamoDTO[]>([]);
-  const [expandVencidas, setExpandVencidas] = useState(true);
-  const [expandProximas, setExpandProximas] = useState(false);
-  const [pagoDialogOpen, setPagoDialogOpen] = useState(false);
-  const [pagoDialogData, setPagoDialogData] = useState<{
-    cuota: CuotaPrestamoDTO;
-    clienteId: number;
-    prestamoId: number;
-    allCuotas: CuotaPrestamoDTO[];
-  } | null>(null);
-  const [loadingPago, setLoadingPago] = useState(false);
 
   const loadResumen = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [data, vencidasData, proximasData] = await Promise.all([
-        prestamoPersonalApi.getResumen(),
-        cuotaPrestamoApi.getVencidas(),
-        cuotaPrestamoApi.getProximasVencer(7),
-      ]);
+      const data = await prestamoPersonalApi.getResumen();
       setResumen(data);
-      setVencidas(vencidasData);
-      setProximas(proximasData);
     } catch (err) {
       console.error('Error loading resumen:', err);
       setError('Error al cargar el resumen. Intente nuevamente.');
@@ -140,22 +118,6 @@ export const PrestamosResumenPage: React.FC = () => {
   useEffect(() => {
     loadResumen();
   }, []);
-
-  const handleOpenPago = async (cuota: CuotaPrestamoDTO) => {
-    try {
-      setLoadingPago(true);
-      const [prestamo, allCuotas] = await Promise.all([
-        prestamoPersonalApi.getById(cuota.prestamoId),
-        cuotaPrestamoApi.getByPrestamo(cuota.prestamoId),
-      ]);
-      setPagoDialogData({ cuota, clienteId: prestamo.clienteId, prestamoId: cuota.prestamoId, allCuotas });
-      setPagoDialogOpen(true);
-    } catch {
-      // silent fail — user can navigate to detail page instead
-    } finally {
-      setLoadingPago(false);
-    }
-  };
 
   const pctCobrado = useMemo(() => {
     if (!resumen) return 0;
@@ -183,38 +145,8 @@ export const PrestamosResumenPage: React.FC = () => {
       .map((c) => ({ ...c, pct: totalCat > 0 ? Math.round((c.count / totalCat) * 100) : 0 }));
   }, [resumen]);
 
-  const totalFoco = vencidas.length + proximas.length;
   const saludo = getSaludo();
   const firstName = getFirstName(user);
-
-  const renderCuotaList = (items: CuotaPrestamoDTO[], chipLabel: string, chipColor: 'error' | 'warning') => (
-    <Paper variant="outlined">
-      <List dense disablePadding>
-        {items.map((c, idx) => (
-          <React.Fragment key={c.id}>
-            {idx > 0 && <Divider />}
-            <ListItem
-              secondaryAction={
-                <Tooltip title="Registrar Pago">
-                  <span>
-                    <IconButton size="small" color="success" onClick={() => handleOpenPago(c)} disabled={loadingPago}>
-                      <Payment fontSize="small" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              }
-            >
-              <ListItemText
-                primary={`Crédito #${c.prestamoId} — Cuota N.º ${c.numeroCuota}`}
-                secondary={`${formatPrice(c.montoCuota - c.montoPagado)} · Vence ${dayjs(c.fechaVencimiento).format('DD/MM/YYYY')}`}
-              />
-              <Chip label={chipLabel} size="small" color={chipColor} sx={{ mr: 1 }} />
-            </ListItem>
-          </React.Fragment>
-        ))}
-      </List>
-    </Paper>
-  );
 
   return (
     <Box>
@@ -265,87 +197,20 @@ export const PrestamosResumenPage: React.FC = () => {
 
       {resumen && (
         <>
-          {/* Foco de Hoy: cuotas que requieren acción */}
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 2, sm: 3 },
-              mb: 4,
-              borderRadius: 3,
-              background: 'linear-gradient(135deg, rgba(244,67,54,0.06) 0%, rgba(255,152,0,0.06) 100%)',
-              border: '1px solid',
-              borderColor: 'divider',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-              <Box sx={{ bgcolor: '#F44336', color: '#fff', borderRadius: 2, p: 1, display: 'flex' }}>
-                <NotificationsActive />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h6" fontWeight={700}>Foco de Hoy</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {totalFoco === 0
-                    ? '¡Todo al día! No hay cuotas que requieran acción.'
-                    : `${vencidas.length} vencida${vencidas.length === 1 ? '' : 's'} · ${proximas.length} por vencer (7 días)`}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Vencidas */}
-            <Box>
-              <Box
-                sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', mb: 1 }}
-                onClick={() => setExpandVencidas((v) => !v)}
-              >
-                <Badge badgeContent={vencidas.length} color="error">
-                  <Typography variant="subtitle1" fontWeight={600}>Cuotas Vencidas</Typography>
-                </Badge>
-                <IconButton size="small">{expandVencidas ? <ExpandLess /> : <ExpandMore />}</IconButton>
-              </Box>
-              <Collapse in={expandVencidas}>
-                {vencidas.length === 0
-                  ? <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>Sin cuotas vencidas</Typography>
-                  : renderCuotaList(vencidas, 'Vencida', 'error')}
-              </Collapse>
-            </Box>
-
-            {/* Próximas */}
-            <Box sx={{ mt: 2 }}>
-              <Box
-                sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', mb: 1 }}
-                onClick={() => setExpandProximas((v) => !v)}
-              >
-                <Badge badgeContent={proximas.length} color="warning">
-                  <Typography variant="subtitle1" fontWeight={600}>Próximas a Vencer (7 días)</Typography>
-                </Badge>
-                <IconButton size="small">{expandProximas ? <ExpandLess /> : <ExpandMore />}</IconButton>
-              </Box>
-              <Collapse in={expandProximas}>
-                {proximas.length === 0
-                  ? <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>Sin cuotas próximas a vencer</Typography>
-                  : renderCuotaList(proximas, 'Próxima', 'warning')}
-              </Collapse>
-            </Box>
-          </Paper>
-
           {/* Panorama general */}
           <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Panorama General</Typography>
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <KpiCard title="Total Créditos" value={resumen.totalPrestamos}
-                icon={<AccountBalance sx={{ color: '#1976d2', fontSize: 28 }} />} color="#1976d2" to={LISTA} />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <KpiCard title="Activos" value={resumen.prestamosActivos}
                 icon={<TrendingUp sx={{ color: '#4CAF50', fontSize: 28 }} />} color="#4CAF50"
                 to={`${LISTA}?estados=ACTIVO`} />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <KpiCard title="En Mora" value={resumen.prestamosEnMora}
                 icon={<Warning sx={{ color: '#FF9800', fontSize: 28 }} />} color="#FF9800"
                 to={`${LISTA}?estados=EN_MORA`} />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <KpiCard title="En Legal" value={resumen.prestamosEnLegal}
                 icon={<Gavel sx={{ color: '#F44336', fontSize: 28 }} />} color="#F44336"
                 to={`${LISTA}?estados=EN_LEGAL`} />
@@ -459,16 +324,6 @@ export const PrestamosResumenPage: React.FC = () => {
           </Grid>
         </>
       )}
-
-      <RegistrarPagoDialog
-        open={pagoDialogOpen}
-        onClose={() => { setPagoDialogOpen(false); setPagoDialogData(null); }}
-        onSaved={async () => { setPagoDialogOpen(false); setPagoDialogData(null); await loadResumen(); }}
-        cuota={pagoDialogData?.cuota ?? null}
-        clienteId={pagoDialogData?.clienteId ?? 0}
-        prestamoId={pagoDialogData?.prestamoId ?? 0}
-        allCuotas={pagoDialogData?.allCuotas ?? []}
-      />
     </Box>
   );
 };
