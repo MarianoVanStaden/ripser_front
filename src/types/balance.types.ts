@@ -29,7 +29,7 @@ export interface BalanceMensualDTO {
   financiamientoPesos: number | null;
   /** Derivado en backend: totalCobrado − totalGastos (sin amortización). */
   saldoParcialPesos: number;
-  /** Derivado en backend: saldoParcial + stocks − cuentasXPagar. */
+  /** Derivado en backend: saldoParcial + stocks + créditos + cajas ($ y USD convertidas) + financiamiento − cuentasXPagar. */
   saldoTotalPesos: number;
 
   // Dólares
