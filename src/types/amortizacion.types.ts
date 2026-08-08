@@ -116,9 +116,14 @@ export interface ResultadoCierreMensualDTO {
   advertencias: string[];
 }
 
+export type TipoCajaOrigen = 'USD' | 'PESOS';
+
 export interface OrigenFondoDTO {
   cajaId: number;
+  /** Monto en la moneda de la caja: USD para tipoCaja USD, pesos para PESOS. */
   monto: number;
+  /** Omitido = USD (retrocompatible). */
+  tipoCaja?: TipoCajaOrigen;
 }
 
 export interface EjecutarAmortizacionRequest {
@@ -129,8 +134,12 @@ export interface EjecutarAmortizacionRequest {
 export interface OrigenEjecutadoDTO {
   cajaId: number;
   cajaNombre: string;
+  /** Aporte en USD (para orígenes en pesos, el equivalente convertido). */
   monto: number;
   movimientoSalidaId: number;
+  tipoCaja?: TipoCajaOrigen;
+  /** Solo orígenes en pesos: monto retirado en pesos. */
+  montoPesos?: number | null;
 }
 
 export interface AmortizacionEjecucionResponse {

@@ -11,6 +11,7 @@ import {
   IconButton,
   InputAdornment,
   InputLabel,
+  ListSubheader,
   MenuItem,
   Paper,
   Select,
@@ -27,10 +28,13 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { amortizacionApi } from '../../../../api/services/amortizacionApi';
 import { cajasAhorroApi } from '../../../../api/services/cajasAhorroApi';
+import { cajasPesosApi } from '../../../../api/services/cajasPesosApi';
 import type {
   AmortizacionMensualDTO,
   CajaAhorroDolares,
+  CajaPesos,
   OrigenFondoDTO,
+  TipoCajaOrigen,
 } from '../../../../types';
 
 interface Props {
@@ -40,14 +44,23 @@ interface Props {
   onSuccess: () => void;
 }
 
+/** Los ids de cajas USD y pesos viven en tablas distintas → key compuesta. */
+interface OpcionCaja {
+  key: string;
+  tipo: TipoCajaOrigen;
+  id: number;
+  nombre: string;
+  saldoActual: number;
+}
+
 interface FilaOrigen {
-  cajaId: string;
+  cajaKey: string;
   monto: string;
 }
 
-const nuevaFila = (): FilaOrigen => ({ cajaId: '', monto: '' });
+const nuevaFila = (): FilaOrigen => ({ cajaKey: '', monto: '' });
 
-const fmtUsd = (n: number) =>
+const fmtNum = (n: number) =>
   new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -61,7 +74,8 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
   onClose,
   onSuccess,
 }) => {
-  const [cajas, setCajas] = useState<CajaAhorroDolares[]>([]);
+  const [cajasUsd, setCajasUsd] = useState<CajaAhorroDolares[]>([]);
+  const [cajasPesos, setCajasPesos] = useState<CajaPesos[]>([]);
   const [destinoId, setDestinoId] = useState<string>('');
   const [origenes, setOrigenes] = useState<FilaOrigen[]>([nuevaFila()]);
   const [loading, setLoading] = useState(false);
@@ -69,6 +83,8 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
   const [apiError, setApiError] = useState<string | null>(null);
 
   const target = amortizacion.montoAmortizadoDolares;
+  const tipoCambio = amortizacion.valorDolar;
+  const tcValido = typeof tipoCambio === 'number' && tipoCambio > 0;
 
   useEffect(() => {
     if (!open) return;
@@ -76,28 +92,73 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
     setOrigenes([nuevaFila()]);
     setApiError(null);
     setLoading(true);
-    cajasAhorroApi
-      .getAll()
-      .then((data) => setCajas(data.filter((c) => c.estado === 'ACTIVA')))
+    Promise.all([cajasAhorroApi.getAll(), cajasPesosApi.getAll()])
+      .then(([usd, pesos]) => {
+        setCajasUsd(usd.filter((c) => c.estado === 'ACTIVA'));
+        setCajasPesos(pesos.filter((c) => c.estado === 'ACTIVA'));
+      })
       .catch((e) =>
         setApiError(e?.response?.data?.message ?? 'Error cargando cajas')
       )
       .finally(() => setLoading(false));
   }, [open]);
 
+  const opciones = useMemo<OpcionCaja[]>(() => {
+    const usd = cajasUsd.map<OpcionCaja>((c) => ({
+      key: `USD-${c.id}`,
+      tipo: 'USD',
+      id: c.id,
+      nombre: c.nombre,
+      saldoActual: c.saldoActual,
+    }));
+    const pesos = tcValido
+      ? cajasPesos.map<OpcionCaja>((c) => ({
+          key: `PESOS-${c.id}`,
+          tipo: 'PESOS',
+          id: c.id,
+          nombre: c.nombre,
+          saldoActual: c.saldoActual,
+        }))
+      : [];
+    return [...usd, ...pesos];
+  }, [cajasUsd, cajasPesos, tcValido]);
+
+  const opcionByKey = useMemo(() => {
+    const m = new Map<string, OpcionCaja>();
+    opciones.forEach((o) => m.set(o.key, o));
+    return m;
+  }, [opciones]);
+
   const cajasOrigenPosibles = useMemo(() => {
-    const usadas = new Set(origenes.map((o) => o.cajaId).filter(Boolean));
+    const usadas = new Set(origenes.map((o) => o.cajaKey).filter(Boolean));
     return (filaActual: string) =>
-      cajas.filter((c) => {
-        if (String(c.id) === destinoId) return false;
-        if (String(c.id) === filaActual) return true;
-        return !usadas.has(String(c.id));
+      opciones.filter((o) => {
+        if (o.key === `USD-${destinoId}`) return false;
+        if (o.key === filaActual) return true;
+        return !usadas.has(o.key);
       });
-  }, [cajas, destinoId, origenes]);
+  }, [opciones, destinoId, origenes]);
+
+  /** Aporte en USD de una fila (misma fórmula que el backend: redondeo por fila). */
+  const aporteUsd = (f: FilaOrigen): number => {
+    const monto = parseFloat(f.monto);
+    if (isNaN(monto) || monto <= 0) return 0;
+    const opcion = opcionByKey.get(f.cajaKey);
+    if (!opcion) return 0;
+    if (opcion.tipo === 'PESOS') {
+      return tcValido ? round2(monto / tipoCambio) : 0;
+    }
+    return monto;
+  };
+
+  const hayFilasPesos = origenes.some(
+    (f) => opcionByKey.get(f.cajaKey)?.tipo === 'PESOS'
+  );
 
   const totalIngresado = useMemo(
-    () => origenes.reduce((acc, o) => acc + (parseFloat(o.monto) || 0), 0),
-    [origenes]
+    () => origenes.reduce((acc, f) => acc + aporteUsd(f), 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [origenes, opcionByKey, tipoCambio]
   );
   const diferencia = round2(target - totalIngresado);
   const coincide = Math.abs(diferencia) < 0.005;
@@ -115,7 +176,7 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
     );
 
   const errorFila = (f: FilaOrigen): string | null => {
-    if (!f.cajaId) return 'Seleccione caja';
+    if (!f.cajaKey) return 'Seleccione caja';
     const monto = parseFloat(f.monto);
     if (isNaN(monto) || monto <= 0) return 'Monto > 0';
     return null;
@@ -133,10 +194,14 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
     try {
       const dto = {
         destinoCajaId: Number(destinoId),
-        origenes: origenes.map<OrigenFondoDTO>((f) => ({
-          cajaId: Number(f.cajaId),
-          monto: round2(parseFloat(f.monto)),
-        })),
+        origenes: origenes.map<OrigenFondoDTO>((f) => {
+          const opcion = opcionByKey.get(f.cajaKey)!;
+          return {
+            cajaId: opcion.id,
+            monto: round2(parseFloat(f.monto)),
+            tipoCaja: opcion.tipo,
+          };
+        }),
       };
       await amortizacionApi.ejecutarAmortizacion(amortizacion.id, dto);
       onSuccess();
@@ -155,6 +220,15 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
     }
   };
 
+  const renderOpcion = (o: OpcionCaja) => (
+    <MenuItem key={o.key} value={o.key}>
+      {o.nombre}{' '}
+      {o.tipo === 'USD'
+        ? `(USD ${fmtNum(o.saldoActual)})`
+        : `($ ${fmtNum(o.saldoActual)} — pesos)`}
+    </MenuItem>
+  );
+
   return (
     <Dialog
       open={open}
@@ -165,7 +239,13 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
       <DialogTitle>
         Ejecutar amortización — {amortizacion.activoNombre}
         <Typography variant="body2" color="text.secondary">
-          Monto objetivo: <strong>USD {fmtUsd(target)}</strong>
+          Monto objetivo: <strong>USD {fmtNum(target)}</strong>
+          {tcValido && (
+            <>
+              {' '}
+              · Cotización: <strong>$ {fmtNum(tipoCambio)}</strong>
+            </>
+          )}
         </Typography>
       </DialogTitle>
 
@@ -173,6 +253,13 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
         {apiError && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {apiError}
+          </Alert>
+        )}
+
+        {!tcValido && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Para usar cajas en pesos como origen, primero cargá el valor del
+            dólar en «Editar amortización».
           </Alert>
         )}
 
@@ -184,9 +271,9 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
             onChange={(e) => setDestinoId(String(e.target.value))}
           >
             <MenuItem value="">— Seleccionar —</MenuItem>
-            {cajas.map((c) => (
+            {cajasUsd.map((c) => (
               <MenuItem key={c.id} value={String(c.id)}>
-                {c.nombre} (saldo USD {fmtUsd(c.saldoActual)})
+                {c.nombre} (saldo USD {fmtNum(c.saldoActual)})
               </MenuItem>
             ))}
           </Select>
@@ -197,8 +284,8 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.100' }}>
                 <TableCell sx={{ fontWeight: 700 }}>Caja origen</TableCell>
-                <TableCell sx={{ fontWeight: 700, width: 240 }} align="right">
-                  Monto USD
+                <TableCell sx={{ fontWeight: 700, width: 260 }} align="right">
+                  Monto
                 </TableCell>
                 <TableCell sx={{ width: 60 }} />
               </TableRow>
@@ -206,28 +293,37 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
             <TableBody>
               {origenes.map((fila, idx) => {
                 const err = erroresFilas[idx];
+                const opcion = opcionByKey.get(fila.cajaKey);
+                const esPesos = opcion?.tipo === 'PESOS';
+                const posibles = cajasOrigenPosibles(fila.cajaKey);
+                const posiblesUsd = posibles.filter((o) => o.tipo === 'USD');
+                const posiblesPesos = posibles.filter((o) => o.tipo === 'PESOS');
+                const equivalente = esPesos ? aporteUsd(fila) : 0;
                 return (
                   <TableRow key={idx}>
                     <TableCell>
                       <FormControl
                         fullWidth
                         size="small"
-                        error={!!err && !fila.cajaId}
+                        error={!!err && !fila.cajaKey}
                         disabled={saving}
                       >
                         <Select
-                          value={fila.cajaId}
+                          value={fila.cajaKey}
                           displayEmpty
                           onChange={(e) =>
-                            updateFila(idx, { cajaId: String(e.target.value) })
+                            updateFila(idx, { cajaKey: String(e.target.value) })
                           }
                         >
                           <MenuItem value="">— Seleccionar —</MenuItem>
-                          {cajasOrigenPosibles(fila.cajaId).map((c) => (
-                            <MenuItem key={c.id} value={String(c.id)}>
-                              {c.nombre} (USD {fmtUsd(c.saldoActual)})
-                            </MenuItem>
-                          ))}
+                          {posiblesPesos.length > 0 && (
+                            <ListSubheader>Cajas USD</ListSubheader>
+                          )}
+                          {posiblesUsd.map(renderOpcion)}
+                          {posiblesPesos.length > 0 && (
+                            <ListSubheader>Cajas en pesos</ListSubheader>
+                          )}
+                          {posiblesPesos.map(renderOpcion)}
                         </Select>
                       </FormControl>
                     </TableCell>
@@ -241,11 +337,18 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
                         }
                         inputProps={{ step: '0.01', min: '0.01' }}
                         error={!!err && fila.monto !== ''}
-                        helperText={err ?? ' '}
+                        helperText={
+                          err ??
+                          (esPesos && equivalente > 0
+                            ? `≈ USD ${fmtNum(equivalente)} @ TC $ ${fmtNum(tipoCambio)}`
+                            : ' ')
+                        }
                         disabled={saving}
                         InputProps={{
                           startAdornment: (
-                            <InputAdornment position="start">USD</InputAdornment>
+                            <InputAdornment position="start">
+                              {esPesos ? '$' : 'USD'}
+                            </InputAdornment>
                           ),
                         }}
                       />
@@ -289,7 +392,7 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
                 Requerido
               </Typography>
               <Typography variant="h6" fontWeight={700}>
-                USD {fmtUsd(target)}
+                USD {fmtNum(target)}
               </Typography>
             </Box>
             <Box>
@@ -297,7 +400,7 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
                 Ingresado
               </Typography>
               <Typography variant="h6" fontWeight={700}>
-                USD {fmtUsd(totalIngresado)}
+                USD {fmtNum(totalIngresado)}
               </Typography>
             </Box>
             <Box>
@@ -309,14 +412,20 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
                 fontWeight={700}
                 color={coincide ? 'success.main' : 'warning.main'}
               >
-                USD {fmtUsd(diferencia)}
+                USD {fmtNum(diferencia)}
               </Typography>
             </Box>
           </Stack>
+          {hayFilasPesos && (
+            <Typography variant="caption" color="text.secondary">
+              Los montos en pesos se convierten a USD con la cotización $
+              {fmtNum(tipoCambio)} de esta amortización.
+            </Typography>
+          )}
           {!coincide && (
             <Alert severity="warning" sx={{ mt: 1 }}>
-              La suma de orígenes debe coincidir exactamente con el monto
-              amortizado.
+              La suma de orígenes (en USD, con los pesos convertidos) debe
+              coincidir exactamente con el monto amortizado.
             </Alert>
           )}
         </Paper>

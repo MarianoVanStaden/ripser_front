@@ -28,6 +28,20 @@ function fmt(n: number | undefined | null): string {
   return new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 
+/** Variación % vs el mes anterior: verde si subió, gris si igual, rojo si bajó. */
+function Variacion({ actual, anterior }: { actual: number | undefined | null; anterior: number | undefined | null }) {
+  if (actual == null || anterior == null || anterior === 0) return null;
+  const pct = ((actual - anterior) / Math.abs(anterior)) * 100;
+  const igual = Math.abs(pct) < 0.05; // se mostraría como 0.0%
+  const color = igual ? 'text.secondary' : pct > 0 ? 'success.main' : 'error.main';
+  const flecha = igual ? '=' : pct > 0 ? '▲' : '▼';
+  return (
+    <Typography variant="caption" display="block" sx={{ color, lineHeight: 1.2 }}>
+      {flecha} {igual ? '0%' : `${Math.abs(pct).toFixed(1)}%`}
+    </Typography>
+  );
+}
+
 interface Props {
   data: BalanceAnualResponseDTO;
   anio: number;
@@ -56,9 +70,16 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
     </TableCell>
   );
 
-  const cell = (value: number | undefined | null, separador = false) => (
-    <TableCell align="right" sx={separador ? bloquePatrimonial : undefined}>{fmt(value)}</TableCell>
+  const cell = (value: number | undefined | null, separador = false, anterior?: number | undefined | null) => (
+    <TableCell align="right" sx={separador ? bloquePatrimonial : undefined}>
+      {fmt(value)}
+      <Variacion actual={value} anterior={anterior} />
+    </TableCell>
   );
+
+  // Acceso dinámico según el switch pesos/dólares
+  const v = (m: BalanceMensualDTO | undefined, base: string): number | null =>
+    m ? ((m as any)[`${base}${suffix}`] ?? null) : null;
 
   return (
     <Box>
@@ -95,6 +116,7 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
             {MESES.map((nombre, idx) => {
               const mesNum = idx + 1;
               const m = mesMap.get(mesNum);
+              const prev = mesMap.get(mesNum - 1);
               const esCerrado = m?.estado === 'CERRADO' || m?.estado === 'AUDITADO';
 
               return (
@@ -108,15 +130,15 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
                   onClick={() => navigate(`/admin/balance/${anio}/${mesNum}`)}
                 >
                   <TableCell sx={{ fontWeight: 500 }}>{nombre}</TableCell>
-                  {cell(m?.valorDolar)}
-                  {cell(m ? (m as any)[`totalCobrado${suffix}`] : null)}
-                  {cell(m ? (m as any)[`totalGastos${suffix}`] : null)}
-                  {cell(m ? (m as any)[`saldoParcial${suffix}`] : null)}
-                  {cell(m ? (m as any)[`cuentasXPagar${suffix}`] : null, true)}
-                  {cell(m ? (m as any)[`stockMateriales${suffix}`] : null)}
-                  {cell(m ? (m as any)[`stockFabricacion${suffix}`] : null)}
-                  {cell(m ? (m as any)[`stockComercializacion${suffix}`] : null)}
-                  {cell(m ? (m as any)[`saldoTotal${suffix}`] : null)}
+                  {cell(m?.valorDolar, false, prev?.valorDolar)}
+                  {cell(v(m, 'totalCobrado'), false, v(prev, 'totalCobrado'))}
+                  {cell(v(m, 'totalGastos'), false, v(prev, 'totalGastos'))}
+                  {cell(v(m, 'saldoParcial'), false, v(prev, 'saldoParcial'))}
+                  {cell(v(m, 'cuentasXPagar'), true, v(prev, 'cuentasXPagar'))}
+                  {cell(v(m, 'stockMateriales'), false, v(prev, 'stockMateriales'))}
+                  {cell(v(m, 'stockFabricacion'), false, v(prev, 'stockFabricacion'))}
+                  {cell(v(m, 'stockComercializacion'), false, v(prev, 'stockComercializacion'))}
+                  {cell(v(m, 'saldoTotal'), false, v(prev, 'saldoTotal'))}
                   <TableCell>
                     {m ? <EstadoBalanceBadge estado={m.estado} /> : <Typography variant="caption" color="text.secondary">Sin datos</Typography>}
                   </TableCell>
