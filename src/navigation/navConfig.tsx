@@ -78,7 +78,6 @@ export const navigation: NavModule[] = [
     items: [
       { text: 'Resumen Créditos', icon: <AccountBalanceIcon />, path: '/prestamos/resumen' },
       { text: 'Gestión Créditos Personales', icon: <AssignmentIcon />, path: '/prestamos/lista' },
-      { text: 'Resumen Cobranzas', icon: <AssessmentIcon />, path: '/cobranzas/resumen', modulo: 'ADMINISTRACION' },
       { text: 'Gestiones Cobranzas', icon: <PhoneCallbackIcon />, path: '/cobranzas/lista', modulo: 'ADMINISTRACION' },
       { text: 'Pagos Informados', icon: <ReceiptLongIcon />, path: '/prestamos/pagos-informados', modulo: 'ADMINISTRACION' },
     ],

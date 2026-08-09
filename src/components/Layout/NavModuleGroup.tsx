@@ -23,7 +23,6 @@ const ROUTE_PREFETCH: Record<string, () => Promise<unknown>> = {
   '/ventas/facturacion': () => import('../Ventas/FacturacionPage'),
   '/clientes/gestion':   () => import('../Clientes/ClientesPage'),
   '/prestamos/resumen':  () => import('../Prestamos/PrestamosResumenPage'),
-  '/cobranzas/resumen':  () => import('../Prestamos/Cobranzas/CobranzasResumenPage'),
 };
 
 interface NavModuleGroupProps {

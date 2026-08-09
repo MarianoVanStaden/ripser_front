@@ -165,7 +165,6 @@ const PrestamosResumenPage = lazyNamed(() => import('./components/Prestamos/Pres
 const PrestamosListPage = lazyNamed(() => import('./components/Prestamos/PrestamosListPage'), 'PrestamosListPage');
 const PrestamoDetailPage = lazyNamed(() => import('./components/Prestamos/PrestamoDetailPage'), 'PrestamoDetailPage');
 const RefinanciacionPage = lazyNamed(() => import('./components/Prestamos/RefinanciacionPage'), 'RefinanciacionPage');
-const CobranzasResumenPage = lazyNamed(() => import('./components/Prestamos/Cobranzas/CobranzasResumenPage'), 'CobranzasResumenPage');
 const CobranzasListPage = lazyNamed(() => import('./components/Prestamos/Cobranzas/CobranzasListPage'), 'CobranzasListPage');
 const GestionCobranzaDetailPage = lazyNamed(() => import('./components/Prestamos/Cobranzas/GestionCobranzaDetailPage'), 'GestionCobranzaDetailPage');
 const BandejaPagosInformadosPage = lazyNamed(() => import('./components/Prestamos/PagosInformados/BandejaPagosInformadosPage'), 'BandejaPagosInformadosPage');
@@ -275,7 +274,7 @@ const DashboardEntry: React.FC = () => {
   if (!isAdminLike) {
     if (roles.includes('RECURSOS_HUMANOS')) return <Navigate to="/rrhh/dashboard" replace />;
     if (roles.includes('SUPERVISOR')) return <Navigate to="/leads/metricas" replace />;
-    if (roles.includes('COBRANZAS')) return <Navigate to="/cobranzas/resumen" replace />;
+    if (roles.includes('COBRANZAS')) return <Navigate to="/prestamos/resumen" replace />;
     if (roles.includes('POST_VENTA')) return <PostVentaDashboard />;
     if (
       roles.includes('TRANSPORTE') ||
@@ -400,8 +399,8 @@ function App() {
                   <Route path="prestamos/:id/refinanciar" element={priv(<RefinanciacionPage />)} />
                   <Route path="prestamos/pagos-informados" element={priv(<BandejaPagosInformadosPage />)} />
 
-                  {/* COBRANZAS */}
-                  <Route path="cobranzas/resumen" element={priv(<CobranzasResumenPage />)} />
+                  {/* COBRANZAS — el resumen se unificó en /prestamos/resumen; redirigimos legacy links */}
+                  <Route path="cobranzas/resumen" element={<Navigate to="/prestamos/resumen" replace />} />
                   <Route path="cobranzas/lista" element={priv(<CobranzasListPage />)} />
                   <Route path="cobranzas/:id" element={priv(<GestionCobranzaDetailPage />)} />
 
