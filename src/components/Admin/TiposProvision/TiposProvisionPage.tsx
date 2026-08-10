@@ -27,10 +27,13 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import SavingsIcon from '@mui/icons-material/Savings';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate } from 'react-router-dom';
 import { tipoProvisionApi } from '../../../api/services/tipoProvisionApi';
 import type { TipoProvisionDTO } from '../../../types';
 
 export default function TiposProvisionPage() {
+  const navigate = useNavigate();
   const [tipos, setTipos] = useState<TipoProvisionDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +144,11 @@ export default function TiposProvisionPage() {
     <Box sx={{ p: 3 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Box display="flex" alignItems="center" gap={1}>
+          <Tooltip title="Volver a Provisiones">
+            <IconButton onClick={() => navigate('/admin/provisiones')} size="small">
+              <ArrowBackIcon />
+            </IconButton>
+          </Tooltip>
           <SavingsIcon color="primary" />
           <Typography variant="h5" fontWeight={700}>Tipos de Provisión</Typography>
         </Box>

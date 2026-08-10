@@ -300,6 +300,7 @@ export default function ProvisionesPage() {
           tipoNombre={pagoDialog.tipo.nombre}
           anio={anio}
           mes={mes}
+          montoSugerido={Math.max(0, provisionByTipoId.get(pagoDialog.tipo.id)?.saldoPendiente ?? 0)}
           onClose={() => setPagoDialog((s) => ({ ...s, open: false }))}
           onSaved={() => { setPagoDialog((s) => ({ ...s, open: false })); load(); }}
         />

@@ -48,11 +48,12 @@ interface Props {
   tipoNombre: string;
   anio: number;
   mes: number;
+  montoSugerido?: number;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function RegistrarPagoDialog({ open, tipoId, tipoNombre, anio, mes, onClose, onSaved }: Props) {
+export default function RegistrarPagoDialog({ open, tipoId, tipoNombre, anio, mes, montoSugerido = 0, onClose, onSaved }: Props) {
   const [apiError, setApiError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [cajasPesos, setCajasPesos] = useState<CajaPesos[]>([]);
@@ -80,7 +81,7 @@ export default function RegistrarPagoDialog({ open, tipoId, tipoNombre, anio, me
     setOrigenPesosId('');
     setDestinoUsdId('');
     setValorDolar('');
-    reset({ montoPagado: 0 });
+    reset({ montoPagado: montoSugerido });
 
     Promise.all([cajasPesosApi.getAll(), cajasAhorroApi.getAll()])
       .then(([pesos, usd]) => {
@@ -96,7 +97,7 @@ export default function RegistrarPagoDialog({ open, tipoId, tipoNombre, anio, me
     balanceAnualApi.getCotizacionDolar()
       .then((tc) => { if (tc != null) setValorDolar(String(tc)); })
       .catch(() => { /* fallback: campo vacío para tipear a mano */ });
-  }, [open, reset]);
+  }, [open, reset, montoSugerido]);
 
   const tcNum = parseFloat(valorDolar);
   const tcValido = !Number.isNaN(tcNum) && tcNum > 0;
