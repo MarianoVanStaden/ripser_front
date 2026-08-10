@@ -40,4 +40,8 @@ export interface RegistrarPagoProvisionDTO {
   metodoPago?: import('./prestamo.types').MetodoPago;
   cajaPesosId?: number | null;
   cajaAhorroId?: number | null;
+  /** Caja USD destino: su presencia activa el modo conversión pesos→dólares. */
+  cajaDestinoAhorroId?: number | null;
+  /** Cotización para convertir el monto en pesos al equivalente USD. */
+  valorDolar?: number | null;
 }
