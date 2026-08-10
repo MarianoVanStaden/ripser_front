@@ -1951,11 +1951,16 @@ export const generarReciboHaberesPDF = ({ sueldo, empleado, categoria }: ReciboH
 
   const cat = categoria; // alias
 
+  // Prorrateo por ingreso/egreso: si se liquidaron menos de 30 días (base 30),
+  // el recibo lo deja asentado en la línea del básico.
+  const diasComputados = Number(sueldo.diasComputados ?? 30);
+  const diasLabel = diasComputados < 30 ? `${diasComputados}/30 días` : '-';
+
   // SUMAS
   if (Number(sueldo.sueldoBasico) > 0) {
     rows.push({
       concepto: cat?.nombre ? `Sueldo Básico (${cat.nombre})` : 'Sueldo Básico',
-      cantidad: '-', tarifa: '-',
+      cantidad: diasLabel, tarifa: '-',
       suma: Number(sueldo.sueldoBasico) || 0, resta: 0,
     });
   }
@@ -2028,7 +2033,7 @@ export const generarReciboHaberesPDF = ({ sueldo, empleado, categoria }: ReciboH
   if (rows.length === 0) {
     rows.push({
       concepto: cat?.nombre ? `Sueldo Básico (${cat.nombre})` : 'Sueldo Básico',
-      cantidad: '-', tarifa: '-', suma: Number(sueldo.sueldoBasico) || 0, resta: 0,
+      cantidad: diasLabel, tarifa: '-', suma: Number(sueldo.sueldoBasico) || 0, resta: 0,
     });
   }
 

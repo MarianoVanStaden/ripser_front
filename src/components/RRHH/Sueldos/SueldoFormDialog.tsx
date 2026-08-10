@@ -15,7 +15,7 @@ import type {
   ConceptoSueldo, Empleado, Sueldo,
 } from '../../../types';
 import { CONCEPTO_SUELDO_LABELS, CONCEPTOS_SUELDO } from '../../../types/remuneraciones.types';
-import { calcularRemuneracion } from '../../../utils/remuneracionesCalc';
+import { calcularDiasComputados, calcularRemuneracion } from '../../../utils/remuneracionesCalc';
 import { getNombreCompleto } from '../../../utils/userDisplay';
 import { adelantoApi } from '../../../api/services/adelantoApi';
 import { sueldoApi } from '../../../api/services/sueldoApi';
@@ -35,6 +35,8 @@ interface FormState {
   categoriaSalarialId: number | null;
   periodo: string;
   concepto: ConceptoSueldo;
+  /** Días corridos computados para prorrateo del básico (base 30). */
+  diasComputados: number;
   presentismoPct: number;
   horasExtraCant: number;
   horasAusenteCant: number;
@@ -56,6 +58,7 @@ const buildEmptyForm = (): FormState => ({
   categoriaSalarialId: null,
   periodo: dayjs().format('YYYY-MM'),
   concepto: 'SALARIO',
+  diasComputados: 30,
   presentismoPct: 100,
   horasExtraCant: 0,
   horasAusenteCant: 0,
@@ -96,6 +99,7 @@ const SueldoFormDialog: React.FC<Props> = ({
         categoriaSalarialId: editing.categoriaSalarialId ?? null,
         periodo: editing.periodo,
         concepto: editing.concepto ?? 'SALARIO',
+        diasComputados: Number(editing.diasComputados ?? 30),
         presentismoPct: Number(editing.presentismoPct ?? 100),
         horasExtraCant: Number(editing.horasExtraCant ?? 0),
         horasAusenteCant: Number(editing.horasAusenteCant ?? 0),
@@ -164,6 +168,23 @@ const SueldoFormDialog: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.empleadoId, form.periodo]);
 
+  // Auto-detección del prorrateo por ingreso/egreso (solo en altas, mismo
+  // patrón que adelantos): al cambiar empleado o período recalculamos los
+  // días computados. En edición se respeta el snapshot guardado.
+  const empleadoSel = useMemo(
+    () => empleados.find(e => e.id === form.empleadoId) ?? null,
+    [empleados, form.empleadoId],
+  );
+  useEffect(() => {
+    if (editing || !form.empleadoId || !form.periodo) return;
+    const dias = calcularDiasComputados(form.periodo, empleadoSel?.fechaIngreso, empleadoSel?.fechaEgreso);
+    setForm(prev => ({ ...prev, diasComputados: dias }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.empleadoId, form.periodo]);
+
+  // El aguinaldo no se prorratea por ingreso/egreso (regla semestral propia).
+  const diasEfectivos = form.concepto === 'AGUINALDO' ? 30 : form.diasComputados;
+
   const categoria = useMemo(
     () => categorias.find(c => c.id === form.categoriaSalarialId) ?? null,
     [categorias, form.categoriaSalarialId],
@@ -177,6 +198,7 @@ const SueldoFormDialog: React.FC<Props> = ({
     if (!categoria) return null;
     return calcularRemuneracion({
       categoria,
+      diasComputados: diasEfectivos,
       presentismoPct: form.presentismoPct,
       horasExtraCant: form.horasExtraCant,
       horasAusenteCant: form.horasAusenteCant,
@@ -191,7 +213,7 @@ const SueldoFormDialog: React.FC<Props> = ({
       descuentosOtros: form.descuentosOtros,
       adelantos: form.adelantos,
     });
-  }, [categoria, form, bonosProdCategoria]);
+  }, [categoria, form, bonosProdCategoria, diasEfectivos]);
 
   const setNumberField = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
@@ -210,6 +232,10 @@ const SueldoFormDialog: React.FC<Props> = ({
     if (!form.empleadoId) { setError('Seleccione un empleado'); return; }
     if (!form.categoriaSalarialId) { setError('Seleccione una categoría salarial'); return; }
     if (!form.periodo) { setError('Indique un período'); return; }
+    if (!Number.isFinite(diasEfectivos) || diasEfectivos < 1 || diasEfectivos > 30) {
+      setError('Los días computados deben estar entre 1 y 30. Si el empleado no trabaja este período, no corresponde liquidarlo.');
+      return;
+    }
     if (!calc) { setError('Calculadora no disponible'); return; }
 
     try {
@@ -221,6 +247,7 @@ const SueldoFormDialog: React.FC<Props> = ({
         categoriaSalarialId: form.categoriaSalarialId,
         periodo: form.periodo,
         concepto: form.concepto,
+        diasComputados: diasEfectivos,
         sueldoBasico: calc.sueldoBasico,
         bonificaciones: calc.bonificaciones,
         horasExtras: calc.horasExtraMonto,
@@ -339,6 +366,23 @@ const SueldoFormDialog: React.FC<Props> = ({
           {/* Asistencia */}
           <Grid item xs={12}>
             <Typography variant="subtitle1" color="primary" fontWeight={600}>Asistencia</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField fullWidth type="number" label="Días computados"
+              value={form.concepto === 'AGUINALDO' ? 30 : form.diasComputados}
+              onChange={setNumberField('diasComputados')}
+              disabled={form.concepto === 'AGUINALDO'}
+              InputProps={{ endAdornment: <InputAdornment position="end">/30</InputAdornment> }}
+              helperText={
+                form.concepto === 'AGUINALDO'
+                  ? 'El aguinaldo no se prorratea'
+                  : form.diasComputados >= 30
+                    ? '30 = mes completo'
+                    : form.diasComputados === 0
+                      ? 'No se solapa con el período — revisá ingreso/egreso'
+                      : `Prorrateado${empleadoSel?.fechaIngreso ? ` — ingresó el ${dayjs(empleadoSel.fechaIngreso).format('DD/MM/YYYY')}` : ''}. Editable.`
+              }
+            />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <TextField fullWidth type="number" label="Presentismo (%)"
@@ -478,7 +522,9 @@ const SueldoFormDialog: React.FC<Props> = ({
               ) : calc && (
                 <Grid container spacing={1.5}>
                   <Grid item xs={6} sm={3}>
-                    <Typography variant="caption" color="textSecondary">Sueldo Básico</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Sueldo Básico{diasEfectivos < 30 ? ` (${diasEfectivos}/30 días)` : ''}
+                    </Typography>
                     <Typography variant="body2" fontWeight={600}>${calc.sueldoBasico.toLocaleString('es-AR')}</Typography>
                   </Grid>
                   <Grid item xs={6} sm={3}>

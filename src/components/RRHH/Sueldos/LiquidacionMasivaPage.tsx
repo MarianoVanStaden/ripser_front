@@ -36,7 +36,7 @@ import type {
   CategoriaSalarial, ConceptoSueldo, Empleado, Sueldo,
 } from '../../../types';
 import { CONCEPTO_SUELDO_LABELS, CONCEPTOS_SUELDO } from '../../../types/remuneraciones.types';
-import { calcularRemuneracion } from '../../../utils/remuneracionesCalc';
+import { calcularDiasComputados, calcularRemuneracion } from '../../../utils/remuneracionesCalc';
 import LoadingOverlay from '../../common/LoadingOverlay';
 
 /** Estado editable por fila (un empleado). */
@@ -46,6 +46,11 @@ interface RowState {
   empleadoApellido: string;
   categoriaSalarialId: number | null;
   concepto: ConceptoSueldo;
+  /** Días corridos computados para prorrateo del básico (base 30). Se
+   *  auto-detecta por fechaIngreso/fechaEgreso del empleado; editable. */
+  diasComputados: number;
+  fechaIngreso?: string | null;
+  fechaEgreso?: string | null;
   presentismoPct: number;
   horasExtraCant: number;
   horasAusenteCant: number;
@@ -227,6 +232,9 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
             ?? emp.categoriaSalarialId
             ?? null,
           concepto: sueldoExistente.concepto ?? concepto,
+          diasComputados: Number(sueldoExistente.diasComputados ?? 30),
+          fechaIngreso: emp.fechaIngreso ?? null,
+          fechaEgreso: emp.fechaEgreso ?? null,
           presentismoPct: Number(sueldoExistente.presentismoPct ?? 100),
           horasExtraCant: Number(sueldoExistente.horasExtraCant ?? 0),
           horasAusenteCant: Number(sueldoExistente.horasAusenteCant ?? 0),
@@ -250,12 +258,19 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       // hay datos; si no, caen a los defaults (100 / 0 / 0). Editable después.
       const tieneCategoria = emp.categoriaSalarialId != null;
       const asis = asistenciaMap.get(emp.id);
+      // Prorrateo automático por ingreso/egreso dentro del período. 0 = el
+      // empleado no se solapa con el mes (p. ej. ingresa el mes que viene):
+      // lo dejamos desmarcado para que no se liquide por error.
+      const diasComputados = calcularDiasComputados(periodo, emp.fechaIngreso, emp.fechaEgreso);
       return {
         empleadoId: emp.id,
         empleadoNombre: emp.nombre,
         empleadoApellido: emp.apellido,
         categoriaSalarialId: emp.categoriaSalarialId ?? null,
         concepto,
+        diasComputados,
+        fechaIngreso: emp.fechaIngreso ?? null,
+        fechaEgreso: emp.fechaEgreso ?? null,
         presentismoPct: asis?.presentismoPct ?? 100,
         horasExtraCant: asis?.horasExtra ?? 0,
         horasAusenteCant: asis?.horasAusentes ?? 0,
@@ -267,7 +282,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
         descuentosOtros: 0,
         adelantos: adelantoTotal,
         observaciones: '',
-        incluir: tieneCategoria,
+        incluir: tieneCategoria && diasComputados > 0,
       };
     });
     setRows(newRows);
@@ -313,12 +328,18 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     return ventasMap.get(row.empleadoId)?.bonoSugerido ?? 0;
   }, [ventasMap]);
 
+  // El aguinaldo no se prorratea por ingreso/egreso (el SAC tiene su propia
+  // regla semestral): siempre 30 aunque la fila tenga otro valor cargado.
+  const getDiasRow = useCallback((row: RowState): number =>
+    row.concepto === 'AGUINALDO' ? 30 : row.diasComputados, []);
+
   const computeRow = useCallback((row: RowState) => {
     const categoria = getCategoria(row.categoriaSalarialId);
     if (!categoria) return null;
     const bonosProdCat = bonosProduccion.filter(b => b.categoriaSalarialId === categoria.id);
     return calcularRemuneracion({
       categoria,
+      diasComputados: getDiasRow(row),
       presentismoPct: row.presentismoPct,
       horasExtraCant: row.horasExtraCant,
       horasAusenteCant: row.horasAusenteCant,
@@ -333,7 +354,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       descuentosOtros: row.descuentosOtros,
       adelantos: row.adelantos,
     });
-  }, [getCategoria, bonosProduccion, unidadesProducidas, getBonoVentasRow]);
+  }, [getCategoria, bonosProduccion, unidadesProducidas, getBonoVentasRow, getDiasRow]);
 
   // Filas filtradas para mostrar
   const filteredRows = useMemo(() => {
@@ -398,6 +419,14 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       setError(`Hay ${sinCategoria.length} empleado(s) sin categoría salarial. Asignala en su ficha o quitalos del lote.`);
       return;
     }
+    const diasInvalidos = aLiquidar.filter(r => {
+      const d = getDiasRow(r);
+      return !Number.isFinite(d) || d < 1 || d > 30;
+    });
+    if (diasInvalidos.length > 0) {
+      setError(`Hay ${diasInvalidos.length} empleado(s) con días computados fuera de rango (1-30). Corregí la columna "Días" o quitalos del lote.`);
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -408,6 +437,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
           categoriaSalarialId: row.categoriaSalarialId,
           periodo,
           concepto: row.concepto,
+          diasComputados: getDiasRow(row),
           sueldoBasico: calc.sueldoBasico,
           bonificaciones: calc.bonificaciones,
           horasExtras: calc.horasExtraMonto,
@@ -738,6 +768,11 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                   </TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Categoría</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">
+                    <Tooltip title="Días corridos computados del mes (base 30). Se prorratea el básico y el presentismo para ingresos/egresos a mitad de mes.">
+                      <span>Días</span>
+                    </Tooltip>
+                  </TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">Pres %</TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">HE cant</TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">HA cant</TableCell>
@@ -757,7 +792,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
               <TableBody>
                 {filteredRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={17} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={18} align="center" sx={{ py: 3 }}>
                       <Typography variant="body2" color="textSecondary">
                         {rows.length === 0 ? 'Sin empleados activos.' : 'Ningún empleado coincide con el filtro.'}
                       </Typography>
@@ -797,6 +832,31 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                           renderInput={(p) => <TextField {...p} placeholder="—" />}
                           sx={{ minWidth: 170 }}
                         />
+                      </TableCell>
+                      <TableCell align="center">
+                        {row.concepto === 'AGUINALDO' ? (
+                          <Tooltip title="El aguinaldo no se prorratea por ingreso/egreso — siempre mes completo.">
+                            <TextField size="small" type="number" value={30} disabled sx={{ width: 70 }} />
+                          </Tooltip>
+                        ) : (
+                          <Box>
+                            {renderNumCell(idx, 'diasComputados', 70)}
+                            {row.diasComputados < 30 && (
+                              <Tooltip title={
+                                row.diasComputados === 0
+                                  ? 'Fuera del período: no se solapa con el mes (revisá fecha de ingreso/egreso).'
+                                  : `Prorrateado — ${row.fechaIngreso ? `ingresó el ${dayjs(row.fechaIngreso).format('DD/MM/YYYY')}` : ''}${row.fechaIngreso && row.fechaEgreso ? ' · ' : ''}${row.fechaEgreso ? `egresa el ${dayjs(row.fechaEgreso).format('DD/MM/YYYY')}` : ''}`
+                              }>
+                                <Chip
+                                  label={row.diasComputados === 0 ? 'Fuera del período' : `${row.diasComputados}/30`}
+                                  size="small"
+                                  color={row.diasComputados === 0 ? 'error' : 'info'}
+                                  sx={{ mt: 0.5, height: 18, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }}
+                                />
+                              </Tooltip>
+                            )}
+                          </Box>
+                        )}
                       </TableCell>
                       <TableCell align="center">{renderNumCell(idx, 'presentismoPct', 80, '%')}</TableCell>
                       <TableCell align="center">{renderNumCell(idx, 'horasExtraCant', 70)}</TableCell>

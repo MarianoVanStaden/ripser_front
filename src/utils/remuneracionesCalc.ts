@@ -13,6 +13,10 @@ import type {
 export interface RemuneracionInput {
   categoria: CategoriaSalarial;
 
+  // Prorrateo por ingreso/egreso a mitad de mes: días corridos computados
+  // del período, base 30 (30 = mes completo). Afecta básico y presentismo.
+  diasComputados?: number;      // 1-30, default 30
+
   // Asistencia
   presentismoPct: number;       // 0-100, % de asistencia del mes
   horasExtraCant: number;
@@ -62,6 +66,41 @@ export interface RemuneracionOutput {
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /**
+ * Días corridos computados del período (base 30) según ingreso/egreso del
+ * empleado. Regla de negocio: el básico mensual se prorratea por días
+ * corridos sobre 30 (estándar AR), así que cubrir el mes completo devuelve
+ * 30 aunque el mes tenga 28 o 31 días. Devuelve 0 si el empleado no se
+ * solapa con el período (ingreso posterior o egreso anterior).
+ */
+export function calcularDiasComputados(
+  periodo: string,               // 'YYYY-MM'
+  fechaIngreso?: string | null,
+  fechaEgreso?: string | null,
+): number {
+  const [anio, mes] = periodo.split('-').map(Number);
+  if (!anio || !mes) return 30;
+  const ini = new Date(anio, mes - 1, 1);
+  const fin = new Date(anio, mes, 0); // último día del mes
+
+  // Las fechas vienen como 'YYYY-MM-DD'; parseamos manual para evitar UTC.
+  const parse = (s?: string | null): Date | null => {
+    if (!s) return null;
+    const [y, m, d] = s.slice(0, 10).split('-').map(Number);
+    return y && m && d ? new Date(y, m - 1, d) : null;
+  };
+  const ingreso = parse(fechaIngreso);
+  const egreso = parse(fechaEgreso);
+
+  const effIni = ingreso && ingreso > ini ? ingreso : ini;
+  const effFin = egreso && egreso < fin ? egreso : fin;
+  if (effIni > effFin) return 0;
+  if (effIni.getTime() === ini.getTime() && effFin.getTime() === fin.getTime()) return 30;
+
+  const dias = Math.round((effFin.getTime() - effIni.getTime()) / 86_400_000) + 1;
+  return Math.min(dias, 30);
+}
+
+/**
  * Selecciona el monto del bono que aplica para una cantidad de unidades:
  * el del mayor umbral menor o igual al valor observado. Si no hay tabla
  * o ninguno aplica, devuelve 0.
@@ -93,7 +132,8 @@ function pickBonoPorUmbral(
  */
 export function calcularRemuneracion(input: RemuneracionInput): RemuneracionOutput {
   const cat = input.categoria;
-  const sueldoBasico = Number(cat.sueldoFijo) || 0;
+  const diasComputados = Math.max(0, Math.min(30, Number(input.diasComputados ?? 30)));
+  const sueldoBasico = round2((Number(cat.sueldoFijo) || 0) * (diasComputados / 30));
 
   const presentismoPct = Math.max(0, Math.min(100, Number(input.presentismoPct) || 0));
   const presentismoMonto = round2(sueldoBasico * 0.08 * (presentismoPct / 100));

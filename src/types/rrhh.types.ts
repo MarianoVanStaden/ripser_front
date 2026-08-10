@@ -759,6 +759,8 @@ export interface Sueldo {
 
   periodo: string; // YYYY-MM format
   concepto?: 'SALARIO' | 'AGUINALDO';
+  /** Días corridos computados para el prorrateo del básico, base 30 (30 = mes completo). */
+  diasComputados?: number;
 
   // Conceptos positivos (SUMA)
   sueldoBasico: number;
