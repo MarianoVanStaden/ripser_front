@@ -162,6 +162,11 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
   );
   const diferencia = round2(target - totalIngresado);
   const coincide = Math.abs(diferencia) < 0.005;
+  /** Diferencia expresada en pesos al TC de la amortización (0 si no aplica). */
+  const pesosFaltantes =
+    !coincide && diferencia > 0 && tcValido
+      ? round2(diferencia * tipoCambio)
+      : 0;
 
   const updateFila = (idx: number, patch: Partial<FilaOrigen>) => {
     setOrigenes((prev) =>
@@ -299,6 +304,17 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
                 const posiblesUsd = posibles.filter((o) => o.tipo === 'USD');
                 const posiblesPesos = posibles.filter((o) => o.tipo === 'PESOS');
                 const equivalente = esPesos ? aporteUsd(fila) : 0;
+                // Monto que debería tener ESTA fila para que el total cierre
+                // exacto, dado lo cargado en las demás filas.
+                const faltanteFilaUsd = round2(
+                  target - (totalIngresado - aporteUsd(fila))
+                );
+                const montoSugerido =
+                  opcion && !coincide && faltanteFilaUsd > 0
+                    ? esPesos
+                      ? round2(faltanteFilaUsd * tipoCambio)
+                      : faltanteFilaUsd
+                    : 0;
                 return (
                   <TableRow key={idx}>
                     <TableCell>
@@ -339,9 +355,17 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
                         error={!!err && fila.monto !== ''}
                         helperText={
                           err ??
-                          (esPesos && equivalente > 0
-                            ? `≈ USD ${fmtNum(equivalente)} @ TC $ ${fmtNum(tipoCambio)}`
-                            : ' ')
+                          ([
+                            esPesos && equivalente > 0
+                              ? `≈ USD ${fmtNum(equivalente)} @ TC $ ${fmtNum(tipoCambio)}`
+                              : null,
+                            esPesos && pesosFaltantes > 0
+                              ? `Faltan $ ${fmtNum(pesosFaltantes)}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ') ||
+                            ' ')
                         }
                         disabled={saving}
                         InputProps={{
@@ -352,6 +376,21 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
                           ),
                         }}
                       />
+                      {montoSugerido > 0 && (
+                        <Box>
+                          <Button
+                            size="small"
+                            sx={{ textTransform: 'none', p: 0, minWidth: 0 }}
+                            onClick={() =>
+                              updateFila(idx, { monto: String(montoSugerido) })
+                            }
+                            disabled={saving}
+                          >
+                            Completar con {esPesos ? '$' : 'USD'}{' '}
+                            {fmtNum(montoSugerido)}
+                          </Button>
+                        </Box>
+                      )}
                     </TableCell>
                     <TableCell>
                       <IconButton
@@ -414,6 +453,16 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
               >
                 USD {fmtNum(diferencia)}
               </Typography>
+              {pesosFaltantes > 0 && (
+                <Typography variant="caption" color="warning.main">
+                  Faltan ≈ $ {fmtNum(pesosFaltantes)} al TC
+                </Typography>
+              )}
+              {!coincide && diferencia < 0 && tcValido && (
+                <Typography variant="caption" color="warning.main">
+                  Sobran ≈ $ {fmtNum(round2(-diferencia * tipoCambio))} al TC
+                </Typography>
+              )}
             </Box>
           </Stack>
           {hayFilasPesos && (

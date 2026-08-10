@@ -121,7 +121,8 @@ const CajasAhorroListPage = lazy(() => import('./components/Admin/CajasAhorro/Ca
 const CajaMovimientosPage = lazy(() => import('./components/Admin/CajasAhorro/CajaMovimientosPage'));
 const CajasPesosListPage = lazy(() => import('./components/Admin/CajasPesos/CajasPesosListPage'));
 const CajaPesosMovimientosPage = lazy(() => import('./components/Admin/CajasPesos/CajaPesosMovimientosPage'));
-const LiquidacionesTarjetaListPage = lazy(() => import('./components/Admin/LiquidacionesTarjeta/LiquidacionesTarjetaListPage'));
+// Deshabilitado temporalmente (ago 2026) — página fuera de circulación, componente conservado.
+// const LiquidacionesTarjetaListPage = lazy(() => import('./components/Admin/LiquidacionesTarjeta/LiquidacionesTarjetaListPage'));
 
 // Bancos / cheques
 const BancosPage = lazy(() => import('./components/Bancos/BancosPage'));
@@ -194,7 +195,8 @@ const TripsPage = lazy(() => import('./components/Logistica/TripsPage'));
 const TableroArmadoViajesPage = lazy(() => import('./components/Logistica/TableroArmadoViajesPage'));
 const ChecklistsViajePage = lazy(() => import('./components/Logistica/ChecklistsViajePage'));
 const DeliveriesPage = lazy(() => import('./components/Logistica/DeliveriesPage'));
-const ImportarFacturasHistoricasPage = lazy(() => import('./components/Logistica/ImportarFacturasHistoricasPage'));
+// Deshabilitado temporalmente (ago 2026) — página fuera de circulación, componente conservado.
+// const ImportarFacturasHistoricasPage = lazy(() => import('./components/Logistica/ImportarFacturasHistoricasPage'));
 // const EntregasEquiposPage = lazy(() => import('./components/Logistica/EntregasEquiposPage'));
 const IncidenciasVehiculoPage = lazy(() => import('./components/Logistica/IncidenciasVehiculoPage'));
 const KmEmpleadosPage = lazy(() => import('./components/Logistica/KmEmpleadosPage'));
@@ -369,7 +371,8 @@ function App() {
                   <Route path="admin/cajas-ahorro/:id" element={priv(<CajaMovimientosPage />)} />
                   <Route path="admin/cajas-pesos" element={priv(<CajasPesosListPage />)} />
                   <Route path="admin/cajas-pesos/:id" element={priv(<CajaPesosMovimientosPage />)} />
-                  <Route path="admin/liquidaciones-tarjeta" element={priv(<LiquidacionesTarjetaListPage />)} />
+                  {/* Deshabilitado temporalmente (ago 2026) — página fuera de circulación, componente conservado. */}
+                  {/* <Route path="admin/liquidaciones-tarjeta" element={priv(<LiquidacionesTarjetaListPage />)} /> */}
 
                   {/* VENTAS */}
                   <Route path="ventas/dashboard" element={priv(<VentasDashboard />)} />
@@ -464,7 +467,8 @@ function App() {
                   <Route path="logistica/distribucion/tablero-pendientes" element={priv(<TableroArmadoViajesPage />)} />
                   <Route path="logistica/distribucion/checklists-viaje" element={priv(<ChecklistsViajePage />)} />
                   <Route path="logistica/distribucion/entregas-productos" element={priv(<DeliveriesPage />)} />
-                  <Route path="logistica/distribucion/importar-facturas" element={priv(<ImportarFacturasHistoricasPage />)} />
+                  {/* Deshabilitado temporalmente (ago 2026) — página fuera de circulación, componente conservado. */}
+                  {/* <Route path="logistica/distribucion/importar-facturas" element={priv(<ImportarFacturasHistoricasPage />)} /> */}
                   {/* <Route path="logistica/distribucion/entregas-equipos" element={priv(<EntregasEquiposPage />)} /> */}
                   <Route path="logistica/vehiculos/incidencias" element={priv(<IncidenciasVehiculoPage />)} />
                   <Route path="logistica/vehiculos/km-empleados" element={priv(<KmEmpleadosPage />)} />
