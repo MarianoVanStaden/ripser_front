@@ -36,12 +36,12 @@ export interface GuardarProvisionDTO {
 }
 
 export interface RegistrarPagoProvisionDTO {
+  /** Monto en pesos que sale de la caja origen. */
   montoPagado: number;
-  metodoPago?: import('./prestamo.types').MetodoPago;
-  cajaPesosId?: number | null;
-  cajaAhorroId?: number | null;
-  /** Caja USD destino: su presencia activa el modo conversión pesos→dólares. */
-  cajaDestinoAhorroId?: number | null;
-  /** Cotización para convertir el monto en pesos al equivalente USD. */
-  valorDolar?: number | null;
+  /** Caja en pesos de donde sale el pago (origen). */
+  cajaPesosId: number;
+  /** Caja en dólares donde ingresa el equivalente convertido (destino). */
+  cajaDestinoAhorroId: number;
+  /** Cotización para convertir pesos → dólares. */
+  valorDolar: number;
 }
