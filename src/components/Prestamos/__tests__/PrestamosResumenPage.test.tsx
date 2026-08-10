@@ -25,6 +25,7 @@ vi.mock('../../../hooks/useSseEvent', () => ({
 import { prestamoPersonalApi } from '../../../api/services/prestamoPersonalApi';
 import { gestionCobranzaApi } from '../../../api/services/gestionCobranzaApi';
 import { PrestamosResumenPage } from '../PrestamosResumenPage';
+import type { ResumenCobranzaDTO } from '../../../types/cobranza.types';
 
 const prestamos = vi.mocked(prestamoPersonalApi, true);
 const cobranza = vi.mocked(gestionCobranzaApi, true);
@@ -50,10 +51,10 @@ const resumenPrestamos = {
   prestamosIrrecuperables: 0,
 };
 
-const resumenCobranza = {
+const resumenCobranza: ResumenCobranzaDTO = {
   totalGestionesActivas: 5,
   totalMontoPendiente: 12345,
-  gestionesPorEstado: {},
+  gestionesPorEstado: {} as any,
   promesasIncumplidas: 0,
   promesasVigentesHoy: 0,
   gestionesVencidasHoy: 0,
