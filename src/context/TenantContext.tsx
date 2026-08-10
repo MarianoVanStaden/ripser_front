@@ -189,6 +189,14 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const ROLES_VEN_TODAS_SUCURSALES: RolEmpresa[] = ['COBRANZAS'];
             const veTodasSucursales = ROLES_VEN_TODAS_SUCURSALES.includes(relacionActual.rol);
 
+            // Roles que arrancan en "Todas las sucursales" por defecto, pero SÍ pueden
+            // elegir una y que esa elección persista (a diferencia de veTodasSucursales,
+            // que fuerza null en cada carga). Sólo se saltea el auto-pick de sucursal
+            // (asignada/defecto/principal); la validación de la sucursal guardada sigue
+            // aplicando, así que una selección manual sobrevive al reload.
+            const ROLES_DEFAULT_TODAS: RolEmpresa[] = ['ADMIN_EMPRESA', 'ADMIN_EMPRESA_LIMITADO', 'SUPER_ADMIN'];
+            const defaultTodas = esSuperAdmin || ROLES_DEFAULT_TODAS.includes(relacionActual.rol);
+
             if (veTodasSucursales) {
               // Limpiar cualquier filtro de sucursal previo para que vea todo
               setSucursalFiltroState(null);
@@ -221,8 +229,18 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                   }
                 }
 
+                // Roles ADMIN/SUPER_ADMIN: si no hay sucursal guardada válida, quedan
+                // en "Todas" (null) — se saltea todo el auto-pick de abajo. Se fuerza
+                // el filtro a null de forma explícita porque el estado inicial de
+                // `sucursalFiltro` se siembra desde `sucursalId` (token), que podría
+                // venir con una sucursal y taparía el "Todas".
+                if (defaultTodas && sucursalSeleccionada === null) {
+                  console.log('🌐 Rol admin sin sucursal guardada - por defecto "Todas las sucursales"');
+                  setSucursalFiltroState(null);
+                  safeSession.removeItem('sucursalFiltro');
+                }
                 // Si no hay sucursal válida guardada, intentar con la asignada directamente al usuario
-                if (sucursalSeleccionada === null && relacionActual.sucursalId) {
+                else if (sucursalSeleccionada === null && relacionActual.sucursalId) {
                   console.log('📍 Usuario asignado a sucursal específica:', relacionActual.sucursalId);
                   sucursalSeleccionada = relacionActual.sucursalId;
                 }
