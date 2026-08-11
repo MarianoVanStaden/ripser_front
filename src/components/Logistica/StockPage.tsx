@@ -39,6 +39,7 @@ import {
   Warning as WarningIcon,
   TrendingDown as TrendingDownIcon,
   Edit as EditIcon,
+  Add as AddIcon,
   GetApp as GetAppIcon,
   AccountTree as AccountTreeIcon,
   Tune as TuneIcon,
@@ -52,6 +53,7 @@ import {
   isCategoriaReventa,
 } from '../../api/services/productoRouting';
 import type { ProductoUnificado } from '../../api/services/productoRouting';
+import { productApi } from '../../api/services/productApi';
 import type { MovimientoStock, CategoriaProducto, DesgloseStockProductoDTO } from '../../types';
 import {
   ComposicionDialog,
@@ -70,6 +72,23 @@ interface TabPanelProps {
   index: number;
   value: number;
 }
+
+// Estado inicial del formulario de creación de producto (material).
+const emptyCreateForm = {
+  nombre: '',
+  codigo: '',
+  descripcion: '',
+  costo: null as number | null,
+  precio: 0,
+  stockMinimo: 0,
+  categoriaProductoId: 0,
+  unidadMedida: 'UNIDAD' as string,
+  unidadInventario: '' as string,
+  factorConversion: null as number | null,
+  // Auxiliares para cálculo MT2 (no se envían al backend)
+  _ancho: null as number | null,
+  _largo: null as number | null,
+};
 
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
@@ -121,6 +140,11 @@ const StockPage: React.FC = () => {
     _ancho: null as number | null,
     _largo: null as number | null,
   });
+
+  // Alta de producto nuevo (Taller/Logística): crea un Producto material real
+  // para poder pedirlo luego en "Pedidos de Materiales".
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(emptyCreateForm);
 
   // Price calculation states
   const [priceParams, setPriceParams] = useState<PriceCalculationParams | null>(null);
@@ -248,6 +272,83 @@ const StockPage: React.FC = () => {
     } catch (err) {
       console.error('Error updating product:', err);
       setError('Error al actualizar el producto');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Categorías de material (no reventa, no compuesto) disponibles para el alta.
+  const categoriasMaterial = useMemo(
+    () => categorias.filter((c) => !isCategoriaReventa(c) && !c.esCompuesto),
+    [categorias],
+  );
+
+  // Genera el código a partir de la categoría: prefijo (3 letras) + correlativo.
+  // Mismo criterio que el alta inline de compras/pedido.
+  const generateProductCode = (categoriaId: number, list: ProductoUnificado[] = products): string => {
+    const categoria = categorias.find((c) => c.id === categoriaId);
+    if (!categoria) return '';
+    const prefix = categoria.nombre.substring(0, 3).toUpperCase();
+    const maxNumber = list.reduce((max, p) => {
+      if (!p.codigo || !p.codigo.toUpperCase().startsWith(prefix)) return max;
+      const num = parseInt(p.codigo.substring(prefix.length), 10);
+      return !isNaN(num) && num > max ? num : max;
+    }, 0);
+    return `${prefix}${(maxNumber + 1).toString().padStart(3, '0')}`;
+  };
+
+  const handleOpenCreate = () => {
+    const catId = categoriasMaterial[0]?.id ?? 0;
+    setCreateForm({
+      ...emptyCreateForm,
+      categoriaProductoId: catId,
+      codigo: catId ? generateProductCode(catId) : '',
+    });
+    setError(null);
+    setCreateDialogOpen(true);
+  };
+
+  const handleCreateProduct = async () => {
+    if (!createForm.nombre.trim()) {
+      setError('El nombre del producto es obligatorio');
+      return;
+    }
+    if (!createForm.categoriaProductoId) {
+      setError('Debe seleccionar una categoría');
+      return;
+    }
+    const esUnidad = createForm.unidadMedida === 'UNIDAD';
+    try {
+      setLoading(true);
+      await productApi.create({
+        nombre: createForm.nombre.trim(),
+        descripcion: createForm.descripcion || undefined,
+        codigo: createForm.codigo || undefined,
+        precio: createForm.precio ?? 0,
+        costo: createForm.costo,
+        stockActual: 0,
+        stockMinimo: createForm.stockMinimo ?? 0,
+        categoriaProductoId: createForm.categoriaProductoId,
+        unidadMedida: esUnidad ? undefined : createForm.unidadMedida,
+        unidadInventario: esUnidad ? undefined : (createForm.unidadInventario || undefined),
+        factorConversion: esUnidad ? null : createForm.factorConversion,
+      });
+      await loadData();
+      setCreateDialogOpen(false);
+      setCreateForm(emptyCreateForm);
+      setError(null);
+    } catch (err) {
+      const e = err as { response?: { status?: number } };
+      if (e.response?.status === 400) {
+        // Código duplicado (colisión concurrente): refrescamos y regeneramos.
+        const fresh = await fetchProductosUnificados().catch(() => products);
+        setProducts(fresh);
+        setCreateForm((prev) => ({ ...prev, codigo: generateProductCode(prev.categoriaProductoId, fresh) }));
+        setError('El código ya existía; se regeneró uno nuevo. Volvé a guardar.');
+      } else {
+        setError('Error al crear el producto');
+      }
+      console.error('Error creating product:', err);
     } finally {
       setLoading(false);
     }
@@ -457,16 +558,26 @@ const StockPage: React.FC = () => {
           <InventoryIcon />
           Gestión de Stock
         </Typography>
-        {puedeVerCostos && (
+        <Box display="flex" gap={1} flexWrap="wrap" width={{ xs: '100%', sm: 'auto' }}>
           <Button
-            variant="outlined"
-            startIcon={<GetAppIcon />}
-            onClick={handleExportInventoryPDF}
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenCreate}
             fullWidth={isMobile}
           >
-            Exportar PDF
+            Crear Producto
           </Button>
-        )}
+          {puedeVerCostos && (
+            <Button
+              variant="outlined"
+              startIcon={<GetAppIcon />}
+              onClick={handleExportInventoryPDF}
+              fullWidth={isMobile}
+            >
+              Exportar PDF
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {error && (
@@ -1201,6 +1312,206 @@ const StockPage: React.FC = () => {
           <Button onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
           <Button onClick={handleSaveEdit} variant="contained" color="primary">
             Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create Dialog: alta de producto material nuevo */}
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+        <DialogTitle>Crear Producto</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <FormControl fullWidth required>
+              <InputLabel>Categoría</InputLabel>
+              <Select
+                value={createForm.categoriaProductoId || ''}
+                label="Categoría"
+                onChange={(e) => {
+                  const catId = e.target.value as number;
+                  setCreateForm({ ...createForm, categoriaProductoId: catId, codigo: generateProductCode(catId) });
+                }}
+              >
+                {categoriasMaterial.map((cat) => (
+                  <MenuItem key={cat.id} value={cat.id}>
+                    {cat.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Código"
+              value={createForm.codigo}
+              fullWidth
+              InputProps={{ readOnly: true }}
+              helperText="Autogenerado según la categoría"
+            />
+
+            <TextField
+              label="Nombre"
+              value={createForm.nombre}
+              onChange={(e) => setCreateForm({ ...createForm, nombre: e.target.value })}
+              fullWidth
+              required
+            />
+
+            <TextField
+              label="Descripción"
+              value={createForm.descripcion}
+              onChange={(e) => setCreateForm({ ...createForm, descripcion: e.target.value })}
+              fullWidth
+              multiline
+              rows={2}
+            />
+
+            {puedeVerCostos && (
+              <TextField
+                label="Costo (Precio de Compra)"
+                type="number"
+                value={createForm.costo ?? ''}
+                onChange={(e) => setCreateForm({
+                  ...createForm,
+                  costo: e.target.value ? parseFloat(e.target.value) : null,
+                })}
+                fullWidth
+                inputProps={{ step: '0.01', min: '0' }}
+              />
+            )}
+
+            {puedeVerCostos && (
+              <TextField
+                label="Precio de Venta"
+                type="number"
+                value={createForm.precio}
+                onChange={(e) => setCreateForm({ ...createForm, precio: parseFloat(e.target.value) || 0 })}
+                fullWidth
+                inputProps={{ step: '0.01', min: '0' }}
+              />
+            )}
+
+            <TextField
+              label="Stock Mínimo"
+              type="number"
+              value={createForm.stockMinimo}
+              onChange={(e) => setCreateForm({ ...createForm, stockMinimo: parseInt(e.target.value) || 0 })}
+              fullWidth
+              helperText="Define el umbral para 'Stock Bajo'"
+            />
+
+            {/* Unidad de medida y factor de conversión */}
+            <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Unidad de Medida para Ingreso de Stock
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Unidad</InputLabel>
+                  <Select
+                    value={createForm.unidadMedida}
+                    label="Unidad"
+                    onChange={(e) => {
+                      const u = e.target.value as string;
+                      setCreateForm({ ...createForm, unidadMedida: u, factorConversion: null, _ancho: null, _largo: null });
+                    }}
+                  >
+                    <MenuItem value="UNIDAD">Unidad (sin conversión)</MenuItem>
+                    <MenuItem value="MT2">m² — plancha/lámina</MenuItem>
+                    <MenuItem value="METROS">Metros — barra/rollo</MenuItem>
+                    <MenuItem value="KILOS">Kg — garrafa/bolsa</MenuItem>
+                  </Select>
+                </FormControl>
+
+                {createForm.unidadMedida !== 'UNIDAD' && (
+                  <TextField
+                    label="Nombre de la unidad de inventario"
+                    size="small"
+                    value={createForm.unidadInventario}
+                    onChange={(e) => setCreateForm({ ...createForm, unidadInventario: e.target.value })}
+                    helperText="Cómo se cuenta el stock: Rollo, Barra, Bolsa, Garrafa…"
+                    fullWidth
+                  />
+                )}
+
+                {createForm.unidadMedida === 'MT2' && (
+                  <>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <TextField
+                        label="Ancho (m)"
+                        type="number"
+                        size="small"
+                        value={createForm._ancho ?? ''}
+                        onChange={(e) => {
+                          const ancho = parseFloat(e.target.value) || null;
+                          const factor = ancho && createForm._largo ? parseFloat((ancho * createForm._largo).toFixed(4)) : createForm.factorConversion;
+                          setCreateForm({ ...createForm, _ancho: ancho, factorConversion: factor });
+                        }}
+                        inputProps={{ step: '0.01', min: '0.01' }}
+                        sx={{ flex: 1 }}
+                      />
+                      <TextField
+                        label="Largo (m)"
+                        type="number"
+                        size="small"
+                        value={createForm._largo ?? ''}
+                        onChange={(e) => {
+                          const largo = parseFloat(e.target.value) || null;
+                          const factor = largo && createForm._ancho ? parseFloat((createForm._ancho * largo).toFixed(4)) : createForm.factorConversion;
+                          setCreateForm({ ...createForm, _largo: largo, factorConversion: factor });
+                        }}
+                        inputProps={{ step: '0.01', min: '0.01' }}
+                        sx={{ flex: 1 }}
+                      />
+                    </Box>
+                    <TextField
+                      label="Factor (m² por plancha)"
+                      type="number"
+                      size="small"
+                      value={createForm.factorConversion ?? ''}
+                      onChange={(e) => setCreateForm({ ...createForm, factorConversion: parseFloat(e.target.value) || null, _ancho: null, _largo: null })}
+                      inputProps={{ step: '0.0001', min: '0.0001' }}
+                      helperText={createForm._ancho && createForm._largo ? `Auto-calculado: ${createForm._ancho} × ${createForm._largo} = ${createForm.factorConversion} m²` : 'Podés editar manualmente'}
+                      fullWidth
+                    />
+                  </>
+                )}
+
+                {createForm.unidadMedida === 'METROS' && (
+                  <TextField
+                    label="Metros por barra/rollo"
+                    type="number"
+                    size="small"
+                    value={createForm.factorConversion ?? ''}
+                    onChange={(e) => setCreateForm({ ...createForm, factorConversion: parseFloat(e.target.value) || null })}
+                    inputProps={{ step: '0.01', min: '0.01' }}
+                    helperText="Ej: 6 si cada barra mide 6 metros"
+                    fullWidth
+                  />
+                )}
+
+                {createForm.unidadMedida === 'KILOS' && (
+                  <TextField
+                    label="Kg por unidad/garrafa"
+                    type="number"
+                    size="small"
+                    value={createForm.factorConversion ?? ''}
+                    onChange={(e) => setCreateForm({ ...createForm, factorConversion: parseFloat(e.target.value) || null })}
+                    inputProps={{ step: '0.01', min: '0.01' }}
+                    helperText="Ej: 10 si cada garrafa tiene 10 kg"
+                    fullWidth
+                  />
+                )}
+              </Box>
+            </Box>
+
+            <Typography variant="caption" color="text.secondary">
+              El producto se crea con stock 0. El stock se carga luego por recepción de compras.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleCreateProduct} variant="contained" color="primary">
+            Crear
           </Button>
         </DialogActions>
       </Dialog>
