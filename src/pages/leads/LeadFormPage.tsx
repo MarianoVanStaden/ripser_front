@@ -699,7 +699,13 @@ export const LeadFormPage = () => {
                     onChange={handleChange('estadoLead')}
                     label="Estado"
                   >
-                    {Object.values(EstadoLeadEnum).map((estado) => (
+                    {/* CONVERTIDO solo se asigna vía "Convertir a Cliente" (crea el cliente y migra presupuestos) */}
+                    {Object.values(EstadoLeadEnum)
+                      .filter((estado) =>
+                        estado !== EstadoLeadEnum.CONVERTIDO ||
+                        formData.estadoLead === EstadoLeadEnum.CONVERTIDO
+                      )
+                      .map((estado) => (
                       <MenuItem key={estado} value={estado}>
                         {ESTADO_LABELS[estado]}
                       </MenuItem>
