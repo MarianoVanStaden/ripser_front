@@ -38,6 +38,7 @@ import {
   Refresh as RefreshIcon,
   Download as DownloadIcon,
   Person as PersonIcon,
+  Build as BuildIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -90,6 +91,14 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
   const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
   // Fecha del movimiento (fecha de negocio). Default hoy; editable solo si puedeBackdatear.
   const [fechaMovimiento, setFechaMovimiento] = useState<Dayjs>(dayjs());
+  // Corrección de saldo (ADMIN): ajusta la CC sin generar movimiento de caja.
+  const [openAjusteDialog, setOpenAjusteDialog] = useState(false);
+  const [newAjuste, setNewAjuste] = useState({
+    tipo: 'CREDITO' as TipoMovimiento,
+    importe: 0,
+    concepto: '',
+    numeroComprobante: '',
+  });
 
   const esPago = newMovimiento.tipo === 'CREDITO';
   const requiereCaja = esPago && metodoPagoRequiereCaja(newMovimiento.metodoPago);
@@ -216,6 +225,52 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
     }
   };
 
+  const handleSaveAjuste = async () => {
+    if (!selectedProveedor) {
+      setError('Debe seleccionar un proveedor para registrar una corrección.');
+      return;
+    }
+    if (!newAjuste.concepto.trim()) {
+      setError('El motivo de la corrección es obligatorio.');
+      return;
+    }
+    if (newAjuste.importe <= 0) {
+      setError('El importe de la corrección debe ser mayor a cero.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await cuentaCorrienteProveedorApi.crearAjuste({
+        proveedorId: selectedProveedor.id,
+        fecha: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
+        tipo: newAjuste.tipo,
+        importe: newAjuste.importe,
+        concepto: newAjuste.concepto,
+        numeroComprobante: newAjuste.numeroComprobante || undefined,
+      });
+
+      setNewAjuste({ tipo: 'CREDITO', importe: 0, concepto: '', numeroComprobante: '' });
+      setOpenAjusteDialog(false);
+
+      // Refresh data
+      const [movimientosData, proveedorActualizado] = await Promise.all([
+        cuentaCorrienteProveedorApi.getByProveedorId(selectedProveedor.id),
+        proveedorApi.getById(selectedProveedor.id)
+      ]);
+      setMovimientos(movimientosData);
+      setSelectedProveedor(proveedorActualizado);
+      setProveedores(prevProveedores =>
+        prevProveedores.map(p => p.id === proveedorActualizado.id ? proveedorActualizado : p)
+      );
+    } catch (err) {
+      setError('Error al guardar la corrección.');
+      console.error('Error saving ajuste:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredMovimientos = movimientos.filter(mov => {
     const matchesSearch =
       mov.concepto.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -329,6 +384,18 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
             >
               Nuevo Movimiento
             </Button>
+            {puedeBackdatear && (
+              <Button
+                variant="outlined"
+                color="warning"
+                startIcon={<BuildIcon />}
+                onClick={() => setOpenAjusteDialog(true)}
+                disabled={!selectedProveedor}
+                fullWidth={isMobile}
+              >
+                Corrección (ADMIN)
+              </Button>
+            )}
           </Stack>
         </Box>
 
@@ -474,11 +541,18 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
                     {dayjs(movimiento.fecha).format('DD/MM/YYYY HH:mm')}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={movimiento.tipo}
-                      color={movimiento.tipo === 'DEBITO' ? 'error' : 'success'}
-                      size="small"
-                    />
+                    <Stack direction="row" spacing={0.5}>
+                      <Chip
+                        label={movimiento.tipo}
+                        color={movimiento.tipo === 'DEBITO' ? 'error' : 'success'}
+                        size="small"
+                      />
+                      {movimiento.esAjuste && (
+                        <Tooltip title="Corrección manual de saldo (sin impacto en caja)">
+                          <Chip label="Ajuste" color="warning" size="small" variant="outlined" />
+                        </Tooltip>
+                      )}
+                    </Stack>
                   </TableCell>
                   <TableCell>{movimiento.concepto}</TableCell>
                   <TableCell>{movimiento.numeroComprobante || '-'}</TableCell>
@@ -642,6 +716,80 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
               disabled={!newMovimiento.concepto || newMovimiento.importe <= 0 || cajaFaltante}
             >
               Guardar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Correction Dialog (ADMIN) */}
+        <Dialog open={openAjusteDialog} onClose={() => setOpenAjusteDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+          <DialogTitle>
+            Corrección de Saldo (ADMIN) - {selectedProveedor?.razonSocial || selectedProveedor?.nombre}
+          </DialogTitle>
+          <DialogContent>
+            <Box pt={2}>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Esta operación ajusta el saldo de la cuenta corriente del proveedor{' '}
+                <strong>sin generar ningún movimiento de caja</strong> ni impactar el flujo de caja.
+                Usala solo para corregir errores de carga.
+              </Alert>
+
+              <TextField
+                fullWidth
+                select
+                label="Tipo de Corrección"
+                value={newAjuste.tipo}
+                onChange={(e) => setNewAjuste({ ...newAjuste, tipo: e.target.value as TipoMovimiento })}
+                margin="normal"
+                helperText="Débito: aumenta la deuda con el proveedor (+). Crédito: la disminuye (-)"
+              >
+                <MenuItem value="DEBITO">Débito - Aumenta deuda (+)</MenuItem>
+                <MenuItem value="CREDITO">Crédito - Disminuye deuda (-)</MenuItem>
+              </TextField>
+
+              <TextField
+                fullWidth
+                label="Importe"
+                type="number"
+                value={newAjuste.importe}
+                onChange={(e) => setNewAjuste({ ...newAjuste, importe: Number(e.target.value) })}
+                margin="normal"
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                }}
+              />
+
+              <TextField
+                fullWidth
+                label="Motivo"
+                value={newAjuste.concepto}
+                onChange={(e) => setNewAjuste({ ...newAjuste, concepto: e.target.value })}
+                margin="normal"
+                required
+                multiline
+                rows={2}
+                helperText="Obligatorio. Queda registrado para auditoría."
+              />
+
+              <TextField
+                fullWidth
+                label="Número de Comprobante (opcional)"
+                value={newAjuste.numeroComprobante}
+                onChange={(e) => setNewAjuste({ ...newAjuste, numeroComprobante: e.target.value })}
+                margin="normal"
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenAjusteDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleSaveAjuste}
+              disabled={!newAjuste.concepto.trim() || newAjuste.importe <= 0}
+            >
+              Guardar Corrección
             </Button>
           </DialogActions>
         </Dialog>

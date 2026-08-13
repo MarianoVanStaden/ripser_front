@@ -1,5 +1,5 @@
 import api from '../config';
-import type { CuentaCorrienteProveedor, CreateMovimientoProveedorPayload } from '../../types';
+import type { CuentaCorrienteProveedor, CreateMovimientoProveedorPayload, CreateAjusteProveedorPayload } from '../../types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const cuentaCorrienteProveedorApi = {
@@ -28,6 +28,12 @@ export const cuentaCorrienteProveedorApi = {
   // Create movimiento
   create: async (payload: CreateMovimientoProveedorPayload): Promise<CuentaCorrienteProveedor> => {
     const response = await api.post('/api/cuenta-corriente-proveedor', payload);
+    return response.data;
+  },
+
+  // Corrección manual de saldo (ADMIN): ajusta la CC sin generar movimiento de caja
+  crearAjuste: async (payload: CreateAjusteProveedorPayload): Promise<CuentaCorrienteProveedor> => {
+    const response = await api.post('/api/cuenta-corriente-proveedor/ajuste', payload);
     return response.data;
   },
 

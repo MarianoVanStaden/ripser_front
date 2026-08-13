@@ -139,6 +139,8 @@ export interface CuentaCorrienteProveedor {
   saldo: number;
   compraId?: number;
   usuarioNombre?: string | null;
+  /** true = corrección manual de saldo (ADMIN), sin impacto en caja */
+  esAjuste?: boolean;
 }
 
 export interface CreateMovimientoProveedorPayload {
@@ -153,6 +155,17 @@ export interface CreateMovimientoProveedorPayload {
   cajaPesosId?: number | null;
   cajaAhorroId?: number | null;
 }
+
+/** Corrección manual de saldo (ADMIN): ajusta la CC del proveedor sin tocar caja. */
+export interface CreateAjusteProveedorPayload {
+  proveedorId: number;
+  fecha?: string;
+  tipo: TipoMovimiento;
+  importe: number;
+  concepto: string;
+  numeroComprobante?: string;
+}
+
 /** Alícuotas de IVA soportadas (espejo del enum backend TipoIva). */
 export type TipoIvaCompra = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 
