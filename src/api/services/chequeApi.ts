@@ -87,8 +87,7 @@ export const chequeApi = {
 
   /**
    * PUT /api/cheques/{id}/depositar
-   * Deposita un cheque e impacta la caja indicada (o la default del método
-   * TRANSFERENCIA_BANCARIA si no se envían cajaPesosId/cajaAhorroId).
+   * Deposita un cheque (solo cambio de estado; la caja se impacta al cobrar).
    */
   depositar: async (
     id: number,
@@ -108,12 +107,21 @@ export const chequeApi = {
 
   /**
    * PUT /api/cheques/{id}/cobrar
-   * Marca un cheque como cobrado
+   * Marca un cheque como cobrado e impacta la caja indicada (o la default del
+   * método TRANSFERENCIA_BANCARIA si no se envían cajaPesosId/cajaAhorroId).
    */
-  cobrar: async (id: number, fechaCobrado?: string, observaciones?: string): Promise<Cheque> => {
-    const params: Record<string, string> = {};
+  cobrar: async (
+    id: number,
+    fechaCobrado?: string,
+    observaciones?: string,
+    cajaPesosId?: number | null,
+    cajaAhorroId?: number | null,
+  ): Promise<Cheque> => {
+    const params: Record<string, string | number> = {};
     if (fechaCobrado) params.fechaCobrado = fechaCobrado;
     if (observaciones) params.observaciones = observaciones;
+    if (cajaPesosId != null) params.cajaPesosId = cajaPesosId;
+    if (cajaAhorroId != null) params.cajaAhorroId = cajaAhorroId;
     const response = await api.put(`/api/cheques/${id}/cobrar`, null, { params });
     return response.data;
   },

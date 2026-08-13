@@ -43,7 +43,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
   const [showRechazoInput, setShowRechazoInput] = useState(false);
   const [showAnulacionInput, setShowAnulacionInput] = useState(false);
   const [showReversionInput, setShowReversionInput] = useState(false);
-  const [showDepositoInput, setShowDepositoInput] = useState(false);
+  const [showCobroInput, setShowCobroInput] = useState(false);
   const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
   const [endososChain, setEndososChain] = useState<CadenaEndososDTO | null>(null);
   const [loadingEndosos, setLoadingEndosos] = useState(false);
@@ -58,7 +58,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
     if (!open) {
       setHistorial([]);
       setEndososChain(null);
-      setShowDepositoInput(false);
+      setShowCobroInput(false);
       setCajaRef(null);
       setShowReversionInput(false);
       setMotivoReversion('');
@@ -101,9 +101,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
     try {
       setLoading(true);
       setError(null);
-      const cajaPesosId = cajaRef?.tipo === 'PESOS' ? cajaRef.id : null;
-      const cajaAhorroId = cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null;
-      await chequeApi.depositar(cheque.id, undefined, undefined, cajaPesosId, cajaAhorroId);
+      await chequeApi.depositar(cheque.id);
       onUpdate();
       onClose();
     } catch (err: any) {
@@ -111,8 +109,6 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
       setError(err.response?.data?.message || 'Error al depositar el cheque');
     } finally {
       setLoading(false);
-      setShowDepositoInput(false);
-      setCajaRef(null);
     }
   };
 
@@ -120,7 +116,9 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
     try {
       setLoading(true);
       setError(null);
-      await chequeApi.cobrar(cheque.id);
+      const cajaPesosId = cajaRef?.tipo === 'PESOS' ? cajaRef.id : null;
+      const cajaAhorroId = cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null;
+      await chequeApi.cobrar(cheque.id, undefined, undefined, cajaPesosId, cajaAhorroId);
       onUpdate();
       onClose();
     } catch (err: any) {
@@ -128,6 +126,8 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
       setError(err.response?.data?.message || 'Error al cobrar el cheque');
     } finally {
       setLoading(false);
+      setShowCobroInput(false);
+      setCajaRef(null);
     }
   };
 
@@ -472,11 +472,11 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               </>
             )}
 
-            {/* Selección de caja destino para el depósito */}
-            {showDepositoInput && (
+            {/* Selección de caja destino para acreditar el cobro */}
+            {showCobroInput && (
               <Grid item xs={12}>
                 <Typography variant="subtitle2" gutterBottom>
-                  Depositar en una caja propia
+                  Acreditar el cobro en una caja propia
                 </Typography>
                 <CajaSelector
                   metodoPago="TRANSFERENCIA_BANCARIA"
@@ -487,17 +487,17 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
                 />
                 <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
                   <Button
-                    onClick={handleDepositar}
+                    onClick={handleCobrar}
                     variant="contained"
-                    color="info"
+                    color="success"
                     disabled={loading}
                     size="small"
                   >
-                    Confirmar Depósito
+                    Confirmar Cobro
                   </Button>
                   <Button
                     onClick={() => {
-                      setShowDepositoInput(false);
+                      setShowCobroInput(false);
                       setCajaRef(null);
                     }}
                     size="small"
@@ -632,27 +632,27 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
         </DialogContent>
         <DialogActions>
           {/* Acciones basadas en el estado actual */}
-          {cheque.estado === 'EN_CARTERA' && cheque.puedeDepositarse && !showDepositoInput && !showReversionInput && (
+          {cheque.estado === 'EN_CARTERA' && cheque.puedeDepositarse && !showReversionInput && (
             <Button
-              onClick={() => setShowDepositoInput(true)}
+              onClick={handleDepositar}
               variant="contained"
               color="info"
-              disabled={loading || showRechazoInput || showAnulacionInput}
+              disabled={loading || showRechazoInput || showAnulacionInput || showCobroInput}
             >
               Depositar
             </Button>
           )}
-          {cheque.estado === 'DEPOSITADO' && cheque.puedeCobrarse && !showReversionInput && (
+          {cheque.estado === 'DEPOSITADO' && cheque.puedeCobrarse && !showCobroInput && !showReversionInput && (
             <Button
-              onClick={handleCobrar}
+              onClick={() => setShowCobroInput(true)}
               variant="contained"
               color="success"
-              disabled={loading || showRechazoInput || showAnulacionInput || showDepositoInput}
+              disabled={loading || showRechazoInput || showAnulacionInput}
             >
               Marcar como Cobrado
             </Button>
           )}
-          {(cheque.estado === 'EN_CARTERA' || cheque.estado === 'DEPOSITADO') && !showRechazoInput && !showAnulacionInput && !showDepositoInput && !showReversionInput && (
+          {(cheque.estado === 'EN_CARTERA' || cheque.estado === 'DEPOSITADO') && !showRechazoInput && !showAnulacionInput && !showCobroInput && !showReversionInput && (
             <Button
               onClick={() => setShowRechazoInput(true)}
               variant="outlined"
@@ -662,7 +662,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               Rechazar
             </Button>
           )}
-          {cheque.estado !== 'ANULADO' && cheque.estado !== 'COBRADO' && !showRechazoInput && !showAnulacionInput && !showDepositoInput && !showReversionInput && (
+          {cheque.estado !== 'ANULADO' && cheque.estado !== 'COBRADO' && !showRechazoInput && !showAnulacionInput && !showCobroInput && !showReversionInput && (
             <Button
               onClick={() => setShowAnulacionInput(true)}
               variant="outlined"
@@ -678,7 +678,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             historial.some((h) => h.estadoAnterior != null && !h.esReversion) &&
             !showRechazoInput &&
             !showAnulacionInput &&
-            !showDepositoInput &&
+            !showCobroInput &&
             !showReversionInput && (
               <Button
                 onClick={() => setShowReversionInput(true)}
@@ -695,7 +695,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             (cheque.estado === 'RECIBIDO' || cheque.estado === 'EN_CARTERA') &&
             !showRechazoInput &&
             !showAnulacionInput &&
-            !showDepositoInput && (
+            !showCobroInput && (
               <Button
                 onClick={() => setShowEndosarDialog(true)}
                 variant="contained"
