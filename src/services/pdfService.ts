@@ -172,6 +172,38 @@ const buildTotalsRows = (documento: DocumentoComercial, totalLabel: string): any
   ];
 };
 
+// Leyenda aclaratoria para documentos exentos de IVA, debajo del bloque de totales.
+const renderLeyendaIvaExento = (
+  doc: jsPDF,
+  documento: DocumentoComercial,
+  leyenda: string,
+  yPosition: number,
+  margin: number,
+): number => {
+  if (documento.tipoIva !== 'EXENTO') return yPosition;
+  yPosition = ensureSpace(doc, yPosition, 8, margin);
+  autoTable(doc, {
+    startY: yPosition,
+    body: [[
+      {
+        content: leyenda,
+        styles: {
+          halign: 'left',
+          fontSize: 7,
+          fontStyle: 'italic' as const,
+          fillColor: COLORS.white,
+          textColor: COLORS.darkGray,
+          cellPadding: 2,
+        },
+      },
+    ]],
+    theme: 'grid',
+    styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+  return (doc as any).lastAutoTable.finalY + 2;
+};
+
 const ensureSpace = (doc: jsPDF, yPosition: number, neededHeight: number, margin: number): number => {
   const pageHeight = doc.internal.pageSize.getHeight();
   if (yPosition + neededHeight > pageHeight - PAGE_MARGIN_BOTTOM) {
@@ -576,6 +608,8 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
 
   yPosition = (doc as any).lastAutoTable.finalY + 2;
 
+  yPosition = renderLeyendaIvaExento(doc, presupuesto, 'Este presupuesto no contiene IVA.', yPosition, margin);
+
   // ===== OPCIONES DE FINANCIACIÓN =====
   if (opcionesFinanciamiento && opcionesFinanciamiento.length > 0) {
     autoTable(doc, {
@@ -885,6 +919,11 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
   });
 
   yPosition = (doc as any).lastAutoTable.finalY + 2;
+
+  const leyendaIvaExento = tipoDocumento === 'FACTURA'
+    ? 'Esta factura no contiene IVA.'
+    : 'Esta nota de pedido no contiene IVA.';
+  yPosition = renderLeyendaIvaExento(doc, documento, leyendaIvaExento, yPosition, margin);
 
   // ===== FORMA DE PAGO / OPCIÓN DE FINANCIAMIENTO SELECCIONADA =====
   if (opcionSeleccionada) {
