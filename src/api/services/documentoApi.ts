@@ -368,6 +368,14 @@ export const documentoApi = {
     );
     return response.data;
   },
+  // Reasignar el vendedor de un presupuesto/nota de pedido ya creado (ADMIN/SUPERVISOR).
+  updateVendedor: async (id: number, usuarioId: number): Promise<DocumentoComercial> => {
+    const response = await api.patch<DocumentoComercial>(
+      `/api/documentos/${id}/vendedor`,
+      { usuarioId },
+    );
+    return response.data;
+  },
   // Corregir precios (líneas + descuento) de una Nota de Pedido en PENDIENTE.
   corregirLineas: async (
     id: number,

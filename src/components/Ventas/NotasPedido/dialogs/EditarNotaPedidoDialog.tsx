@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@mui/material';
 import { EstadoDocumento } from '../../../../types';
-import type { DocumentoComercial } from '../../../../types';
+import type { DocumentoComercial, Usuario } from '../../../../types';
 import type { EditNotaForm, TipoDescuento } from '../types';
 import { calculateCostoEnvio } from '../../../../utils/financiamiento';
 
@@ -39,6 +39,9 @@ interface Props {
   nota: DocumentoComercial | null;
   form: EditNotaForm;
   setForm: Dispatch<SetStateAction<EditNotaForm>>;
+  /** Reasignar vendedor: solo ADMIN/SUPERVISOR (mismo check que habilita el backend). */
+  canReassignVendedor: boolean;
+  usuarioOptions: Usuario[];
 }
 
 const EditarNotaPedidoDialog: React.FC<Props> = ({
@@ -49,6 +52,8 @@ const EditarNotaPedidoDialog: React.FC<Props> = ({
   nota,
   form,
   setForm,
+  canReassignVendedor,
+  usuarioOptions,
 }) => {
   return (
     <Dialog
@@ -88,6 +93,23 @@ const EditarNotaPedidoDialog: React.FC<Props> = ({
                 Solo podés editar descuento, observaciones y estado cuando la nota está en PENDIENTE.
                 Cambiar el descuento regenera las opciones de financiamiento.
               </Alert>
+              {canReassignVendedor && usuarioOptions.length > 0 && (
+                <TextField
+                  size="small"
+                  fullWidth
+                  select
+                  label="Vendedor"
+                  value={form.usuarioId}
+                  onChange={(e) => setForm((prev) => ({ ...prev, usuarioId: e.target.value }))}
+                >
+                  <MenuItem value="">Seleccionar vendedor</MenuItem>
+                  {usuarioOptions.map((usuario) => (
+                    <MenuItem key={usuario.id} value={usuario.id.toString()}>
+                      {usuario.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
               <FormControl size="small" fullWidth>
                 <InputLabel>Tipo de descuento</InputLabel>
                 <Select

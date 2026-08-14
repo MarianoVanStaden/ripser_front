@@ -32,6 +32,8 @@ export interface EditNotaForm {
   descuentoValor: number;
   observaciones: string;
   nuevoEstado: EstadoDocumento;
+  /** Vendedor asignado. '' = sin cambios respecto al original. Solo editable por ADMIN/SUPERVISOR. */
+  usuarioId: string;
 }
 
 /**

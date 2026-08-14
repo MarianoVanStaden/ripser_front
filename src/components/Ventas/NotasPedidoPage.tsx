@@ -40,7 +40,7 @@ import {
   PriceChange as PriceChangeIcon,
   Palette as PaletteIcon,
 } from "@mui/icons-material";
-import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi } from "../../api/services";
+import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi, usuarioApi } from "../../api/services";
 import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
 import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
@@ -52,6 +52,7 @@ import type {
   DetalleDocumento,
   OpcionFinanciamientoDTO,
   DeudaClienteError,
+  Usuario,
 } from "../../types";
 import DeudaClienteConfirmDialog from "./DeudaClienteConfirmDialog";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
@@ -81,6 +82,9 @@ const NotasPedidoPage: React.FC = () => {
   const navigate = useNavigate();
   const { empresaId, esSuperAdmin, rolActual } = useTenant();
   const isAdmin = esSuperAdmin || (rolActual as string) === 'ADMIN' || rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO';
+  // Reasignar el vendedor de una nota ya creada es una corrección administrativa —
+  // mismos roles habilitados en el backend (PATCH /api/documentos/{id}/vendedor).
+  const canReassignVendedor = isAdmin || rolActual === 'SUPERVISOR';
   const { user } = useAuth();
   // Días de entrega estimados (parámetro de sistema) para pre-cargar la fecha objetivo al facturar.
   const { value: diasEntrega } = useParametroSistema('DIAS_ENTREGA_ESTIMADA', 25, parseIntOr(25));
@@ -265,8 +269,23 @@ const NotasPedidoPage: React.FC = () => {
     descuentoValor: 0,
     observaciones: '',
     nuevoEstado: EstadoDocumentoEnum.PENDIENTE,
+    usuarioId: '',
   });
   const [editLoading, setEditLoading] = useState(false);
+
+  // Opciones del selector de vendedor en el diálogo de edición (solo ADMIN/SUPERVISOR).
+  const { data: vendedores = [] } = useQuery({
+    queryKey: ['usuarios', 'vendedores'],
+    queryFn: () => usuarioApi.getVendedores(),
+    enabled: canReassignVendedor,
+    staleTime: 5 * 60 * 1000,
+  });
+  const usuarioOptions = useMemo(() => {
+    if (user?.id && !vendedores.some((u: Usuario) => u.id === user.id)) {
+      return [...vendedores, { id: user.id, nombre: user.nombre || '' } as Usuario];
+    }
+    return vendedores;
+  }, [vendedores, user]);
 
   // Corregir precios dialog (líneas + descuento — solo PENDIENTE).
   const [corregirDialogOpen, setCorregirDialogOpen] = useState(false);
@@ -969,6 +988,7 @@ const NotasPedidoPage: React.FC = () => {
       descuentoValor: Number(nota.descuentoValor) || 0,
       observaciones: nota.observaciones || '',
       nuevoEstado: nota.estado,
+      usuarioId: nota.usuarioId?.toString() || '',
     });
     setEditDialogOpen(true);
   }, []);
@@ -1020,6 +1040,11 @@ const NotasPedidoPage: React.FC = () => {
       if (estadoCambio) {
         await documentoApi.updateEstado(notaToEdit.id, editForm.nuevoEstado);
       }
+      const vendedorOriginalId = notaToEdit.usuarioId ? Number(notaToEdit.usuarioId) : null;
+      const nuevoVendedorId = Number(editForm.usuarioId) || null;
+      if (canReassignVendedor && nuevoVendedorId && nuevoVendedorId !== vendedorOriginalId) {
+        await documentoApi.updateVendedor(notaToEdit.id, nuevoVendedorId);
+      }
 
       queryClient.invalidateQueries({ queryKey: ['notasPedido'] });
       setSnackbar({
@@ -1036,7 +1061,7 @@ const NotasPedidoPage: React.FC = () => {
     } finally {
       setEditLoading(false);
     }
-  }, [notaToEdit, editForm, queryClient, handleCloseEditDialog]);
+  }, [notaToEdit, editForm, queryClient, handleCloseEditDialog, canReassignVendedor]);
 
   // Billing Dialog state (para Financiación Propia)
   const [billingDialogOpen, setBillingDialogOpen] = useState(false);
@@ -1767,6 +1792,8 @@ const NotasPedidoPage: React.FC = () => {
         nota={notaToEdit}
         form={editForm}
         setForm={setEditForm}
+        canReassignVendedor={canReassignVendedor}
+        usuarioOptions={usuarioOptions}
       />
 
       <CorregirPreciosDialog

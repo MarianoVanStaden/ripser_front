@@ -91,6 +91,9 @@ const PresupuestosPage: React.FC = () => {
   // Admins deben elegir explícitamente el vendedor al que se atribuye la venta
   // (reportes de unidades y bonos); el resto se autoasigna como hasta ahora.
   const isAdmin = esSuperAdmin || (rolActual as string) === 'ADMIN' || rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO';
+  // Reasignar el vendedor de un presupuesto ya creado (no en la creación) es una
+  // corrección administrativa — mismos roles habilitados en el backend (PATCH /vendedor).
+  const canReassignVendedor = isAdmin || rolActual === 'SUPERVISOR';
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -882,6 +885,11 @@ const PresupuestosPage: React.FC = () => {
             formData.observaciones || null
           );
         }
+        const vendedorOriginalId = editingPresupuesto.usuarioId ? Number(editingPresupuesto.usuarioId) : null;
+        const nuevoVendedorId = Number(formData.usuarioId) || null;
+        if (canReassignVendedor && nuevoVendedorId && nuevoVendedorId !== vendedorOriginalId) {
+          savedPresupuesto = await documentoApi.updateVendedor(editingPresupuesto.id, nuevoVendedorId);
+        }
       } else {
         try {
           savedPresupuesto = await documentoApi.createPresupuesto(payload);
@@ -1613,7 +1621,7 @@ const PresupuestosPage: React.FC = () => {
                     setHasUnsavedChanges(true);
                   }}
                   margin="normal"
-                  disabled={readOnly}
+                  disabled={readOnly || (!!editingPresupuesto && !canReassignVendedor)}
                 >
                   <MenuItem value="">Seleccionar vendedor</MenuItem>
                   {usuarioOptions.map((usuario) => (
