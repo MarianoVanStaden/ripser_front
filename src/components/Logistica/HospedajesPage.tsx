@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -83,11 +84,8 @@ const HospedajesPage: React.FC = () => {
   const canEdit = esAdmin || tieneRol('COORDINADORA_LOGISTICA');
   const canDelete = esAdmin;
 
-  const [hospedajes, setHospedajes] = useState<HospedajeEstadiaDTO[]>([]);
-  const [provincias, setProvincias] = useState<string[]>([]);
   const [localidades, setLocalidades] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [filtros, setFiltros] = useState<FiltrosHospedaje>(FILTROS_VACIOS);
   const nombreDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,35 +100,35 @@ const HospedajesPage: React.FC = () => {
   const [archivando, setArchivando] = useState<number | null>(null);
 
   // ── Carga de datos ────────────────────────────────────────────────────────
-
-  const fetchHospedajes = useCallback(async (f: FiltrosHospedaje, nombre: string) => {
-    setLoading(true);
-    setError(null);
-    try {
+  const queryClient = useQueryClient();
+  const hospedajesQuery = useQuery({
+    queryKey: ['hospedajes', { ...filtros, nombre: nombreCommitted }],
+    queryFn: () => {
       const params: Record<string, unknown> = {};
-      if (nombre) params.nombre = nombre;
-      if (f.provincia) params.provincia = f.provincia;
-      if (f.localidad) params.localidad = f.localidad;
-      if (f.calificacion) params.calificacion = Number(f.calificacion);
-      if (f.cochera) params.cochera = true;
-      if (f.desayuno) params.desayuno = true;
-      if (f.pileta) params.pileta = true;
-      const data = await hospedajeEstadiaApi.getAll(params);
-      setHospedajes(data);
-    } catch (err) {
-      setError(extractError(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    hospedajeEstadiaApi.getProvincias().then(setProvincias).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetchHospedajes(filtros, nombreCommitted);
-  }, [filtros, nombreCommitted, fetchHospedajes]);
+      if (nombreCommitted) params.nombre = nombreCommitted;
+      if (filtros.provincia) params.provincia = filtros.provincia;
+      if (filtros.localidad) params.localidad = filtros.localidad;
+      if (filtros.calificacion) params.calificacion = Number(filtros.calificacion);
+      if (filtros.cochera) params.cochera = true;
+      if (filtros.desayuno) params.desayuno = true;
+      if (filtros.pileta) params.pileta = true;
+      return hospedajeEstadiaApi.getAll(params);
+    },
+  });
+  const hospedajes: HospedajeEstadiaDTO[] = hospedajesQuery.data ?? [];
+  const loading = hospedajesQuery.isPending;
+  const error = hospedajesQuery.error ? extractError(hospedajesQuery.error) : actionError;
+  const setError = setActionError;
+  const provinciasQuery = useQuery({
+    queryKey: ['hospedajes', 'provincias'],
+    queryFn: () => hospedajeEstadiaApi.getProvincias(),
+    staleTime: 300_000,
+  });
+  const provincias: string[] = provinciasQuery.data ?? [];
+  const fetchHospedajes = useCallback(
+    (_f?: FiltrosHospedaje, _n?: string) => queryClient.invalidateQueries({ queryKey: ['hospedajes'] }),
+    [queryClient],
+  );
 
   // Debounce del campo nombre
   const handleNombreChange = (value: string) => {

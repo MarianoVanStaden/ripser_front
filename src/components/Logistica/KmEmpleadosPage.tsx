@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -66,14 +67,11 @@ const nombreEmpleado = (e: EmpleadoLite): string =>
 const KmEmpleadosPage: React.FC = () => {
   const currentYear = new Date().getFullYear();
 
-  const [anios, setAnios] = useState<number[]>([]);
   const [anio, setAnio] = useState<number>(currentYear);
-  const [registros, setRegistros] = useState<RegistroKmEmpleadoDTO[]>([]);
   const [empleados, setEmpleados] = useState<EmpleadoLite[]>([]);
   const [metrica, setMetrica] = useState<'km' | 'horas'>('km');
 
-  const [loading, setLoading] = useState(false);
-  const [pageError, setPageError] = useState<string | null>(null);
+  const [actionPageError, setActionPageError] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm(currentYear));
@@ -86,28 +84,28 @@ const KmEmpleadosPage: React.FC = () => {
   const [cellDetail, setCellDetail] = useState<{ empleadoId: number; nombre: string; mes: number } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const load = useCallback(async (anioSel: number) => {
-    setLoading(true);
-    setPageError(null);
-    try {
+  const queryClient = useQueryClient();
+  const kmQuery = useQuery({
+    queryKey: ['km-empleados', anio],
+    queryFn: async () => {
       const [regs, aniosData] = await Promise.all([
-        registroKmEmpleadoApi.getByAnio(anioSel),
+        registroKmEmpleadoApi.getByAnio(anio),
         registroKmEmpleadoApi.getAnios(),
       ]);
-      setRegistros(regs);
       // Aseguramos que el año actual y el seleccionado estén siempre disponibles.
-      const set = new Set<number>([...aniosData, currentYear, anioSel]);
-      setAnios(Array.from(set).sort((a, b) => b - a));
-    } catch (err) {
-      setPageError(extractError(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [currentYear]);
-
-  useEffect(() => {
-    load(anio);
-  }, [anio, load]);
+      const set = new Set<number>([...aniosData, currentYear, anio]);
+      return { registros: regs, anios: Array.from(set).sort((a, b) => b - a) };
+    },
+  });
+  const registros: RegistroKmEmpleadoDTO[] = kmQuery.data?.registros ?? [];
+  const anios: number[] = kmQuery.data?.anios ?? [];
+  const loading = kmQuery.isPending;
+  const pageError = kmQuery.error ? extractError(kmQuery.error) : actionPageError;
+  const setPageError = setActionPageError;
+  const load = useCallback(
+    async (_anioSel?: number) => { await queryClient.invalidateQueries({ queryKey: ['km-empleados'] }); },
+    [queryClient],
+  );
 
   // Empleados para el selector del diálogo (carga diferida la primera vez).
   const ensureEmpleados = useCallback(async () => {

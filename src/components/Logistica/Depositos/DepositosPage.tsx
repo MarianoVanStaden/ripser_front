@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -53,10 +54,34 @@ const DepositosPage: React.FC = () => {
   const { tienePermiso } = usePermisos();
 
   // State management
-  const [depositos, setDepositos] = useState<Deposito[]>([]);
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const puedeVer = tienePermiso('LOGISTICA');
+  const depositosQuery = useQuery({
+    queryKey: ['depositos'],
+    queryFn: () => depositoApi.getAll().then((r: any) => (Array.isArray(r) ? r : r?.content || [])),
+    enabled: puedeVer,
+  });
+  const sucursalesQuery = useQuery({
+    queryKey: ['sucursales', empresaId],
+    queryFn: () => sucursalService.getByEmpresa(empresaId!),
+    enabled: puedeVer && !!empresaId,
+    staleTime: 300_000,
+  });
+  const depositos: Deposito[] = depositosQuery.data ?? [];
+  const sucursales: Sucursal[] = sucursalesQuery.data ?? [];
+  const loading = depositosQuery.isPending && puedeVer;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false); // spinner de guardar/eliminar
+  const qErr = depositosQuery.error as any;
+  const error = qErr
+    ? (qErr.response?.status === 403 || qErr.response?.status === 401
+        ? 'No tiene permisos para acceder a esta información'
+        : 'Error al cargar los depósitos')
+    : actionError;
+  const setError = setActionError;
+  const loadData = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['depositos'] });
+  };
   const [success, setSuccess] = useState<string | null>(null);
 
   // Dialog states
@@ -79,40 +104,6 @@ const DepositosPage: React.FC = () => {
   const [sucursalFilter, setSucursalFilter] = useState<string>('all');
   const [tipoFilter, setTipoFilter] = useState<string>('all'); // all, compartido, sucursal
 
-  // Load data on mount
-  useEffect(() => {
-    if (tienePermiso('LOGISTICA')) {
-      loadData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const depositosResponse = await depositoApi.getAll();
-      // Handle paginated response (if API returns { content: [...] } or direct array)
-      const depositosData = Array.isArray(depositosResponse) 
-        ? depositosResponse 
-        : (depositosResponse as any)?.content || [];
-      let sucursalesData: Sucursal[] = [];
-      if (empresaId) {
-        sucursalesData = await sucursalService.getByEmpresa(empresaId);
-      }
-      setDepositos(depositosData);
-      setSucursales(sucursalesData);
-      setError(null);
-    } catch (err: any) {
-      console.error('Error loading data:', err);
-      if (err.response?.status === 403 || err.response?.status === 401) {
-        setError('No tiene permisos para acceder a esta información');
-      } else {
-        setError('Error al cargar los depósitos');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Filtered depositos
   const filteredDepositos = useMemo(() => {
@@ -193,7 +184,7 @@ const DepositosPage: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      setLoading(true);
+      setSaving(true);
       if (selectedDeposito) {
         await depositoApi.update(selectedDeposito.id, formData);
         setSuccess('Depósito actualizado correctamente');
@@ -211,13 +202,13 @@ const DepositosPage: React.FC = () => {
         setError('Error al guardar el depósito');
       }
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   const handleToggleEstado = async (deposito: Deposito) => {
     try {
-      setLoading(true);
+      setSaving(true);
       if (deposito.activo) {
         await depositoApi.desactivar(deposito.id);
         setSuccess('Depósito desactivado correctamente');
@@ -230,7 +221,7 @@ const DepositosPage: React.FC = () => {
       console.error('Error toggling estado:', err);
       setError('Error al cambiar el estado del depósito');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -399,7 +390,7 @@ const DepositosPage: React.FC = () => {
       </Card>
 
       {/* Table */}
-      {loading ? (
+      {(loading || saving) ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
           <CircularProgress />
         </Box>

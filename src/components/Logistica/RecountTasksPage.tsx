@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -36,9 +37,20 @@ import LoadingOverlay from '../common/LoadingOverlay';
 interface RecountTask extends MovimientoStock {}
 
 const RecountTasksPage: React.FC = () => {
-  const [tasks, setTasks] = useState<RecountTask[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const tasksQuery = useQuery({
+    queryKey: ['recuentos-pendientes'],
+    queryFn: () => movimientoStockApi.getRecuentosPendientes(),
+  });
+  const tasks: RecountTask[] = tasksQuery.data ?? [];
+  const loading = tasksQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false); // spinner de completar recuento
+  const error = tasksQuery.error ? 'Error al cargar las tareas de recuento' : actionError;
+  const setError = setActionError;
+  const loadPendingRecounts = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['recuentos-pendientes'] });
+  };
   const [success, setSuccess] = useState<string | null>(null);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
@@ -50,27 +62,6 @@ const RecountTasksPage: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<RecountTask | null>(null);
   const [countedQuantity, setCountedQuantity] = useState<string>('');
 
-  useEffect(() => {
-    loadPendingRecounts();
-  }, []);
-
-  const loadPendingRecounts = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const pendingRecounts = await movimientoStockApi.getRecuentosPendientes();
-      
-      console.log('Pending recounts loaded:', pendingRecounts.length);
-      setTasks(pendingRecounts);
-      
-    } catch (err) {
-      setError('Error al cargar las tareas de recuento');
-      console.error('Error loading recount tasks:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOpenCompleteDialog = (task: RecountTask) => {
     setSelectedTask(task);
@@ -85,14 +76,14 @@ const RecountTasksPage: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       setError(null);
 
       const cantidad = parseInt(countedQuantity);
 
       if (isNaN(cantidad) || cantidad < 0) {
         setError('Por favor ingresa una cantidad válida (número entero positivo)');
-        setLoading(false);
+        setSaving(false);
         return;
       }
 
@@ -138,7 +129,7 @@ const RecountTasksPage: React.FC = () => {
       setError('Error al completar el recuento');
       console.error('Error completing recount:', err);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -390,9 +381,9 @@ const RecountTasksPage: React.FC = () => {
           <Button 
             onClick={handleCompleteRecount} 
             variant="contained"
-            disabled={!countedQuantity || loading}
+            disabled={!countedQuantity || saving}
           >
-            {loading ? <CircularProgress size={24} /> : 'Completar Recuento'}
+            {saving ? <CircularProgress size={24} /> : 'Completar Recuento'}
           </Button>
         </DialogActions>
       </Dialog>

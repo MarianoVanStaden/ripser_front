@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -142,9 +143,11 @@ const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, onOpen, title,
 const EntregasEquiposPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
 
+  // La lista computada viene de la query; copia local porque toggleExpand
+  // muta el flag expanded por fila.
   const [facturasConEquipos, setFacturasConEquipos] = useState<FacturaConEquipos[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false); // spinner de confirmar entrega
 
   // Confirm delivery dialog
   const [confirmDialog, setConfirmDialog] = useState(false);
@@ -164,15 +167,10 @@ const EntregasEquiposPage2: React.FC = () => {
   // Selected invoice for quick action on mobile
   const [selectedForAction, setSelectedForAction] = useState<number | null>(null);
 
-  useEffect(() => {
-    loadFacturasConEquiposPorEntregar();
-  }, []);
-
-  const loadFacturasConEquiposPorEntregar = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
+  const queryClient = useQueryClient();
+  const facturasEquiposQuery = useQuery({
+    queryKey: ['entregas-equipos', 'pendientes'],
+    queryFn: async () => {
       // Una factura ANULADA (por Nota de Crédito) no se entrega, aunque sus
       // equipos sigan FACTURADO hasta que se liberen.
       const facturas = (await documentoApi.getByTipo('FACTURA'))
@@ -196,8 +194,7 @@ const EntregasEquiposPage2: React.FC = () => {
       }
 
       if (allEquipoIds.length === 0) {
-        setFacturasConEquipos([]);
-        return;
+        return [] as FacturaConEquipos[];
       }
 
       // Single bulk request instead of one per equipo
@@ -220,13 +217,19 @@ const EntregasEquiposPage2: React.FC = () => {
         }
       }
 
-      setFacturasConEquipos(facturasConEquiposData);
-    } catch (err) {
-      console.error('Error loading facturas con equipos:', err);
-      setError('Error al cargar facturas con equipos pendientes');
-    } finally {
-      setLoading(false);
-    }
+      return facturasConEquiposData;
+    },
+  });
+  useEffect(() => {
+    setFacturasConEquipos(facturasEquiposQuery.data ?? []);
+  }, [facturasEquiposQuery.data]);
+  const loading = facturasEquiposQuery.isPending;
+  const error = facturasEquiposQuery.error
+    ? 'Error al cargar facturas con equipos pendientes'
+    : actionError;
+  const setError = setActionError;
+  const loadFacturasConEquiposPorEntregar = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['entregas-equipos'] });
   };
 
   const toggleExpand = (facturaId: number) => {
@@ -252,7 +255,7 @@ const EntregasEquiposPage2: React.FC = () => {
     if (!selectedFactura) return;
 
     try {
-      setLoading(true);
+      setSaving(true);
       setError(null);
 
       const equiposIds: number[] = [];
@@ -295,7 +298,7 @@ const EntregasEquiposPage2: React.FC = () => {
       console.error('Error confirmando entrega:', err);
       setError(err.response?.data?.message || err.response?.data || 'Error al confirmar la entrega');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -679,7 +682,7 @@ const EntregasEquiposPage2: React.FC = () => {
                 variant="contained"
                 color="success"
                 onClick={handleConfirmEntrega}
-                disabled={!receptorNombre.trim() || loading}
+                disabled={!receptorNombre.trim() || saving}
                 sx={{ flex: 1, minHeight: 48 }}
               >
                 Confirmar
@@ -810,7 +813,7 @@ const EntregasEquiposPage2: React.FC = () => {
                     variant="contained"
                     color="success"
                     onClick={handleConfirmEntrega}
-                    disabled={!receptorNombre.trim() || loading}
+                    disabled={!receptorNombre.trim() || saving}
                     startIcon={<CheckIcon />}
                     sx={{ flex: 1 }}
                   >
