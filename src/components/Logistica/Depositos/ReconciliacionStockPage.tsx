@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -388,13 +389,9 @@ const ReconciliacionStockPage: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
 
   // Data state
-  const [reconciliacionActiva, setReconciliacionActiva] = useState<ReconciliacionDetalladaDTO | null>(null);
-  const [diferencias, setDiferencias] = useState<ReconciliacionDiferenciasDTO | null>(null);
-  const [historial, setHistorial] = useState<ReconciliacionStockDTO[]>([]);
 
-  const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // acciones + carga (formateado)
   const [success, setSuccess] = useState<string | null>(null);
 
   // Dialog states (Iniciar, Aprobar, Cancelar, Ver Detalle)
@@ -422,52 +419,48 @@ const ReconciliacionStockPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedProducto, setExpandedProducto] = useState<number | null>(null);
 
-  // ─── Derived ────────────────────────────────────────────────────────────────
-
-  const isEditable =
-    reconciliacionActiva?.estado === 'EN_PROCESO' ||
-    reconciliacionActiva?.estado === 'PENDIENTE_APROBACION';
-
   // ─── Load data ───────────────────────────────────────────────────────────────
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
+  const queryClient = useQueryClient();
+  const reconciliacionQuery = useQuery({
+    queryKey: ['reconciliacion-stock'],
+    queryFn: async () => {
+      let activa: ReconciliacionDetalladaDTO | null = null;
+      let difs: ReconciliacionDiferenciasDTO | null = null;
       try {
-        const activa = await reconciliacionApi.getActiva();
-        setReconciliacionActiva(activa);
-
+        activa = await reconciliacionApi.getActiva();
         if (activa?.id) {
           try {
-            const difs = await reconciliacionApi.getDiferencias(activa.id);
-            setDiferencias(difs);
+            difs = await reconciliacionApi.getDiferencias(activa.id);
           } catch (err) {
             console.error('Error loading diferencias:', err);
           }
         }
       } catch {
-        setReconciliacionActiva(null);
+        activa = null;
       }
-
+      let hist: ReconciliacionStockDTO[] = [];
       try {
-        const hist = await reconciliacionApi.getHistorial();
-        const histData = Array.isArray(hist) ? hist : (hist as any)?.content || [];
-        setHistorial(histData);
+        const h = await reconciliacionApi.getHistorial();
+        hist = Array.isArray(h) ? h : (h as any)?.content || [];
       } catch {
-        setHistorial([]);
+        hist = [];
       }
-    } catch (err: any) {
-      setError(formatearErrorBackend(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return { activa, diferencias: difs, historial: hist };
+    },
+  });
+  const reconciliacionActiva = reconciliacionQuery.data?.activa ?? null;
+  const diferencias = reconciliacionQuery.data?.diferencias ?? null;
+  const historial: ReconciliacionStockDTO[] = reconciliacionQuery.data?.historial ?? [];
+  const loading = reconciliacionQuery.isPending;
+  const loadData = useCallback(
+    async () => { await queryClient.invalidateQueries({ queryKey: ['reconciliacion-stock'] }); },
+    [queryClient],
+  );
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const isEditable =
+    reconciliacionActiva?.estado === 'EN_PROCESO' ||
+    reconciliacionActiva?.estado === 'PENDIENTE_APROBACION';
 
   useEffect(() => {
     if (success) {
@@ -601,7 +594,7 @@ const ReconciliacionStockPage: React.FC = () => {
 
       // Refresh differences and re-initialize form values for this product
       const difs = await reconciliacionApi.getDiferencias(reconciliacionActiva.id);
-      setDiferencias(difs);
+      await queryClient.invalidateQueries({ queryKey: ['reconciliacion-stock'] });
 
       const updatedItem = difs.diferencias.find((d) => d.productoId === productoId);
       if (updatedItem) {

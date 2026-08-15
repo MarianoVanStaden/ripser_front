@@ -1,6 +1,7 @@
 // Listado de checklists de pre-viaje guardados, con filtro por fecha, export CSV
 // y vista de detalle (solo lectura) por viaje.
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -45,44 +46,35 @@ const countFallas = (cl: ChecklistViaje) =>
 const ChecklistsViajePage: React.FC = () => {
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
-  const [rows, setRows] = useState<ChecklistViaje[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Rango aplicado: el botón Aplicar lo fija y la query refetchea.
+  const [appliedRange, setAppliedRange] = useState<{ desde?: string; hasta?: string }>({});
   const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ChecklistViaje | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await viajeApi.listChecklists(desde || undefined, hasta || undefined);
-      setRows(data);
-    } catch (err) {
-      const e = err as { response?: { data?: unknown }; message?: string };
-      const data = e.response?.data;
-      setError(
-        (typeof data === 'string' ? data : (data as { message?: string })?.message) ??
-          e.message ??
-          'No se pudieron cargar los checklists',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [desde, hasta]);
-
-  useEffect(() => {
-    load();
-    // Solo al montar; luego se recarga con el botón "Aplicar".
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const checklistsQuery = useQuery({
+    queryKey: ['checklists-viaje', appliedRange],
+    queryFn: () => viajeApi.listChecklists(appliedRange.desde, appliedRange.hasta),
+  });
+  const rows: ChecklistViaje[] = checklistsQuery.data ?? [];
+  const loading = checklistsQuery.isPending;
+  const queryErrorMsg = (() => {
+    const err = checklistsQuery.error as { response?: { data?: unknown }; message?: string } | null;
+    if (!err) return null;
+    const data = err.response?.data;
+    return (typeof data === 'string' ? data : (data as { message?: string })?.message)
+      ?? err.message ?? 'No se pudieron cargar los checklists';
+  })();
+  const error = queryErrorMsg ?? actionError;
+  const load = () => setAppliedRange({ desde: desde || undefined, hasta: hasta || undefined });
 
   const handleExport = async () => {
     setExporting(true);
-    setError(null);
+    setActionError(null);
     try {
       await viajeApi.downloadChecklistsCsv(desde || undefined, hasta || undefined);
     } catch {
-      setError('No se pudo exportar el CSV.');
+      setActionError('No se pudo exportar el CSV.');
     } finally {
       setExporting(false);
     }
@@ -146,7 +138,7 @@ const ChecklistsViajePage: React.FC = () => {
         </Stack>
       </Paper>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>{error}</Alert>}
 
       <TableContainer component={Paper}>
         <Table size="small">

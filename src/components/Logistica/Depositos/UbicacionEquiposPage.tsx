@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -42,33 +43,24 @@ const UbicacionEquiposPage: React.FC = () => {
 
   const [tab, setTab] = useState<TabValue>('stock');
   const [verNumeros, setVerNumeros] = useState<VerNumeros>('disponibles');
-  const [desgloseStock, setDesgloseStock] = useState<DesgloseModeloDTO[]>([]);
-  const [desgloseVendidos, setDesgloseVendidos] = useState<DesgloseModeloVendidosDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const puedeVer = tienePermiso('LOGISTICA');
+  // Ambos breakdowns en paralelo al entrar — los tabs cambian solo la vista.
+  const desgloseQuery = useQuery({
+    queryKey: ['equipos', 'desglose-modelo'],
+    queryFn: async () => {
+      const [stockData, vendidosData] = await Promise.all([
+        equipoFabricadoApi.getDesgloseModelo(),
+        equipoFabricadoApi.getDesgloseModeloVendidos(),
+      ]);
+      return { stock: stockData, vendidos: vendidosData };
+    },
+    enabled: puedeVer,
+  });
+  const desgloseStock: DesgloseModeloDTO[] = desgloseQuery.data?.stock ?? [];
+  const desgloseVendidos: DesgloseModeloVendidosDTO[] = desgloseQuery.data?.vendidos ?? [];
+  const loading = desgloseQuery.isPending && puedeVer;
+  const error = desgloseQuery.error ? 'Error al cargar el desglose por modelo' : null;
 
-  // Ambos breakdowns se cargan en paralelo al entrar — los tabs cambian solo
-  // la vista, no disparan refetch. Cantidad de filas es chica (modelos por
-  // empresa), así que el overhead es mínimo y evita un spinner al cambiar tab.
-  useEffect(() => {
-    if (!tienePermiso('LOGISTICA')) return;
-    (async () => {
-      try {
-        setLoading(true);
-        const [stockData, vendidosData] = await Promise.all([
-          equipoFabricadoApi.getDesgloseModelo(),
-          equipoFabricadoApi.getDesgloseModeloVendidos(),
-        ]);
-        setDesgloseStock(stockData);
-        setDesgloseVendidos(vendidosData);
-      } catch {
-        setError('Error al cargar el desglose por modelo');
-      } finally {
-        setLoading(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const stockAgrupado = useMemo(() => {
     return TIPO_ORDER
@@ -148,7 +140,7 @@ const UbicacionEquiposPage: React.FC = () => {
       </Tabs>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
