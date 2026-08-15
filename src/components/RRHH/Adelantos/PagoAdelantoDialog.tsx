@@ -4,6 +4,7 @@
 // renglón y marca el Adelanto como pagado. Las cajas pueden quedar en negativo.
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, IconButton, InputAdornment, MenuItem, Stack,
@@ -66,7 +67,6 @@ const PagoAdelantoDialog: React.FC<Props> = ({ open, adelanto, onClose, onSucces
   const [fecha, setFecha] = useState<string>(dayjs().format('YYYY-MM-DD'));
   const [rows, setRows] = useState<PayRow[]>([]);
   const [observaciones, setObservaciones] = useState<string>('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -128,7 +128,14 @@ const PagoAdelantoDialog: React.FC<Props> = ({ open, adelanto, onClose, onSucces
     updateRow(idx, { monto: restante });
   };
 
-  const handlePagar = async () => {
+  const pagarMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof adelantoApi.pagar>[1]) => adelantoApi.pagar(adelanto!.id, payload),
+    onSuccess: () => onSuccess(),
+    onError: (err: any) => setError(err?.response?.data?.message || 'Error al registrar el pago'),
+  });
+  const submitting = pagarMutation.isPending;
+
+  const handlePagar = () => {
     if (!adelanto) return;
     setError(null);
 
@@ -150,19 +157,11 @@ const PagoAdelantoDialog: React.FC<Props> = ({ open, adelanto, onClose, onSucces
       return;
     }
 
-    try {
-      setSubmitting(true);
-      await adelantoApi.pagar(adelanto.id, {
-        fecha,
-        items,
-        observaciones: observaciones?.trim() || undefined,
-      });
-      onSuccess();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al registrar el pago');
-    } finally {
-      setSubmitting(false);
-    }
+    pagarMutation.mutate({
+      fecha,
+      items,
+      observaciones: observaciones?.trim() || undefined,
+    });
   };
 
   return (

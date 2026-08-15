@@ -4,6 +4,7 @@
 // continuada desde mañana. Crea atómicamente la excepción SALIDA_ANTICIPADA
 // y la licencia (vía POST /api/ausencias/combinada).
 import React, { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Autocomplete,
@@ -72,7 +73,6 @@ const AusenciaCombinadaDialog: React.FC<Props> = ({
 }) => {
   const [form, setForm] = useState(emptyForm());
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -89,7 +89,22 @@ const AusenciaCombinadaDialog: React.FC<Props> = ({
     ? Math.max(0, dayjs(form.fechaFinLicencia).diff(dayjs(inicioLicencia), 'day') + 1)
     : 0;
 
-  const handleSave = async () => {
+  const crearMutation = useMutation({
+    mutationFn: () => ausenciaApi.crearCombinada({
+      empleadoId: parseInt(form.empleadoId),
+      fechaSalidaAnticipada: form.fechaSalidaAnticipada,
+      horaSalidaReal: form.horaSalidaReal.length === 5 ? `${form.horaSalidaReal}:00` : form.horaSalidaReal,
+      tipoLicencia: form.tipoLicencia,
+      fechaFinLicencia: form.fechaFinLicencia,
+      motivo: form.motivo?.trim() || undefined,
+      goceHaber: form.goceHaber,
+    }),
+    onSuccess: () => { onSaved(); onClose(); },
+    onError: (err: any) => setError(err?.response?.data?.message || err?.message || 'Error al crear la ausencia combinada'),
+  });
+  const saving = crearMutation.isPending;
+
+  const handleSave = () => {
     setError(null);
     if (!form.empleadoId) { setError('Seleccioná un empleado'); return; }
     if (!form.fechaSalidaAnticipada || !form.horaSalidaReal) { setError('Cargá fecha y hora de salida'); return; }
@@ -99,25 +114,7 @@ const AusenciaCombinadaDialog: React.FC<Props> = ({
       return;
     }
 
-    try {
-      setSaving(true);
-      await ausenciaApi.crearCombinada({
-        empleadoId: parseInt(form.empleadoId),
-        fechaSalidaAnticipada: form.fechaSalidaAnticipada,
-        horaSalidaReal: form.horaSalidaReal.length === 5 ? `${form.horaSalidaReal}:00` : form.horaSalidaReal,
-        tipoLicencia: form.tipoLicencia,
-        fechaFinLicencia: form.fechaFinLicencia,
-        motivo: form.motivo?.trim() || undefined,
-        goceHaber: form.goceHaber,
-      });
-      onSaved();
-      onClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Error al crear la ausencia combinada';
-      setError(msg);
-    } finally {
-      setSaving(false);
-    }
+    crearMutation.mutate();
   };
 
   return (
