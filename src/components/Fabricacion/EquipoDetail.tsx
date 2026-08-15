@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Paper, Typography, Button, Card, CardContent, Chip, IconButton,
   Stack, Alert, Snackbar, CircularProgress, Grid, Divider, Dialog,
@@ -27,14 +28,8 @@ import ReasignarEquipoDialog from './ReasignarEquipoDialog';
 const EquipoDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id: numeroHeladera } = useParams<{ id: string }>();
-  const [equipo, setEquipo] = useState<EquipoFabricadoDTO | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [assignDialog, setAssignDialog] = useState(false);
-  const [historial, setHistorial] = useState<HistorialEstadoEquipo[]>([]);
-  const [loadingHistorial, setLoadingHistorial] = useState(false);
-  const [historialFabricacion, setHistorialFabricacion] = useState<HistorialFabricacionDTO[]>([]);
-  const [loadingHistorialFabricacion, setLoadingHistorialFabricacion] = useState(false);
 
   const [unassignDialog, setUnassignDialog] = useState(false);
   const [unassignErrorDialog, setUnassignErrorDialog] = useState<{
@@ -62,18 +57,39 @@ const EquipoDetail: React.FC = () => {
   const [etapas, setEtapas] = useState<EtapaFabricacionDTO[]>([]);
   const [completarError, setCompletarError] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
+  const equipoQuery = useQuery({
+    queryKey: ['equipos', 'detalle', numeroHeladera],
+    queryFn: () => equipoFabricadoApi.findByNumeroHeladera(numeroHeladera!),
+    enabled: !!numeroHeladera,
+  });
+  const equipo: EquipoFabricadoDTO | null = equipoQuery.data ?? null;
+  const loading = equipoQuery.isPending;
   useEffect(() => {
-    if (numeroHeladera) {
-      loadEquipo();
+    if (equipoQuery.error) {
+      setSnackbar({ open: true, message: 'Error al cargar el equipo', severity: 'error' });
     }
-  }, [numeroHeladera]);
+  }, [equipoQuery.error]);
 
-  useEffect(() => {
-    if (equipo?.id) {
-      loadHistorial();
-      loadHistorialFabricacion();
-    }
-  }, [equipo?.id]);
+  const historialQuery = useQuery({
+    queryKey: ['equipos', equipo?.id, 'historial-estados'],
+    queryFn: () => historialEstadoEquipoApi.getByEquipoId(equipo!.id),
+    enabled: !!equipo?.id,
+  });
+  const historial: HistorialEstadoEquipo[] = historialQuery.data ?? [];
+  const loadingHistorial = historialQuery.isFetching;
+  const historialFabricacionQuery = useQuery({
+    queryKey: ['equipos', equipo?.id, 'historial-fabricacion'],
+    queryFn: () => equipoFabricadoApi.getHistorialFabricacion(equipo!.id),
+    enabled: !!equipo?.id,
+  });
+  const historialFabricacion: HistorialFabricacionDTO[] = historialFabricacionQuery.data ?? [];
+  const loadingHistorialFabricacion = historialFabricacionQuery.isFetching;
+
+  // Tras cada mutación: invalidar el namespace refresca equipo, historiales,
+  // etapas y las listas de EquiposList de una.
+  const loadEquipo = () => queryClient.invalidateQueries({ queryKey: ['equipos'] });
+  const loadHistorial = loadEquipo;
 
   useEffect(() => {
     setCompletarError(null);
@@ -118,48 +134,6 @@ const EquipoDetail: React.FC = () => {
     setEtapas((prev) => prev.map((e) => (e.id === etapa.id ? etapa : e)));
   };
 
-  const loadEquipo = async () => {
-    try {
-      setLoading(true);
-      const data = await equipoFabricadoApi.findByNumeroHeladera(numeroHeladera!);
-      setEquipo(data);
-    } catch (error) {
-      console.error('Error loading equipo:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al cargar el equipo',
-        severity: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadHistorial = async () => {
-    if (!equipo?.id) return;
-    try {
-      setLoadingHistorial(true);
-      const data = await historialEstadoEquipoApi.getByEquipoId(equipo.id);
-      setHistorial(data);
-    } catch (error) {
-      console.error('Error loading historial:', error);
-    } finally {
-      setLoadingHistorial(false);
-    }
-  };
-
-  const loadHistorialFabricacion = async () => {
-    if (!equipo?.id) return;
-    try {
-      setLoadingHistorialFabricacion(true);
-      const data = await equipoFabricadoApi.getHistorialFabricacion(equipo.id);
-      setHistorialFabricacion(data);
-    } catch (error) {
-      console.error('Error loading historial fabricacion:', error);
-    } finally {
-      setLoadingHistorialFabricacion(false);
-    }
-  };
 
 
   const handleIniciarFabricacion = async () => {

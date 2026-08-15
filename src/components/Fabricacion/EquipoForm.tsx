@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box, Paper, Typography, Button, TextField, MenuItem, Stack, Alert,
   Snackbar, CircularProgress, IconButton, Autocomplete, Dialog, DialogTitle,
@@ -49,8 +50,18 @@ const EquipoForm: React.FC = () => {
   const isEdit = Boolean(numeroHeladera);
 
   const [loading, setLoading] = useState(false);
-  const [recetas, setRecetas] = useState<any[]>([]);
-  const [empleados, setEmpleados] = useState<any[]>([]);
+  const recetasQuery = useQuery({
+    queryKey: ['recetas', 'activas'],
+    queryFn: () => recetaFabricacionApi.findAllActive(),
+    staleTime: 300_000,
+  });
+  const empleadosQuery = useQuery({
+    queryKey: ['empleados', 'list'],
+    queryFn: () => employeeApi.getAllList(),
+    staleTime: 300_000,
+  });
+  const recetas: any[] = recetasQuery.data ?? [];
+  const empleados: any[] = empleadosQuery.data ?? [];
   const [selectedReceta, setSelectedReceta] = useState<any>(null);
   const [selectedResponsable, setSelectedResponsable] = useState<any>(null);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
@@ -98,18 +109,57 @@ const EquipoForm: React.FC = () => {
     context: { isEdit },
   });
 
+  // Equipo a editar: query bajo el namespace ['equipos']; la hidratación del
+  // form espera a los catálogos (para resolver receta/responsable) y corre
+  // UNA vez por número — un refetch de fondo no pisa la edición en curso.
+  const equipoEditQuery = useQuery({
+    queryKey: ['equipos', 'detalle', numeroHeladera],
+    queryFn: () => equipoFabricadoApi.findByNumeroHeladera(numeroHeladera!),
+    enabled: isEdit && !!numeroHeladera,
+  });
+  const hydratedRef = useRef<string | null>(null);
   useEffect(() => {
-    const loadData = async () => {
-      await Promise.all([
-        loadRecetas(),
-        loadEmpleados(),
-      ]);
-      if (isEdit && numeroHeladera) {
-        await loadEquipo(numeroHeladera);
-      }
-    };
-    loadData();
-  }, [numeroHeladera, isEdit]);
+    const data = equipoEditQuery.data;
+    if (!isEdit || !data || !numeroHeladera) return;
+    if (recetasQuery.isPending || empleadosQuery.isPending) return;
+    if (hydratedRef.current === numeroHeladera) return;
+    hydratedRef.current = numeroHeladera;
+
+    reset({
+      tipo: data.tipo,
+      modelo: data.modelo,
+      equipo: data.equipo || '',
+      medidaId: data.medida?.id ?? null,
+      colorId: data.color?.id ?? null,
+      numeroHeladera: data.numeroHeladera,
+      cantidad: data.cantidad,
+      observaciones: data.observaciones || '',
+    });
+    setEstado(data.estado);
+    setEquipoId(data.id);
+    if (data.recetaId) {
+      setSelectedReceta(recetas.find((r) => r.id === data.recetaId) || null);
+    }
+    if (data.responsableId) {
+      setSelectedResponsable(empleados.find((e) => e.id === data.responsableId) || null);
+    }
+    if (data.clienteId) {
+      setSelectedCliente({ id: data.clienteId, nombre: data.clienteNombre });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equipoEditQuery.data, recetasQuery.isPending, empleadosQuery.isPending, isEdit, numeroHeladera]);
+  useEffect(() => {
+    if (recetasQuery.error) {
+      const error: any = recetasQuery.error;
+      setSnackbar({
+        open: true,
+        message: `Error al cargar recetas: ${error.response?.data?.message || error.message || 'Error desconocido'}`,
+        severity: 'error',
+      });
+    } else if (equipoEditQuery.error) {
+      setSnackbar({ open: true, message: 'Error al cargar el equipo', severity: 'error' });
+    }
+  }, [recetasQuery.error, equipoEditQuery.error]);
 
   // Auto-fill form fields when recipe is selected
   useEffect(() => {
@@ -121,81 +171,6 @@ const EquipoForm: React.FC = () => {
     }
   }, [selectedReceta, isEdit, setValue]);
 
-  const loadRecetas = async () => {
-    try {
-      console.log('🔄 Cargando recetas activas...');
-      const data = await recetaFabricacionApi.findAllActive();
-      console.log('✅ Recetas cargadas:', data);
-      setRecetas(data);
-    } catch (error: any) {
-      console.error('❌ Error loading recetas:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      
-      // Mostrar error al usuario
-      setSnackbar({
-        open: true,
-        message: `Error al cargar recetas: ${error.response?.data?.message || error.message || 'Error desconocido'}`,
-        severity: 'error',
-      });
-    }
-  };
-
-  const loadEmpleados = async () => {
-    try {
-      await employeeApi.getAllList().catch(() => []);
-      const empleadosData = await employeeApi.getAllList();
-      console.log('Loaded empleados:', empleadosData);
-      setEmpleados(empleadosData);
-    } catch (error) {
-      console.error('Error loading empleados:', error);
-    }
-  };
-
-  const loadEquipo = async (numeroHeladera: string) => {
-    try {
-      setLoading(true);
-      const data = await equipoFabricadoApi.findByNumeroHeladera(numeroHeladera);
-      console.log('Loaded equipo data:', data);
-      console.log('Available empleados:', empleados);
-
-      reset({
-        tipo: data.tipo,
-        modelo: data.modelo,
-        equipo: data.equipo || '',
-        medidaId: data.medida?.id ?? null,
-        colorId: data.color?.id ?? null,
-        numeroHeladera: data.numeroHeladera,
-        cantidad: data.cantidad,
-        observaciones: data.observaciones || '',
-      });
-      setEstado(data.estado);
-      setEquipoId(data.id);
-
-      if (data.recetaId) {
-        const receta = recetas.find(r => r.id === data.recetaId);
-        console.log('Found receta:', receta);
-        setSelectedReceta(receta || null);
-      }
-      if (data.responsableId) {
-        const empleado = empleados.find(e => e.id === data.responsableId);
-        console.log('Looking for responsable ID:', data.responsableId, 'Found:', empleado);
-        setSelectedResponsable(empleado || null);
-      }
-      if (data.clienteId) {
-        setSelectedCliente({ id: data.clienteId, nombre: data.clienteNombre });
-      }
-    } catch (error) {
-      console.error('Error loading equipo:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al cargar el equipo',
-        severity: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const onSubmit = async (data: any) => {
     try {
@@ -433,7 +408,7 @@ const EquipoForm: React.FC = () => {
 
   return (
     <Box p={3}>
-      <LoadingOverlay open={loading && isEdit} message="Cargando equipo..." />
+      <LoadingOverlay open={(loading || equipoEditQuery.isPending) && isEdit} message="Cargando equipo..." />
       <Box display="flex" alignItems="center" gap={2} mb={3}>
         <IconButton onClick={() => navigate('/fabricacion/equipos')}>
           <ArrowBack />

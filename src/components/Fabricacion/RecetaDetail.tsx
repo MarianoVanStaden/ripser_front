@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Paper,
@@ -62,9 +63,6 @@ const RecetaDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   // Roles operativos (Taller/Transporte/Logístico) no ven costos de fabricación.
   const { puedeVerCostos } = usePermisos();
-  const [receta, setReceta] = useState<RecetaFabricacionDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [productos, setProductos] = useState<Producto[]>([]);
 
   // Estado para agregar material
   const [addDialog, setAddDialog] = useState(false);
@@ -93,38 +91,29 @@ const RecetaDetail: React.FC = () => {
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
 
+  const queryClient = useQueryClient();
+  const recetaQuery = useQuery({
+    queryKey: ['recetas', id ? Number(id) : undefined],
+    queryFn: () => recetaFabricacionApi.findById(Number(id)),
+    enabled: !!id,
+  });
+  const receta: RecetaFabricacionDTO | null = recetaQuery.data ?? null;
+  const loading = recetaQuery.isPending;
   useEffect(() => {
-    if (id) {
-      loadReceta();
-      loadProductos();
+    if (recetaQuery.error) {
+      setSnackbar({ open: true, message: 'Error al cargar la receta', severity: 'error' });
     }
-  }, [id]);
+  }, [recetaQuery.error]);
 
-  const loadReceta = async () => {
-    try {
-      setLoading(true);
-      const data = await recetaFabricacionApi.findById(Number(id));
-      setReceta(data);
-    } catch (error) {
-      console.error('Error loading receta:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al cargar la receta',
-        severity: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const productosQuery = useQuery({
+    queryKey: ['productos', 'activos'],
+    queryFn: () => api.get('/api/productos/activos').then((r) => r.data || []),
+    staleTime: 300_000,
+  });
+  const productos: Producto[] = productosQuery.data ?? [];
 
-  const loadProductos = async () => {
-    try {
-      const response = await api.get('/api/productos/activos');
-      setProductos(response.data || []);
-    } catch (error) {
-      console.error('Error loading productos:', error);
-    }
-  };
+  // Tras cada mutación de detalles: refresca esta receta y las listas.
+  const loadReceta = () => queryClient.invalidateQueries({ queryKey: ['recetas'] });
 
   const handleAddDetalle = async () => {
     if (!selectedProducto || newDetalle.cantidad <= 0) {

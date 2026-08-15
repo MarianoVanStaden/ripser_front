@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box, Paper, Typography, Button, TextField, MenuItem, Stack, Alert,
   Snackbar, CircularProgress, Card, CardContent, IconButton,
@@ -55,7 +56,12 @@ const RecetaForm: React.FC = () => {
   const isEdit = Boolean(id);
 
   const [loading, setLoading] = useState(false);
-  const [productos, setProductos] = useState<Producto[]>([]);
+  const productosQuery = useQuery({
+    queryKey: ['productos', 'activos'],
+    queryFn: () => api.get('/api/productos/activos').then((r) => r.data || []),
+    staleTime: 300_000,
+  });
+  const productos: Producto[] = productosQuery.data ?? [];
   const [detalles, setDetalles] = useState<DetalleRecetaCreateDTO[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -84,26 +90,20 @@ const RecetaForm: React.FC = () => {
     },
   });
 
+  // Receta a editar: reusa el cache ['recetas', id]; hidratación única por id
+  // (un refetch de fondo no pisa la edición en curso).
+  const recetaIdNum = isEdit && id ? Number(id) : undefined;
+  const recetaEditQuery = useQuery({
+    queryKey: ['recetas', recetaIdNum],
+    queryFn: () => recetaFabricacionApi.findById(recetaIdNum!),
+    enabled: recetaIdNum != null,
+  });
+  const hydratedRef = useRef<number | null>(null);
   useEffect(() => {
-    loadProductos();
-    if (isEdit && id) {
-      loadReceta(Number(id));
-    }
-  }, [id, isEdit]);
-
-  const loadProductos = async () => {
-    try {
-      const response = await api.get('/api/productos/activos');
-      setProductos(response.data || []);
-    } catch (error) {
-      console.error('Error loading productos:', error);
-    }
-  };
-
-  const loadReceta = async (recetaId: number) => {
-    try {
-      setLoading(true);
-      const data = await recetaFabricacionApi.findById(recetaId);
+    const data = recetaEditQuery.data;
+    if (!data || recetaIdNum == null) return;
+    if (hydratedRef.current === recetaIdNum) return;
+    hydratedRef.current = recetaIdNum;
       reset({
         nombre: data.nombre,
         descripcion: data.descripcion || '',
@@ -123,17 +123,13 @@ const RecetaForm: React.FC = () => {
           observaciones: d.observaciones,
         }))
       );
-    } catch (error) {
-      console.error('Error loading receta:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al cargar la receta',
-        severity: 'error',
-      });
-    } finally {
-      setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recetaEditQuery.data, recetaIdNum]);
+  useEffect(() => {
+    if (recetaEditQuery.error) {
+      setSnackbar({ open: true, message: 'Error al cargar la receta', severity: 'error' });
     }
-  };
+  }, [recetaEditQuery.error]);
 
   const onSubmit = async (data: any) => {
     try {
@@ -246,7 +242,7 @@ const RecetaForm: React.FC = () => {
 
   return (
     <Box p={3}>
-      <LoadingOverlay open={loading && isEdit} message="Cargando receta..." />
+      <LoadingOverlay open={(loading || recetaEditQuery.isPending) && isEdit} message="Cargando receta..." />
       <Box display="flex" alignItems="center" gap={2} mb={3}>
         <IconButton onClick={() => navigate('/fabricacion/recetas')}>
           <ArrowBack />
