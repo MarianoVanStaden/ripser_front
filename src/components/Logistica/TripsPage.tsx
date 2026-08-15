@@ -14,18 +14,18 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  List,
-  ListItem,
-  ListItemText,
+
+
+
   TablePagination,
   Stack,
   Divider,
   Fab,
-  SwipeableDrawer,
+
   Collapse,
   Badge,
-  Tabs,
-  Tab,
+
+
   Dialog,
   DialogTitle,
   DialogContent,
@@ -47,16 +47,11 @@ import {
   CheckCircle as CheckIcon,
   PlayArrow as StartIcon,
   Stop as StopIcon,
-  Close as CloseIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   ErrorOutline as ErrorOutlineIcon,
   AttachMoney as AttachMoneyIcon,
   AccountBalanceWallet as WalletIcon,
-  RemoveCircleOutline as RemoveCircleOutlineIcon,
-  Block as BlockIcon,
-  SwapHoriz as SwapHorizIcon,
-  OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
 import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, DocumentoComercial, Cliente, OrdenServicio, ResumenFinancieroViaje } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -78,383 +73,13 @@ import type { EquipoFabricadoDTO } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
   useResponsive,
-  tipoParadaLabel,
   entregaEstimadaInfo as entregaEstimadaInfoBase,
   renderEntregaEstimada as renderEntregaEstimadaBase,
 } from './tripWizard/tripWizardShared';
-import { BottomSheet } from './tripWizard/TripBottomSheet';
 import { useTripWizard } from './tripWizard/useTripWizard';
 import TripWizardDialog from './tripWizard/TripWizardDialog';
+import TripDetailsPanel from './Trips/TripDetailsPanel';
 
-// ── Helper ────────────────────────────────────────────────────────────────────
-const fmt = (n?: number | null) =>
-  n != null ? `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
-
-// ── Componentes de Resumen de Cobros ─────────────────────────────────────────
-
-const COBRO_COLOR_MAP: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
-  COBRADO: 'success',
-  COBRADO_PARCIAL: 'warning',
-  COBRO_EXCEDENTE: 'warning',
-  SIN_COBRO: 'default',
-  PENDIENTE: 'error',
-};
-const COBRO_LABEL_MAP: Record<string, string> = {
-  COBRADO: 'Cobrado',
-  COBRADO_PARCIAL: 'Parcial',
-  COBRO_EXCEDENTE: 'Excedente',
-  SIN_COBRO: 'Sin cobro',
-  PENDIENTE: 'Pendiente',
-};
-
-interface ResumenCobrosProps {
-  resumen: ResumenFinancieroViaje | null | undefined;
-  estadoViaje?: string;
-  puedeRendir?: boolean;
-  onRendir?: () => void;
-}
-
-/** Versión mobile: lista compacta de tarjetas */
-const ResumenCobrosMobile: React.FC<ResumenCobrosProps> = ({ resumen, estadoViaje, puedeRendir, onRendir }) => {
-  if (resumen === undefined) {
-    return (
-      <Box textAlign="center" py={3}>
-        <Typography variant="body2" color="text.secondary">Cargando cobros…</Typography>
-      </Box>
-    );
-  }
-  if (resumen === null || resumen.cantidadEntregas === 0) {
-    return (
-      <Typography variant="body2" color="text.secondary" textAlign="center" py={3}>
-        Sin entregas con información financiera
-      </Typography>
-    );
-  }
-
-  const totalCobrado = resumen.totalCobradoConductor ?? 0;
-  const hayCobrosPendientes = puedeRendir
-    && (estadoViaje === 'COMPLETADO' || estadoViaje === 'PENDIENTE_RENDICION')
-    && totalCobrado > 0;
-
-  return (
-    <Stack spacing={1.5}>
-      {/* Totales del viaje */}
-      <Card variant="outlined" sx={{ bgcolor: 'success.50', borderColor: 'success.main' }}>
-        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-            <WalletIcon color="success" fontSize="small" />
-            <Typography variant="caption" color="text.secondary" fontWeight={600}>
-              RESUMEN DEL VIAJE
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={3}>
-            <Box>
-              <Typography variant="caption" color="text.secondary">A recaudar</Typography>
-              <Typography variant="h6" fontWeight={700} color="success.dark">
-                {fmt(resumen.totalEntregasIniciales)}
-              </Typography>
-            </Box>
-            {totalCobrado > 0 && (
-              <Box>
-                <Typography variant="caption" color="text.secondary">Cobrado</Typography>
-                <Typography variant="h6" fontWeight={700} color="primary.main">
-                  {fmt(totalCobrado)}
-                </Typography>
-              </Box>
-            )}
-          </Stack>
-          <Typography variant="caption" color="text.secondary">
-            {resumen.cantidadEntregas} entregas
-          </Typography>
-        </CardContent>
-      </Card>
-
-      {/* Detalle por entrega */}
-      {resumen.entregas.map((ef, i) => (
-        <Card key={ef.entregaId} variant="outlined">
-          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-              <Box flex={1} mr={1}>
-                <Typography variant="subtitle2">
-                  Entrega #{i + 1}
-                  {ef.clienteNombre ? ` — ${ef.clienteNombre}` : ''}
-                </Typography>
-                {ef.numeroDocumento && (
-                  <Typography variant="caption" color="text.secondary">
-                    {ef.numeroDocumento}
-                    {ef.tieneFinanciacion && (
-                      <Typography component="span" variant="caption" color="primary.main" sx={{ ml: 0.5 }}>
-                        · Financiado ({ef.cantidadCuotas} × {fmt(ef.montoCuota)})
-                      </Typography>
-                    )}
-                  </Typography>
-                )}
-                {ef.direccionEntrega && (
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    {ef.direccionEntrega}
-                  </Typography>
-                )}
-              </Box>
-              <Box textAlign="right">
-                {/* A cobrar */}
-                <Typography variant="caption" color="text.secondary" display="block">A cobrar</Typography>
-                <Typography variant="body2" fontWeight={700} color={ef.montoEntregaInicial != null ? 'success.dark' : 'text.disabled'}>
-                  {fmt(ef.montoEntregaInicial)}
-                </Typography>
-                {/* Cobrado */}
-                {ef.montoCobrado != null && (
-                  <>
-                    <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>Cobrado</Typography>
-                    <Typography variant="body2" fontWeight={700} color="primary.main">
-                      {fmt(ef.montoCobrado)}
-                    </Typography>
-                  </>
-                )}
-                {/* Estado cobro */}
-                {ef.estadoCobro ? (
-                  <Chip
-                    label={COBRO_LABEL_MAP[ef.estadoCobro] ?? ef.estadoCobro}
-                    color={COBRO_COLOR_MAP[ef.estadoCobro] ?? 'default'}
-                    size="small"
-                    sx={{ mt: 0.5, height: 18, fontSize: '0.65rem' }}
-                  />
-                ) : (
-                  <Chip
-                    label={ef.estado === 'ENTREGADA' ? 'Entregada' : ef.estado === 'NO_ENTREGADA' ? 'No entregada' : 'Pendiente'}
-                    size="small"
-                    color={ef.estado === 'ENTREGADA' ? 'success' : ef.estado === 'NO_ENTREGADA' ? 'error' : 'warning'}
-                    sx={{ mt: 0.5 }}
-                  />
-                )}
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-      ))}
-
-      {/* Botón rendir */}
-      {hayCobrosPendientes && (
-        <Button
-          variant="contained"
-          color="success"
-          fullWidth
-          startIcon={<AttachMoneyIcon />}
-          onClick={onRendir}
-          sx={{ mt: 1 }}
-        >
-          Rendir cobros ({fmt(totalCobrado)})
-        </Button>
-      )}
-    </Stack>
-  );
-};
-
-/** Versión desktop: tabla compacta dentro del drawer */
-const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen, estadoViaje, puedeRendir, onRendir }) => {
-  if (resumen === undefined) {
-    return (
-      <Card variant="outlined">
-        <CardContent>
-          <Box display="flex" alignItems="center" gap={1} mb={1}>
-            <AttachMoneyIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle2">Cobros del viaje</Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary">Cargando…</Typography>
-        </CardContent>
-      </Card>
-    );
-  }
-  if (resumen === null || resumen.cantidadEntregas === 0) {
-    return (
-      <Card variant="outlined">
-        <CardContent>
-          <Box display="flex" alignItems="center" gap={1} mb={1}>
-            <AttachMoneyIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle2">Cobros del viaje</Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary">
-            Sin información financiera disponible
-          </Typography>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const totalCobrado = resumen.totalCobradoConductor ?? 0;
-  const hayCobrosPendientes = puedeRendir
-    && (estadoViaje === 'COMPLETADO' || estadoViaje === 'PENDIENTE_RENDICION')
-    && totalCobrado > 0;
-
-  return (
-    <Card variant="outlined" sx={{ borderColor: 'success.main' }}>
-      <CardContent>
-        {/* Header con totales */}
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2} flexWrap="wrap" gap={1}>
-          <Box display="flex" alignItems="center" gap={1}>
-            <WalletIcon color="success" />
-            <Typography variant="subtitle1" fontWeight={700}>
-              Cobros del viaje
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={3} alignItems="flex-end">
-            <Box textAlign="right">
-              <Typography variant="caption" color="text.secondary" display="block">
-                A recaudar
-              </Typography>
-              <Typography variant="h6" fontWeight={700} color="success.dark">
-                {fmt(resumen.totalEntregasIniciales)}
-              </Typography>
-            </Box>
-            {totalCobrado > 0 && (
-              <Box textAlign="right">
-                <Typography variant="caption" color="text.secondary" display="block">
-                  Cobrado por conductor
-                </Typography>
-                <Typography variant="h6" fontWeight={700} color="primary.main">
-                  {fmt(totalCobrado)}
-                </Typography>
-              </Box>
-            )}
-            {hayCobrosPendientes && (
-              <Button
-                variant="contained"
-                color="success"
-                size="small"
-                startIcon={<AttachMoneyIcon />}
-                onClick={onRendir}
-                sx={{ whiteSpace: 'nowrap' }}
-              >
-                Rendir cobros
-              </Button>
-            )}
-          </Stack>
-        </Box>
-
-        <Divider sx={{ mb: 1.5 }} />
-
-        {/* Tabla de entregas */}
-        <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
-          <Box component="thead">
-            <Box component="tr">
-              {['#', 'Cliente', 'Documento', 'A cobrar', 'Cobrado', 'Estado cobro'].map(h => (
-                <Box
-                  key={h}
-                  component="th"
-                  sx={{
-                    textAlign: (h === 'A cobrar' || h === 'Cobrado') ? 'right' : 'left',
-                    py: 0.5,
-                    px: 1,
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    color: 'text.secondary',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                  }}
-                >
-                  {h}
-                </Box>
-              ))}
-            </Box>
-          </Box>
-          <Box component="tbody">
-            {resumen.entregas.map((ef, i) => (
-              <Box
-                key={ef.entregaId}
-                component="tr"
-                sx={{
-                  '&:hover': { bgcolor: 'action.hover' },
-                  borderBottom: i < resumen.entregas.length - 1 ? '1px solid' : 'none',
-                  borderColor: 'divider',
-                }}
-              >
-                <Box component="td" sx={{ py: 1, px: 1, fontSize: '0.8rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
-                  #{i + 1}
-                </Box>
-                <Box component="td" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>
-                  {ef.clienteNombre ?? '—'}
-                </Box>
-                <Box component="td" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>
-                  <Typography variant="caption" display="block">{ef.numeroDocumento ?? '—'}</Typography>
-                  {ef.tieneFinanciacion && ef.cantidadCuotas && (
-                    <Typography variant="caption" color="primary.main">
-                      {ef.cantidadCuotas} × {fmt(ef.montoCuota)}
-                    </Typography>
-                  )}
-                </Box>
-                <Box component="td" sx={{ py: 1, px: 1, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <Typography
-                    variant="body2"
-                    fontWeight={700}
-                    color={ef.montoEntregaInicial != null ? 'success.dark' : 'text.disabled'}
-                  >
-                    {fmt(ef.montoEntregaInicial)}
-                  </Typography>
-                </Box>
-                <Box component="td" sx={{ py: 1, px: 1, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  {ef.montoCobrado != null ? (
-                    <Box>
-                      <Typography variant="body2" fontWeight={700} color="primary.main">
-                        {fmt(ef.montoCobrado)}
-                      </Typography>
-                      {ef.diferenciaCobro != null && ef.diferenciaCobro !== 0 && (
-                        <Typography
-                          variant="caption"
-                          color={ef.diferenciaCobro > 0 ? 'warning.main' : 'error.main'}
-                        >
-                          {ef.diferenciaCobro > 0 ? '+' : ''}{fmt(ef.diferenciaCobro)}
-                        </Typography>
-                      )}
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" color="text.disabled">—</Typography>
-                  )}
-                </Box>
-                <Box component="td" sx={{ py: 1, px: 1 }}>
-                  {ef.estadoCobro ? (
-                    <Chip
-                      label={COBRO_LABEL_MAP[ef.estadoCobro] ?? ef.estadoCobro}
-                      color={COBRO_COLOR_MAP[ef.estadoCobro] ?? 'default'}
-                      size="small"
-                    />
-                  ) : (
-                    <Chip
-                      label={ef.estado === 'ENTREGADA' ? 'Entregada' : ef.estado === 'NO_ENTREGADA' ? 'No entregada' : 'Pendiente'}
-                      size="small"
-                      color={ef.estado === 'ENTREGADA' ? 'success' : ef.estado === 'NO_ENTREGADA' ? 'error' : 'warning'}
-                    />
-                  )}
-                </Box>
-              </Box>
-            ))}
-          </Box>
-          {/* Footer con totales */}
-          <Box component="tfoot">
-            <Box component="tr" sx={{ bgcolor: 'action.hover' }}>
-              <Box component="td" colSpan={3} sx={{ py: 1, px: 1, fontSize: '0.85rem', fontWeight: 600 }}>
-                Total viaje ({resumen.cantidadEntregas} entregas)
-              </Box>
-              <Box component="td" sx={{ py: 1, px: 1, textAlign: 'right' }}>
-                <Typography variant="body1" fontWeight={700} color="success.dark">
-                  {fmt(resumen.totalEntregasIniciales)}
-                </Typography>
-              </Box>
-              <Box component="td" sx={{ py: 1, px: 1, textAlign: 'right' }}>
-                {totalCobrado > 0 && (
-                  <Typography variant="body1" fontWeight={700} color="primary.main">
-                    {fmt(totalCobrado)}
-                  </Typography>
-                )}
-              </Box>
-              <Box component="td" />
-            </Box>
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-};
 
 const TripsPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
@@ -525,7 +150,6 @@ const TripsPage2: React.FC = () => {
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
 
   // Details tab state
-  const [detailsTab, setDetailsTab] = useState(0);
 
   // Modal de error al cambiar estado del viaje (e.g. equipo no COMPLETADO)
   const [changeEstadoErrorDialog, setChangeEstadoErrorDialog] = useState<{
@@ -719,7 +343,6 @@ const TripsPage2: React.FC = () => {
 
   const handleViewDetails = async (trip: Viaje) => {
     setSelectedTrip(trip);
-    setDetailsTab(0);
     setDetailsDialogOpen(true);
 
     const tripDeliveriesData = getTripDeliveries(trip.id);
@@ -1621,443 +1244,35 @@ const TripsPage2: React.FC = () => {
         wizard={wizard}
       />
 
-      {/* Details Bottom Sheet / Dialog */}
-      {isMobile ? (
-        <BottomSheet
-          open={detailsDialogOpen}
-          onClose={() => setDetailsDialogOpen(false)}
-          title={`Viaje #${selectedTrip?.id}`}
-          actions={
-            <Stack spacing={1}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<OpenInNewIcon />}
-                onClick={() => selectedTrip && navigate(`/logistica/distribucion/entregas-productos?viaje=${selectedTrip.id}`)}
-                sx={{ minHeight: 48 }}
-              >
-                Ver en Control de Entregas
-              </Button>
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={() => setDetailsDialogOpen(false)}
-                sx={{ minHeight: 48 }}
-              >
-                Cerrar
-              </Button>
-            </Stack>
-          }
-        >
-          {selectedTrip && (
-            <Box>
-              <Tabs
-                value={detailsTab}
-                onChange={(_, v) => setDetailsTab(v)}
-                variant="scrollable"
-                scrollButtons="auto"
-                sx={{ mb: 2 }}
-              >
-                <Tab label="Info" />
-                <Tab label={`Entregas (${getTripDeliveries(selectedTrip.id).length})`} />
-                <Tab label={`Facturas (${getFacturasByTrip(selectedTrip.id).length})`} />
-                {(!esLogistico || esAsignadoAlViaje(selectedTrip)) && (
-                  <Tab
-                    label="Cobros"
-                    icon={<AttachMoneyIcon sx={{ fontSize: 16 }} />}
-                    iconPosition="start"
-                    sx={{ minHeight: 48 }}
-                  />
-                )}
-              </Tabs>
-
-              {detailsTab === 0 && (
-                <Stack spacing={2}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Stack spacing={1.5}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <DriverIcon color="action" />
-                          <Box>
-                            <Typography variant="caption" color="text.secondary">Conductor</Typography>
-                            <Typography variant="body2">{getDriverName(selectedTrip.conductorId)}</Typography>
-                            {getAcompananteName(selectedTrip.acompananteId) && (
-                              <>
-                                <Typography variant="caption" color="text.secondary">Acompañante</Typography>
-                                <Typography variant="body2">{getAcompananteName(selectedTrip.acompananteId)}</Typography>
-                              </>
-                            )}
-                          </Box>
-                        </Box>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <TruckIcon color="action" />
-                          <Box>
-                            <Typography variant="caption" color="text.secondary">Vehículo</Typography>
-                            <Typography variant="body2">{getVehicleInfo(selectedTrip.vehiculoId)}</Typography>
-                          </Box>
-                        </Box>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <LocationIcon color="action" />
-                          <Box>
-                            <Typography variant="caption" color="text.secondary">Destino</Typography>
-                            <Typography variant="body2">{selectedTrip.destino}</Typography>
-                          </Box>
-                        </Box>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <ScheduleIcon color="action" />
-                          <Box>
-                            <Typography variant="caption" color="text.secondary">Fecha</Typography>
-                            <Typography variant="body2">{new Date(selectedTrip.fechaViaje).toLocaleString()}</Typography>
-                          </Box>
-                        </Box>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Typography variant="caption" color="text.secondary">Estado:</Typography>
-                          {getStatusChip(selectedTrip.estado)}
-                        </Box>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-
-                  {selectedTrip.observaciones && (
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Typography variant="caption" color="text.secondary">Observaciones</Typography>
-                        <Typography variant="body2">{selectedTrip.observaciones}</Typography>
-                      </CardContent>
-                    </Card>
-                  )}
-                </Stack>
-              )}
-
-              {detailsTab === 1 && (
-                <Stack spacing={1.5}>
-                  {getTripDeliveries(selectedTrip.id).map((delivery, index) => {
-                    const detalles = deliveryDetailsMap[delivery.id];
-                    return (
-                      <Card key={delivery.id} variant="outlined">
-                        <CardContent sx={{ py: 1.5 }}>
-                          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
-                            <Typography variant="subtitle2">Parada N°{index + 1}</Typography>
-                            <Chip
-                              label={delivery.estado}
-                              size="small"
-                              color={delivery.estado === 'ENTREGADA' ? 'success' : 'warning'}
-                            />
-                          </Box>
-                          <Typography variant="body2" color="text.secondary">
-                            {delivery.direccionEntrega}
-                          </Typography>
-                          {delivery.clienteDestinoNombre && (
-                            <Chip
-                              icon={<SwapHorizIcon />}
-                              label={`Reasignado a: ${delivery.clienteDestinoNombre}`}
-                              size="small"
-                              color="info"
-                              variant="outlined"
-                              sx={{ mt: 0.5 }}
-                            />
-                          )}
-                          {(delivery as any).tipoParada && (
-                            <Chip
-                              label={tipoParadaLabel((delivery as any).tipoParada)}
-                              size="small"
-                              color="secondary"
-                              variant="outlined"
-                              sx={{ mt: 0.5 }}
-                            />
-                          )}
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {new Date(delivery.fechaEntrega).toLocaleString()}
-                          </Typography>
-                          {renderEntregaEstimada(infoEntregaDeDelivery(delivery))}
-                          {delivery.observaciones && (
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, fontStyle: 'italic' }}>
-                              📝 {delivery.observaciones}
-                            </Typography>
-                          )}
-                          {detalles?.equipos?.length > 0 ? (
-                            <Box mt={1}>
-                              <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                                Equipos ({detalles.equipos.length}):
-                              </Typography>
-                              <Stack direction="row" flexWrap="wrap" gap={0.5} mt={0.5}>
-                                {detalles.equipos.map((eq: any) => (
-                                  <Chip
-                                    key={eq.id}
-                                    label={eq.codigoVenta ?? eq.numeroHeladera}
-                                    size="small"
-                                    variant="outlined"
-                                    title={`${eq.modelo ?? ''} | ${eq.tipo ?? ''}`}
-                                  />
-                                ))}
-                              </Stack>
-                            </Box>
-                          ) : detalles && (
-                            <Typography variant="caption" color="text.disabled" display="block" mt={1} sx={{ fontStyle: 'italic' }}>
-                              Sin equipos registrados
-                            </Typography>
-                          )}
-                          {entregaEsEditable(selectedTrip, delivery) && (
-                            <>
-                              <Divider sx={{ my: 1 }} />
-                              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                                <Button
-                                  size="small"
-                                  color="inherit"
-                                  startIcon={<RemoveCircleOutlineIcon />}
-                                  onClick={() => setConfirmQuitar(delivery)}
-                                >
-                                  Quitar del viaje
-                                </Button>
-                                <Button
-                                  size="small"
-                                  color="warning"
-                                  startIcon={<BlockIcon />}
-                                  onClick={() => { setRechazoMotivo(''); setConfirmRechazar(delivery); }}
-                                >
-                                  Rechazar
-                                </Button>
-                                <Button
-                                  size="small"
-                                  color="info"
-                                  startIcon={<SwapHorizIcon />}
-                                  onClick={() => setReasignarEntrega(delivery)}
-                                >
-                                  Reasignar
-                                </Button>
-                              </Stack>
-                            </>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  {getTripDeliveries(selectedTrip.id).length === 0 && (
-                    <Typography variant="body2" color="text.secondary" textAlign="center" py={3}>
-                      No hay entregas asignadas
-                    </Typography>
-                  )}
-                </Stack>
-              )}
-
-              {detailsTab === 2 && (
-                <Stack spacing={1.5}>
-                  {getFacturasByTrip(selectedTrip.id).map((factura) => (
-                    <Card key={factura.id} variant="outlined">
-                      <CardContent sx={{ py: 1.5 }}>
-                        <Typography variant="subtitle2" color="primary">
-                          {factura.numeroDocumento}
-                        </Typography>
-                        <Typography variant="body2">{factura.clienteNombre}</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          ${factura.total.toLocaleString()}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          {factura.detalles.length} items
-                        </Typography>
-                        {renderEntregaEstimada(entregaEstimadaInfo(factura.fechaEmision ?? (factura as any).fecha))}
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {getFacturasByTrip(selectedTrip.id).length === 0 && (
-                    <Typography variant="body2" color="text.secondary" textAlign="center" py={3}>
-                      No hay facturas asociadas
-                    </Typography>
-                  )}
-                </Stack>
-              )}
-
-              {detailsTab === 3 && (!esLogistico || esAsignadoAlViaje(selectedTrip)) && (
-                <ResumenCobrosMobile
-                  resumen={resumenFinancieroMap[selectedTrip.id]}
-                  estadoViaje={selectedTrip.estado}
-                  puedeRendir={puedeRendirViaje(selectedTrip)}
-                  onRendir={() => setRendicionDialogViaje(selectedTrip)}
-                />
-              )}
-            </Box>
-          )}
-        </BottomSheet>
-      ) : (
-        /* Desktop Details Dialog */
-        <SwipeableDrawer
-          anchor="right"
-          open={detailsDialogOpen}
-          onClose={() => setDetailsDialogOpen(false)}
-          onOpen={() => {}}
-          PaperProps={{
-            sx: { width: isTablet ? '90%' : 600 }
-          }}
-        >
-          {selectedTrip && (
-            <Box sx={{ p: 3 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <MapIcon color="primary" />
-                  <Typography variant="h6">Viaje #{selectedTrip.id}</Typography>
-                  {getStatusChip(selectedTrip.estado)}
-                </Box>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<OpenInNewIcon />}
-                    onClick={() => navigate(`/logistica/distribucion/entregas-productos?viaje=${selectedTrip.id}`)}
-                  >
-                    Ver en Control de Entregas
-                  </Button>
-                  <IconButton onClick={() => setDetailsDialogOpen(false)}>
-                    <CloseIcon />
-                  </IconButton>
-                </Box>
-              </Box>
-
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2" gutterBottom>Información General</Typography>
-                      <Stack spacing={1}>
-                        <Typography variant="body2"><strong>Conductor:</strong> {getDriverName(selectedTrip.conductorId)}</Typography>
-                        {getAcompananteName(selectedTrip.acompananteId) && (
-                          <Typography variant="body2"><strong>Acompañante:</strong> {getAcompananteName(selectedTrip.acompananteId)}</Typography>
-                        )}
-                        <Typography variant="body2"><strong>Vehículo:</strong> {getVehicleInfo(selectedTrip.vehiculoId)}</Typography>
-                        <Typography variant="body2"><strong>Destino:</strong> {selectedTrip.destino}</Typography>
-                        <Typography variant="body2"><strong>Fecha:</strong> {new Date(selectedTrip.fechaViaje).toLocaleString()}</Typography>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Entregas ({getTripDeliveries(selectedTrip.id).length})
-                      </Typography>
-                      <List dense>
-                        {getTripDeliveries(selectedTrip.id).map((delivery, index) => {
-                          const detalles = deliveryDetailsMap[delivery.id];
-                          return (
-                          <ListItem key={delivery.id} disablePadding sx={{ flexDirection: 'column', alignItems: 'stretch', py: 0.5 }}>
-                            <Box display="flex" justifyContent="space-between" alignItems="flex-start" width="100%">
-                              <ListItemText
-                                primary={`Parada N°${index + 1}`}
-                                secondary={
-                                  <>
-                                    {(() => {
-                                      const info = infoEntregaDeDelivery(delivery);
-                                      if (!info) return delivery.direccionEntrega;
-                                      const restTxt = info.restantes >= 0
-                                        ? `faltan ${info.restantes} d`
-                                        : `atrasada ${Math.abs(info.restantes)} d`;
-                                      return `${delivery.direccionEntrega} · Estimada ${info.fecha} (transcurridos ${info.transcurridos}/${diasEntregaEstimada} d, ${restTxt})`;
-                                    })()}
-                                    {delivery.observaciones && (
-                                      <Box component="span" display="block" sx={{ fontStyle: 'italic', mt: 0.25 }}>
-                                        📝 {delivery.observaciones}
-                                      </Box>
-                                    )}
-                                  </>
-                                }
-                              />
-                              <Chip
-                                label={delivery.estado}
-                                size="small"
-                                color={delivery.estado === 'ENTREGADA' ? 'success' : 'warning'}
-                                sx={{ mt: 0.5, flexShrink: 0 }}
-                              />
-                            </Box>
-                            {detalles?.equipos?.length > 0 ? (
-                              <Box mt={0.5} mb={0.5}>
-                                <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                                  Equipos ({detalles.equipos.length}):
-                                </Typography>
-                                <Stack direction="row" flexWrap="wrap" gap={0.5} mt={0.5}>
-                                  {detalles.equipos.map((eq: any) => (
-                                    <Chip
-                                      key={eq.id}
-                                      label={`${eq.codigoVenta ?? eq.numeroHeladera}${eq.color?.nombre ? ` · ${eq.color.nombre}` : ''}`}
-                                      size="small"
-                                      variant="outlined"
-                                      title={`${eq.modelo ?? ''} | ${eq.tipo ?? ''}`}
-                                    />
-                                  ))}
-                                </Stack>
-                              </Box>
-                            ) : detalles && (
-                              <Typography variant="caption" color="text.disabled" display="block" mt={0.5} mb={0.5} sx={{ fontStyle: 'italic' }}>
-                                Sin equipos registrados
-                              </Typography>
-                            )}
-                          </ListItem>
-                          );
-                        })}
-                      </List>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                {getFacturasByTrip(selectedTrip.id).length > 0 && (
-                  <Grid item xs={12}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Facturas ({getFacturasByTrip(selectedTrip.id).length})
-                        </Typography>
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                          {getFacturasByTrip(selectedTrip.id).map((factura) => (
-                            <Chip
-                              key={factura.id}
-                              label={`${factura.numeroDocumento} - $${factura.total.toLocaleString()}`}
-                              color="primary"
-                              variant="outlined"
-                            />
-                          ))}
-                        </Stack>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                )}
-
-                {selectedTrip.observaciones && (
-                  <Grid item xs={12}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Typography variant="subtitle2" gutterBottom>Observaciones</Typography>
-                        <Typography variant="body2">{selectedTrip.observaciones}</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                )}
-
-                {/* Resumen financiero — visible para roles con acceso financiero */}
-                {(!esLogistico || esAsignadoAlViaje(selectedTrip)) && (
-                  <Grid item xs={12}>
-                    <ResumenCobrosDesktop
-                      resumen={resumenFinancieroMap[selectedTrip.id]}
-                      estadoViaje={selectedTrip.estado}
-                      puedeRendir={puedeRendirViaje(selectedTrip)}
-                      onRendir={() => { setDetailsDialogOpen(false); setRendicionDialogViaje(selectedTrip); }}
-                    />
-                  </Grid>
-                )}
-              </Grid>
-
-              <Box mt={3}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={() => setDetailsDialogOpen(false)}
-                >
-                  Cerrar
-                </Button>
-              </Box>
-            </Box>
-          )}
-        </SwipeableDrawer>
-      )}
+      <TripDetailsPanel
+        detailsDialogOpen={detailsDialogOpen}
+        onClose={() => setDetailsDialogOpen(false)}
+        selectedTrip={selectedTrip}
+        isMobile={isMobile}
+        isTablet={isTablet}
+        getDriverName={getDriverName}
+        getAcompananteName={getAcompananteName}
+        getVehicleInfo={getVehicleInfo}
+        getStatusChip={getStatusChip}
+        getTripDeliveries={getTripDeliveries}
+        getFacturasByTrip={getFacturasByTrip}
+        resumenFinancieroMap={resumenFinancieroMap}
+        puedeRendirViaje={puedeRendirViaje}
+        esLogistico={esLogistico}
+        esAsignadoAlViaje={esAsignadoAlViaje}
+        entregaEstimadaInfo={entregaEstimadaInfo}
+        renderEntregaEstimada={renderEntregaEstimada}
+        navigate={navigate}
+        setConfirmQuitar={setConfirmQuitar}
+        setConfirmRechazar={setConfirmRechazar}
+        setReasignarEntrega={setReasignarEntrega}
+        setRechazoMotivo={setRechazoMotivo}
+        setRendicionDialogViaje={setRendicionDialogViaje}
+        deliveryDetailsMap={deliveryDetailsMap}
+        infoEntregaDeDelivery={infoEntregaDeDelivery}
+        entregaEsEditable={entregaEsEditable}
+        diasEntregaEstimada={diasEntregaEstimada}
+      />
 
       {/* Checklist de pre-viaje: obligatorio para iniciar. Al completarse, inicia el viaje. */}
       <PreViajeChecklistDialog
