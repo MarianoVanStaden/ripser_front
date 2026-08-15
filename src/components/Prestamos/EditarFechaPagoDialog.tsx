@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Alert, Typography, Box,
@@ -23,11 +24,27 @@ export const EditarFechaPagoDialog: React.FC<Props> = ({
   const fechaActual = cuota.fechaPago ? dayjs(cuota.fechaPago) : dayjs();
   const [nuevaFecha, setNuevaFecha] = useState<Dayjs | null>(fechaActual);
   const [motivo, setMotivo] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fechaValida = !!nuevaFecha && nuevaFecha.isValid();
   const cambioReal = fechaValida && !nuevaFecha.isSame(fechaActual, 'day');
+
+  const editarFechaPagoMutation = useMutation({
+    mutationFn: () => cuotaPrestamoApi.editarFechaPago(
+      cuota.id,
+      nuevaFecha!.format('YYYY-MM-DD'),
+      motivo.trim(),
+    ),
+    onSuccess: () => {
+      onSaved(`Fecha de pago de cuota N° ${cuota.numeroCuota} actualizada correctamente.`);
+      handleClose();
+    },
+    onError: (e: unknown) => {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err.response?.data?.message || 'Error al actualizar la fecha de pago.');
+    },
+  });
+  const submitting = editarFechaPagoMutation.isPending;
   const submitDisabled = !fechaValida || !cambioReal || submitting;
 
   const handleClose = () => {
@@ -38,24 +55,10 @@ export const EditarFechaPagoDialog: React.FC<Props> = ({
     onClose();
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!nuevaFecha) return;
-    setSubmitting(true);
     setError(null);
-    try {
-      await cuotaPrestamoApi.editarFechaPago(
-        cuota.id,
-        nuevaFecha.format('YYYY-MM-DD'),
-        motivo.trim()
-      );
-      onSaved(`Fecha de pago de cuota N° ${cuota.numeroCuota} actualizada correctamente.`);
-      handleClose();
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } };
-      setError(err.response?.data?.message || 'Error al actualizar la fecha de pago.');
-    } finally {
-      setSubmitting(false);
-    }
+    editarFechaPagoMutation.mutate();
   };
 
   return (

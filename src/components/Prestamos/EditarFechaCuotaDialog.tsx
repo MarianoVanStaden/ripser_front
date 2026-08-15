@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, FormControlLabel, Checkbox, Alert,
@@ -32,7 +33,6 @@ export const EditarFechaCuotaDialog: React.FC<Props> = ({
   const [nuevaFecha, setNuevaFecha] = useState<Dayjs | null>(fechaActual);
   const [motivo, setMotivo] = useState('');
   const [propagar, setPropagar] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const deltaDias = useMemo(() => {
@@ -50,25 +50,21 @@ export const EditarFechaCuotaDialog: React.FC<Props> = ({
     [cuotas, cuota.numeroCuota],
   );
 
-  const submitDisabled = !fechaValida || !cambioReal || submitting;
-
-  const handleSubmit = async () => {
-    if (!nuevaFecha) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await prestamoPersonalApi.actualizarFechaVencimientoCuota(
-        prestamo.id, cuota.id,
-        {
-          nuevaFecha: nuevaFecha.format('YYYY-MM-DD'),
-          motivo: motivo.trim(),
-          propagarSiguientes: propagar,
-          prestamoVersion: prestamo.version ?? 0,
-        },
-      );
+  const editarFechaMutation = useMutation({
+    mutationFn: () => prestamoPersonalApi.actualizarFechaVencimientoCuota(
+      prestamo.id, cuota.id,
+      {
+        nuevaFecha: nuevaFecha!.format('YYYY-MM-DD'),
+        motivo: motivo.trim(),
+        propagarSiguientes: propagar,
+        prestamoVersion: prestamo.version ?? 0,
+      },
+    ),
+    onSuccess: () => {
       onSaved(`Fecha de cuota #${cuota.numeroCuota} actualizada correctamente.`);
       onClose();
-    } catch (e: unknown) {
+    },
+    onError: (e: unknown) => {
       const err = e as { response?: { status?: number; data?: { message?: string } } };
       if (err.response?.status === 409) {
         if (onConflict) onConflict();
@@ -76,9 +72,15 @@ export const EditarFechaCuotaDialog: React.FC<Props> = ({
       } else {
         setError(err.response?.data?.message || 'Error al actualizar la fecha de la cuota.');
       }
-    } finally {
-      setSubmitting(false);
-    }
+    },
+  });
+  const submitting = editarFechaMutation.isPending;
+  const submitDisabled = !fechaValida || !cambioReal || submitting;
+
+  const handleSubmit = () => {
+    if (!nuevaFecha) return;
+    setError(null);
+    editarFechaMutation.mutate();
   };
 
   return (

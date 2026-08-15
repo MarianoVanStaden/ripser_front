@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Alert, Typography, Box, Stack, Chip,
@@ -29,7 +30,6 @@ export const EditarMontoCuotaDialog: React.FC<Props> = ({
 
   const [nuevoMonto, setNuevoMonto] = useState<string>(montoActual ? String(montoActual) : '');
   const [motivo, setMotivo] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const montoNum = useMemo(() => {
@@ -49,24 +49,20 @@ export const EditarMontoCuotaDialog: React.FC<Props> = ({
     if (!motivo.trim()) setMotivo(`Recargo del ${pct}% por mora`);
   };
 
-  const submitDisabled = !montoValido || menorAlPagado || !cambioReal || submitting;
-
-  const handleSubmit = async () => {
-    if (!montoValido) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await prestamoPersonalApi.actualizarMontoCuota(
-        prestamo.id, cuota.id,
-        {
-          nuevoMonto: montoNum,
-          motivo: motivo.trim(),
-          prestamoVersion: prestamo.version ?? 0,
-        },
-      );
+  const actualizarMontoMutation = useMutation({
+    mutationFn: () => prestamoPersonalApi.actualizarMontoCuota(
+      prestamo.id, cuota.id,
+      {
+        nuevoMonto: montoNum,
+        motivo: motivo.trim(),
+        prestamoVersion: prestamo.version ?? 0,
+      },
+    ),
+    onSuccess: () => {
       onSaved(`Monto de la cuota #${cuota.numeroCuota} actualizado correctamente.`);
       onClose();
-    } catch (e: unknown) {
+    },
+    onError: (e: unknown) => {
       const err = e as { response?: { status?: number; data?: { message?: string; code?: string } } };
       if (err.response?.status === 409 && err.response?.data?.code === 'VERSION_CONFLICT') {
         if (onConflict) onConflict();
@@ -74,9 +70,15 @@ export const EditarMontoCuotaDialog: React.FC<Props> = ({
       } else {
         setError(err.response?.data?.message || 'Error al actualizar el monto de la cuota.');
       }
-    } finally {
-      setSubmitting(false);
-    }
+    },
+  });
+  const submitting = actualizarMontoMutation.isPending;
+  const submitDisabled = !montoValido || menorAlPagado || !cambioReal || submitting;
+
+  const handleSubmit = () => {
+    if (!montoValido) return;
+    setError(null);
+    actualizarMontoMutation.mutate();
   };
 
   return (

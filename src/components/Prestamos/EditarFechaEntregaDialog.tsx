@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, FormControlLabel, Checkbox, Alert,
@@ -48,7 +49,6 @@ export const EditarFechaEntregaDialog: React.FC<Props> = ({
   const [nuevaFecha, setNuevaFecha] = useState<Dayjs | null>(fechaActual);
   const [motivo, setMotivo] = useState('');
   const [aplicarShift, setAplicarShift] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const deltaDias = useMemo(() => {
@@ -62,22 +62,18 @@ export const EditarFechaEntregaDialog: React.FC<Props> = ({
   // (recalcular cuotas desde cero usando la nueva fecha + n períodos).
   const esAnclajeInicial = !fechaActual && fechaValida;
 
-  const submitDisabled = !fechaValida || submitting;
-
-  const handleSubmit = async () => {
-    if (!nuevaFecha) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await prestamoPersonalApi.actualizarFechaEntrega(prestamo.id, {
-        nuevaFecha: nuevaFecha.format('YYYY-MM-DD'),
-        motivo: motivo.trim(),
-        aplicarDesplazamientoCuotas: aplicarShift,
-        version: prestamo.version ?? 0,
-      });
+  const actualizarEntregaMutation = useMutation({
+    mutationFn: () => prestamoPersonalApi.actualizarFechaEntrega(prestamo.id, {
+      nuevaFecha: nuevaFecha!.format('YYYY-MM-DD'),
+      motivo: motivo.trim(),
+      aplicarDesplazamientoCuotas: aplicarShift,
+      version: prestamo.version ?? 0,
+    }),
+    onSuccess: () => {
       onSaved('Fecha de entrega actualizada correctamente.');
       onClose();
-    } catch (e: unknown) {
+    },
+    onError: (e: unknown) => {
       const err = e as { response?: { status?: number; data?: { message?: string } } };
       if (err.response?.status === 409) {
         if (onConflict) onConflict();
@@ -85,9 +81,15 @@ export const EditarFechaEntregaDialog: React.FC<Props> = ({
       } else {
         setError(err.response?.data?.message || 'Error al actualizar la fecha de entrega.');
       }
-    } finally {
-      setSubmitting(false);
-    }
+    },
+  });
+  const submitting = actualizarEntregaMutation.isPending;
+  const submitDisabled = !fechaValida || submitting;
+
+  const handleSubmit = () => {
+    if (!nuevaFecha) return;
+    setError(null);
+    actualizarEntregaMutation.mutate();
   };
 
   return (
