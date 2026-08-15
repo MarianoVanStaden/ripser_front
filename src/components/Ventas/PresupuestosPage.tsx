@@ -38,8 +38,6 @@ import {
   InputAdornment,
   ToggleButton,
   ToggleButtonGroup,
-  Checkbox,
-  FormControlLabel,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -59,8 +57,6 @@ import { useOfertasVigentes } from "../../hooks/useOfertasVigentes";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
-import { costoEnvioApi } from "../../api/services/costoEnvioApi";
-import type { CostoEnvioDTO } from "../../types/costoEnvio.types";
 import { ESTADO_LABELS, PRIORIDAD_LABELS } from "../../types/lead.types";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, RecetaFabricacionDTO, TipoItemDocumento, DeudaClienteError } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
@@ -77,6 +73,8 @@ import DeudaClienteConfirmDialog from "./DeudaClienteConfirmDialog";
 import ClienteAutocomplete from "../common/ClienteAutocomplete";
 // FRONT-003: extracted to keep this file orchestrator-shaped.
 import type { DetalleForm, FormData, TipoDescuento } from './Presupuestos/types';
+import RevestimientoDialog from './Presupuestos/dialogs/RevestimientoDialog';
+import EnvioDialog from './Presupuestos/dialogs/EnvioDialog';
 import { initialDetalle, initialFormData } from './Presupuestos/constants';
 import { computeIva, formatCurrency, getStatusColor, getStatusLabel, normalizeOpcionesFinanciamiento } from './Presupuestos/utils';
 import ConfirmPresupuestoDialog from './Presupuestos/dialogs/ConfirmPresupuestoDialog';
@@ -207,18 +205,10 @@ const PresupuestosPage: React.FC = () => {
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdPresupuesto, setCreatedPresupuesto] = useState<DocumentoComercial | null>(null);
 
-  // Envío state
-  const [costosEnvio, setCostosEnvio] = useState<CostoEnvioDTO[]>([]);
+  // Envío / revestimiento: los dialogs son autocontenidos (Presupuestos/dialogs);
+  // acá solo queda el flag de apertura y el alta del detalle que devuelven.
   const [envioDialogOpen, setEnvioDialogOpen] = useState(false);
-  const [envioProvincia, setEnvioProvincia] = useState('');
-  const [envioPrecio, setEnvioPrecio] = useState(0);
-  const [envioCantidad, setEnvioCantidad] = useState(1);
-  const [envioBonificado, setEnvioBonificado] = useState(false);
-
-  // Revestimiento de acero state
   const [revestimientoDialogOpen, setRevestimientoDialogOpen] = useState(false);
-  const [revestimientoPrecio, setRevestimientoPrecio] = useState(0);
-  const [revestimientoCantidad, setRevestimientoCantidad] = useState(1);
 
   // View dialog (read-only) state — espejo del de NotasPedidoPage.
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -456,71 +446,20 @@ const PresupuestosPage: React.FC = () => {
     setHasUnsavedChanges(true);
   }, [readOnly]);
 
-  const handleOpenEnvioDialog = useCallback(async () => {
-    if (costosEnvio.length === 0) {
-      try {
-        await costoEnvioApi.seed().catch(() => {});
-        const data = await costoEnvioApi.getAll();
-        setCostosEnvio(data);
-      } catch {
-        // silent — user can still type the price
-      }
-    }
-    // Auto-detect cantidad: sum of EQUIPO items' cantidad in the current detalles
-    const cantEquipos = detalles
+  // Cantidad de equipos en los detalles actuales: default de los dialogs de
+  // envío/revestimiento.
+  const cantEquiposEnDetalles = useMemo(
+    () => detalles
       .filter((d) => d.tipoItem === 'EQUIPO')
-      .reduce((sum, d) => sum + (d.cantidad || 0), 0);
-    setEnvioProvincia('');
-    setEnvioPrecio(0);
-    setEnvioCantidad(cantEquipos > 0 ? cantEquipos : 1);
-    setEnvioBonificado(false);
-    setEnvioDialogOpen(true);
-  }, [costosEnvio.length, detalles]);
+      .reduce((sum, d) => sum + (d.cantidad || 0), 0),
+    [detalles]
+  );
 
-  const handleConfirmEnvio = useCallback(() => {
-    if (!envioProvincia) return;
-    const label = costosEnvio.find((c) => c.provincia === envioProvincia)?.provinciaNombre ?? envioProvincia;
-    const precioUnit = envioBonificado ? 0 : envioPrecio;
-    const cantidad = Math.max(1, envioCantidad);
-    const detalleEnvio: DetalleForm = {
-      tipoItem: 'ENVIO',
-      descripcion: envioBonificado ? `Envío a ${label} (Bonificado)` : `Envío a ${label}`,
-      cantidad,
-      precioUnitario: precioUnit,
-      subtotal: precioUnit * cantidad,
-    };
-    setDetalles((prev) => [...prev, detalleEnvio]);
+  // Alta del detalle que devuelven EnvioDialog / RevestimientoDialog.
+  const handleAgregarDetalleExtra = useCallback((detalle: DetalleForm) => {
+    setDetalles((prev) => [...prev, detalle]);
     setHasUnsavedChanges(true);
-    setEnvioDialogOpen(false);
-  }, [envioProvincia, envioPrecio, envioCantidad, envioBonificado, costosEnvio]);
-
-  const handleOpenRevestimientoDialog = useCallback(async () => {
-    const cantEquipos = detalles
-      .filter((d) => d.tipoItem === 'EQUIPO')
-      .reduce((sum, d) => sum + (d.cantidad || 0), 0);
-    try {
-      const precio = await documentoApi.getPrecioRevestimiento();
-      setRevestimientoPrecio(precio);
-    } catch {
-      setRevestimientoPrecio(280000);
-    }
-    setRevestimientoCantidad(cantEquipos > 0 ? cantEquipos : 1);
-    setRevestimientoDialogOpen(true);
-  }, [detalles]);
-
-  const handleConfirmRevestimiento = useCallback(() => {
-    const cantidad = Math.max(1, revestimientoCantidad);
-    const detalleRevestimiento: DetalleForm = {
-      tipoItem: 'REVESTIMIENTO',
-      descripcion: 'Revestimiento de acero',
-      cantidad,
-      precioUnitario: revestimientoPrecio,
-      subtotal: revestimientoPrecio * cantidad,
-    };
-    setDetalles((prev) => [...prev, detalleRevestimiento]);
-    setHasUnsavedChanges(true);
-    setRevestimientoDialogOpen(false);
-  }, [revestimientoPrecio, revestimientoCantidad]);
+  }, []);
 
   const updateDetalle = useCallback((index: number, field: keyof DetalleForm, value: string | number) => {
     if (readOnly) return;
@@ -2067,7 +2006,7 @@ const PresupuestosPage: React.FC = () => {
                   variant="outlined"
                   color="secondary"
                   startIcon={<AddIcon />}
-                  onClick={handleOpenEnvioDialog}
+                  onClick={() => setEnvioDialogOpen(true)}
                 >
                   Agregar Envío
                 </Button>
@@ -2075,7 +2014,7 @@ const PresupuestosPage: React.FC = () => {
                   variant="outlined"
                   color="info"
                   startIcon={<AddIcon />}
-                  onClick={handleOpenRevestimientoDialog}
+                  onClick={() => setRevestimientoDialogOpen(true)}
                   disabled={!detalles.some((d) => d.tipoItem === 'EQUIPO')}
                 >
                   Agregar Revestimiento
@@ -2296,123 +2235,19 @@ const PresupuestosPage: React.FC = () => {
         onCancel={handleDeudaCancel}
       />
 
-      {/* Revestimiento de acero dialog */}
-      <Dialog open={revestimientoDialogOpen} onClose={() => setRevestimientoDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Agregar revestimiento de acero</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <TextField
-            label="Precio por unidad"
-            type="number"
-            value={revestimientoPrecio}
-            onChange={(e) => setRevestimientoPrecio(parseFloat(e.target.value) || 0)}
-            size="small"
-            fullWidth
-            InputProps={{ startAdornment: <span style={{ marginRight: 4 }}>$</span> }}
-            helperText="Tomado del parámetro de sistema. Puede ajustarlo."
-          />
-          <TextField
-            label="Cantidad de equipos"
-            type="number"
-            value={revestimientoCantidad}
-            onChange={(e) => setRevestimientoCantidad(Math.max(1, parseInt(e.target.value) || 1))}
-            size="small"
-            fullWidth
-            inputProps={{ min: 1 }}
-            helperText="Auto-detectado desde los equipos del documento. No puede superar la cantidad de equipos."
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: 1, borderColor: 'divider' }}>
-            <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
-            <Typography variant="body1" fontWeight={600}>
-              ${(revestimientoPrecio * revestimientoCantidad).toLocaleString('es-AR', { minimumFractionDigits: 0 })}
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRevestimientoDialogOpen(false)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={handleConfirmRevestimiento}
-            disabled={revestimientoPrecio <= 0 || revestimientoCantidad <= 0}
-          >
-            Agregar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <RevestimientoDialog
+        open={revestimientoDialogOpen}
+        onClose={() => setRevestimientoDialogOpen(false)}
+        cantidadInicial={cantEquiposEnDetalles}
+        onConfirm={handleAgregarDetalleExtra}
+      />
 
-      {/* Province / envío selector dialog */}
-      <Dialog open={envioDialogOpen} onClose={() => setEnvioDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Agregar costo de envío</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <TextField
-            select
-            label="Provincia"
-            value={envioProvincia}
-            onChange={(e) => {
-              const prov = e.target.value;
-              setEnvioProvincia(prov);
-              const costo = costosEnvio.find((c) => c.provincia === prov);
-              setEnvioPrecio(costo ? costo.precio : 0);
-            }}
-            size="small"
-            fullWidth
-          >
-            <MenuItem value="">Seleccionar provincia</MenuItem>
-            {costosEnvio.map((c) => (
-              <MenuItem key={c.provincia} value={c.provincia}>
-                {c.provinciaNombre}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Precio por equipo"
-            type="number"
-            value={envioPrecio}
-            onChange={(e) => setEnvioPrecio(parseFloat(e.target.value) || 0)}
-            size="small"
-            fullWidth
-            disabled={envioBonificado}
-            InputProps={{ startAdornment: <span style={{ marginRight: 4 }}>$</span> }}
-            helperText="Tomado de la tabla de costos de envío. Puede ajustarlo."
-          />
-          <TextField
-            label="Cantidad de equipos"
-            type="number"
-            value={envioCantidad}
-            onChange={(e) => setEnvioCantidad(Math.max(1, parseInt(e.target.value) || 1))}
-            size="small"
-            fullWidth
-            inputProps={{ min: 1 }}
-            helperText="Auto-detectado desde los equipos del documento. Editable."
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={envioBonificado}
-                onChange={(e) => setEnvioBonificado(e.target.checked)}
-              />
-            }
-            label="Bonificar envío (no cobrar)"
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: 1, borderColor: 'divider' }}>
-            <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
-            <Typography variant="body1" fontWeight={600} color={envioBonificado ? 'success.main' : 'text.primary'}>
-              {envioBonificado
-                ? 'BONIFICADO ($0)'
-                : `$${(envioPrecio * envioCantidad).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`}
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEnvioDialogOpen(false)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={handleConfirmEnvio}
-            disabled={!envioProvincia || (!envioBonificado && envioPrecio <= 0) || envioCantidad <= 0}
-          >
-            Agregar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <EnvioDialog
+        open={envioDialogOpen}
+        onClose={() => setEnvioDialogOpen(false)}
+        cantidadInicial={cantEquiposEnDetalles}
+        onConfirm={handleAgregarDetalleExtra}
+      />
 
       <EditarColorDetalleDialog
         open={colorDialogOpen}
