@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -74,11 +75,37 @@ interface EquipoMovimiento {
 const StockEquiposPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [equipos, setEquipos] = useState<EquipoFabricadoDTO[]>([]);
-  const [movimientosStock, setMovimientosStock] = useState<MovimientoStock[]>([]);
-  const [entregasHistorial, setEntregasHistorial] = useState<EntregaViaje[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const stockEquiposQuery = useQuery({
+    queryKey: ['equipos', 'stock-panel'],
+    queryFn: async () => {
+      const [equiposData, movimientosData, todasEntregas] = await Promise.all([
+        equipoFabricadoApi.findAll({ page: 0, size: 1000 }),
+        movimientoStockFabricacionApi.findAll(),
+        entregaViajeApi.getAll(),
+      ]);
+      return {
+        equipos: (equiposData as any).content || equiposData || [],
+        movimientos: movimientosData || [],
+        entregas: (todasEntregas || [])
+          .filter((e) => e.estado === 'ENTREGADA')
+          .sort((a, b) => (b.fechaEntrega > a.fechaEntrega ? 1 : -1)),
+      };
+    },
+  });
+  const equipos: EquipoFabricadoDTO[] = stockEquiposQuery.data?.equipos ?? [];
+  const movimientosStock: MovimientoStock[] = stockEquiposQuery.data?.movimientos ?? [];
+  const entregasHistorial: EntregaViaje[] = stockEquiposQuery.data?.entregas ?? [];
+  const loading = stockEquiposQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false); // spinner de guardar edición
+  const qErr = stockEquiposQuery.error as { response?: { status?: number } } | null;
+  const error = qErr
+    ? (qErr.response?.status === 403 || qErr.response?.status === 401
+        ? 'No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.'
+        : 'Error al cargar los datos')
+    : actionError;
+  const setError = setActionError;
   const [tabValue, setTabValue] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedEquipo, setSelectedEquipo] = useState<EquipoFabricadoDTO | null>(null);
@@ -116,38 +143,8 @@ const StockEquiposPage: React.FC = () => {
   const [pageEntregas, setPageEntregas] = useState(0);
   const [rowsPerPageEntregas, setRowsPerPageEntregas] = useState(10);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
-    try {
-      setLoading(true);
-      const [equiposData, movimientosData, todasEntregas] = await Promise.all([
-        equipoFabricadoApi.findAll({ page: 0, size: 1000 }),
-        movimientoStockFabricacionApi.findAll(),
-        entregaViajeApi.getAll(),
-      ]);
-
-      setEquipos(equiposData.content || equiposData || []);
-      setMovimientosStock(movimientosData || []);
-      setEntregasHistorial(
-        (todasEntregas || [])
-          .filter((e) => e.estado === 'ENTREGADA')
-          .sort((a, b) => (b.fechaEntrega > a.fechaEntrega ? 1 : -1))
-      );
-      setError(null);
-    } catch (err) {
-      const error = err as { response?: { status?: number } };
-      if (error.response?.status === 403 || error.response?.status === 401) {
-        setError('No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.');
-      } else {
-        setError('Error al cargar los datos');
-      }
-      console.error('Error loading data:', err);
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['equipos'] });
   };
 
   const handleEditEquipo = (equipo: EquipoFabricadoDTO) => {
@@ -165,7 +162,7 @@ const StockEquiposPage: React.FC = () => {
     if (!selectedEquipo) return;
 
     try {
-      setLoading(true);
+      setSaving(true);
       await equipoFabricadoApi.update(selectedEquipo.id, {
         modelo: editForm.modelo,
         colorId: editForm.colorId,
@@ -180,7 +177,7 @@ const StockEquiposPage: React.FC = () => {
       console.error('Error updating equipo:', err);
       setError('Error al actualizar el equipo');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -492,7 +489,7 @@ const StockEquiposPage: React.FC = () => {
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
-      <LoadingOverlay open={loading} message="Cargando stock de equipos..." />
+      <LoadingOverlay open={loading || saving} message="Cargando stock de equipos..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <Inventory2Icon />

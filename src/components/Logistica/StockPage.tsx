@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -92,14 +93,42 @@ const StockPage: React.FC = () => {
   const { puedeVerCostos, esAdmin, tieneRol } = usePermisos();
   // Gestión de compuestos (definir composición / ajustar stock) = ADMIN_TAL (backend).
   const canGestionCompuestos = esAdmin || tieneRol('ADMIN_EMPRESA_LIMITADO', 'TALLER');
-  const [products, setProducts] = useState<ProductoUnificado[]>([]);
-  const [desgloseMap, setDesgloseMap] = useState<Record<number, DesgloseStockProductoDTO>>({});
   const [composicionProd, setComposicionProd] = useState<ProductoPicker | null>(null);
   const [ajusteProd, setAjusteProd] = useState<(ProductoPicker & { stockActual?: number }) | null>(null);
-  const [stockMovements, setStockMovements] = useState<MovimientoStock[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  // Cuatro datasets del stock en una query conjunta (misma atomicidad que el
+  // loadData original: o carga todo o muestra el error).
+  const stockQuery = useQuery({
+    queryKey: ['stock', 'panel'],
+    queryFn: async () => {
+      const [productsList, movementsData, categoriasData, desglose] = await Promise.all([
+        fetchProductosUnificados(),
+        movimientoStockApi.getAll({ page: 0, size: 10000 }),
+        categoriaProductoApi.getAll(),
+        productoCompuestoApi.getDesgloseStock().catch(() => [] as DesgloseStockProductoDTO[]),
+      ]);
+      return {
+        products: productsList,
+        movements: movementsData.content ?? [],
+        categorias: [...categoriasData].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+        desgloseMap: Object.fromEntries(desglose.map((d) => [d.productoId, d])),
+      };
+    },
+  });
+  const products: ProductoUnificado[] = stockQuery.data?.products ?? [];
+  const stockMovements: MovimientoStock[] = stockQuery.data?.movements ?? [];
+  const categorias: CategoriaProducto[] = stockQuery.data?.categorias ?? [];
+  const desgloseMap: Record<number, DesgloseStockProductoDTO> = stockQuery.data?.desgloseMap ?? {};
+  const loading = stockQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false); // spinner de acciones (guardar/crear)
+  const qErr = stockQuery.error as { response?: { status?: number } } | null;
+  const error = qErr
+    ? (qErr.response?.status === 403 || qErr.response?.status === 401
+        ? 'No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.'
+        : 'Error al cargar los datos')
+    : actionError;
+  const setError = setActionError;
   const [tabValue, setTabValue] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductoUnificado | null>(null);
@@ -127,7 +156,13 @@ const StockPage: React.FC = () => {
   const [createForm, setCreateForm] = useState(emptyCreateForm);
 
   // Price calculation states
-  const [priceParams, setPriceParams] = useState<PriceCalculationParams | null>(null);
+  const priceParamsQuery = useQuery({
+    queryKey: ['stock', 'price-params'],
+    queryFn: () => loadPriceCalculationParams(),
+    staleTime: 300_000,
+    retry: false,
+  });
+  const priceParams: PriceCalculationParams | null = priceParamsQuery.data ?? null;
   const [suggestedPrice, setSuggestedPrice] = useState<number | null>(null);
 
   // Filter states for Inventory tab
@@ -147,19 +182,6 @@ const StockPage: React.FC = () => {
   const [pageMovements, setPageMovements] = useState(0);
   const [rowsPerPageMovements, setRowsPerPageMovements] = useState(10);
 
-  useEffect(() => {
-    loadData();
-    loadPriceParams();
-  }, []);
-
-  const loadPriceParams = async () => {
-    try {
-      const params = await loadPriceCalculationParams();
-      setPriceParams(params);
-    } catch (error) {
-      console.warn('Could not load price calculation parameters');
-    }
-  };
 
   // Calculate suggested price when costo changes
   useEffect(() => {
@@ -172,32 +194,7 @@ const StockPage: React.FC = () => {
   }, [editForm.costo, priceParams]);
 
   const loadData = async () => {
-    try {
-      setLoading(true);
-      // Pedimos materiales + productos de reventa unificados, anotando tipoEntidad.
-      const [productsList, movementsData, categoriasData, desglose] = await Promise.all([
-        fetchProductosUnificados(),
-        movimientoStockApi.getAll({ page: 0, size: 10000 }),
-        categoriaProductoApi.getAll(),
-        productoCompuestoApi.getDesgloseStock().catch(() => [] as DesgloseStockProductoDTO[]),
-      ]);
-
-      setProducts(productsList);
-      setStockMovements(movementsData.content ?? []);
-      setCategorias([...categoriasData].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
-      setDesgloseMap(Object.fromEntries(desglose.map((d) => [d.productoId, d])));
-      setError(null);
-    } catch (err) {
-      const error = err as { response?: { status?: number } };
-      if (error.response?.status === 403 || error.response?.status === 401) {
-        setError('No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.');
-      } else {
-        setError('Error al cargar los datos');
-      }
-      console.error('Error loading data:', err);
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['stock'] });
   };
 
   const handleEditProduct = (product: ProductoUnificado) => {
@@ -227,7 +224,7 @@ const StockPage: React.FC = () => {
     if (!selectedProduct) return;
 
     try {
-      setLoading(true);
+      setSaving(true);
       // Rutea al endpoint correcto según si el producto es material o reventa.
       await updateProducto(
         selectedProduct.id,
@@ -253,7 +250,7 @@ const StockPage: React.FC = () => {
       console.error('Error updating product:', err);
       setError('Error al actualizar el producto');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -299,7 +296,7 @@ const StockPage: React.FC = () => {
     }
     const esUnidad = createForm.unidadMedida === 'UNIDAD';
     try {
-      setLoading(true);
+      setSaving(true);
       await productApi.create({
         nombre: createForm.nombre.trim(),
         descripcion: createForm.descripcion || undefined,
@@ -322,7 +319,7 @@ const StockPage: React.FC = () => {
       if (e.response?.status === 400) {
         // Código duplicado (colisión concurrente): refrescamos y regeneramos.
         const fresh = await fetchProductosUnificados().catch(() => products);
-        setProducts(fresh);
+        await queryClient.invalidateQueries({ queryKey: ['stock'] });
         setCreateForm((prev) => ({ ...prev, codigo: generateProductCode(prev.categoriaProductoId, fresh) }));
         setError('El código ya existía; se regeneró uno nuevo. Volvé a guardar.');
       } else {
@@ -330,7 +327,7 @@ const StockPage: React.FC = () => {
       }
       console.error('Error creating product:', err);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -532,7 +529,7 @@ const StockPage: React.FC = () => {
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
-      <LoadingOverlay open={loading} message="Cargando stock..." />
+      <LoadingOverlay open={loading || saving} message="Cargando stock..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <InventoryIcon />

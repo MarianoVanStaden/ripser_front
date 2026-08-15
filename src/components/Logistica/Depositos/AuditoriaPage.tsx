@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -112,12 +113,55 @@ const AuditoriaPage: React.FC = () => {
   const { user } = useAuth();
 
   // State management - use the flexible type for stock movements
-  const [movimientosStock, setMovimientosStock] = useState<MovimientoStockAuditoria[]>([]);
-  const [movimientosEquipo, setMovimientosEquipo] = useState<MovimientoEquipo[]>([]);
-  const [depositos, setDepositos] = useState<Deposito[]>([]);
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const puedeVer = tienePermiso('LOGISTICA');
+  const arr = (r: any) => (Array.isArray(r) ? r : r?.content || []);
+  // Rango de fechas APLICADO (el botón valida y lo fija; la query re-fetchea).
+  const [appliedRange, setAppliedRange] = useState<{ inicio: string; fin: string } | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const catalogosQuery = useQuery({
+    queryKey: ['auditoria-depositos', 'catalogos'],
+    queryFn: async () => {
+      const [depositosResponse, productosData] = await Promise.all([
+        depositoApi.getAll(),
+        productApi.getAll({ page: 0, size: 10000 }),
+      ]);
+      return {
+        depositos: arr(depositosResponse) as Deposito[],
+        productos: arr(productosData) as Producto[],
+      };
+    },
+    enabled: puedeVer,
+    staleTime: 300_000,
+  });
+  const movimientosQuery = useQuery({
+    queryKey: ['auditoria-depositos', 'movimientos', appliedRange],
+    queryFn: async () => {
+      const [movStockResponse, movEquipoResponse] = appliedRange
+        ? await Promise.all([
+            movimientoStockDepositoApi.getByFechaRange(appliedRange.inicio, appliedRange.fin),
+            movimientoEquipoApi.getByFechaRange(appliedRange.inicio, appliedRange.fin),
+          ])
+        : await Promise.all([
+            movimientoStockDepositoApi.getAll(),
+            movimientoEquipoApi.getAll(),
+          ]);
+      return {
+        movStock: arr(movStockResponse) as MovimientoStockAuditoria[],
+        movEquipo: arr(movEquipoResponse) as MovimientoEquipo[],
+      };
+    },
+    enabled: puedeVer,
+  });
+  const movimientosStock = movimientosQuery.data?.movStock ?? [];
+  const movimientosEquipo = movimientosQuery.data?.movEquipo ?? [];
+  const depositos = catalogosQuery.data?.depositos ?? [];
+  const productos = catalogosQuery.data?.productos ?? [];
+  const loading = (movimientosQuery.isPending || catalogosQuery.isPending) && puedeVer;
+  const error = (movimientosQuery.error || catalogosQuery.error)
+    ? 'Error al cargar los datos'
+    : actionError;
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
 
   // Tab state
@@ -152,48 +196,6 @@ const AuditoriaPage: React.FC = () => {
   const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
   const exportMenuOpen = Boolean(exportAnchorEl);
 
-  useEffect(() => {
-    if (tienePermiso('LOGISTICA')) {
-      loadData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      // Use getAll instead of getRecientes (backend may not support recientes endpoint)
-      const [movStockResponse, movEquipoResponse, depositosResponse, productosData] = await Promise.all([
-        movimientoStockDepositoApi.getAll(),
-        movimientoEquipoApi.getAll(),
-        depositoApi.getAll(),
-        productApi.getAll({ page: 0, size: 10000 }),
-      ]);
-      // Handle paginated responses
-      const movStockData = Array.isArray(movStockResponse) 
-        ? movStockResponse 
-        : (movStockResponse as any)?.content || [];
-      const movEquipoData = Array.isArray(movEquipoResponse) 
-        ? movEquipoResponse 
-        : (movEquipoResponse as any)?.content || [];
-      const depositosData = Array.isArray(depositosResponse) 
-        ? depositosResponse 
-        : (depositosResponse as any)?.content || [];
-      setMovimientosStock(movStockData);
-      setMovimientosEquipo(movEquipoData);
-      setDepositos(depositosData);
-      const productosArray = Array.isArray(productosData)
-        ? productosData
-        : (productosData as any)?.content || [];
-      setProductos(productosArray);
-      setError(null);
-    } catch (err: any) {
-      console.error('Error loading data:', err);
-      setError('Error al cargar los datos');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Predefined date ranges
   const setDateRange = (range: 'today' | 'week' | 'month' | 'quarter') => {
@@ -229,27 +231,13 @@ const AuditoriaPage: React.FC = () => {
     }
   };
 
-  const handleApplyFilters = async () => {
+  const handleApplyFilters = () => {
     if (!fechaInicio || !fechaFin) {
       setError('Debe seleccionar fechas de inicio y fin');
       return;
     }
-
-    try {
-      setLoading(true);
-      const [movStockData, movEquipoData] = await Promise.all([
-        movimientoStockDepositoApi.getByFechaRange(fechaInicio.toISOString(), fechaFin.toISOString()),
-        movimientoEquipoApi.getByFechaRange(fechaInicio.toISOString(), fechaFin.toISOString()),
-      ]);
-      setMovimientosStock(movStockData);
-      setMovimientosEquipo(movEquipoData);
-      setError(null);
-    } catch (err: any) {
-      console.error('Error applying filters:', err);
-      setError('Error al aplicar filtros');
-    } finally {
-      setLoading(false);
-    }
+    setError(null);
+    setAppliedRange({ inicio: fechaInicio.toISOString(), fin: fechaFin.toISOString() });
   };
 
   // Filtered movements - Stock (sorted by date descending - newest first)
