@@ -4,6 +4,7 @@
 // renglón y marca el Sueldo como pagado. Las cajas pueden quedar en negativo.
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, IconButton, InputAdornment, MenuItem, Stack,
@@ -63,7 +64,6 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
   const [fecha, setFecha] = useState<string>(dayjs().format('YYYY-MM-DD'));
   const [rows, setRows] = useState<PayRow[]>([]);
   const [observaciones, setObservaciones] = useState<string>('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Cargar cajas al abrir.
@@ -127,7 +127,14 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
     updateRow(idx, { monto: restante });
   };
 
-  const handlePagar = async () => {
+  const pagarMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof sueldoApi.pagarSueldo>[1]) => sueldoApi.pagarSueldo(sueldo!.id, payload),
+    onSuccess: () => onSuccess(),
+    onError: (err: any) => setError(err?.response?.data?.message || 'Error al registrar el pago'),
+  });
+  const submitting = pagarMutation.isPending;
+
+  const handlePagar = () => {
     if (!sueldo) return;
     setError(null);
 
@@ -149,19 +156,11 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
       return;
     }
 
-    try {
-      setSubmitting(true);
-      await sueldoApi.pagarSueldo(sueldo.id, {
-        fecha,
-        items,
-        observaciones: observaciones?.trim() || undefined,
-      });
-      onSuccess();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al registrar el pago');
-    } finally {
-      setSubmitting(false);
-    }
+    pagarMutation.mutate({
+      fecha,
+      items,
+      observaciones: observaciones?.trim() || undefined,
+    });
   };
 
   return (

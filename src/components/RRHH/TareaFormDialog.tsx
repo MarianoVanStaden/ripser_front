@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -38,7 +39,6 @@ const validationSchema = yup.object({
 });
 
 const TareaFormDialog: React.FC<Props> = ({ open, puestoId, tarea, onClose, onSave }) => {
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEditing = tarea !== null;
 
@@ -71,32 +71,29 @@ const TareaFormDialog: React.FC<Props> = ({ open, puestoId, tarea, onClose, onSa
     }
   }, [open, tarea, reset]);
 
-  const onSubmit = async (data: TareaFormData) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      if (isEditing) {
-        await puestoApi.updateTarea(puestoId, tarea!.id, {
+  const guardarMutation = useMutation({
+    mutationFn: (data: TareaFormData) => isEditing
+      ? puestoApi.updateTarea(puestoId, tarea!.id, {
           nombre: data.nombre,
           descripcion: data.descripcion || undefined,
           obligatoria: data.obligatoria,
-        });
-      } else {
-        await puestoApi.addTarea(puestoId, {
+        })
+      : puestoApi.addTarea(puestoId, {
           nombre: data.nombre,
           descripcion: data.descripcion || undefined,
           obligatoria: data.obligatoria,
-        });
-      }
-
-      onSave();
-    } catch (err: any) {
+        }),
+    onSuccess: () => onSave(),
+    onError: (err: any) => {
       console.error('Error saving tarea:', err);
       setError(err.response?.data?.message || 'Error al guardar la tarea');
-    } finally {
-      setLoading(false);
-    }
+    },
+  });
+  const loading = guardarMutation.isPending;
+
+  const onSubmit = (data: TareaFormData) => {
+    setError(null);
+    guardarMutation.mutate(data);
   };
 
   return (

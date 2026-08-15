@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Autocomplete,
@@ -184,7 +185,6 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
   const [tab, setTab] = useState(0);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [cats, setCats] = useState<Catalogos>(EMPTY_CATS);
-  const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -300,29 +300,30 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
     return base;
   };
 
-  const handleSubmit = async () => {
+  const guardarMutation = useMutation({
+    mutationFn: () => {
+      const payload = buildPayload();
+      return isEditing
+        ? puestoApi.update(puestoId!, payload as UpdatePuestoDTO)
+        : puestoApi.create(payload as CreatePuestoDTO);
+    },
+    onSuccess: () => onSave(),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || 'Error al guardar el puesto';
+      setError(msg);
+    },
+  });
+  const loading = guardarMutation.isPending;
+
+  const handleSubmit = () => {
     if (!form.nombre.trim()) {
       setError('El nombre del puesto es obligatorio');
       setTab(0);
       return;
     }
-    setLoading(true);
     setError(null);
-    try {
-      const payload = buildPayload();
-      if (isEditing) {
-        await puestoApi.update(puestoId!, payload as UpdatePuestoDTO);
-      } else {
-        await puestoApi.create(payload as CreatePuestoDTO);
-      }
-      onSave();
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        || 'Error al guardar el puesto';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
+    guardarMutation.mutate();
   };
 
   // ─── Sectores filtrados por departamento elegido ──────────────

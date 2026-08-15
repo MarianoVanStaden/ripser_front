@@ -3,6 +3,7 @@
 // compartidas; cada empleado puede sobreescribir sus horas si difiere.
 // Self-contained: maneja su propio estado y persiste vía el endpoint /masiva.
 import React, { useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Autocomplete,
@@ -47,7 +48,6 @@ const ExcepcionMasivaDialog: React.FC<Props> = ({
   const [justificado, setJustificado] = useState(true);
   // Overrides por empleado: empleadoId -> horas (string del input). Vacío = usa el común.
   const [overrides, setOverrides] = useState<Record<number, string>>({});
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
@@ -81,34 +81,33 @@ const ExcepcionMasivaDialog: React.FC<Props> = ({
     });
   }, [seleccionados, overrides, horasComunesNum]);
 
-  const handleSave = async () => {
-    if (!puedeGuardar) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await excepcionAsistenciaApi.createMasiva({
-        empleados: seleccionados.map((emp) => {
-          const ov = overrides[emp.id];
-          return {
-            empleadoId: emp.id,
-            horasExtras: ov ? parseFloat(ov) : undefined,
-          };
-        }),
-        fecha,
-        tipo: 'HORAS_EXTRAS',
-        horasExtras: isNaN(horasComunesNum) ? undefined : horasComunesNum,
-        observaciones: observaciones || undefined,
-        justificado,
-      });
-      reset();
-      onSaved();
-      onClose();
-    } catch (err) {
+  const crearMasivaMutation = useMutation({
+    mutationFn: () => excepcionAsistenciaApi.createMasiva({
+      empleados: seleccionados.map((emp) => {
+        const ov = overrides[emp.id];
+        return {
+          empleadoId: emp.id,
+          horasExtras: ov ? parseFloat(ov) : undefined,
+        };
+      }),
+      fecha,
+      tipo: 'HORAS_EXTRAS',
+      horasExtras: isNaN(horasComunesNum) ? undefined : horasComunesNum,
+      observaciones: observaciones || undefined,
+      justificado,
+    }),
+    onSuccess: () => { reset(); onSaved(); onClose(); },
+    onError: (err) => {
       console.error('ExcepcionMasivaDialog save:', err);
       setError('Error al guardar la carga masiva de horas extras');
-    } finally {
-      setSaving(false);
-    }
+    },
+  });
+  const saving = crearMasivaMutation.isPending;
+
+  const handleSave = () => {
+    if (!puedeGuardar) return;
+    setError(null);
+    crearMasivaMutation.mutate();
   };
 
   return (

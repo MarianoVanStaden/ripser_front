@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -39,7 +40,6 @@ const validationSchema = yup.object({
 });
 
 const SubtareaFormDialog: React.FC<Props> = ({ open, puestoId, tareaId, subtarea, onClose, onSave }) => {
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEditing = subtarea !== null;
 
@@ -72,32 +72,29 @@ const SubtareaFormDialog: React.FC<Props> = ({ open, puestoId, tareaId, subtarea
     }
   }, [open, subtarea, reset]);
 
-  const onSubmit = async (data: SubtareaFormData) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      if (isEditing) {
-        await puestoApi.updateSubtarea(puestoId, tareaId, subtarea!.id, {
+  const guardarMutation = useMutation({
+    mutationFn: (data: SubtareaFormData) => isEditing
+      ? puestoApi.updateSubtarea(puestoId, tareaId, subtarea!.id, {
           nombre: data.nombre,
           descripcion: data.descripcion || undefined,
           obligatoria: data.obligatoria,
-        });
-      } else {
-        await puestoApi.addSubtarea(puestoId, tareaId, {
+        })
+      : puestoApi.addSubtarea(puestoId, tareaId, {
           nombre: data.nombre,
           descripcion: data.descripcion || undefined,
           obligatoria: data.obligatoria,
-        });
-      }
-
-      onSave();
-    } catch (err: any) {
+        }),
+    onSuccess: () => onSave(),
+    onError: (err: any) => {
       console.error('Error saving subtarea:', err);
       setError(err.response?.data?.message || 'Error al guardar la subtarea');
-    } finally {
-      setLoading(false);
-    }
+    },
+  });
+  const loading = guardarMutation.isPending;
+
+  const onSubmit = (data: SubtareaFormData) => {
+    setError(null);
+    guardarMutation.mutate(data);
   };
 
   return (
