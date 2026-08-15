@@ -115,6 +115,7 @@ const CajaMovimientosPage: React.FC = () => {
     handleChangeRowsPerPage,
     refresh: refreshMovimientos,
   } = usePagination<MovimientoCajaAhorro>({
+    queryKey: 'caja-ahorro-movimientos',
     fetchFn: fetchMovimientos,
     defaultSort: 'fecha,desc',
     initialSize: 20,

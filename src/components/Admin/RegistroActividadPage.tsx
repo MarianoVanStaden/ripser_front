@@ -188,6 +188,7 @@ export const RegistroActividadPage = () => {
     setFilters,
     refresh,
   } = usePagination<RegistroActividadDTO, ActividadFilters>({
+    queryKey: 'registro-actividad',
     fetchFn: fetchActividad,
     initialSize: 50,
     initialFilters: backendFilters,

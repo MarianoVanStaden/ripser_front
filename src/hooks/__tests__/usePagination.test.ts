@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { usePagination } from '../usePagination';
+import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { usePagination, type UsePaginationOptions } from '../usePagination';
+
+// El hook corre sobre react-query: cada render usa un QueryClient fresco
+// (sin retry) para aislar el cache entre tests.
+const renderPagination = <T, F = Record<string, unknown>>(
+  opts: Omit<UsePaginationOptions<T, F>, 'queryKey'> & { queryKey?: string }
+) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const wrapper = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: queryClient }, children);
+  return renderHook(() => usePagination<T, F>({ queryKey: 'test', ...opts } as UsePaginationOptions<T, F>), { wrapper });
+};
 import type { PageResponse } from '../../types/pagination.types';
 
 const makePage = <T>(content: T[], total = content.length): PageResponse<T> => ({
@@ -33,7 +46,7 @@ describe('usePagination', () => {
   });
 
   it('fetches data on mount by default', async () => {
-    renderHook(() => usePagination({ fetchFn: mockFetch }));
+    renderPagination({ fetchFn: mockFetch });
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -42,7 +55,7 @@ describe('usePagination', () => {
   });
 
   it('does not fetch on mount when fetchOnMount is false', async () => {
-    renderHook(() => usePagination({ fetchFn: mockFetch, fetchOnMount: false }));
+    renderPagination({ fetchFn: mockFetch, fetchOnMount: false });
 
     // Give it a tick
     await new Promise(r => setTimeout(r, 50));
@@ -50,7 +63,7 @@ describe('usePagination', () => {
   });
 
   it('populates data from response', async () => {
-    const { result } = renderHook(() => usePagination({ fetchFn: mockFetch }));
+    const { result } = renderPagination({ fetchFn: mockFetch });
 
     await waitFor(() => {
       expect(result.current.data).toEqual(['item1', 'item2']);
@@ -61,7 +74,7 @@ describe('usePagination', () => {
   });
 
   it('uses custom initial size', async () => {
-    renderHook(() => usePagination({ fetchFn: mockFetch, initialSize: 50 }));
+    renderPagination({ fetchFn: mockFetch, initialSize: 50 });
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(0, 50, '', {});
@@ -69,7 +82,7 @@ describe('usePagination', () => {
   });
 
   it('uses custom default sort', async () => {
-    renderHook(() => usePagination({ fetchFn: mockFetch, defaultSort: 'nombre,asc' }));
+    renderPagination({ fetchFn: mockFetch, defaultSort: 'nombre,asc' });
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(0, 20, 'nombre,asc', {});
@@ -77,7 +90,7 @@ describe('usePagination', () => {
   });
 
   it('re-fetches when page changes', async () => {
-    const { result } = renderHook(() => usePagination({ fetchFn: mockFetch }));
+    const { result } = renderPagination({ fetchFn: mockFetch });
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
@@ -89,7 +102,7 @@ describe('usePagination', () => {
   });
 
   it('resets page to 0 when size changes', async () => {
-    const { result } = renderHook(() => usePagination({ fetchFn: mockFetch }));
+    const { result } = renderPagination({ fetchFn: mockFetch });
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
@@ -103,7 +116,7 @@ describe('usePagination', () => {
   });
 
   it('resets page to 0 when filters change', async () => {
-    const { result } = renderHook(() => usePagination({ fetchFn: mockFetch }));
+    const { result } = renderPagination({ fetchFn: mockFetch });
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
@@ -117,7 +130,7 @@ describe('usePagination', () => {
   });
 
   it('resets page to 0 when sort changes', async () => {
-    const { result } = renderHook(() => usePagination({ fetchFn: mockFetch }));
+    const { result } = renderPagination({ fetchFn: mockFetch });
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
@@ -135,7 +148,7 @@ describe('usePagination', () => {
       response: { data: { message: 'Server error' } },
     });
 
-    const { result } = renderHook(() => usePagination({ fetchFn: failFetch }));
+    const { result } = renderPagination({ fetchFn: failFetch });
 
     await waitFor(() => {
       expect(result.current.error).toBe('Server error');
@@ -147,7 +160,7 @@ describe('usePagination', () => {
   it('handles errors without response.data.message', async () => {
     const failFetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
-    const { result } = renderHook(() => usePagination({ fetchFn: failFetch }));
+    const { result } = renderPagination({ fetchFn: failFetch });
 
     await waitFor(() => {
       expect(result.current.error).toBe('Network error');
@@ -155,7 +168,7 @@ describe('usePagination', () => {
   });
 
   it('refresh re-fetches data', async () => {
-    const { result } = renderHook(() => usePagination({ fetchFn: mockFetch }));
+    const { result } = renderPagination({ fetchFn: mockFetch });
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
@@ -165,7 +178,7 @@ describe('usePagination', () => {
   });
 
   it('handleChangePage updates page', async () => {
-    const { result } = renderHook(() => usePagination({ fetchFn: mockFetch }));
+    const { result } = renderPagination({ fetchFn: mockFetch });
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
@@ -177,7 +190,7 @@ describe('usePagination', () => {
   });
 
   it('handleChangeRowsPerPage updates size and resets page', async () => {
-    const { result } = renderHook(() => usePagination({ fetchFn: mockFetch }));
+    const { result } = renderPagination({ fetchFn: mockFetch });
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 

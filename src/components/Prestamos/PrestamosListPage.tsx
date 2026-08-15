@@ -109,6 +109,7 @@ export const PrestamosListPage: React.FC = () => {
     setSort,
     refresh,
   } = usePagination<PrestamoPersonalDTO, PrestamoListParams>({
+    queryKey: 'prestamos',
     fetchFn: fetchPrestamos,
     defaultSort: 'diasVencido,desc',
     initialSize: 25,

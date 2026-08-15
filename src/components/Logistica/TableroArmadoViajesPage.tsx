@@ -117,6 +117,7 @@ const TableroArmadoViajesPage: React.FC = () => {
   }), [urlFilters]);
 
   const pagination = usePagination<TableroPendienteRow, TableroFilterParams>({
+    queryKey: 'tablero-armado-viajes',
     fetchFn: (page, size, sort, filters) => tableroViajesApi.getPendientes(page, size, sort, filters),
     initialSize: 50,
     defaultSort: 'fechaEstimada,asc',

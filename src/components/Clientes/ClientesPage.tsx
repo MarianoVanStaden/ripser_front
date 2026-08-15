@@ -79,6 +79,7 @@ const ClientesPage: React.FC = () => {
     setFilters,
     refresh: _refresh,
   } = usePagination<Cliente, ClienteFilterParams>({
+    queryKey: 'clientes',
     fetchFn: fetchClientes,
     initialSize: 12,
     defaultSort: 'nombre,asc',

@@ -214,6 +214,7 @@ export const CobranzasListPage: React.FC = () => {
     setSort,
     refresh,
   } = usePagination<GestionCobranzaDTO, GestionCobranzaListParams>({
+    queryKey: 'gestiones-cobranza',
     fetchFn: fetchGestiones,
     defaultSort: 'fechaApertura,desc',
     initialSize: 25,
