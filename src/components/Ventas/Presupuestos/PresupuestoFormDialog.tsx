@@ -1,0 +1,1557 @@
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useLeadSearch } from "../../../hooks/useLeadSearch";
+import { CANAL_LABELS, type CanalEnum } from "../../../types/lead.types";
+import {
+  Box,
+  Button,
+  Typography,
+  CircularProgress,
+  Alert,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  MenuItem,
+  Chip,
+  Tooltip,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  Autocomplete,
+  InputAdornment,
+  ToggleButton,
+  ToggleButtonGroup,
+} from "@mui/material";
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Search as SearchIcon,
+} from "@mui/icons-material";
+import { clienteApi, leadApi, productApi } from "../../../api/services";
+import { documentoApi } from "../../../api/services/documentoApi";
+import { recetaFabricacionApi } from "../../../api/services/recetaFabricacionApi";
+import { useOfertasVigentes } from "../../../hooks/useOfertasVigentes";
+import { prestamoPersonalApi } from "../../../api/services/prestamoPersonalApi";
+import { cuentaCorrienteApi } from "../../../api/services/cuentaCorrienteApi";
+import { ESTADO_LABELS, PRIORIDAD_LABELS } from "../../../types/lead.types";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, RecetaFabricacionDTO, TipoItemDocumento, DeudaClienteError } from "../../../types";
+import { EstadoDocumento as EstadoDocumentoEnum } from "../../../types";
+import ColorPicker from "../../common/ColorPicker";
+import LoadingOverlay from "../../common/LoadingOverlay";
+import { useAuth } from "../../../context/AuthContext";
+import { getMetodoPagoLabel as getMetodoPagoLabelShared } from "../../../utils/financiamiento";
+import AuditoriaFlujo from "../../common/AuditoriaFlujo";
+import DeudaClienteConfirmDialog from "../DeudaClienteConfirmDialog";
+import ClienteAutocomplete from "../../common/ClienteAutocomplete";
+import type { DetalleForm, FormData, TipoDescuento } from './types';
+import RevestimientoDialog from './dialogs/RevestimientoDialog';
+import EnvioDialog from './dialogs/EnvioDialog';
+import { initialDetalle, initialFormData } from './constants';
+import ConfirmPresupuestoDialog from './dialogs/ConfirmPresupuestoDialog';
+
+interface PresupuestoFormDialogProps {
+  open: boolean;
+  /** null = alta; con valor = edición (o vista si readOnly). */
+  presupuesto: DocumentoComercial | null;
+  readOnly: boolean;
+  /** Deep-link desde el detalle de lead: preselecciona el lead en modo alta. */
+  initialLeadId?: string | null;
+  usuarioOptions: Usuario[];
+  isAdmin: boolean;
+  canReassignVendedor: boolean;
+  /** Resuelve la opción de financiamiento seleccionada (mapa que vive en la página). */
+  getSelectedFinancingOption: (presupuesto: DocumentoComercial) => OpcionFinanciamientoDTO | undefined;
+  onClose: () => void;
+  /** Se dispara tras persistir OK; el padre invalida la query y muestra snackbar/success. */
+  onSaved: (saved: DocumentoComercial, isNew: boolean) => void;
+}
+
+/**
+ * Formulario de alta/edición/vista de presupuesto (Etapa 6.4: extraído de
+ * PresupuestosPage, que quedó como orquestador de la lista). Es dueño de todo
+ * el estado del form: datos, detalles, catálogos (productos/recetas, cargados
+ * al primer open), typeahead de leads, confirmaciones y pre-check de deuda.
+ */
+export default function PresupuestoFormDialog({
+  open,
+  presupuesto,
+  readOnly,
+  initialLeadId,
+  usuarioOptions,
+  isAdmin,
+  canReassignVendedor,
+  getSelectedFinancingOption,
+  onClose,
+  onSaved,
+}: PresupuestoFormDialogProps) {
+  const { user } = useAuth();
+
+  // Aliases para conservar los identificadores del JSX movido desde la página.
+  const dialogOpen = open;
+  const editingPresupuesto = presupuesto;
+
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [destinatarioMode, setDestinatarioMode] = useState<'CLIENTE' | 'LEAD'>('CLIENTE');
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
+  const { getPrecioEfectivo, getOferta } = useOfertasVigentes();
+  const [tipoEquipoFiltro, setTipoEquipoFiltro] = useState<'' | 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO'>('');
+  const [formLoading, setFormLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [detalles, setDetalles] = useState<DetalleForm[]>([]);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmDialogAction, setConfirmDialogAction] = useState<'close' | 'create' | null>(null);
+
+  const [envioDialogOpen, setEnvioDialogOpen] = useState(false);
+  const [revestimientoDialogOpen, setRevestimientoDialogOpen] = useState(false);
+
+  // Canal de venta + gestionante (cuando quien habla por WhatsApp no es el titular).
+  const [canalVenta, setCanalVenta] = useState<string>('');
+  const [gestionanteNombre, setGestionanteNombre] = useState('');
+  const [gestionanteTelefono, setGestionanteTelefono] = useState('');
+
+  const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
+  const pendingDeudaRef = useRef<(() => void) | null>(null);
+  const deudaYaConfirmadaRef = useRef(false);
+  // Guard de re-entrada: el diálogo de confirmación queda abierto durante el
+  // guardado async (pre-check de deuda + createPresupuesto), y su botón no se
+  // deshabilita, así que clicks repetidos disparaban varios createPresupuesto y
+  // creaban presupuestos duplicados. Se setea síncrono al entrar y se libera al salir.
+  const guardandoPresupuestoRef = useRef(false);
+
+  // Typeahead server-side de leads para el Autocomplete del form.
+  const leadSearch = useLeadSearch({ excludeEstados: ['CONVERTIDO'], size: 20 });
+
+  // Catálogos del form (productos + recetas): se cargan una sola vez, al
+  // primer open. Antes la página los traía en el mount aunque nadie abriera
+  // el form.
+  const [catalogosCargados, setCatalogosCargados] = useState(false);
+  useEffect(() => {
+    if (!open || catalogosCargados) return;
+    setCatalogosCargados(true);
+    productApi.getAll({ page: 0, size: 10000 })
+      .then((res) => setProductos(Array.isArray(res.content) ? res.content : []))
+      .catch((err) => {
+        console.error("Error fetching productos:", err);
+        setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
+      });
+    recetaFabricacionApi.findDisponiblesParaVenta()
+      .then((res) => setRecetas(Array.isArray(res) ? res : []))
+      .catch((err) => {
+        console.error("Error fetching recetas:", err);
+        setError("Error al cargar recetas de equipos: " + (err.response?.data?.message || err.message));
+      });
+  }, [open, catalogosCargados]);
+
+  // Población al abrir (reemplaza el handleOpenDialog de la página): edición
+  // hidrata desde el presupuesto; alta resetea, con lead preseleccionado si
+  // viene por deep-link.
+  useEffect(() => {
+    if (!open) return;
+    setHasUnsavedChanges(false);
+    setError(null);
+    if (presupuesto) {
+      setFormData({
+        clienteId: presupuesto.clienteId?.toString() || "",
+        leadId: (presupuesto as any).leadId?.toString() || "",
+        usuarioId: presupuesto.usuarioId?.toString() || (user?.id ?? 0).toString(),
+        fechaEmision: presupuesto.fechaEmision?.split("T")[0] || new Date().toISOString().split("T")[0],
+        observaciones: presupuesto.observaciones || "",
+        estado: presupuesto.estado,
+        tipoIva: (presupuesto as any).tipoIva || 'IVA_21',
+        descuentoTipo: (presupuesto.descuentoTipo as TipoDescuento) || 'NONE',
+        descuentoValor: Number(presupuesto.descuentoValor) || 0,
+      });
+      setDestinatarioMode(presupuesto.clienteId ? 'CLIENTE' : 'LEAD');
+      setCanalVenta(presupuesto.canalVenta || '');
+      setGestionanteNombre(presupuesto.gestionanteNombre || '');
+      setGestionanteTelefono(presupuesto.gestionanteTelefono || '');
+      setSelectedCliente(null);
+      if (presupuesto.clienteId) {
+        // Resolver el cliente del backend para mostrar el nombre/razón social aunque no esté en cache local.
+        clienteApi.getById(presupuesto.clienteId)
+          .then(setSelectedCliente)
+          .catch(() => setSelectedCliente(null));
+      }
+      setDetalles(
+        Array.isArray(presupuesto.detalles)
+          ? presupuesto.detalles.map((detalle: DetalleDocumento) => ({
+              id: detalle.id,
+              tipoItem: detalle.tipoItem,
+              productoId: detalle.productoId?.toString() || "",
+              recetaId: detalle.recetaId?.toString() || "",
+              colorId: detalle.color?.id,
+              colorNombre: detalle.color?.nombre,
+              medidaId: detalle.medida?.id,
+              medidaNombre: detalle.medida?.nombre,
+              descripcion: detalle.descripcion || "",
+              cantidad: detalle.cantidad,
+              precioUnitario: detalle.precioUnitario,
+              subtotal: detalle.subtotal,
+            }))
+          : []
+      );
+    } else {
+      setFormData({ ...initialFormData, usuarioId: isAdmin ? '' : (user?.id ?? 0).toString() });
+      setDestinatarioMode('CLIENTE');
+      setCanalVenta('');
+      setGestionanteNombre('');
+      setGestionanteTelefono('');
+      setSelectedCliente(null);
+      setDetalles([{ ...initialDetalle }]);
+      if (initialLeadId) {
+        setDestinatarioMode('LEAD');
+        setFormData((prev) => ({ ...prev, leadId: initialLeadId }));
+        const leadIdNum = Number(initialLeadId);
+        if (Number.isFinite(leadIdNum) && leadIdNum > 0) {
+          // Sembrar el input del typeahead con el nombre para que el
+          // Autocomplete resuelva y muestre el lead preseleccionado.
+          leadApi.getById(leadIdNum)
+            .then((lead) => {
+              leadSearch.setInputValue(
+                [lead.nombre, lead.apellido].filter(Boolean).join(' ')
+              );
+            })
+            .catch(() => { /* si falla, el usuario selecciona el lead a mano */ });
+        }
+      }
+    }
+    // Poblar solo al (re)abrir: presupuesto/initialLeadId quedan fijados en ese momento.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  /** Reset completo + cierre (única salida del dialog). */
+  const cerrarYResetear = useCallback(() => {
+    setFormData({ ...initialFormData, usuarioId: isAdmin ? '' : (user?.id ?? 0).toString() });
+    setSelectedCliente(null);
+    setDestinatarioMode('CLIENTE');
+    setDetalles([]);
+    setError(null);
+    setHasUnsavedChanges(false);
+    setConfirmDialogOpen(false);
+    setConfirmDialogAction(null);
+    deudaYaConfirmadaRef.current = false;
+    onClose();
+  }, [user, isAdmin, onClose]);
+
+  const parseDeudaError = (err: any): DeudaClienteError | null => {
+    const data = err?.response?.data;
+    if (!data) return null;
+    if (data.requiereConfirmacion || data.cuotasPendientes != null) {
+      return {
+        error: data.error || 'Cliente con deuda pendiente',
+        message: data.message || '',
+        cuotasPendientes: data.cuotasPendientes ?? 0,
+        montoCuotasPendientes: data.montoCuotasPendientes ?? null,
+        deudaCuentaCorriente: data.deudaCuentaCorriente ?? null,
+        requiereConfirmacion: true,
+      };
+    }
+    if (typeof data.message === 'string' && data.message.toLowerCase().includes('deuda pendiente')) {
+      return {
+        error: 'Cliente con deuda pendiente',
+        message: data.message,
+        cuotasPendientes: 0,
+        deudaCuentaCorriente: null,
+        requiereConfirmacion: true,
+      };
+    }
+    return null;
+  };
+
+  const handleDeudaConfirm = useCallback(() => {
+    setDeudaError(null);
+    const fn = pendingDeudaRef.current;
+    pendingDeudaRef.current = null;
+    fn?.();
+  }, []);
+
+  const handleDeudaCancel = useCallback(() => {
+    setDeudaError(null);
+    pendingDeudaRef.current = null;
+    cerrarYResetear();
+  }, [cerrarYResetear]);
+
+  const checkClienteDeuda = useCallback(async (clienteId: number): Promise<DeudaClienteError | null> => {
+    try {
+      const [prestamos, ccPage] = await Promise.all([
+        prestamoPersonalApi.getByCliente(clienteId),
+        cuentaCorrienteApi.getByClienteId(clienteId),
+      ]);
+      const activoStates = ['ACTIVO', 'EN_MORA', 'EN_LEGAL'];
+      const prestamosActivos = prestamos.filter((p: any) => activoStates.includes(p.estado));
+      const cuotasPendientes = prestamosActivos.reduce((sum: number, p: any) => sum + (p.cuotasPendientes || 0), 0);
+      const montoCuotasPendientes = prestamosActivos.reduce((sum: number, p: any) => sum + (p.saldoPendiente || 0), 0);
+      const movements = ccPage.content;
+      const lastMovement = [...movements].sort(
+        (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+      )[0];
+      const saldo = lastMovement?.saldo ?? 0;
+      const deudaCC = saldo < 0 ? saldo : null;
+      if (cuotasPendientes > 0 || deudaCC !== null) {
+        return {
+          error: 'Cliente con deuda pendiente',
+          message: '',
+          cuotasPendientes,
+          montoCuotasPendientes: cuotasPendientes > 0 ? montoCuotasPendientes : null,
+          deudaCuentaCorriente: deudaCC,
+          requiereConfirmacion: true,
+        };
+      }
+      return null;
+    } catch (err) {
+      console.warn('No se pudo verificar deuda del cliente de forma preventiva:', err);
+      return null;
+    }
+  }, []);
+
+  const getIvaPercentage = useCallback((tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO'): number => {
+    switch (tipoIva) {
+      case 'IVA_21': return 0.21;
+      case 'IVA_10_5': return 0.105;
+      case 'EXENTO': return 0;
+      default: return 0.21;
+    }
+  }, []);
+
+  const subtotal = useMemo(() => detalles.reduce((sum, detalle) => sum + detalle.subtotal, 0), [detalles]);
+  // ENVIO items are never discounted — separate them before computing descuentoAmount.
+  const subtotalEnvioForm = useMemo(
+    () => detalles.filter((d) => d.tipoItem === 'ENVIO').reduce((s, d) => s + d.subtotal, 0),
+    [detalles]
+  );
+  const subtotalBase = useMemo(() => subtotal - subtotalEnvioForm, [subtotal, subtotalEnvioForm]);
+  const descuentoAmount = useMemo(() => {
+    if (formData.descuentoTipo === 'PORCENTAJE') {
+      const pct = Math.min(100, Math.max(0, formData.descuentoValor || 0));
+      return subtotalBase * (pct / 100);
+    }
+    if (formData.descuentoTipo === 'MONTO_FIJO') {
+      return Math.min(subtotalBase, Math.max(0, formData.descuentoValor || 0));
+    }
+    return 0;
+  }, [subtotalBase, formData.descuentoTipo, formData.descuentoValor]);
+  const subtotalNeto = useMemo(
+    () => Math.max(0, subtotalBase - descuentoAmount) + subtotalEnvioForm,
+    [subtotalBase, subtotalEnvioForm, descuentoAmount]
+  );
+  const ivaAmount = useMemo(() => subtotalNeto * getIvaPercentage(formData.tipoIva), [subtotalNeto, formData.tipoIva, getIvaPercentage]);
+  const total = useMemo(() => subtotalNeto + ivaAmount, [subtotalNeto, ivaAmount]);
+
+  // Re-export desde utils compartido para consumidores que solo necesitan el label
+  const getMetodoPagoLabel = getMetodoPagoLabelShared;
+
+  const addDetalle = useCallback(() => {
+    if (readOnly) return;
+    setDetalles((prev) => [...prev, { ...initialDetalle }]);
+    setHasUnsavedChanges(true);
+  }, [readOnly]);
+
+  // Cantidad de equipos en los detalles actuales: default de los dialogs de
+  // envío/revestimiento.
+  const cantEquiposEnDetalles = useMemo(
+    () => detalles
+      .filter((d) => d.tipoItem === 'EQUIPO')
+      .reduce((sum, d) => sum + (d.cantidad || 0), 0),
+    [detalles]
+  );
+
+  // Alta del detalle que devuelven EnvioDialog / RevestimientoDialog.
+  const handleAgregarDetalleExtra = useCallback((detalle: DetalleForm) => {
+    setDetalles((prev) => [...prev, detalle]);
+    setHasUnsavedChanges(true);
+  }, []);
+
+  const updateDetalle = useCallback((index: number, field: keyof DetalleForm, value: string | number) => {
+    if (readOnly) return;
+    setDetalles((prev) => {
+      const newDetalles = [...prev];
+      const detalle = newDetalles[index];
+
+      if (field === "tipoItem") {
+        detalle.tipoItem = value as TipoItemDocumento;
+        // Reset item-specific fields when switching type
+        detalle.productoId = "";
+        detalle.recetaId = "";
+        detalle.colorId = undefined;
+        detalle.colorNombre = undefined;
+        detalle.medidaId = undefined;
+        detalle.medidaNombre = undefined;
+        detalle.descripcion = "";
+        detalle.precioUnitario = 0;
+        detalle.subtotal = 0;
+      } else if (field === "productoId") {
+        detalle.productoId = value as string;
+      } else if (field === "recetaId") {
+        detalle.recetaId = value as string;
+      } else if (field === "colorId") {
+        const next = value === "" || value == null ? undefined : Number(value);
+        detalle.colorId = next;
+        detalle.colorNombre = undefined; // re-derived below from cache when needed
+      } else if (field === "descripcion") {
+        detalle.descripcion = value as string;
+      } else if (field === "cantidad") {
+        detalle.cantidad = Number(value) || 0;
+      } else if (field === "precioUnitario") {
+        detalle.precioUnitario = Number(value) || 0;
+      }
+
+      if (field === "cantidad" || field === "precioUnitario") {
+        detalle.subtotal = detalle.cantidad * detalle.precioUnitario;
+      }
+
+      if (field === "productoId" && value) {
+        const producto = productos.find((p) => p.id === Number(value));
+        if (producto) {
+          const base = producto.precio || 0;
+          const { precioEfectivo, hayOferta } = getPrecioEfectivo('PRODUCTO', Number(value), base);
+          detalle.descripcion = hayOferta
+            ? `${producto.nombre} [OFERTA]`
+            : producto.nombre;
+          detalle.precioUnitario = precioEfectivo;
+          detalle.subtotal = detalle.cantidad * precioEfectivo;
+        }
+      }
+
+      if (field === "recetaId" && value) {
+        const receta = recetas.find((r) => r.id === Number(value));
+        if (receta) {
+          const base = receta.precioVenta || 0;
+          const { precioEfectivo, hayOferta } = getPrecioEfectivo('RECETA', Number(value), base);
+          const baseDesc = `${receta.nombre} - ${receta.modelo || ''} (${receta.tipoEquipo})`;
+          detalle.descripcion = hayOferta ? `${baseDesc} [OFERTA]` : baseDesc;
+          detalle.precioUnitario = precioEfectivo;
+          detalle.subtotal = detalle.cantidad * precioEfectivo;
+          // La medida proviene siempre de la receta (no es editable por el usuario).
+          detalle.medidaId = receta.medida?.id;
+          detalle.medidaNombre = receta.medida?.nombre;
+        }
+      } else if (field === "recetaId" && !value) {
+        detalle.medidaId = undefined;
+        detalle.medidaNombre = undefined;
+      }
+
+      return newDetalles;
+    });
+    setHasUnsavedChanges(true);
+  }, [readOnly, productos, recetas, getPrecioEfectivo]);
+
+  const removeDetalle = useCallback((index: number) => {
+    if (readOnly) return;
+    setDetalles((prev) => prev.filter((_, i) => i !== index));
+    setHasUnsavedChanges(true);
+  }, [readOnly]);
+
+  const handleCloseDialog = useCallback(() => {
+    if (hasUnsavedChanges && !readOnly) {
+      setConfirmDialogAction('close');
+      setConfirmDialogOpen(true);
+    } else {
+      cerrarYResetear();
+    }
+  }, [hasUnsavedChanges, readOnly, cerrarYResetear]);
+
+  const handleConfirmClose = useCallback(() => {
+    cerrarYResetear();
+  }, [cerrarYResetear]);
+
+  const handleSavePresupuesto = useCallback(async () => {
+    // Re-entry guard: descarta clicks repetidos en el botón de confirmar mientras
+    // el guardado async está en vuelo (el diálogo sigue abierto hasta que resuelve).
+    if (guardandoPresupuestoRef.current) return;
+    guardandoPresupuestoRef.current = true;
+    try {
+    if (!user) {
+      setError("Debe iniciar sesión");
+      return;
+    }
+
+    // Show confirmation dialog before creating
+    if (!editingPresupuesto && confirmDialogAction !== 'create') {
+      setConfirmDialogAction('create');
+      setConfirmDialogOpen(true);
+      return;
+    }
+
+    // Admin: la atribución de la venta es explícita, sin fallback silencioso al logueado.
+    if (isAdmin && !formData.usuarioId) {
+      setError("Debe seleccionar un vendedor");
+      return;
+    }
+
+    const payload: any = {
+      ...(formData.clienteId ? { clienteId: Number(formData.clienteId) } : {}),
+      ...(formData.leadId ? { leadId: Number(formData.leadId) } : {}),
+      usuarioId: Number(formData.usuarioId) || (user?.id ?? 0),
+      observaciones: formData.observaciones,
+      ...(canalVenta ? { canalVenta } : {}),
+      ...(gestionanteNombre.trim()
+        ? { gestionanteNombre: gestionanteNombre.trim(), gestionanteTelefono: gestionanteTelefono.trim() || undefined }
+        : {}),
+      tipoIva: formData.tipoIva,
+      descuentoTipo: formData.descuentoTipo,
+      descuentoValor: formData.descuentoTipo === 'NONE' ? 0 : formData.descuentoValor,
+      detalles: detalles.map((d) => {
+        const baseDetalle: any = {
+          tipoItem: d.tipoItem,
+          cantidad: d.cantidad,
+          precioUnitario: d.precioUnitario,
+          descripcion: d.descripcion,
+        };
+
+        if (d.tipoItem === 'PRODUCTO') {
+          baseDetalle.productoId = Number(d.productoId);
+        } else if (d.tipoItem === 'EQUIPO') {
+          baseDetalle.recetaId = Number(d.recetaId);
+          baseDetalle.colorId = d.colorId ?? undefined;
+          // medida no se envía: el backend la deriva de la receta.
+        }
+        // ENVIO/REVESTIMIENTO: no productoId/recetaId — descripcion ya está en baseDetalle.
+
+        return baseDetalle;
+      }),
+    };
+
+    try {
+      if (!formData.clienteId && !formData.leadId) {
+        setError("Debe seleccionar un cliente o lead");
+        return;
+      }
+      if (detalles.length === 0) {
+        setError("Debe agregar al menos un detalle");
+        return;
+      }
+      for (const detalle of detalles) {
+        if (detalle.tipoItem === 'PRODUCTO') {
+          if (!detalle.productoId || isNaN(Number(detalle.productoId)) || Number(detalle.productoId) <= 0) {
+            setError("Todos los detalles de tipo PRODUCTO deben tener un producto válido");
+            return;
+          }
+        } else if (detalle.tipoItem === 'EQUIPO') {
+          if (!detalle.recetaId || isNaN(Number(detalle.recetaId)) || Number(detalle.recetaId) <= 0) {
+            setError("Todos los detalles de tipo EQUIPO deben tener una receta válida");
+            return;
+          }
+        }
+        // ENVIO: precio puede ser 0 si bonificado. REVESTIMIENTO siempre requiere precio > 0.
+        if (!detalle.descripcion.trim()) {
+          setError("Todos los detalles deben tener una descripción");
+          return;
+        }
+        if (detalle.cantidad <= 0) {
+          setError("La cantidad debe ser mayor a 0");
+          return;
+        }
+        if (detalle.tipoItem !== 'ENVIO' && detalle.precioUnitario <= 0) {
+          setError("El precio unitario debe ser mayor a 0");
+          return;
+        }
+      }
+
+      // Pre-check de deuda del cliente antes de crear el presupuesto
+      if (!editingPresupuesto && formData.clienteId && !deudaYaConfirmadaRef.current) {
+        const deudaData = await checkClienteDeuda(Number(formData.clienteId));
+        if (deudaData) {
+          setDeudaError(deudaData);
+          pendingDeudaRef.current = () => {
+            deudaYaConfirmadaRef.current = true;
+            handleSavePresupuesto();
+          };
+          return;
+        }
+      }
+
+      setFormLoading(true);
+      setError(null);
+
+      let savedPresupuesto: DocumentoComercial;
+      if (editingPresupuesto) {
+        // El descuento solo puede editarse en PENDIENTE — aplicarlo primero,
+        // antes de un eventual cambio de estado a APROBADO/RECHAZADO.
+        const tipoOriginal = (editingPresupuesto.descuentoTipo as TipoDescuento) || 'NONE';
+        const valorOriginal = Number(editingPresupuesto.descuentoValor) || 0;
+        const nuevoTipo = formData.descuentoTipo;
+        const nuevoValor = nuevoTipo === 'NONE' ? 0 : formData.descuentoValor;
+        const descuentoCambio = nuevoTipo !== tipoOriginal || nuevoValor !== valorOriginal;
+        if (descuentoCambio) {
+          await documentoApi.updateDescuento(editingPresupuesto.id, nuevoTipo, nuevoValor);
+        }
+        savedPresupuesto = await documentoApi.changeEstado(editingPresupuesto.id, formData.estado);
+        const observacionesOriginales = editingPresupuesto.observaciones ?? '';
+        if (formData.observaciones !== observacionesOriginales) {
+          savedPresupuesto = await documentoApi.updateObservaciones(
+            editingPresupuesto.id,
+            formData.observaciones || null
+          );
+        }
+        const vendedorOriginalId = editingPresupuesto.usuarioId ? Number(editingPresupuesto.usuarioId) : null;
+        const nuevoVendedorId = Number(formData.usuarioId) || null;
+        if (canReassignVendedor && nuevoVendedorId && nuevoVendedorId !== vendedorOriginalId) {
+          savedPresupuesto = await documentoApi.updateVendedor(editingPresupuesto.id, nuevoVendedorId);
+        }
+      } else {
+        try {
+          savedPresupuesto = await documentoApi.createPresupuesto(payload);
+        } catch (createErr: any) {
+          const deudaData = parseDeudaError(createErr);
+          if (deudaData) {
+            setDeudaError(deudaData);
+            pendingDeudaRef.current = () => {
+              deudaYaConfirmadaRef.current = true;
+              handleSavePresupuesto();
+            };
+            return;
+          }
+          throw createErr;
+        }
+      }
+
+      const esAlta = !editingPresupuesto;
+      cerrarYResetear();
+      onSaved(savedPresupuesto, esAlta);
+    } catch (err: unknown) {
+      console.error("Error saving presupuesto:", err);
+      let errorMessage = "Error al guardar el presupuesto";
+      if (typeof err === 'object' && err && 'response' in err) {
+        type Resp = { data?: unknown; status?: number };
+        const r = (err as { response?: Resp }).response;
+        if (r?.data) {
+          const data = r.data as Record<string, unknown>;
+          if (typeof data.message === 'string') errorMessage = data.message;
+          else if (typeof data.error === 'string') errorMessage = `${data.error}: ${typeof data.message === 'string' ? data.message : ''}`;
+          else errorMessage = `Error ${r.status}: ${JSON.stringify(r.data)}`;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+      setConfirmDialogOpen(false);
+      setConfirmDialogAction(null);
+    } finally {
+      setFormLoading(false);
+    }
+    } finally {
+      // Libera el guard en toda salida (éxito, error, o return temprano por
+      // confirmación/deuda). El segundo click ya fue descartado de forma síncrona.
+      guardandoPresupuestoRef.current = false;
+    }
+  }, [user, isAdmin, formData, detalles, editingPresupuesto, confirmDialogAction, canReassignVendedor, canalVenta, gestionanteNombre, gestionanteTelefono, cerrarYResetear, onSaved, checkClienteDeuda]);
+
+  const recetasCountPorTipo = useMemo(() => {
+    const counts: Record<'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO', number> = {
+      HELADERA: 0, COOLBOX: 0, EXHIBIDOR: 0, OTRO: 0,
+    };
+    recetas.forEach((r) => {
+      const t = r.tipoEquipo as 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO' | undefined;
+      if (t && t in counts) counts[t]++;
+    });
+    return counts;
+  }, [recetas]);
+
+  const recetasFiltradasPorTipo = useMemo(
+    () => (tipoEquipoFiltro ? recetas.filter((r) => r.tipoEquipo === tipoEquipoFiltro) : recetas),
+    [recetas, tipoEquipoFiltro]
+  );
+
+  const leadSearchOptionsWithSelected = useMemo(() => {
+    const filtered = leadSearch.options.filter(l => l.estadoLead !== 'CONVERTIDO');
+    const selectedLeadId = formData.leadId ? Number(formData.leadId) : null;
+    const selectedLead = selectedLeadId ? leadSearch.options.find(l => l.id === selectedLeadId) : null;
+    if (!selectedLead) return filtered;
+    return filtered.some(l => l.id === selectedLead.id) ? filtered : [selectedLead, ...filtered];
+  }, [leadSearch.options, formData.leadId]);
+
+  const selectedLeadValue = useMemo(() => {
+    const selectedLeadId = formData.leadId ? Number(formData.leadId) : null;
+    return selectedLeadId ? leadSearch.options.find(l => l.id === selectedLeadId) || null : null;
+  }, [leadSearch.options, formData.leadId]);
+
+  return (
+    <>
+      <LoadingOverlay open={formLoading} message="Guardando presupuesto..." />
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        maxWidth="lg"
+        fullWidth
+        fullScreen={false}
+        aria-labelledby="presupuesto-dialog-title"
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: { xs: '100%', sm: '90vh' },
+            m: { xs: 0, sm: 2 }
+          }
+        }}
+      >
+        <DialogTitle id="presupuesto-dialog-title">
+          {editingPresupuesto ? (readOnly ? "Ver Presupuesto" : "Editar Presupuesto") : "Nuevo Presupuesto"}
+        </DialogTitle>
+        <DialogContent sx={{ minHeight: { xs: "auto", sm: "500px" } }}>
+          <Box sx={{ pt: 2 }}>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+                {error}
+              </Alert>
+            )}
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(auto-fit, minmax(280px, 1fr))" }, gap: 2 }}>
+              <Box sx={{ gridColumn: { xs: 'auto', md: '1 / -1' } }}>
+                <ToggleButtonGroup
+                  value={destinatarioMode}
+                  exclusive
+                  size="small"
+                  onChange={(_, newMode: 'CLIENTE' | 'LEAD' | null) => {
+                    if (!newMode || readOnly || !!editingPresupuesto) return;
+                    setDestinatarioMode(newMode);
+                    if (newMode === 'CLIENTE') {
+                      setFormData({ ...formData, leadId: '' });
+                    } else {
+                      setFormData({ ...formData, clienteId: '' });
+                      setSelectedCliente(null);
+                    }
+                    deudaYaConfirmadaRef.current = false;
+                    setHasUnsavedChanges(true);
+                  }}
+                  disabled={readOnly || !!editingPresupuesto}
+                  sx={{ mb: 1 }}
+                  aria-label="Tipo de destinatario"
+                >
+                  <ToggleButton value="CLIENTE" aria-label="Cliente">Cliente</ToggleButton>
+                  <ToggleButton value="LEAD" aria-label="Lead">Lead</ToggleButton>
+                </ToggleButtonGroup>
+
+                {destinatarioMode === 'CLIENTE' ? (
+                  <ClienteAutocomplete
+                    value={selectedCliente}
+                    onChange={async (cliente) => {
+                      setSelectedCliente(cliente);
+                      setFormData({
+                        ...formData,
+                        clienteId: cliente ? cliente.id.toString() : '',
+                        leadId: '',
+                      });
+                      deudaYaConfirmadaRef.current = false;
+                      if (cliente) {
+                        const deudaData = await checkClienteDeuda(cliente.id);
+                        if (deudaData) {
+                          setDeudaError(deudaData);
+                          pendingDeudaRef.current = () => {
+                            deudaYaConfirmadaRef.current = true;
+                          };
+                        }
+                      }
+                      setHasUnsavedChanges(true);
+                    }}
+                    disabled={readOnly || !!editingPresupuesto}
+                    label="Cliente"
+                    placeholder="Escribí nombre, razón social, teléfono o CUIT…"
+                    required
+                    error={!formData.clienteId && hasUnsavedChanges}
+                    helperText={!formData.clienteId && hasUnsavedChanges ? 'Seleccioná un cliente' : ' '}
+                    size="medium"
+                    pageSize={50}
+                  />
+                ) : (
+                  <Autocomplete
+                    fullWidth
+                    options={leadSearchOptionsWithSelected}
+                    getOptionLabel={(l) => (l.apellido ? `${l.nombre} ${l.apellido}` : l.nombre || '')}
+                    isOptionEqualToValue={(option, val) => option.id === val.id}
+                    value={selectedLeadValue}
+                    inputValue={leadSearch.inputValue}
+                    onInputChange={(_, value) => leadSearch.setInputValue(value)}
+                    filterOptions={(opts) => opts}
+                    loading={leadSearch.loading}
+                    onChange={(_, newValue) => {
+                      setFormData({
+                        ...formData,
+                        leadId: newValue?.id ? newValue.id.toString() : '',
+                        clienteId: '',
+                      });
+                      setSelectedCliente(null);
+                      deudaYaConfirmadaRef.current = false;
+                      setHasUnsavedChanges(true);
+                    }}
+                    disabled={readOnly || !!editingPresupuesto}
+                    renderOption={({ key, ...props }, option) => {
+                      const getInitials = (): string => {
+                        const nombre = option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre;
+                        const parts = nombre.split(/\s+/).slice(0, 2);
+                        return parts.map(p => p.charAt(0).toUpperCase()).join('') || '?';
+                      };
+
+                      const getStateColor = (estado?: string): 'error' | 'warning' | 'success' | 'info' | 'default' => {
+                        switch (estado) {
+                          case 'CONVERTIDO':
+                          case 'VENTA':
+                            return 'success';
+                          case 'DESCARTADO':
+                          case 'PERDIDO':
+                          case 'LEAD_DUPLICADO':
+                            return 'error';
+                          case 'MOSTRO_INTERES':
+                          case 'CLIENTE_POTENCIAL':
+                            return 'warning';
+                          default:
+                            return 'default';
+                        }
+                      };
+
+                      const getPrioridadColor = (prioridad?: string): 'error' | 'warning' | 'info' | 'default' => {
+                        switch (prioridad) {
+                          case 'HOT':
+                            return 'error';
+                          case 'WARM':
+                            return 'warning';
+                          case 'COLD':
+                            return 'info';
+                          default:
+                            return 'default';
+                        }
+                      };
+
+                      const secondaryInfo: string[] = [];
+                      if (option.telefono) secondaryInfo.push(`Tel: ${option.telefono}`);
+                      if (option.email) secondaryInfo.push(option.email);
+
+                      return (
+                        <Box
+                          component="li"
+                          key={key as React.Key}
+                          {...props}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 1.5,
+                            py: 1,
+                            '&[aria-selected="true"]': { backgroundColor: 'action.selected' },
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              minWidth: 32,
+                              borderRadius: '50%',
+                              bgcolor: 'warning.light',
+                              color: 'warning.contrastText',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {getInitials()}
+                          </Box>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 600, lineHeight: 1.2, wordBreak: 'break-word' }}
+                              >
+                                {option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre}
+                              </Typography>
+                              <Chip
+                                label="Lead"
+                                size="small"
+                                color="warning"
+                                sx={{ height: 18, fontSize: '0.65rem' }}
+                              />
+                              {option.estadoLead && (
+                                <Chip
+                                  label={ESTADO_LABELS[option.estadoLead] || option.estadoLead}
+                                  size="small"
+                                  color={getStateColor(option.estadoLead)}
+                                  sx={{ height: 18, fontSize: '0.65rem' }}
+                                />
+                              )}
+                              {option.prioridad && (
+                                <Chip
+                                  label={PRIORIDAD_LABELS[option.prioridad] || option.prioridad}
+                                  size="small"
+                                  color={getPrioridadColor(option.prioridad)}
+                                  sx={{ height: 18, fontSize: '0.65rem' }}
+                                />
+                              )}
+                            </Box>
+                            {secondaryInfo.length > 0 && (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{
+                                  display: 'block',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {secondaryInfo.join(' · ')}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Typography variant="caption" color="text.disabled" sx={{ ml: 1, mt: 0.5 }}>
+                            #{option.id}
+                          </Typography>
+                        </Box>
+                      );
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Lead"
+                        placeholder="Escribí nombre, teléfono o email…"
+                        required
+                        error={!formData.leadId && hasUnsavedChanges}
+                        helperText={!formData.leadId && hasUnsavedChanges ? 'Seleccioná un lead' : ' '}
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SearchIcon color="action" fontSize="small" />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <>
+                              {leadSearch.loading ? <CircularProgress color="inherit" size={16} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                    noOptionsText={
+                      leadSearch.inputValue.trim().length === 0
+                        ? 'Empezá a escribir para buscar leads…'
+                        : leadSearch.loading
+                          ? 'Buscando…'
+                          : 'Sin resultados'
+                    }
+                    loadingText="Buscando leads…"
+                  />
+                )}
+              </Box>
+
+              {usuarioOptions.length > 0 && (
+                <TextField
+                  fullWidth
+                  select
+                  required={isAdmin}
+                  label="Vendedor"
+                  value={formData.usuarioId}
+                  onChange={(e) => {
+                    setFormData({ ...formData, usuarioId: e.target.value });
+                    setHasUnsavedChanges(true);
+                  }}
+                  margin="normal"
+                  disabled={readOnly || (!!editingPresupuesto && !canReassignVendedor)}
+                >
+                  <MenuItem value="">Seleccionar vendedor</MenuItem>
+                  {usuarioOptions.map((usuario) => (
+                    <MenuItem key={usuario.id} value={usuario.id.toString()}>
+                      {usuario.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Tipo de IVA</InputLabel>
+                <Select
+                  value={formData.tipoIva}
+                  onChange={(e) => {
+                    setFormData({ ...formData, tipoIva: e.target.value as 'IVA_21' | 'IVA_10_5' | 'EXENTO' });
+                    setHasUnsavedChanges(true);
+                  }}
+                  label="Tipo de IVA"
+                  disabled={readOnly}
+                >
+                  <MenuItem value="IVA_21">IVA 21%</MenuItem>
+                  <MenuItem value="IVA_10_5">IVA 10.5%</MenuItem>
+                  <MenuItem value="EXENTO">Exento</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1 }}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>Tipo de descuento</InputLabel>
+                  <Select
+                    value={formData.descuentoTipo}
+                    onChange={(e) => {
+                      const next = e.target.value as TipoDescuento;
+                      setFormData({
+                        ...formData,
+                        descuentoTipo: next,
+                        descuentoValor: next === 'NONE' ? 0 : formData.descuentoValor,
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    label="Tipo de descuento"
+                    disabled={readOnly}
+                  >
+                    <MenuItem value="NONE">Sin descuento</MenuItem>
+                    <MenuItem value="PORCENTAJE">Porcentaje (%)</MenuItem>
+                    <MenuItem value="MONTO_FIJO">Monto fijo ($)</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label={formData.descuentoTipo === 'PORCENTAJE' ? 'Descuento (%)' : 'Descuento ($)'}
+                  value={formData.descuentoTipo === 'NONE' ? '' : formData.descuentoValor}
+                  onChange={(e) => {
+                    const raw = parseFloat(e.target.value);
+                    const valor = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                    setFormData({
+                      ...formData,
+                      descuentoValor: formData.descuentoTipo === 'PORCENTAJE' ? Math.min(100, valor) : valor,
+                    });
+                    setHasUnsavedChanges(true);
+                  }}
+                  inputProps={{
+                    min: 0,
+                    max: formData.descuentoTipo === 'PORCENTAJE' ? 100 : undefined,
+                    step: formData.descuentoTipo === 'PORCENTAJE' ? 0.5 : 0.01,
+                  }}
+                  margin="normal"
+                  disabled={readOnly || formData.descuentoTipo === 'NONE'}
+                  helperText={
+                    formData.descuentoTipo === 'MONTO_FIJO' && formData.descuentoValor > subtotal
+                      ? 'El descuento no puede superar el subtotal'
+                      : undefined
+                  }
+                  error={formData.descuentoTipo === 'MONTO_FIJO' && formData.descuentoValor > subtotal}
+                />
+              </Box>
+
+              <TextField
+                fullWidth
+                select
+                label="Estado"
+                value={formData.estado}
+                onChange={(e) => {
+                  setFormData({ ...formData, estado: e.target.value as EstadoDocumento });
+                  setHasUnsavedChanges(true);
+                }}
+                margin="normal"
+                required
+                disabled={readOnly || !editingPresupuesto}
+              >
+                <MenuItem value={EstadoDocumentoEnum.PENDIENTE}>Pendiente</MenuItem>
+                <MenuItem value={EstadoDocumentoEnum.RECHAZADO}>Rechazado</MenuItem>
+              </TextField>
+
+              <TextField
+                fullWidth
+                label="Fecha de Emisión"
+                type="date"
+                value={formData.fechaEmision}
+                onChange={(e) => {
+                  setFormData({ ...formData, fechaEmision: e.target.value });
+                  setHasUnsavedChanges(true);
+                }}
+                margin="normal"
+                required
+                InputLabelProps={{ shrink: true }}
+                disabled
+              />
+            </Box>
+
+            <Box display="flex" gap={2} flexWrap="wrap" mt={2}>
+              <TextField
+                select
+                label="Canal de venta"
+                value={canalVenta}
+                onChange={(e) => { setCanalVenta(e.target.value); setHasUnsavedChanges(true); }}
+                sx={{ minWidth: 200 }}
+                size="small"
+                disabled={readOnly}
+              >
+                <MenuItem value=""><em>Sin especificar</em></MenuItem>
+                {(Object.keys(CANAL_LABELS) as CanalEnum[]).map((c) => (
+                  <MenuItem key={c} value={c}>{CANAL_LABELS[c]}</MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label="Gestiona la compra (si no es el titular)"
+                placeholder="Nombre de quien habla por WhatsApp"
+                value={gestionanteNombre}
+                onChange={(e) => { setGestionanteNombre(e.target.value); setHasUnsavedChanges(true); }}
+                sx={{ minWidth: 260, flex: 1 }}
+                size="small"
+                disabled={readOnly}
+              />
+              <TextField
+                label="Teléfono del gestionante"
+                value={gestionanteTelefono}
+                onChange={(e) => { setGestionanteTelefono(e.target.value); setHasUnsavedChanges(true); }}
+                sx={{ minWidth: 180 }}
+                size="small"
+                disabled={readOnly || !gestionanteNombre.trim()}
+              />
+            </Box>
+
+            <TextField
+              fullWidth
+              label="Observaciones"
+              value={formData.observaciones}
+              onChange={(e) => {
+                setFormData({ ...formData, observaciones: e.target.value });
+                setHasUnsavedChanges(true);
+              }}
+              margin="normal"
+              multiline
+              rows={3}
+              disabled={readOnly}
+            />
+
+            <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
+              Detalles del Presupuesto
+            </Typography>
+
+            {productos.length === 0 && recetas.length === 0 && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                No hay productos ni equipos disponibles para la venta. Contacte al administrador.
+              </Alert>
+            )}
+            {productos.length === 0 && recetas.length > 0 && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Solo equipos disponibles. No hay productos en el catálogo.
+              </Alert>
+            )}
+            {productos.length > 0 && recetas.length === 0 && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Solo productos disponibles. No hay equipos configurados para la venta.
+              </Alert>
+            )}
+
+            {!readOnly && !editingPresupuesto && recetas.length > 0 && detalles.some((d) => d.tipoItem === 'EQUIPO') && (
+              <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <TextField
+                  select
+                  size="small"
+                  label="Filtrar equipos por tipo"
+                  value={tipoEquipoFiltro}
+                  onChange={(e) => setTipoEquipoFiltro(e.target.value as typeof tipoEquipoFiltro)}
+                  sx={{ minWidth: 260 }}
+                >
+                  <MenuItem value="">
+                    Todos ({recetas.length})
+                  </MenuItem>
+                  <MenuItem value="HELADERA" disabled={recetasCountPorTipo.HELADERA === 0}>
+                    Heladera ({recetasCountPorTipo.HELADERA})
+                  </MenuItem>
+                  <MenuItem value="COOLBOX" disabled={recetasCountPorTipo.COOLBOX === 0}>
+                    Coolbox ({recetasCountPorTipo.COOLBOX})
+                  </MenuItem>
+                  <MenuItem value="EXHIBIDOR" disabled={recetasCountPorTipo.EXHIBIDOR === 0}>
+                    Exhibidor ({recetasCountPorTipo.EXHIBIDOR})
+                  </MenuItem>
+                  <MenuItem value="OTRO" disabled={recetasCountPorTipo.OTRO === 0}>
+                    Otro ({recetasCountPorTipo.OTRO})
+                  </MenuItem>
+                </TextField>
+                {tipoEquipoFiltro && (
+                  <Button size="small" variant="text" onClick={() => setTipoEquipoFiltro('')}>
+                    Limpiar filtro
+                  </Button>
+                )}
+              </Box>
+            )}
+
+            <TableContainer component={Paper} sx={{ mb: 2, overflowX: 'auto' }}>
+              <Table size="small" aria-label="Tabla de detalles del presupuesto" sx={{ minWidth: { xs: 700, sm: 'auto' } }}>
+                <TableHead>
+                  <TableRow>
+                    {!readOnly && !editingPresupuesto && <TableCell sx={{ minWidth: 80 }}>Tipo</TableCell>}
+                    <TableCell sx={{ minWidth: 220 }}>Producto/Equipo</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Color</TableCell>
+                    <TableCell sx={{ minWidth: 60 }}>Medida</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Cantidad</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Precio Unit.</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Subtotal</TableCell>
+                    {!readOnly && !editingPresupuesto && <TableCell sx={{ minWidth: 80 }}>Acciones</TableCell>}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {detalles.length > 0 ? (
+                    detalles.map((detalle, index) => {
+                      const isEnvio = detalle.tipoItem === 'ENVIO';
+                      const isRevestimiento = detalle.tipoItem === 'REVESTIMIENTO';
+                      const isSpecialItem = isEnvio || isRevestimiento;
+                      const refId = detalle.tipoItem === 'PRODUCTO'
+                        ? (detalle.productoId ? Number(detalle.productoId) : null)
+                        : detalle.tipoItem === 'EQUIPO'
+                          ? (detalle.recetaId ? Number(detalle.recetaId) : null)
+                          : null;
+                      const ofertaDelDetalle = refId
+                        ? getOferta(detalle.tipoItem === 'PRODUCTO' ? 'PRODUCTO' : 'RECETA', refId)
+                        : undefined;
+                      return (
+                      <TableRow key={index}>
+                        {!readOnly && !editingPresupuesto && (
+                          <TableCell>
+                            {isSpecialItem ? (
+                              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                {isRevestimiento ? 'Revestimiento' : 'Envío'}
+                              </Typography>
+                            ) : (
+                              <TextField
+                                select
+                                size="small"
+                                fullWidth
+                                value={detalle.tipoItem}
+                                onChange={(e) => updateDetalle(index, "tipoItem", e.target.value)}
+                                disabled={readOnly || !!editingPresupuesto}
+                              >
+                                <MenuItem value="PRODUCTO">Producto</MenuItem>
+                                <MenuItem value="EQUIPO">Equipo</MenuItem>
+                              </TextField>
+                            )}
+                          </TableCell>
+                        )}
+                        <TableCell>
+                          {isSpecialItem ? (
+                            <Typography variant="body2">{detalle.descripcion}</Typography>
+                          ) : detalle.tipoItem === 'PRODUCTO' ? (
+                            <TextField
+                              select
+                              size="small"
+                              fullWidth
+                              value={detalle.productoId || ""}
+                              onChange={(e) => updateDetalle(index, "productoId", e.target.value)}
+                              disabled={readOnly || !!editingPresupuesto}
+                              error={!detalle.productoId && hasUnsavedChanges}
+                            >
+                              <MenuItem value="">Seleccionar producto</MenuItem>
+                              {productos.length === 0 ? (
+                                <MenuItem disabled>No hay productos disponibles</MenuItem>
+                              ) : (
+                                productos.map((producto) => (
+                                  <MenuItem key={producto.id} value={producto.id.toString()}>
+                                    {producto.nombre}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </TextField>
+                          ) : (
+                            <TextField
+                              select
+                              size="small"
+                              fullWidth
+                              value={detalle.recetaId || ""}
+                              onChange={(e) => updateDetalle(index, "recetaId", e.target.value)}
+                              disabled={readOnly || !!editingPresupuesto}
+                              error={!detalle.recetaId && hasUnsavedChanges}
+                            >
+                              <MenuItem value="">Seleccionar equipo</MenuItem>
+                              {recetasFiltradasPorTipo.length === 0 ? (
+                                <MenuItem disabled>
+                                  {recetas.length === 0
+                                    ? 'No hay equipos disponibles'
+                                    : `No hay equipos del tipo ${tipoEquipoFiltro}`}
+                                </MenuItem>
+                              ) : (
+                                recetasFiltradasPorTipo.map((receta) => (
+                                  <MenuItem key={receta.id} value={receta.id.toString()}>
+                                    {receta.modelo}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </TextField>
+                          )}
+                          {ofertaDelDetalle && (
+                            <Chip
+                              size="small"
+                              color="warning"
+                              label={`OFERTA${ofertaDelDetalle.descuentoPct ? ` -${ofertaDelDetalle.descuentoPct}%` : ''}`}
+                              sx={{ mt: 0.5, fontWeight: 700 }}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isSpecialItem ? (
+                            <Typography variant="body2" color="text.secondary">—</Typography>
+                          ) : readOnly || editingPresupuesto ? (
+                            <Typography variant="body2">
+                              {detalle.colorNombre || '-'}
+                            </Typography>
+                          ) : (
+                            <ColorPicker
+                              value={detalle.colorId}
+                              onChange={(colorId) => updateDetalle(index, "colorId", colorId ?? "")}
+                              disabled={detalle.tipoItem !== 'EQUIPO'}
+                              label=""
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {isSpecialItem ? '—' : (detalle.medidaNombre || '-')}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {isSpecialItem ? (
+                            <Typography variant="body2">{detalle.cantidad}</Typography>
+                          ) : (
+                            <TextField
+                              size="small"
+                              type="number"
+                              fullWidth
+                              value={detalle.cantidad}
+                              onChange={(e) => updateDetalle(index, "cantidad", parseInt(e.target.value) || 0)}
+                              inputProps={{ min: 1 }}
+                              disabled={readOnly || !!editingPresupuesto}
+                              error={detalle.cantidad <= 0 && hasUnsavedChanges}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isSpecialItem ? (
+                            <Typography variant="body2">
+                              ${detalle.precioUnitario.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+                            </Typography>
+                          ) : (
+                            <>
+                              {ofertaDelDetalle && Number(ofertaDelDetalle.precioOriginal) > Number(detalle.precioUnitario) && (
+                                <Typography
+                                  variant="caption"
+                                  sx={{ textDecoration: 'line-through', color: 'text.disabled', display: 'block' }}
+                                >
+                                  ${Number(ofertaDelDetalle.precioOriginal).toLocaleString('es-AR')}
+                                </Typography>
+                              )}
+                              <TextField
+                                size="small"
+                                type="number"
+                                fullWidth
+                                value={detalle.precioUnitario}
+                                onChange={(e) => updateDetalle(index, "precioUnitario", parseFloat(e.target.value) || 0)}
+                                inputProps={{ min: 0, step: 0.01 }}
+                                disabled={readOnly || !!editingPresupuesto}
+                                error={detalle.precioUnitario <= 0 && hasUnsavedChanges}
+                              />
+                            </>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          ${detalle.subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        {!readOnly && !editingPresupuesto && (
+                          <TableCell>
+                            <Tooltip title="Eliminar detalle">
+                              <IconButton size="small" color="error" onClick={() => removeDetalle(index)} aria-label="Eliminar detalle">
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={readOnly || editingPresupuesto ? 7 : 9} align="center">
+                        No hay detalles para este presupuesto.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {!readOnly && !editingPresupuesto && (
+              <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addDetalle}
+                  disabled={productos.length === 0 && recetas.length === 0}
+                >
+                  Agregar Detalle
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<AddIcon />}
+                  onClick={() => setEnvioDialogOpen(true)}
+                >
+                  Agregar Envío
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="info"
+                  startIcon={<AddIcon />}
+                  onClick={() => setRevestimientoDialogOpen(true)}
+                  disabled={!detalles.some((d) => d.tipoItem === 'EQUIPO')}
+                >
+                  Agregar Revestimiento
+                </Button>
+                {productos.length === 0 && recetas.length === 0 && (
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 1, alignSelf: 'center' }}>
+                    No hay productos ni equipos disponibles
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+{/* Totals section with IVA and Financing */}
+            <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
+                <Typography variant="body2" color="text.secondary">
+                  Equipo: ${subtotalBase.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </Typography>
+                {formData.descuentoTipo !== 'NONE' && descuentoAmount > 0 && (
+                  <Typography variant="body1" color="error.main">
+                    Descuento {formData.descuentoTipo === 'PORCENTAJE' ? `(${formData.descuentoValor}%)` : '(monto fijo)'}:
+                    -${descuentoAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                  </Typography>
+                )}
+                {subtotalEnvioForm > 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    Envío: ${subtotalEnvioForm.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                  </Typography>
+                )}
+                <Divider sx={{ width: '200px', my: 1 }} />
+                <Typography variant="body1">
+                  {/* Neto gravado = equipos - descuento + envío; el IVA se liquida sobre esta base. */}
+                  Subtotal (neto): ${subtotalNeto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </Typography>
+                <Typography variant="body1">
+                  IVA ({formData.tipoIva === 'IVA_21' ? '21%' : formData.tipoIva === 'IVA_10_5' ? '10.5%' : '0%'}):
+                  ${ivaAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </Typography>
+                <Divider sx={{ width: '200px', my: 1 }} />
+                <Typography variant="body1" fontWeight="medium">
+                  Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </Typography>
+                
+                {/* Show financing option if viewing an existing presupuesto */}
+                {editingPresupuesto && (() => {
+                  const selectedFinancing = getSelectedFinancingOption(editingPresupuesto);
+                  if (selectedFinancing) {
+                    return (
+                      <>
+                        <Divider sx={{ width: '200px', my: 1 }} />
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-end' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Opción de financiamiento: {selectedFinancing.nombre}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {getMetodoPagoLabel(selectedFinancing.metodoPago)} - {selectedFinancing.cantidadCuotas} cuotas
+                          </Typography>
+                          {selectedFinancing.tasaInteres !== 0 && (
+                            <Typography variant="body2" color={selectedFinancing.tasaInteres < 0 ? 'success.main' : 'text.secondary'}>
+                              {selectedFinancing.tasaInteres < 0 
+                                ? `Descuento: ${Math.abs(selectedFinancing.tasaInteres)}%`
+                                : `Interés: ${selectedFinancing.tasaInteres}%`}
+                            </Typography>
+                          )}
+                          <Typography variant="body2" color="text.secondary">
+                            Valor cuota: ${selectedFinancing.montoCuota.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                        <Divider sx={{ width: '200px', my: 1 }} />
+                        <Typography variant="h6" fontWeight="bold" color="primary">
+                          Total con financiamiento: ${selectedFinancing.montoTotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </>
+                    );
+                  }
+                  return null;
+                })()}
+                
+                {/* If no financing option selected, show regular total */}
+                {(!editingPresupuesto || !getSelectedFinancingOption(editingPresupuesto)) && (
+                  <>
+                    <Divider sx={{ width: '200px', my: 1 }} />
+                    <Typography variant="h6" fontWeight="bold">
+                      Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </>
+                )}
+              </Box>
+            </Paper>
+          {readOnly && editingPresupuesto && (
+            <Box sx={{ mt: 2 }}>
+              <Divider sx={{ mb: 1.5 }} />
+              <Typography variant="subtitle2" gutterBottom>
+                Trazabilidad del flujo
+              </Typography>
+              <AuditoriaFlujo documento={editingPresupuesto} />
+            </Box>
+          )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} disabled={formLoading}>
+            {readOnly ? 'Cerrar' : 'Cancelar'}
+          </Button>
+          {!readOnly && (
+            <Button
+              variant="contained"
+              onClick={handleSavePresupuesto}
+              disabled={formLoading || (!formData.clienteId && !formData.leadId) || detalles.length === 0}
+              aria-label={editingPresupuesto ? "Actualizar presupuesto" : "Crear presupuesto"}
+            >
+              {formLoading ? <CircularProgress size={24} /> : editingPresupuesto ? "Actualizar" : "Crear"}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      <ConfirmPresupuestoDialog
+        open={confirmDialogOpen}
+        action={confirmDialogAction}
+        onCancel={() => {
+          setConfirmDialogOpen(false);
+          setConfirmDialogAction(null);
+        }}
+        onConfirmClose={handleConfirmClose}
+        onConfirmCreate={handleSavePresupuesto}
+        loading={formLoading}
+        total={total}
+        subtotal={subtotal}
+        ivaAmount={ivaAmount}
+        descuentoAmount={descuentoAmount}
+        selectedCliente={selectedCliente}
+        leads={leadSearch.options}
+        formData={formData}
+        detallesCount={detalles.length}
+      />
+
+      <DeudaClienteConfirmDialog
+        open={deudaError !== null}
+        error={deudaError}
+        onConfirm={handleDeudaConfirm}
+        onCancel={handleDeudaCancel}
+      />
+
+      <RevestimientoDialog
+        open={revestimientoDialogOpen}
+        onClose={() => setRevestimientoDialogOpen(false)}
+        cantidadInicial={cantEquiposEnDetalles}
+        onConfirm={handleAgregarDetalleExtra}
+      />
+
+      <EnvioDialog
+        open={envioDialogOpen}
+        onClose={() => setEnvioDialogOpen(false)}
+        cantidadInicial={cantEquiposEnDetalles}
+        onConfirm={handleAgregarDetalleExtra}
+      />
+    </>
+  );
+}
