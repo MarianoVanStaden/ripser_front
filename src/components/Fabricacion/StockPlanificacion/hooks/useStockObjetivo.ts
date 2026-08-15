@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { stockObjetivoApi } from '../../../../api/services/stockObjetivoApi';
 import type {
   EvaluacionStockDTO,
@@ -9,9 +10,16 @@ import type {
 } from '../../../../types';
 
 export function useStockObjetivo() {
-  const [evaluacion, setEvaluacion] = useState<EvaluacionStockDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const evaluacionQuery = useQuery({
+    queryKey: ['stock-objetivo', 'evaluacion'],
+    queryFn: () => stockObjetivoApi.getEvaluacion(),
+  });
+  const evaluacion: EvaluacionStockDTO[] = evaluacionQuery.data ?? [];
+  const loading = evaluacionQuery.isPending;
+  const error = evaluacionQuery.error
+    ? ((evaluacionQuery.error as Error)?.message || 'Error al cargar la evaluación de stock')
+    : null;
 
   // Form state (create / edit objetivo)
   const [formOpen, setFormOpen] = useState(false);
@@ -23,22 +31,10 @@ export function useStockObjetivo() {
   const [generarOrdenOpen, setGenerarOrdenOpen] = useState(false);
   const [generandoOrden, setGenerandoOrden] = useState(false);
 
-  const loadEvaluacion = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await stockObjetivoApi.getEvaluacion();
-      setEvaluacion(data);
-    } catch (err) {
-      setError((err as Error)?.message || 'Error al cargar la evaluación de stock');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadEvaluacion();
-  }, [loadEvaluacion]);
+  const loadEvaluacion = useCallback(
+    async () => { await queryClient.invalidateQueries({ queryKey: ['stock-objetivo'] }); },
+    [queryClient],
+  );
 
   // ── Crear objetivo ──
   const handleCreate = useCallback(

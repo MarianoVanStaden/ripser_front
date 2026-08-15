@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, Stack, TextField, Typography,
@@ -20,27 +21,25 @@ interface RechazarQCDialogProps {
  * Carga las etapas del equipo al abrir; las seleccionadas vuelven a PENDIENTE.
  */
 export default function RechazarQCDialog({ open, equipo, onClose, onNotify, onRefetch }: RechazarQCDialogProps) {
-  const [etapas, setEtapas] = useState<EtapaFabricacionDTO[]>([]);
   const [etapasRechazadas, setEtapasRechazadas] = useState<Map<string, string>>(new Map());
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
+  // Etapas bajo el namespace ['equipos']: el invalidate de la página tras
+  // cada mutación las refresca también acá.
+  const etapasQuery = useQuery({
+    queryKey: ['equipos', equipo?.id, 'etapas'],
+    queryFn: () => equipoFabricadoApi.getEtapasProduccion(equipo!.id),
+    enabled: open && !!equipo?.id,
+  });
+  const etapas: EtapaFabricacionDTO[] = etapasQuery.data ?? [];
+  const loading = etapasQuery.isPending && open && !!equipo?.id;
+  const queryErr = etapasQuery.error as any;
+  const error = queryErr
+    ? (queryErr.response?.data?.message ?? queryErr.message ?? 'Error al cargar las etapas')
+    : null;
+
+  // Reset de la selección al (re)abrir.
   useEffect(() => {
-    if (!open || !equipo?.id) {
-      setEtapas([]);
-      setEtapasRechazadas(new Map());
-      setError(null);
-      return;
-    }
-    const equipoId = equipo.id;
-    setLoading(true);
-    setError(null);
-    equipoFabricadoApi.getEtapasProduccion(equipoId)
-      .then((data) => setEtapas(data))
-      .catch((err: any) => {
-        setError(err.response?.data?.message ?? err.message ?? 'Error al cargar las etapas');
-      })
-      .finally(() => setLoading(false));
+    if (open) setEtapasRechazadas(new Map());
   }, [open, equipo?.id]);
 
   const toggleEtapaRechazada = (tipoEtapa: string) => {

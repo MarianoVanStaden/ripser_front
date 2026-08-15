@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -22,8 +23,6 @@ import { depositoApi } from '../../../../api/services/depositoApi';
 import type {
   EvaluacionStockDTO,
   GenerarOrdenDTO,
-  RecetaFabricacionListDTO,
-  Deposito,
 } from '../../../../types';
 
 const schema = yup.object({
@@ -63,9 +62,24 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
   onClose,
   onConfirm,
 }) => {
-  const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
-  const [depositos, setDepositos] = useState<Deposito[]>([]);
-  const [loadingDeps, setLoadingDeps] = useState(false);
+  const depsQuery = useQuery({
+    queryKey: ['stock-objetivo', 'generar-orden-deps'],
+    queryFn: async () => {
+      const [recetasPage, depositosPage] = await Promise.all([
+        recetaFabricacionApi.findAll({ page: 0, size: 200 }),
+        depositoApi.getAll({ page: 0, size: 100 }),
+      ]);
+      return {
+        recetas: recetasPage.content.filter((r) => r.activo),
+        depositos: depositosPage.content.filter((d) => d.activo),
+      };
+    },
+    enabled: open,
+    staleTime: 300_000,
+  });
+  const recetas = depsQuery.data?.recetas ?? [];
+  const depositos = depsQuery.data?.depositos ?? [];
+  const loadingDeps = depsQuery.isPending && open;
   const [apiError, setApiError] = useState<string | null>(null);
 
   const {
@@ -85,7 +99,6 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
 
   useEffect(() => {
     if (!open) return;
-
     reset({
       recetaId: 0,
       depositoOrigenId: 0,
@@ -93,25 +106,10 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
       observaciones: '',
     });
     setApiError(null);
-
-    const loadDeps = async () => {
-      setLoadingDeps(true);
-      try {
-        const [recetasPage, depositosPage] = await Promise.all([
-          recetaFabricacionApi.findAll({ page: 0, size: 200 }),
-          depositoApi.getAll({ page: 0, size: 100 }),
-        ]);
-        setRecetas(recetasPage.content.filter((r) => r.activo));
-        setDepositos(depositosPage.content.filter((d) => d.activo));
-      } catch {
-        setApiError('Error al cargar recetas y depósitos');
-      } finally {
-        setLoadingDeps(false);
-      }
-    };
-
-    loadDeps();
   }, [open, reset]);
+  useEffect(() => {
+    if (depsQuery.error) setApiError('Error al cargar recetas y depósitos');
+  }, [depsQuery.error]);
 
   const onSubmit = async (data: FormData) => {
     setApiError(null);

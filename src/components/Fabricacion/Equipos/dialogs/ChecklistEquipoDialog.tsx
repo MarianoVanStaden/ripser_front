@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Typography,
@@ -24,27 +25,29 @@ interface ChecklistEquipoDialogProps {
 export default function ChecklistEquipoDialog({
   open, equipo, esControlCalidad, onClose, onNotify, onRefetch,
 }: ChecklistEquipoDialogProps) {
+  // Etapas bajo ['equipos', id, 'etapas'] — el invalidate de la página las
+  // refresca. Copia local porque el panel las actualiza optimistamente al
+  // marcar cada etapa.
   const [etapas, setEtapas] = useState<EtapaFabricacionDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [modoRechazo, setModoRechazo] = useState(false);
 
+  const etapasQuery = useQuery({
+    queryKey: ['equipos', equipo?.id, 'etapas'],
+    queryFn: () => equipoFabricadoApi.getEtapasProduccion(equipo!.id),
+    enabled: open && !!equipo?.id,
+  });
   useEffect(() => {
-    if (!open || !equipo?.id) {
-      setEtapas([]);
-      setError(null);
-      setModoRechazo(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    equipoFabricadoApi.getEtapasProduccion(equipo.id)
-      .then((data) => setEtapas(data))
-      .catch((err: any) => {
-        setError(err.response?.data?.message ?? err.message ?? 'Error al cargar el checklist');
-      })
-      .finally(() => setLoading(false));
-  }, [open, equipo?.id]);
+    setEtapas(etapasQuery.data ?? []);
+  }, [etapasQuery.data]);
+  useEffect(() => {
+    if (!open) setModoRechazo(false);
+  }, [open]);
+
+  const loading = etapasQuery.isPending && open && !!equipo?.id;
+  const queryErr = etapasQuery.error as any;
+  const error = queryErr
+    ? (queryErr.response?.data?.message ?? queryErr.message ?? 'Error al cargar el checklist')
+    : null;
 
   const handleEtapaActualizada = (etapa: EtapaFabricacionDTO) => {
     setEtapas((prev) => prev.map((e) => (e.id === etapa.id ? etapa : e)));
