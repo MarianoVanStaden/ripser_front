@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -56,8 +57,23 @@ const validationSchema = yup.object({
 const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
-  const [loadingProveedores, setLoadingProveedores] = useState(false);
+  // Catálogo de proveedores activos: query cacheada; el filtro del proveedor
+  // actual (no auto-endosar) se deriva en memoria.
+  const proveedoresQuery = useQuery({
+    queryKey: ['proveedores', 'catalogo-cheques'],
+    queryFn: () => proveedorApi.getAll({ page: 0, size: 1000 }).then((res: any) => (Array.isArray(res) ? res : res?.content ?? [])),
+    enabled: open,
+    staleTime: 300_000,
+  });
+  const loadingProveedores = proveedoresQuery.isPending && open;
+  const proveedores: Proveedor[] = useMemo(() => {
+    const lista: any[] = proveedoresQuery.data ?? [];
+    let filtered = lista.filter((p: any) => p.estado === 'ACTIVO' || !p.estado);
+    if (cheque?.proveedorId) {
+      filtered = filtered.filter((p: any) => p.id !== cheque.proveedorId);
+    }
+    return filtered;
+  }, [proveedoresQuery.data, cheque?.proveedorId]);
 
   const {
     control,
@@ -75,14 +91,6 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
 
   const selectedProveedorId = watch('proveedorDestinoId');
 
-  // Load proveedores
-  useEffect(() => {
-    if (open) {
-      loadProveedores();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
@@ -93,27 +101,6 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
       setError(null);
     }
   }, [open, reset]);
-
-  const loadProveedores = async () => {
-    try {
-      setLoadingProveedores(true);
-      const data = await proveedorApi.getAll({ size: 1000 });
-      const lista = Array.isArray(data) ? data : (data as any).content ?? [];
-
-      // Filter only active proveedores and filter out current provider if check is already endorsed
-      let filteredProveedores = lista.filter((p: any) => p.estado === 'ACTIVO' || !p.estado);
-      if (cheque?.proveedorId) {
-        filteredProveedores = filteredProveedores.filter((p: any) => p.id !== cheque.proveedorId);
-      }
-
-      setProveedores(filteredProveedores);
-    } catch (err: any) {
-      console.error('Error loading proveedores:', err);
-      setError('Error al cargar proveedores');
-    } finally {
-      setLoadingProveedores(false);
-    }
-  };
 
   const onSubmit = async (data: any) => {
     if (!cheque || !data.proveedorDestinoId) {

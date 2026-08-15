@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useDebounce } from '../../hooks/useDebounce';
 import {
   Box,
   Card,
@@ -46,12 +48,9 @@ import ChequeTipoChip from './ChequeTipoChip';
 
 const ChequesPage: React.FC = () => {
   const { tienePermiso } = usePermisos();
+  const puedeVer = tienePermiso('VENTAS');
+  const queryClient = useQueryClient();
 
-  // Datos
-  const [cheques, setCheques] = useState<Cheque[]>([]);
-  const [resumen, setResumen] = useState<ChequeResumenDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   // Dialogs
@@ -64,73 +63,63 @@ const ChequesPage: React.FC = () => {
   // Paginación
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
-  const [totalElements, setTotalElements] = useState(0);
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('all');
   const [estadoFilter, setEstadoFilter] = useState<string>('all');
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedSearch = useDebounce(searchTerm, 400);
 
-   
+  // Reset page=0 cuando cambia la búsqueda debounced (los filtros lo hacen
+  // en handleFilterChange).
   useEffect(() => {
-    if (tienePermiso('VENTAS')) {
-      loadResumen();
-    }
-  }, []);
+    setPage(0);
+  }, [debouncedSearch]);
 
-   
-  useEffect(() => {
-    if (tienePermiso('VENTAS')) {
-      loadCheques();
-    }
-  }, [page, pageSize, tipoFilter, estadoFilter]);
-
-  // Debounce del search para no disparar una request por cada tecla
-   
-  useEffect(() => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      setPage(0);
-      loadCheques();
-    }, 400);
-    return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    };
-  }, [searchTerm]);
-
-  const loadResumen = async () => {
-    try {
-      const data = await chequeApi.getResumen();
-      setResumen(data);
-    } catch (err) {
-      console.error('Error loading resumen:', err);
-    }
-  };
-
-  const loadCheques = useCallback(async () => {
-    try {
-      setLoading(true);
+  const chequesQuery = useQuery({
+    queryKey: ['cheques', {
+      page,
+      pageSize,
+      tipo: tipoFilter !== 'all' ? tipoFilter : undefined,
+      estado: estadoFilter !== 'all' ? estadoFilter : undefined,
+      search: debouncedSearch.trim() || undefined,
+    }],
+    queryFn: () => {
       const params: Record<string, string> = {};
       if (tipoFilter !== 'all') params.tipo = tipoFilter;
       if (estadoFilter !== 'all') params.estado = estadoFilter;
-      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      return chequeApi.buscar(params, page, pageSize, 'fechaAlta,desc');
+    },
+    enabled: puedeVer,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
 
-      const response = await chequeApi.buscar(params, page, pageSize, 'fechaAlta,desc');
-      setCheques(response.content);
-      setTotalElements(response.totalElements);
-      setError(null);
-    } catch (err: any) {
-      console.error('Error loading cheques:', err);
-      if (err.response?.status === 403 || err.response?.status === 401) {
-        setError('No tiene permisos para acceder a esta información');
-      } else {
-        setError('Error al cargar los datos');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize, tipoFilter, estadoFilter, searchTerm]);
+  const resumenQuery = useQuery({
+    queryKey: ['cheques', 'resumen'],
+    queryFn: () => chequeApi.getResumen(),
+    enabled: puedeVer,
+    staleTime: 30_000,
+  });
+
+  const cheques: Cheque[] = chequesQuery.data?.content ?? [];
+  const totalElements = chequesQuery.data?.totalElements ?? 0;
+  const resumen: ChequeResumenDTO | null = resumenQuery.data ?? null;
+  const loading = chequesQuery.isPending && puedeVer;
+  const queryError = chequesQuery.error as any;
+  const error = queryError
+    ? (queryError.response?.status === 403 || queryError.response?.status === 401
+        ? 'No tiene permisos para acceder a esta información'
+        : 'Error al cargar los datos')
+    : null;
+
+  // Toda mutación del módulo (alta, cambio de estado, endoso, imputación)
+  // invalida el namespace completo: lista + resumen + queries de los dialogs.
+  const invalidateCheques = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: ['cheques'] }),
+    [queryClient]
+  );
 
   const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>) =>
     (value: string) => {
@@ -148,8 +137,8 @@ const ChequesPage: React.FC = () => {
     setSelectedCheque(null);
   };
 
-  const handleSave = async () => {
-    await Promise.all([loadCheques(), loadResumen()]);
+  const handleSave = () => {
+    invalidateCheques();
     handleCloseForm();
     setSuccess('Cheque guardado correctamente');
     setTimeout(() => setSuccess(null), 3000);
@@ -165,8 +154,8 @@ const ChequesPage: React.FC = () => {
     setSelectedCheque(null);
   };
 
-  const handleDetailUpdate = async () => {
-    await Promise.all([loadCheques(), loadResumen()]);
+  const handleDetailUpdate = () => {
+    invalidateCheques();
   };
 
   if (!tienePermiso('VENTAS')) {
@@ -200,7 +189,7 @@ const ChequesPage: React.FC = () => {
 
       {/* Alerts */}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
@@ -529,8 +518,8 @@ const ChequesPage: React.FC = () => {
         open={imputarDialogOpen}
         cheque={chequeParaImputar}
         onClose={() => { setImputarDialogOpen(false); setChequeParaImputar(null); }}
-        onSaved={async () => {
-          await Promise.all([loadCheques(), loadResumen()]);
+        onSaved={() => {
+          invalidateCheques();
           setSuccess('Cheque imputado al crédito correctamente');
           setTimeout(() => setSuccess(null), 3000);
         }}

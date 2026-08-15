@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -90,8 +91,21 @@ const validationSchema = yup.object({
 
 const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) => {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
-  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
-  const [bancos, setBancos] = useState<Banco[]>([]);
+  // Catálogos para los selects: cachean 5 min entre aperturas del dialog.
+  const proveedoresQuery = useQuery({
+    queryKey: ['proveedores', 'catalogo-cheques'],
+    queryFn: () => proveedorApi.getAll({ page: 0, size: 1000 }).then((res) => res?.content ?? []),
+    enabled: open,
+    staleTime: 300_000,
+  });
+  const bancosQuery = useQuery({
+    queryKey: ['bancos', 'activos'],
+    queryFn: () => bancoApi.getActivos(),
+    enabled: open,
+    staleTime: 300_000,
+  });
+  const proveedores: Proveedor[] = Array.isArray(proveedoresQuery.data) ? proveedoresQuery.data : [];
+  const bancos: Banco[] = Array.isArray(bancosQuery.data) ? bancosQuery.data : [];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,13 +140,6 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
 
   const tipo = watch('tipo');
   const endosado = watch('endosado');
-
-  // Cargar clientes y proveedores al abrir el dialog
-  useEffect(() => {
-    if (open) {
-      loadOptions();
-    }
-  }, [open]);
 
   // Reset del formulario cada vez que se abre el diálogo (o cambia el cheque).
   // Depende de `open` para que al reabrir en modo "nuevo" no queden los datos
@@ -181,20 +188,6 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
       });
     }
   }, [open, cheque, reset]);
-
-  const loadOptions = async () => {
-    try {
-      const [proveedoresRes, bancosData] = await Promise.all([
-        proveedorApi.getAll({ page: 0, size: 1000 }),  // ~57 proveedores: traer todos
-        bancoApi.getActivos(),  // Solo cargar bancos activos
-      ]);
-      const proveedoresData = proveedoresRes?.content ?? [];
-      setProveedores(Array.isArray(proveedoresData) ? proveedoresData : []);
-      setBancos(Array.isArray(bancosData) ? bancosData : []);
-    } catch (err) {
-      console.error('Error loading options:', err);
-    }
-  };
 
   // Cargar el cliente seleccionado al editar un cheque de terceros (el
   // Autocomplete busca server-side, por eso necesitamos el objeto completo).

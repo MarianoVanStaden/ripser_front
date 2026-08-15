@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -45,53 +46,37 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
   const [showReversionInput, setShowReversionInput] = useState(false);
   const [showCobroInput, setShowCobroInput] = useState(false);
   const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
-  const [endososChain, setEndososChain] = useState<CadenaEndososDTO | null>(null);
-  const [loadingEndosos, setLoadingEndosos] = useState(false);
   const [showEndosarDialog, setShowEndosarDialog] = useState(false);
-  const [historial, setHistorial] = useState<HistorialEstadoChequeDTO[]>([]);
 
+  // Cadena de endosos e historial: queries bajo el namespace ['cheques'] —
+  // el invalidate de la página tras cada mutación los refresca solo.
+  const endososQuery = useQuery({
+    queryKey: ['cheques', cheque?.id, 'endosos'],
+    queryFn: () => chequeApi.getCadenaEndosos(cheque!.id),
+    enabled: open && !!cheque && cheque.tipo === 'TERCEROS',
+  });
+  const historialQuery = useQuery({
+    queryKey: ['cheques', cheque?.id, 'historial'],
+    queryFn: () => chequeApi.getHistorialEstados(cheque!.id),
+    enabled: open && !!cheque,
+  });
+  const endososChain: CadenaEndososDTO | null = endososQuery.data ?? null;
+  const loadingEndosos = endososQuery.isPending && open && !!cheque && cheque.tipo === 'TERCEROS';
+  const historial: HistorialEstadoChequeDTO[] = historialQuery.data ?? [];
+
+  // Reset de los inputs transitorios al cerrar.
   useEffect(() => {
-    if (open && cheque) {
-      if (cheque.tipo === 'TERCEROS') loadEndosos();
-      loadHistorial();
-    }
     if (!open) {
-      setHistorial([]);
-      setEndososChain(null);
       setShowCobroInput(false);
       setCajaRef(null);
       setShowReversionInput(false);
       setMotivoReversion('');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, cheque]);
+  }, [open]);
 
-  const loadEndosos = async () => {
-    if (!cheque) return;
-    try {
-      setLoadingEndosos(true);
-      const chain = await chequeApi.getCadenaEndosos(cheque.id);
-      setEndososChain(chain);
-    } catch (err) {
-      console.error('Error loading endorsement chain:', err);
-    } finally {
-      setLoadingEndosos(false);
-    }
-  };
-
-  const loadHistorial = async () => {
-    if (!cheque) return;
-    try {
-      const data = await chequeApi.getHistorialEstados(cheque.id);
-      setHistorial(data);
-    } catch (err) {
-      console.error('Error loading historial:', err);
-    }
-  };
-
-  const handleEndosarSuccess = async () => {
+  const handleEndosarSuccess = () => {
     setShowEndosarDialog(false);
-    await loadEndosos();
+    // onUpdate invalida ['cheques'] en la página → refresca también los endosos.
     onUpdate();
   };
 
