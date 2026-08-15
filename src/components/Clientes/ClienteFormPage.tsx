@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Paper,
@@ -69,41 +70,41 @@ const ClienteFormPage: React.FC = () => {
     observaciones: '',
   });
 
-  const [itemOptions, setItemOptions] = useState<ItemCompradoOption[]>([]);
+  const itemOptionsQuery = useQuery({
+    queryKey: ['clientes', 'form-item-options'],
+    queryFn: async () => {
+      const [productosData, recetasData] = await Promise.all([
+        productApi.getAll({ page: 0, size: 10000 }).then((r) => r.content).catch(() => [] as Producto[]),
+        recetaFabricacionApi.findDisponiblesParaVenta().catch(() => [] as any[]),
+      ]);
+      return [
+        ...recetasData.map((r: any) => ({ type: 'receta' as const, id: r.id, nombre: `🔧 ${r.nombre}` })),
+        ...productosData.map((p: Producto) => ({ type: 'producto' as const, id: p.id, nombre: `📦 ${p.nombre}` })),
+      ] as ItemCompradoOption[];
+    },
+    staleTime: 300_000,
+  });
+  const itemOptions: ItemCompradoOption[] = itemOptionsQuery.data ?? [];
   const [selectedItem, setSelectedItem] = useState<ItemCompradoOption | null>(null);
   const [cantidadComprada, setCantidadComprada] = useState<number | ''>('');
   const [montoConversion, setMontoConversion] = useState<number | ''>('');
   const [conversionTouched, setConversionTouched] = useState(false);
 
+  // Cliente a editar: reusa el cache de ['clientes', id] (p.ej. viniendo del
+  // detalle). La hidratación del form corre UNA vez por id — un refetch de
+  // fondo no debe pisar lo que el usuario está editando.
+  const clienteIdNum = isEdit && id ? Number(id) : undefined;
+  const clienteQuery = useQuery({
+    queryKey: ['clientes', clienteIdNum],
+    queryFn: () => clienteApi.getById(clienteIdNum!),
+    enabled: clienteIdNum != null,
+  });
+  const hydratedForIdRef = useRef<number | null>(null);
   useEffect(() => {
-    const cargarOpciones = async () => {
-      try {
-        const [productosData, recetasData] = await Promise.all([
-          productApi.getAll({ page: 0, size: 10000 }).then((r) => r.content).catch(() => [] as Producto[]),
-          recetaFabricacionApi.findDisponiblesParaVenta().catch(() => [] as any[]),
-        ]);
-        const opts: ItemCompradoOption[] = [
-          ...recetasData.map((r: any) => ({ type: 'receta' as const, id: r.id, nombre: `🔧 ${r.nombre}` })),
-          ...productosData.map((p: Producto) => ({ type: 'producto' as const, id: p.id, nombre: `📦 ${p.nombre}` })),
-        ];
-        setItemOptions(opts);
-      } catch (err) {
-        console.error('Error cargando productos/recetas', err);
-      }
-    };
-    cargarOpciones();
-  }, []);
-
-  useEffect(() => {
-    if (isEdit && id) {
-      loadCliente(Number(id));
-    }
-  }, [isEdit, id]);
-
-  const loadCliente = async (clienteId: number) => {
-    try {
-      setLoading(true);
-      const cliente = await clienteApi.getById(clienteId);
+    const cliente = clienteQuery.data;
+    if (!cliente || clienteIdNum == null) return;
+    if (hydratedForIdRef.current === clienteIdNum) return;
+    hydratedForIdRef.current = clienteIdNum;
       setFormData({
         nombre: cliente.nombre,
         apellido: cliente.apellido || '',
@@ -145,12 +146,11 @@ const ClienteFormPage: React.FC = () => {
       }
       setMontoConversion(cliente.montoConversion ?? '');
       setConversionTouched(false);
-    } catch {
-      setError('Error al cargar el cliente');
-    } finally {
-      setLoading(false);
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clienteQuery.data, clienteIdNum]);
+  useEffect(() => {
+    if (clienteQuery.error) setError('Error al cargar el cliente');
+  }, [clienteQuery.error]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target as HTMLInputElement;
@@ -273,7 +273,7 @@ const ClienteFormPage: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 'lg', mx: 'auto', p: { xs: 2, md: 3 } }}>
-      <LoadingOverlay open={loading && isEdit} message="Cargando cliente..." />
+      <LoadingOverlay open={(loading || clienteQuery.isPending) && isEdit} message="Cargando cliente..." />
       {/* Header */}
       <Box display="flex" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
         <Button startIcon={<ArrowBackIcon />} onClick={handleCancel} size={isMobile ? 'small' : 'medium'}>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Paper,
@@ -87,18 +88,35 @@ const CarpetaClientePage: React.FC = () => {
   // "Volver" contextual: regresa a la vista de origen (selector de carpetas u
   // otra). Fallback a Gestión de Clientes en deep-link/refresh (state se pierde).
   const backTo = (location.state as { from?: string } | null)?.from ?? '/clientes/gestion';
-  const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const clienteIdNum = id ? parseInt(id) : undefined;
+  const clienteQuery = useQuery({
+    queryKey: ['clientes', clienteIdNum],
+    queryFn: () => clienteApi.getById(clienteIdNum!),
+    enabled: clienteIdNum != null,
+  });
+  const documentosQuery = useQuery({
+    queryKey: ['clientes', clienteIdNum, 'documentos'],
+    queryFn: () => documentoClienteApi.getByClienteId(clienteIdNum!),
+    enabled: clienteIdNum != null,
+  });
+  const cliente: Cliente | null = clienteQuery.data ?? null;
+  const loading = clienteQuery.isPending;
+  const documentos: DocumentoCliente[] = documentosQuery.error ? [] : (documentosQuery.data ?? []);
+  const loadingDocumentos = documentosQuery.isPending;
+  // Errores de acciones (upload/download/delete); el de carga se deriva.
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = clienteQuery.error ? 'Error al cargar el cliente' : actionError;
+  const setError = setActionError;
+  const loadDocumentos = () =>
+    queryClient.invalidateQueries({ queryKey: ['clientes', clienteIdNum, 'documentos'] });
   const [tabValue, setTabValue] = useState(0);
-  const [documentos, setDocumentos] = useState<DocumentoCliente[]>([]);
   const [notas, setNotas] = useState<NotaCliente[]>([]);
   const [openUploadDialog, setOpenUploadDialog] = useState(false);
   const [openNotaDialog, setOpenNotaDialog] = useState(false);
   const [newNota, setNewNota] = useState({ titulo: '', contenido: '', importante: false });
 
   // Estados para upload de documentos
-  const [loadingDocumentos, setLoadingDocumentos] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadCategoria, setUploadCategoria] = useState('');
   const [uploadDescripcion, setUploadDescripcion] = useState('');
@@ -143,42 +161,12 @@ const CarpetaClientePage: React.FC = () => {
     }
   ];
 
+  // Las notas siguen siendo mock (candidata a feature real o limpieza).
   useEffect(() => {
-    loadCliente();
-    loadDocumentos();
     setNotas(mockNotas);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const loadDocumentos = async () => {
-    if (!id) return;
-
-    try {
-      setLoadingDocumentos(true);
-      const docs = await documentoClienteApi.getByClienteId(parseInt(id));
-      setDocumentos(docs);
-    } catch (err) {
-      console.error('Error loading documentos:', err);
-      setDocumentos([]);
-    } finally {
-      setLoadingDocumentos(false);
-    }
-  };
-
-  const loadCliente = async () => {
-    if (!id) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await clienteApi.getById(parseInt(id));
-      setCliente(data);
-    } catch (err) {
-      setError('Error al cargar el cliente');
-      console.error('Error loading cliente:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
