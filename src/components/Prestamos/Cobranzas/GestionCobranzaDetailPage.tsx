@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   Box, Grid, Card, CardContent, Typography, Alert,
   Button, Chip, Tabs, Tab, Table, TableBody, TableCell, TableContainer,
@@ -28,9 +29,6 @@ import {
   ESTADOS_CIERRE,
 } from '../../../types/cobranza.types';
 import type {
-  GestionCobranzaDTO,
-  AccionCobranzaDTO,
-  RecordatorioCobranzaDTO,
   EstadoGestionCobranza,
 } from '../../../types/cobranza.types';
 import { formatPrice } from '../../../utils/priceCalculations';
@@ -41,7 +39,6 @@ import { PromesaPagoDialog } from './PromesaPagoDialog';
 import { TimelineCobranza } from './TimelineCobranza';
 import { InformarCobroLibreDialog } from './InformarCobroLibreDialog';
 import { BadgeMora } from './BadgeMora';
-import type { EventoCobranzaDTO, PromesaPagoDTO } from '../../../types/cobranza.types';
 import {
   ESTADO_PROMESA_LABELS,
   ESTADO_PROMESA_COLORS,
@@ -83,13 +80,8 @@ export const GestionCobranzaDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const gestionId = parseInt(id || '0');
 
-  const [gestion, setGestion] = useState<GestionCobranzaDTO | null>(null);
-  const [acciones, setAcciones] = useState<AccionCobranzaDTO[]>([]);
-  const [recordatorios, setRecordatorios] = useState<RecordatorioCobranzaDTO[]>([]);
-  const [timeline, setTimeline] = useState<EventoCobranzaDTO[]>([]);
-  const [promesas, setPromesas] = useState<PromesaPagoDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // gestion, acciones, recordatorios, timeline y promesas se derivan del query
+  // agregado ['gestion-cobranza', id] (ver más abajo).
   const [tabValue, setTabValue] = useState(0);
 
   // Dialogs
@@ -108,10 +100,16 @@ export const GestionCobranzaDetailPage: React.FC = () => {
   const showSnack = (message: string, severity: 'success' | 'error' = 'success') =>
     setSnackbar({ open: true, message, severity });
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const queryClient = useQueryClient();
+
+  // Detalle completo de la gestión en un query agregado. La gestión es
+  // obligatoria (si falla, el query falla); las listas secundarias degradan a
+  // vacío ante fallo parcial en un refetch. Namespace invalidado por las
+  // mutaciones (dialogs + inline).
+  const detalleQuery = useQuery({
+    queryKey: ['gestion-cobranza', gestionId],
+    enabled: !!gestionId,
+    queryFn: async () => {
       const [gestionRes, accionesRes, recordatoriosRes, timelineRes, promesasRes] = await Promise.allSettled([
         gestionCobranzaApi.getById(gestionId),
         gestionCobranzaApi.getAccionesByGestion(gestionId),
@@ -119,77 +117,71 @@ export const GestionCobranzaDetailPage: React.FC = () => {
         gestionCobranzaApi.getTimeline(gestionId),
         gestionCobranzaApi.getPromesas(gestionId),
       ]);
-
       if (gestionRes.status === 'rejected') throw gestionRes.reason;
-      setGestion(gestionRes.value);
-      if (accionesRes.status === 'fulfilled') setAcciones(accionesRes.value);
-      if (recordatoriosRes.status === 'fulfilled') setRecordatorios(recordatoriosRes.value);
-      if (timelineRes.status === 'fulfilled') setTimeline(timelineRes.value);
-      if (promesasRes.status === 'fulfilled') setPromesas(promesasRes.value);
-    } catch (err) {
-      console.error('Error loading gestion:', err);
-      setError('Error al cargar la gestión.');
-    } finally {
-      setLoading(false);
-    }
+      return {
+        gestion: gestionRes.value,
+        acciones: accionesRes.status === 'fulfilled' ? accionesRes.value : [],
+        recordatorios: recordatoriosRes.status === 'fulfilled' ? recordatoriosRes.value : [],
+        timeline: timelineRes.status === 'fulfilled' ? timelineRes.value : [],
+        promesas: promesasRes.status === 'fulfilled' ? promesasRes.value : [],
+      };
+    },
+  });
+
+  const gestion = detalleQuery.data?.gestion ?? null;
+  const acciones = detalleQuery.data?.acciones ?? [];
+  const recordatorios = detalleQuery.data?.recordatorios ?? [];
+  const timeline = detalleQuery.data?.timeline ?? [];
+  const promesas = detalleQuery.data?.promesas ?? [];
+  const loading = detalleQuery.isPending && !!gestionId;
+  const error = detalleQuery.error ? 'Error al cargar la gestión.' : null;
+
+  // Refresca el detalle invalidando el namespace. Conserva el nombre `loadData`
+  // para no tocar los onSaved de los dialogs ni los call-sites inline.
+  const loadData = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['gestion-cobranza', gestionId] });
   };
 
-  useEffect(() => {
-    loadData();
-  }, [gestionId]);
-
-  const handleCerrarGestion = async (estado: EstadoGestionCobranza) => {
-    setCierreAnchor(null);
-    try {
-      await gestionCobranzaApi.cerrar(gestionId, estado);
+  const cerrarMutation = useMutation({
+    mutationFn: (estado: EstadoGestionCobranza) => gestionCobranzaApi.cerrar(gestionId, estado),
+    onSuccess: (_data, estado) => {
       showSnack(`Gestión cerrada como "${ESTADO_GESTION_COBRANZA_LABELS[estado]}"`);
       loadData();
-    } catch {
-      showSnack('Error al cerrar la gestión.', 'error');
-    }
+    },
+    onError: () => showSnack('Error al cerrar la gestión.', 'error'),
+  });
+  const handleCerrarGestion = (estado: EstadoGestionCobranza) => {
+    setCierreAnchor(null);
+    cerrarMutation.mutate(estado);
   };
 
-  const handleDeleteAccion = async (accionId: number) => {
-    try {
-      await gestionCobranzaApi.deleteAccion(accionId);
-      setAcciones((prev) => prev.filter((a) => a.id !== accionId));
-      showSnack('Acción eliminada.');
-    } catch {
-      showSnack('Error al eliminar la acción.', 'error');
-    }
-  };
+  const deleteAccionMutation = useMutation({
+    mutationFn: (accionId: number) => gestionCobranzaApi.deleteAccion(accionId),
+    onSuccess: () => { showSnack('Acción eliminada.'); loadData(); },
+    onError: () => showSnack('Error al eliminar la acción.', 'error'),
+  });
+  const handleDeleteAccion = (accionId: number) => deleteAccionMutation.mutate(accionId);
 
-  const handleCompletarRecordatorio = async (recId: number) => {
-    try {
-      await gestionCobranzaApi.completarRecordatorio(recId);
-      setRecordatorios((prev) =>
-        prev.map((r) => (r.id === recId ? { ...r, completado: true, fechaCompletado: new Date().toISOString() } : r))
-      );
-      showSnack('Recordatorio completado.');
-    } catch {
-      showSnack('Error al completar el recordatorio.', 'error');
-    }
-  };
+  const completarRecordatorioMutation = useMutation({
+    mutationFn: (recId: number) => gestionCobranzaApi.completarRecordatorio(recId),
+    onSuccess: () => { showSnack('Recordatorio completado.'); loadData(); },
+    onError: () => showSnack('Error al completar el recordatorio.', 'error'),
+  });
+  const handleCompletarRecordatorio = (recId: number) => completarRecordatorioMutation.mutate(recId);
 
-  const handleDeleteRecordatorio = async (recId: number) => {
-    try {
-      await gestionCobranzaApi.deleteRecordatorio(recId);
-      setRecordatorios((prev) => prev.filter((r) => r.id !== recId));
-      showSnack('Recordatorio eliminado.');
-    } catch {
-      showSnack('Error al eliminar el recordatorio.', 'error');
-    }
-  };
+  const deleteRecordatorioMutation = useMutation({
+    mutationFn: (recId: number) => gestionCobranzaApi.deleteRecordatorio(recId),
+    onSuccess: () => { showSnack('Recordatorio eliminado.'); loadData(); },
+    onError: () => showSnack('Error al eliminar el recordatorio.', 'error'),
+  });
+  const handleDeleteRecordatorio = (recId: number) => deleteRecordatorioMutation.mutate(recId);
 
-  const handleCancelarPromesa = async (promesaId: number) => {
-    try {
-      await gestionCobranzaApi.cancelarPromesa(gestionId, promesaId);
-      showSnack('Promesa cancelada.');
-      loadData();
-    } catch {
-      showSnack('Error al cancelar la promesa.', 'error');
-    }
-  };
+  const cancelarPromesaMutation = useMutation({
+    mutationFn: (promesaId: number) => gestionCobranzaApi.cancelarPromesa(gestionId, promesaId),
+    onSuccess: () => { showSnack('Promesa cancelada.'); loadData(); },
+    onError: () => showSnack('Error al cancelar la promesa.', 'error'),
+  });
+  const handleCancelarPromesa = (promesaId: number) => cancelarPromesaMutation.mutate(promesaId);
 
   // Mientras se carga, mostrar solo el overlay — antes el placeholder de error
   // parpadeaba en el primer render (loading=true, gestion=null).
