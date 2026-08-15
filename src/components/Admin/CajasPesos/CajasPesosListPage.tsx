@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -34,9 +35,6 @@ import TransferirPesosDialog from './dialogs/TransferirPesosDialog';
 
 const CajasPesosListPage: React.FC = () => {
   const navigate = useNavigate();
-  const [cajas, setCajas] = useState<CajaPesos[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pageError, setPageError] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
@@ -51,22 +49,18 @@ const CajasPesosListPage: React.FC = () => {
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setPageError(null);
-    try {
-      const data = await cajasPesosApi.getAll();
-      setCajas(data);
-    } catch (err) {
-      setPageError(extractError(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const queryClient = useQueryClient();
+  const cajasQuery = useQuery({
+    queryKey: ['cajas-pesos'],
+    queryFn: () => cajasPesosApi.getAll(),
+  });
+  const cajas: CajaPesos[] = cajasQuery.data ?? [];
+  const loading = cajasQuery.isPending;
+  const pageError = cajasQuery.error ? extractError(cajasQuery.error) : null;
+  const load = useCallback(
+    async () => { await queryClient.invalidateQueries({ queryKey: ['cajas-pesos'] }); },
+    [queryClient],
+  );
 
   const handleConfirmDeactivate = async () => {
     if (!selected) return;

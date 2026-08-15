@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -35,9 +36,7 @@ import TransferirDialog from './dialogs/TransferirDialog';
 
 const CajasAhorroListPage: React.FC = () => {
   const navigate = useNavigate();
-  const [cajas, setCajas] = useState<CajaAhorroDolares[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pageError, setPageError] = useState<string | null>(null);
+  const [actionPageError, setActionPageError] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
@@ -53,22 +52,19 @@ const CajasAhorroListPage: React.FC = () => {
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
 
-  const loadCajas = useCallback(async () => {
-    setLoading(true);
-    setPageError(null);
-    try {
-      const data = await cajasAhorroApi.getAll();
-      setCajas(data);
-    } catch (err) {
-      setPageError(extractError(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadCajas();
-  }, [loadCajas]);
+  const queryClient = useQueryClient();
+  const cajasQuery = useQuery({
+    queryKey: ['cajas-ahorro'],
+    queryFn: () => cajasAhorroApi.getAll(),
+  });
+  const cajas: CajaAhorroDolares[] = cajasQuery.data ?? [];
+  const loading = cajasQuery.isPending;
+  const pageError = cajasQuery.error ? extractError(cajasQuery.error) : actionPageError;
+  void setActionPageError;
+  const loadCajas = useCallback(
+    async () => { await queryClient.invalidateQueries({ queryKey: ['cajas-ahorro'] }); },
+    [queryClient],
+  );
 
   const handleOpenEdit = (caja: CajaAhorroDolares) => {
     setSelectedCaja(caja);
