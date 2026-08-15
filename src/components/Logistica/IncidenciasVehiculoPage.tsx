@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -749,9 +750,17 @@ interface TabLegajoProps {
 
 const TabLegajo: React.FC<TabLegajoProps> = ({ vehiculos, onMutation }) => {
   const [selectedVehiculo, setSelectedVehiculo] = useState<Vehiculo | null>(null);
-  const [incidencias, setIncidencias] = useState<IncidenciaVehiculoDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [actionError, setActionError] = useState<string | null>(null);
+  const incidenciasQuery = useQuery({
+    queryKey: ['incidencias-vehiculo', 'por-vehiculo', selectedVehiculo?.id],
+    queryFn: () => incidenciaVehiculoApi.getByVehiculo(selectedVehiculo!.id, { size: 200 }).then((r) => r.content),
+    enabled: !!selectedVehiculo,
+  });
+  const incidencias: IncidenciaVehiculoDTO[] = selectedVehiculo ? (incidenciasQuery.data ?? []) : [];
+  const loading = incidenciasQuery.isPending && !!selectedVehiculo;
+  const error = incidenciasQuery.error ? 'Error al cargar las incidencias del vehículo.' : actionError;
+  void setActionError; // errores de acciones (el flujo actual usa snackbar/success)
 
   // Filters
   const [filterEstado, setFilterEstado] = useState<EstadoIncidencia | ''>('');
@@ -772,23 +781,10 @@ const TabLegajo: React.FC<TabLegajoProps> = ({ vehiculos, onMutation }) => {
     setTimeout(() => setSuccess(null), 3000);
   };
 
-  const loadIncidencias = useCallback(async (vehiculo: Vehiculo) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await incidenciaVehiculoApi.getByVehiculo(vehiculo.id, { size: 200 });
-      setIncidencias(res.content);
-    } catch {
-      setError('Error al cargar las incidencias del vehículo.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedVehiculo) loadIncidencias(selectedVehiculo);
-    else setIncidencias([]);
-  }, [selectedVehiculo, loadIncidencias]);
+  const loadIncidencias = useCallback(
+    async (_v?: Vehiculo) => { await queryClient.invalidateQueries({ queryKey: ['incidencias-vehiculo'] }); },
+    [queryClient],
+  );
 
   const filtered = useMemo(() => {
     return incidencias.filter((inc) => {
@@ -999,9 +995,6 @@ interface TabAbiertasProps {
 }
 
 const TabAbiertas: React.FC<TabAbiertasProps> = ({ vehiculos, onMutation }) => {
-  const [incidencias, setIncidencias] = useState<IncidenciaVehiculoDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -1011,24 +1004,24 @@ const TabAbiertas: React.FC<TabAbiertasProps> = ({ vehiculos, onMutation }) => {
 
   const showSuccess = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(null), 3000); };
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await incidenciaVehiculoApi.getAbiertas();
-      const withVehiculos = data.map((inc) => ({
-        ...inc,
-        vehiculo: inc.vehiculo || vehiculos.find((v) => v.id === inc.vehiculoId),
-      }));
-      setIncidencias(withVehiculos);
-    } catch {
-      setError('Error al cargar las incidencias abiertas.');
-    } finally {
-      setLoading(false);
-    }
-  }, [vehiculos]);
-
-  useEffect(() => { load(); }, [load]);
+  const queryClient = useQueryClient();
+  const abiertasQuery = useQuery({
+    queryKey: ['incidencias-vehiculo', 'abiertas'],
+    queryFn: () => incidenciaVehiculoApi.getAbiertas(),
+  });
+  const incidencias: IncidenciaVehiculoDTO[] = useMemo(
+    () => (abiertasQuery.data ?? []).map((inc) => ({
+      ...inc,
+      vehiculo: inc.vehiculo || vehiculos.find((v) => v.id === inc.vehiculoId),
+    })),
+    [abiertasQuery.data, vehiculos]
+  );
+  const loading = abiertasQuery.isPending;
+  const error = abiertasQuery.error ? 'Error al cargar las incidencias abiertas.' : null;
+  const load = useCallback(
+    async () => { await queryClient.invalidateQueries({ queryKey: ['incidencias-vehiculo'] }); },
+    [queryClient],
+  );
 
   const handleFormSubmit = async (data: CreateIncidenciaVehiculoDTO | UpdateIncidenciaVehiculoDTO, id?: number) => {
     if (id) {
@@ -1129,28 +1122,18 @@ interface TabVencimientosProps {
 
 const TabVencimientos: React.FC<TabVencimientosProps> = ({ vehiculos }) => {
   const [dias, setDias] = useState(30);
-  const [incidencias, setIncidencias] = useState<IncidenciaVehiculoDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (d: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await incidenciaVehiculoApi.getVencimientos(d);
-      const withVehiculos = data.map((inc) => ({
+  const vencimientosQuery = useQuery({
+    queryKey: ['incidencias-vehiculo', 'vencimientos', dias],
+    queryFn: () => incidenciaVehiculoApi.getVencimientos(dias).then((data) =>
+      data.map((inc) => ({
         ...inc,
         vehiculo: inc.vehiculo || vehiculos.find((v) => v.id === inc.vehiculoId),
-      }));
-      setIncidencias(withVehiculos);
-    } catch {
-      setError('Error al cargar alertas de vencimientos.');
-    } finally {
-      setLoading(false);
-    }
-  }, [vehiculos]);
-
-  useEffect(() => { load(dias); }, [load, dias]);
+      }))),
+  });
+  const incidencias: IncidenciaVehiculoDTO[] = vencimientosQuery.data ?? [];
+  const loading = vencimientosQuery.isPending;
+  const error = vencimientosQuery.error ? 'Error al cargar alertas de vencimientos.' : null;
 
   const getVencimientoRowBg = (fecha: string) => {
     const days = getDaysUntil(fecha);
@@ -1177,7 +1160,7 @@ const TabVencimientos: React.FC<TabVencimientosProps> = ({ vehiculos }) => {
         </Box>
         <Tooltip title="Actualizar">
           <span>
-            <IconButton onClick={() => load(dias)} disabled={loading} size="small">
+            <IconButton onClick={() => vencimientosQuery.refetch()} disabled={loading} size="small">
               <RefreshIcon />
             </IconButton>
           </span>
@@ -1272,39 +1255,27 @@ const TabVencimientos: React.FC<TabVencimientosProps> = ({ vehiculos }) => {
 
 export const IncidenciasVehiculoPage: React.FC = () => {
   const [tab, setTab] = useState(0);
-  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
-  const [loadingVehiculos, setLoadingVehiculos] = useState(true);
-  const [vehiculosError, setVehiculosError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const vehiculosQuery = useQuery({
+    queryKey: ['vehiculos', 'catalogo-500'],
+    queryFn: () => vehiculoApi.getAll({ size: 500 }).then((r) => r.content),
+    staleTime: 300_000,
+  });
+  const vehiculos: Vehiculo[] = vehiculosQuery.data ?? [];
+  const loadingVehiculos = vehiculosQuery.isPending;
+  const vehiculosError = vehiculosQuery.error ? 'Error al cargar la lista de vehículos.' : null;
 
   // Global stat for the header badge (total open)
-  const [totalAbiertas, setTotalAbiertas] = useState<number | null>(null);
-
-  const loadVehiculos = useCallback(async () => {
-    setLoadingVehiculos(true);
-    setVehiculosError(null);
-    try {
-      const res = await vehiculoApi.getAll({ size: 500 });
-      setVehiculos(res.content);
-    } catch {
-      setVehiculosError('Error al cargar la lista de vehículos.');
-    } finally {
-      setLoadingVehiculos(false);
-    }
-  }, []);
-
-  const refreshStats = useCallback(async () => {
-    try {
-      const data = await incidenciaVehiculoApi.getAbiertas();
-      setTotalAbiertas(data.length);
-    } catch {
-      // non-critical
-    }
-  }, []);
-
-  useEffect(() => {
-    loadVehiculos();
-    refreshStats();
-  }, [loadVehiculos, refreshStats]);
+  // Badge del header: reusa la MISMA query que la tab de abiertas.
+  const abiertasStatsQuery = useQuery({
+    queryKey: ['incidencias-vehiculo', 'abiertas'],
+    queryFn: () => incidenciaVehiculoApi.getAbiertas(),
+  });
+  const totalAbiertas: number | null = abiertasStatsQuery.data?.length ?? null;
+  const refreshStats = useCallback(
+    async () => { await queryClient.invalidateQueries({ queryKey: ['incidencias-vehiculo'] }); },
+    [queryClient],
+  );
 
   return (
     <Box sx={{ p: 3 }}>
