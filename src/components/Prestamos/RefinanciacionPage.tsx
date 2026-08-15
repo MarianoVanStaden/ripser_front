@@ -1,5 +1,6 @@
 import FechaField from '../common/FechaField';
 import { useState, useEffect, useCallback } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Box, Grid, Card, CardContent, Typography, CircularProgress, Alert,
   Button, TextField, MenuItem, FormControl, InputLabel, Select,
@@ -137,7 +138,6 @@ export const RefinanciacionPage: React.FC = () => {
 
   // Confirm
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   // Snackbar
   const [snackbar, setSnackbar] = useState<{
@@ -189,23 +189,25 @@ export const RefinanciacionPage: React.FC = () => {
     setErrors(prev => { const next = { ...prev }; delete next[key]; return next; });
   }, []);
 
-  const handleConfirmar = async () => {
-    if (!prestamo || !preview) return;
-    const formErrors = validarFormulario(form, preview.deudaTotal);
-    if (Object.keys(formErrors).length > 0) { setErrors(formErrors); return; }
-
-    setSubmitting(true);
-    try {
-      const result = await refinanciacionApi.confirmar(buildRequest(form, prestamo.id));
+  const confirmarMutation = useMutation({
+    mutationFn: () => refinanciacionApi.confirmar(buildRequest(form, prestamo!.id)),
+    onSuccess: (result) => {
       setSnackbar({ open: true, message: 'Crédito personal refinanciado exitosamente', severity: 'success' });
       setConfirmOpen(false);
       navigate(`/prestamos/${result.nuevoPrestamo.id}`);
-    } catch (e) {
+    },
+    onError: (e) => {
       setSnackbar({ open: true, message: extraerMensajeError(e), severity: 'error' });
       setConfirmOpen(false);
-    } finally {
-      setSubmitting(false);
-    }
+    },
+  });
+  const submitting = confirmarMutation.isPending;
+
+  const handleConfirmar = () => {
+    if (!prestamo || !preview) return;
+    const formErrors = validarFormulario(form, preview.deudaTotal);
+    if (Object.keys(formErrors).length > 0) { setErrors(formErrors); return; }
+    confirmarMutation.mutate();
   };
 
   const handleOpenConfirm = () => {
