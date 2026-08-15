@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Card, CardContent, Typography, Table, TableHead, TableBody, TableRow, TableCell,
   Chip, IconButton, Tooltip, CircularProgress, Alert, Stack,
@@ -14,28 +15,24 @@ import { ConfirmarPagoInformadoDialog } from './ConfirmarPagoInformadoDialog';
 import { RechazarPagoInformadoDialog } from './RechazarPagoInformadoDialog';
 
 export const BandejaPagosInformadosPage: React.FC = () => {
-  const [pagos, setPagos] = useState<PagoInformadoDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<PagoInformadoDTO | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await pagoInformadoApi.listarPendientes();
-      setPagos(data);
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg || 'No se pudieron cargar los pagos informados');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const queryClient = useQueryClient();
+  const pagosQuery = useQuery({
+    queryKey: ['pagos-informados', 'pendientes'],
+    queryFn: () => pagoInformadoApi.listarPendientes(),
+  });
+  const pagos = pagosQuery.data ?? [];
+  const loading = pagosQuery.isPending;
+  const error = pagosQuery.error
+    ? ((pagosQuery.error as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || 'No se pudieron cargar los pagos informados')
+    : null;
 
-  useEffect(() => { load(); }, [load]);
+  // Conserva el nombre `load` (botón Recargar + onConfirmado/onRechazado) invalidando el query.
+  const load = () => queryClient.invalidateQueries({ queryKey: ['pagos-informados', 'pendientes'] });
 
   const openConfirm = (p: PagoInformadoDTO) => { setSelected(p); setConfirmOpen(true); };
   const openReject = (p: PagoInformadoDTO) => { setSelected(p); setRejectOpen(true); };

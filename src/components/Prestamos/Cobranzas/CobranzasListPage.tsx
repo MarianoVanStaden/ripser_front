@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Paper, Table, TableBody, TableCell,
   TableHead, TableRow, TablePagination, TableSortLabel, IconButton, Typography,
@@ -158,7 +159,6 @@ export const CobranzasListPage: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkPrioridadAnchor, setBulkPrioridadAnchor] = useState<HTMLElement | null>(null);
   const [bulkCierreAnchor, setBulkCierreAnchor] = useState<HTMLElement | null>(null);
-  const [bulkBusy, setBulkBusy] = useState(false);
   // Diálogo de confirmación para cerrar gestiones en bulk.
   const [confirmCierre, setConfirmCierre] = useState<{ estado: EstadoGestionCobranza; cantidad: number } | null>(null);
 
@@ -234,16 +234,17 @@ export const CobranzasListPage: React.FC = () => {
 
   // Conteo para el chip "Mora prolongada" (query liviano: size=1, sólo se lee totalElements).
   // Se recalcula cada vez que cambia la lista (acciones del usuario, filtros, refresh por SSE).
-  const [moraProlongadaCount, setMoraProlongadaCount] = useState<number | null>(null);
-  const fetchMoraProlongadaCount = useCallback(async () => {
-    try {
-      const res = await gestionCobranzaApi.getAll({ fechaFiltro: 'MORA_PROLONGADA', page: 0, size: 1 });
-      setMoraProlongadaCount(res.totalElements);
-    } catch {
-      /* no crítico: el chip simplemente no muestra el conteo */
-    }
-  }, []);
-  useEffect(() => { fetchMoraProlongadaCount(); }, [gestiones, fetchMoraProlongadaCount]);
+  const queryClient = useQueryClient();
+  // Conteo global de gestiones en mora prolongada (chip). No crítico: si falla,
+  // el chip no muestra número. Se invalida tras cerrar/priorizar gestiones.
+  const moraProlongadaQuery = useQuery({
+    queryKey: ['gestiones-cobranza', 'mora-prolongada-count'],
+    queryFn: () => gestionCobranzaApi.getAll({ fechaFiltro: 'MORA_PROLONGADA', page: 0, size: 1 })
+      .then((res) => res.totalElements),
+  });
+  const moraProlongadaCount = moraProlongadaQuery.data ?? null;
+  const invalidateMoraCount = () =>
+    queryClient.invalidateQueries({ queryKey: ['gestiones-cobranza', 'mora-prolongada-count'] });
 
   const [sortField, sortDir] = sort.split(',') as [string, 'asc' | 'desc'];
 
@@ -326,20 +327,20 @@ export const CobranzasListPage: React.FC = () => {
     [showSnack]
   );
 
-  const handleBulkPrioridad = async (prioridad: PrioridadCobranza) => {
-    setBulkPrioridadAnchor(null);
-    setBulkBusy(true);
-    try {
-      const result = await gestionCobranzaApi.bulkPrioridad(Array.from(selectedIds), prioridad);
+  const bulkPrioridadMutation = useMutation({
+    mutationFn: (prioridad: PrioridadCobranza) =>
+      gestionCobranzaApi.bulkPrioridad(Array.from(selectedIds), prioridad),
+    onSuccess: (result, prioridad) => {
       reportBulkResult(result, `gestiones marcadas como ${PRIORIDAD_COBRANZA_LABELS[prioridad].toLowerCase()}`);
       clearSelection();
       refresh();
-    } catch (e) {
-      showSnack('No se pudo aplicar la operación', 'error');
-      console.error(e);
-    } finally {
-      setBulkBusy(false);
-    }
+      invalidateMoraCount();
+    },
+    onError: (e) => { showSnack('No se pudo aplicar la operación', 'error'); console.error(e); },
+  });
+  const handleBulkPrioridad = (prioridad: PrioridadCobranza) => {
+    setBulkPrioridadAnchor(null);
+    bulkPrioridadMutation.mutate(prioridad);
   };
 
   const handleBulkCierre = (estado: EstadoGestionCobranza) => {
@@ -348,34 +349,38 @@ export const CobranzasListPage: React.FC = () => {
     setConfirmCierre({ estado, cantidad: selectedIds.size });
   };
 
-  const handleConfirmBulkCierre = async () => {
-    if (!confirmCierre) return;
-    const { estado } = confirmCierre;
-    setBulkBusy(true);
-    try {
-      const result = await gestionCobranzaApi.bulkCerrar(Array.from(selectedIds), estado);
+  const bulkCerrarMutation = useMutation({
+    mutationFn: (estado: EstadoGestionCobranza) =>
+      gestionCobranzaApi.bulkCerrar(Array.from(selectedIds), estado),
+    onSuccess: (result, estado) => {
       reportBulkResult(result, `gestiones cerradas como ${ESTADO_GESTION_COBRANZA_LABELS[estado].toLowerCase()}`);
       clearSelection();
       refresh();
-    } catch (e) {
-      showSnack('No se pudo aplicar la operación', 'error');
-      console.error(e);
-    } finally {
-      setBulkBusy(false);
-      setConfirmCierre(null);
-    }
+      invalidateMoraCount();
+    },
+    onError: (e) => { showSnack('No se pudo aplicar la operación', 'error'); console.error(e); },
+    onSettled: () => setConfirmCierre(null),
+  });
+  const handleConfirmBulkCierre = () => {
+    if (!confirmCierre) return;
+    bulkCerrarMutation.mutate(confirmCierre.estado);
   };
 
-  const handleCerrarSingle = async (id: number, estado: EstadoGestionCobranza) => {
-    setCierreMenuAnchor(null);
-    try {
-      await gestionCobranzaApi.cerrar(id, estado);
+  const bulkBusy = bulkPrioridadMutation.isPending || bulkCerrarMutation.isPending;
+
+  const cerrarSingleMutation = useMutation({
+    mutationFn: ({ id, estado }: { id: number; estado: EstadoGestionCobranza }) =>
+      gestionCobranzaApi.cerrar(id, estado),
+    onSuccess: (_data, { estado }) => {
       showSnack(`Gestión cerrada como ${ESTADO_GESTION_COBRANZA_LABELS[estado].toLowerCase()}`, 'success');
       refresh();
-    } catch (e) {
-      showSnack('No se pudo cerrar la gestión', 'error');
-      console.error(e);
-    }
+      invalidateMoraCount();
+    },
+    onError: (e) => { showSnack('No se pudo cerrar la gestión', 'error'); console.error(e); },
+  });
+  const handleCerrarSingle = (id: number, estado: EstadoGestionCobranza) => {
+    setCierreMenuAnchor(null);
+    cerrarSingleMutation.mutate({ id, estado });
   };
 
   const getProximaGestionLabel = (fecha: string | null) => {
