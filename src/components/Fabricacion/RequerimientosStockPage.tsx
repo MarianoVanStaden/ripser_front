@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -1322,12 +1323,8 @@ export const RequerimientosStockPage: React.FC = () => {
   const { esAdminCompras, puedeVerCostos } = usePermisos();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [requerimientos, setRequerimientos] = useState<RequerimientoStockDTO[]>([]);
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [proveedores, setProveedores] = useState<ProveedorDTO[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [actionError, setActionError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<EstadoRequerimientoStock | ''>('');
   // Filtro rápido en memoria disparado desde las métricas (independiente del estado server-side).
@@ -1348,43 +1345,43 @@ export const RequerimientosStockPage: React.FC = () => {
   const toggleVista = (v: 'ACTIVOS' | 'POR_RECIBIR') =>
     setVistaRapida((prev) => (prev === v ? null : v));
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await requerimientoStockApi.findAll(filtroEstado || undefined);
-      setRequerimientos(data);
-    } catch (err) {
-      setError(apiError(err, 'Error al cargar los pedidos de materiales'));
-    } finally {
-      setLoading(false);
-    }
-  }, [filtroEstado]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const requerimientosQuery = useQuery({
+    queryKey: ['requerimientos-stock', { estado: filtroEstado || undefined }],
+    queryFn: () => requerimientoStockApi.findAll(filtroEstado || undefined),
+  });
+  const requerimientos: RequerimientoStockDTO[] = requerimientosQuery.data ?? [];
+  const loading = requerimientosQuery.isPending;
+  const error = requerimientosQuery.error
+    ? apiError(requerimientosQuery.error, 'Error al cargar los pedidos de materiales')
+    : actionError;
+  const setError = setActionError;
+  const load = useCallback(
+    async () => { await queryClient.invalidateQueries({ queryKey: ['requerimientos-stock'] }); },
+    [queryClient],
+  );
 
   // Catálogos para los pickers (productos y categorías siempre; proveedores solo admin de compras).
-  useEffect(() => {
-    productApi
-      .getAll({ size: 10000 })
-      .then((res) => {
-        const data = Array.isArray(res) ? res : (res?.content ?? []);
-        setProductos(data as Producto[]);
-      })
-      .catch(() => undefined);
-    categoriaProductoApi
-      .getAll()
-      .then((res) => setCategorias(Array.isArray(res) ? res.filter((c) => c.activo !== false) : []))
-      .catch(() => undefined);
-    if (esAdminCompras) {
-      supplierApi
-        .getAll()
-        .then((res) => setProveedores(Array.isArray(res) ? res : []))
-        .catch(() => undefined);
-    }
-  }, [esAdminCompras]);
+  const productosQuery = useQuery({
+    queryKey: ['productos', 'picker-requerimientos'],
+    queryFn: () => productApi.getAll({ size: 10000 })
+      .then((res) => (Array.isArray(res) ? res : (res?.content ?? [])) as Producto[]),
+    staleTime: 300_000,
+  });
+  const categoriasQuery = useQuery({
+    queryKey: ['categorias-producto', 'activas'],
+    queryFn: () => categoriaProductoApi.getAll()
+      .then((res) => (Array.isArray(res) ? res.filter((c) => c.activo !== false) : [])),
+    staleTime: 300_000,
+  });
+  const proveedoresQuery = useQuery({
+    queryKey: ['proveedores', 'picker-requerimientos'],
+    queryFn: () => supplierApi.getAll().then((res) => (Array.isArray(res) ? res : [])),
+    enabled: esAdminCompras,
+    staleTime: 300_000,
+  });
+  const productos: Producto[] = productosQuery.data ?? [];
+  const categorias: CategoriaProducto[] = categoriasQuery.data ?? [];
+  const proveedores: ProveedorDTO[] = proveedoresQuery.data ?? [];
 
   const handleCambiarEstado = async (id: number, estado: EstadoRequerimientoStock) => {
     try {
@@ -1400,7 +1397,7 @@ export const RequerimientosStockPage: React.FC = () => {
     setEliminando(true);
     try {
       await requerimientoStockApi.eliminar(confirmarEliminar);
-      setRequerimientos((prev) => prev.filter((r) => r.id !== confirmarEliminar));
+      await load();
       setConfirmarEliminar(null);
     } catch (err) {
       setError(apiError(err, 'No se pudo eliminar el pedido'));
