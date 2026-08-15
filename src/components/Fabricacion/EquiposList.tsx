@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTheme, useMediaQuery } from '@mui/material';
 import {
-  Box, Paper, Typography, Button, TextField, Chip, IconButton,
-  Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent,
-  DialogContentText, DialogActions, Stack, Card, CardContent,
+  Box, Paper, Typography, Button, Chip, IconButton,
+  Tooltip, Alert, Snackbar,
+  Stack, Card, CardContent,
   Grid, Tabs, Tab, Divider,
-  LinearProgress, CircularProgress, Checkbox,
+  LinearProgress,
 } from '@mui/material';
 import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel } from '@mui/x-data-grid';
 import {
@@ -14,8 +14,17 @@ import {
   QrCode2, AssignmentTurnedIn, SwapHoriz,
 } from '@mui/icons-material';
 import AplicarTerminacionDialog from './AplicarTerminacionDialog';
-import ChecklistProduccionPanel from './ChecklistProduccionPanel';
 import ReasignarEquipoDialog from './ReasignarEquipoDialog';
+import AsignarClienteDialog from './Equipos/dialogs/AsignarClienteDialog';
+import CompletarEquipoDialog from './Equipos/dialogs/CompletarEquipoDialog';
+import AprobarQCDialog from './Equipos/dialogs/AprobarQCDialog';
+import RechazarQCDialog from './Equipos/dialogs/RechazarQCDialog';
+import IniciarFabricacionDialog from './Equipos/dialogs/IniciarFabricacionDialog';
+import CancelarEquipoDialog from './Equipos/dialogs/CancelarEquipoDialog';
+import EliminarEquipoDialog from './Equipos/dialogs/EliminarEquipoDialog';
+import DesasignarEquipoDialog from './Equipos/dialogs/DesasignarEquipoDialog';
+import DesasignarErrorDialog from './Equipos/dialogs/DesasignarErrorDialog';
+import ChecklistEquipoDialog from './Equipos/dialogs/ChecklistEquipoDialog';
 import EquiposTipoSection from './EquiposTipoSection';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -27,10 +36,9 @@ import { colorApi } from '../../api/services/colorApi';
 import type { Color } from '../../api/services/colorApi';
 import { medidaApi } from '../../api/services/medidaApi';
 import type { Medida } from '../../api/services/medidaApi';
-import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoDTO, EquipoFabricadoListDTO, EstadoAsignacionEquipo, EtapaFabricacionDTO, EquipoResumenEstadosDTO } from '../../types';
+import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoDTO, EquipoFabricadoListDTO, EstadoAsignacionEquipo, EquipoResumenEstadosDTO } from '../../types';
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { usePermisos } from '../../hooks/usePermisos';
-import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 /**
@@ -217,15 +225,12 @@ const EquiposList: React.FC = () => {
     equipo: EquipoFabricadoListDTO | null;
   }>({ open: false, equipo: null });
 
+  // Checklist y rechazo de QC: los dialogs (Equipos/dialogs) cargan sus etapas
+  // al abrir; acá solo se marca qué equipo mirar.
   const [checklistDialog, setChecklistDialog] = useState<{
     open: boolean;
-    equipoId: number | null;
     equipo: EquipoFabricadoListDTO | null;
-    etapas: EtapaFabricacionDTO[];
-    loading: boolean;
-    error: string | null;
-    modoRechazo: boolean;
-  }>({ open: false, equipoId: null, equipo: null, etapas: [], loading: false, error: null, modoRechazo: false });
+  }>({ open: false, equipo: null });
 
   const [aprobarQCDialog, setAprobarQCDialog] = useState<{
     open: boolean;
@@ -235,111 +240,20 @@ const EquiposList: React.FC = () => {
   const [rechazarQCDialog, setRechazarQCDialog] = useState<{
     open: boolean;
     equipo: EquipoFabricadoListDTO | null;
-    motivo: string;
-    etapas: EtapaFabricacionDTO[];
-    etapasRechazadas: Map<string, string>;
-    loading: boolean;
-    error: string | null;
-  }>({ open: false, equipo: null, motivo: '', etapas: [], etapasRechazadas: new Map(), loading: false, error: null });
+  }>({ open: false, equipo: null });
 
-  const openChecklistDialog = async (equipo: EquipoFabricadoListDTO) => {
-    setChecklistDialog({
-      open: true,
-      equipoId: equipo.id,
-      equipo,
-      etapas: [],
-      loading: true,
-      error: null,
-      modoRechazo: false,
-    });
-    try {
-      const data = await equipoFabricadoApi.getEtapasProduccion(equipo.id);
-      setChecklistDialog((prev) =>
-        prev.equipoId === equipo.id
-          ? { ...prev, etapas: data, loading: false }
-          : prev
-      );
-    } catch (error: any) {
-      const message = error.response?.data?.message ?? error.message ?? 'Error al cargar el checklist';
-      setChecklistDialog((prev) =>
-        prev.equipoId === equipo.id
-          ? { ...prev, loading: false, error: message }
-          : prev
-      );
-    }
+  const openChecklistDialog = (equipo: EquipoFabricadoListDTO) => {
+    setChecklistDialog({ open: true, equipo });
   };
 
-  const closeChecklistDialog = () => {
-    setChecklistDialog({ open: false, equipoId: null, equipo: null, etapas: [], loading: false, error: null, modoRechazo: false });
+  const openRechazarQCDialog = (equipo: EquipoFabricadoListDTO) => {
+    setRechazarQCDialog({ open: true, equipo });
   };
 
-  const handleChecklistEtapaActualizada = (etapa: EtapaFabricacionDTO) => {
-    setChecklistDialog((prev) => ({
-      ...prev,
-      etapas: prev.etapas.map((e) => (e.id === etapa.id ? etapa : e)),
-    }));
+  const onNotify = (message: string, severity: 'success' | 'error') => {
+    setSnackbar({ open: true, message, severity });
   };
 
-  const openRechazarQCDialog = async (equipo: EquipoFabricadoListDTO) => {
-    setRechazarQCDialog({
-      open: true,
-      equipo,
-      motivo: '',
-      etapas: [],
-      etapasRechazadas: new Map(),
-      loading: true,
-      error: null,
-    });
-    try {
-      const data = await equipoFabricadoApi.getEtapasProduccion(equipo.id);
-      setRechazarQCDialog((prev) =>
-        prev.equipo?.id === equipo.id
-          ? { ...prev, etapas: data, loading: false }
-          : prev
-      );
-    } catch (error: any) {
-      const message = error.response?.data?.message ?? error.message ?? 'Error al cargar las etapas';
-      setRechazarQCDialog((prev) =>
-        prev.equipo?.id === equipo.id
-          ? { ...prev, loading: false, error: message }
-          : prev
-      );
-    }
-  };
-
-  const closeRechazarQCDialog = () => {
-    setRechazarQCDialog({
-      open: false,
-      equipo: null,
-      motivo: '',
-      etapas: [],
-      etapasRechazadas: new Map(),
-      loading: false,
-      error: null,
-    });
-  };
-
-  const toggleEtapaRechazada = (tipoEtapa: string) => {
-    setRechazarQCDialog((prev) => {
-      const newMap = new Map(prev.etapasRechazadas);
-      if (newMap.has(tipoEtapa)) {
-        newMap.delete(tipoEtapa);
-      } else {
-        newMap.set(tipoEtapa, '');
-      }
-      return { ...prev, etapasRechazadas: newMap };
-    });
-  };
-
-  const setMotivoRechazada = (tipoEtapa: string, motivo: string) => {
-    setRechazarQCDialog((prev) => {
-      const newMap = new Map(prev.etapasRechazadas);
-      newMap.set(tipoEtapa, motivo);
-      return { ...prev, etapasRechazadas: newMap };
-    });
-  };
-
-  const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [currentTab, setCurrentTab] = useState(0);
 
   // Métricas globales de la empresa (del resumen server-side), no de la página filtrada.
@@ -499,18 +413,17 @@ const EquiposList: React.FC = () => {
     }
   };
 
-  const handleAsignar = async () => {
-    if (!assignDialog.equipoId || !selectedCliente) return;
+  const handleAsignar = async (cliente: { id: number }) => {
+    if (!assignDialog.equipoId) return;
 
     try {
-      await equipoFabricadoApi.asignarEquipo(assignDialog.equipoId, selectedCliente.id);
+      await equipoFabricadoApi.asignarEquipo(assignDialog.equipoId, cliente.id);
       setSnackbar({
         open: true,
         message: 'Equipo asignado correctamente',
         severity: 'success',
       });
       setAssignDialog({ open: false, equipoId: null });
-      setSelectedCliente(null);
       refrescar();
     } catch (error) {
       setSnackbar({
@@ -1536,731 +1449,68 @@ const EquiposList: React.FC = () => {
       </Paper>
 
       {/* Assign Dialog */}
-      <Dialog
+      <AsignarClienteDialog
         open={assignDialog.open}
-        onClose={() => {
-          setAssignDialog({ open: false, equipoId: null });
-          setSelectedCliente(null);
-        }}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Asignar Cliente</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <ClienteAutocomplete
-              size="medium"
-              label="Cliente *"
-              value={selectedCliente}
-              onChange={(newValue) => setSelectedCliente(newValue)}
-              required
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setAssignDialog({ open: false, equipoId: null });
-              setSelectedCliente(null);
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleAsignar}
-            disabled={!selectedCliente}
-          >
-            Asignar
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onClose={() => setAssignDialog({ open: false, equipoId: null })}
+        onConfirm={handleAsignar}
+      />
 
-      {/* Completar Dialog - Enhanced */}
-      <Dialog
+      <CompletarEquipoDialog
         open={completarDialog.open}
+        equipo={completarDialog.equipo}
         onClose={() => setCompletarDialog({ open: false, equipoId: null, equipo: null })}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            overflow: 'visible',
-          },
-        }}
-      >
-        <DialogContent sx={{ pt: 4, pb: 3 }}>
-          <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
-            {/* Success Icon */}
-            <Box
-              sx={{
-                width: 80,
-                height: 80,
-                borderRadius: '50%',
-                bgcolor: (theme) => theme.palette.success.main + '20',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mb: 2,
-              }}
-            >
-              <CheckCircle sx={{ fontSize: 50, color: 'success.main' }} />
-            </Box>
+        onConfirm={handleCompletar}
+      />
 
-            {/* Title */}
-            <Typography variant="h5" fontWeight="600" gutterBottom>
-              Completar Fabricación
-            </Typography>
-
-            {/* Message */}
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              ¿Está seguro de que desea marcar este equipo como completado?
-            </Typography>
-
-            {/* Equipment Details */}
-            {completarDialog.equipo && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  width: '100%',
-                  p: 2,
-                  bgcolor: (theme) => theme.palette.primary.main + '08',
-                  borderColor: (theme) => theme.palette.primary.main + '30',
-                }}
-              >
-                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
-                  <Typography variant="body2" color="text.secondary">
-                    Número:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="600">
-                    {completarDialog.equipo.numeroHeladera}
-                  </Typography>
-                </Box>
-                <Divider />
-                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
-                  <Typography variant="body2" color="text.secondary">
-                    Tipo:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="600">
-                    {completarDialog.equipo.tipo}
-                  </Typography>
-                </Box>
-                <Divider />
-                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
-                  <Typography variant="body2" color="text.secondary">
-                    Modelo:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="600">
-                    {completarDialog.equipo.modelo}
-                  </Typography>
-                </Box>
-                {completarDialog.equipo.responsableNombre && (
-                  <>
-                    <Divider />
-                    <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
-                      <Typography variant="body2" color="text.secondary">
-                        Responsable:
-                      </Typography>
-                      <Typography variant="body1" fontWeight="600">
-                        {completarDialog.equipo.responsableNombre}
-                      </Typography>
-                    </Box>
-                  </>
-                )}
-              </Paper>
-            )}
-
-            {/* Info Message */}
-            <Alert
-              severity={completarDialog.equipo?.color ? 'success' : 'info'}
-              sx={{ mt: 2, width: '100%' }}
-            >
-              <Typography variant="caption">
-                {completarDialog.equipo?.color
-                  ? 'Al completar, el equipo estará disponible para asignación o venta.'
-                  : 'Este equipo no tiene color asignado. Al completar quedará como base genérica (Sin Terminación), lista para aplicar terminación a demanda.'}
-              </Typography>
-            </Alert>
-          </Box>
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
-          <Button onClick={() => setCompletarDialog({ open: false, equipoId: null, equipo: null })} color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => {
-              console.log('🔘 Botón "Confirmar Completado" presionado');
-              console.log('📋 completarDialog state:', completarDialog);
-              handleCompletar();
-            }}
-            color="success"
-            variant="contained"
-            startIcon={<CheckCircle />}
-          >
-            Confirmar Completado
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Aprobar Control de Calidad Dialog */}
-      <Dialog
+      <AprobarQCDialog
         open={aprobarQCDialog.open}
+        equipo={aprobarQCDialog.equipo}
         onClose={() => setAprobarQCDialog({ open: false, equipo: null })}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogContent sx={{ pt: 4, pb: 3 }}>
-          <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
-            <Box
-              sx={{
-                width: 80,
-                height: 80,
-                borderRadius: '50%',
-                bgcolor: (theme) => theme.palette.success.main + '20',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mb: 2,
-              }}
-            >
-              <CheckCircle sx={{ fontSize: 50, color: 'success.main' }} />
-            </Box>
-            <Typography variant="h5" fontWeight="600" gutterBottom>
-              Aprobar Control de Calidad
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              ¿Está seguro de que desea aprobar este equipo?
-            </Typography>
-            {aprobarQCDialog.equipo && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  width: '100%',
-                  p: 2,
-                  bgcolor: (theme) => theme.palette.primary.main + '08',
-                  borderColor: (theme) => theme.palette.primary.main + '30',
-                }}
-              >
-                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
-                  <Typography variant="body2" color="text.secondary">
-                    Número:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="600">
-                    {aprobarQCDialog.equipo.numeroHeladera}
-                  </Typography>
-                </Box>
-                <Divider />
-                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
-                  <Typography variant="body2" color="text.secondary">
-                    Tipo:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="600">
-                    {aprobarQCDialog.equipo.tipo}
-                  </Typography>
-                </Box>
-                <Divider />
-                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
-                  <Typography variant="body2" color="text.secondary">
-                    Modelo:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="600">
-                    {aprobarQCDialog.equipo.modelo}
-                  </Typography>
-                </Box>
-              </Paper>
-            )}
-            <Alert severity="success" sx={{ mt: 3, width: '100%' }}>
-              <Typography variant="caption">
-                {aprobarQCDialog.equipo?.color
-                  ? 'El equipo estará disponible para asignación o venta.'
-                  : 'El equipo quedará como base genérica (Sin Terminación), lista para aplicar terminación a demanda.'}
-              </Typography>
-            </Alert>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
-          <Button onClick={() => setAprobarQCDialog({ open: false, equipo: null })} color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            onClick={async () => {
-              if (!aprobarQCDialog.equipo) return;
-              try {
-                await equipoFabricadoApi.completarFabricacionPorNumero(
-                  aprobarQCDialog.equipo.numeroHeladera
-                );
-                setSnackbar({
-                  open: true,
-                  message: 'Equipo aprobado en control de calidad',
-                  severity: 'success'
-                });
-                setAprobarQCDialog({ open: false, equipo: null });
-                refrescar();
-              } catch (error) {
-                const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
-                  (error as Error).message ||
-                  'Error al aprobar control de calidad';
-                setSnackbar({
-                  open: true,
-                  message: msg,
-                  severity: 'error'
-                });
-              }
-            }}
-            color="success"
-            variant="contained"
-            startIcon={<CheckCircle />}
-          >
-            Aprobar
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onNotify={onNotify}
+        onRefetch={refrescar}
+      />
 
-      {/* Rechazar Control de Calidad Dialog */}
-      <Dialog
+      <RechazarQCDialog
         open={rechazarQCDialog.open}
-        onClose={closeRechazarQCDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Rechazar Control de Calidad</DialogTitle>
-        <DialogContent>
-          {rechazarQCDialog.equipo && (
-            <Stack spacing={2} sx={{ mt: 2 }}>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  <strong>Número:</strong> {rechazarQCDialog.equipo.numeroHeladera}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  <strong>Tipo:</strong> {rechazarQCDialog.equipo.tipo}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  <strong>Modelo:</strong> {rechazarQCDialog.equipo.modelo}
-                </Typography>
-              </Box>
+        equipo={rechazarQCDialog.equipo}
+        onClose={() => setRechazarQCDialog({ open: false, equipo: null })}
+        onNotify={onNotify}
+        onRefetch={refrescar}
+      />
 
-              {rechazarQCDialog.loading && (
-                <Box display="flex" justifyContent="center" py={2}>
-                  <CircularProgress size={32} />
-                </Box>
-              )}
-
-              {rechazarQCDialog.error && (
-                <Alert severity="error">{rechazarQCDialog.error}</Alert>
-              )}
-
-              {!rechazarQCDialog.loading && rechazarQCDialog.etapas.length > 0 && (
-                <>
-                  <Typography variant="subtitle2" fontWeight={600}>
-                    Selecciona las etapas a rechazar
-                  </Typography>
-                  <Stack spacing={1.5}>
-                    {rechazarQCDialog.etapas
-                      .filter((e) => e.estado === 'COMPLETADO' || e.completado)
-                      .map((etapa) => (
-                        <Box key={etapa.id} display="flex" alignItems="flex-start" gap={1}>
-                          <Checkbox
-                            checked={rechazarQCDialog.etapasRechazadas.has(etapa.tipoEtapa)}
-                            onChange={() => toggleEtapaRechazada(etapa.tipoEtapa)}
-                            size="small"
-                          />
-                          <Box flex={1} minWidth={0}>
-                            <Typography variant="body2" fontWeight={500}>
-                              {etapa.tipoEtapaLabel}
-                            </Typography>
-                            {rechazarQCDialog.etapasRechazadas.has(etapa.tipoEtapa) && (
-                              <TextField
-                                size="small"
-                                placeholder="Motivo del rechazo"
-                                value={rechazarQCDialog.etapasRechazadas.get(etapa.tipoEtapa) || ''}
-                                onChange={(e) =>
-                                  setMotivoRechazada(etapa.tipoEtapa, e.target.value)
-                                }
-                                multiline
-                                minRows={1}
-                                maxRows={2}
-                                fullWidth
-                                sx={{ mt: 0.5 }}
-                              />
-                            )}
-                          </Box>
-                        </Box>
-                      ))}
-                  </Stack>
-                </>
-              )}
-
-              <Alert severity="warning">
-                Las etapas seleccionadas volverán a PENDIENTE para que el encargado de taller pueda corregirlas.
-              </Alert>
-            </Stack>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeRechazarQCDialog} color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            onClick={async () => {
-              if (!rechazarQCDialog.equipo || rechazarQCDialog.etapasRechazadas.size === 0) return;
-              try {
-                const etapasArray = Array.from(rechazarQCDialog.etapasRechazadas.entries()).map(
-                  ([tipoEtapa, motivo]) => ({
-                    tipoEtapa: tipoEtapa as any,
-                    motivo: motivo.trim() || undefined,
-                  })
-                );
-                await equipoFabricadoApi.rechazarEtapasEnControlCalidadPorNumero(
-                  rechazarQCDialog.equipo.numeroHeladera,
-                  etapasArray
-                );
-                setSnackbar({
-                  open: true,
-                  message: 'Etapas rechazadas correctamente',
-                  severity: 'success',
-                });
-                closeRechazarQCDialog();
-                refrescar();
-              } catch (error) {
-                const msg =
-                  (error as { response?: { data?: { message?: string } }; message?: string })
-                    ?.response?.data?.message ||
-                  (error as Error).message ||
-                  'Error al rechazar etapas';
-                setSnackbar({
-                  open: true,
-                  message: msg,
-                  severity: 'error',
-                });
-              }
-            }}
-            color="error"
-            variant="contained"
-            disabled={rechazarQCDialog.etapasRechazadas.size === 0 || rechazarQCDialog.loading}
-            startIcon={<Cancel />}
-          >
-            Rechazar Seleccionadas
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Iniciar Fabricación Dialog */}
-      <Dialog
+      <IniciarFabricacionDialog
         open={iniciarDialog.open}
+        equipo={iniciarDialog.equipo}
         onClose={() => setIniciarDialog({ open: false, equipoId: null, equipo: null })}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
-          <PlayArrow sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-          <Typography variant="h6">¿Iniciar Fabricación?</Typography>
-        </DialogTitle>
-        <DialogContent>
-          {iniciarDialog.equipo && (
-            <>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  <strong>Número:</strong> {iniciarDialog.equipo.numeroHeladera}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  <strong>Tipo:</strong> {iniciarDialog.equipo.tipo}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  <strong>Modelo:</strong> {iniciarDialog.equipo.modelo}
-                </Typography>
-                {iniciarDialog.equipo.responsableNombre && (
-                  <Typography variant="body2" color="text.secondary">
-                    <strong>Responsable:</strong> {iniciarDialog.equipo.responsableNombre}
-                  </Typography>
-                )}
-              </Box>
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Al iniciar la fabricación, se descontará el stock de los componentes necesarios.
-                Si no hay stock suficiente, se descontará igual y el stock quedará en negativo.
-                El estado cambiará a EN_PROCESO.
-              </Alert>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
-          <Button
-            onClick={() => setIniciarDialog({ open: false, equipoId: null, equipo: null })}
-            color="inherit"
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleIniciarFabricacion}
-            variant="contained"
-            color="primary"
-            startIcon={<PlayArrow />}
-          >
-            Iniciar Fabricación
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={handleIniciarFabricacion}
+      />
 
-      {/* Cancelar Dialog */}
-      <Dialog
+      <CancelarEquipoDialog
         open={cancelDialog.open}
+        equipo={cancelDialog.equipo}
         onClose={() => setCancelDialog({ open: false, equipoId: null, equipo: null })}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Cancel color="warning" />
-          Cancelar Fabricación
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            ¿Está seguro de que desea cancelar la fabricación de este equipo?
-          </DialogContentText>
-          {cancelDialog.equipo && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Equipo a cancelar:
-              </Typography>
-              <Typography variant="body2">
-                <strong>Número:</strong> {cancelDialog.equipo.numeroHeladera}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Tipo:</strong> {cancelDialog.equipo.tipo}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Modelo:</strong> {cancelDialog.equipo.modelo}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Estado actual:</strong> {cancelDialog.equipo.estado.replace('_', ' ')}
-              </Typography>
-            </Alert>
-          )}
-          <Alert severity="error">
-            <Typography variant="body2">
-              <strong>Advertencia:</strong> Esta acción marcará el equipo como cancelado. 
-              Los materiales utilizados no se devolverán al stock automáticamente.
-            </Typography>
-          </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCancelDialog({ open: false, equipoId: null, equipo: null })}>
-            No Cancelar
-          </Button>
-          <Button onClick={handleCancelar} color="warning" variant="contained" startIcon={<Cancel />}>
-            Sí, Cancelar
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={handleCancelar}
+      />
 
-      {/* Delete Dialog */}
-      <Dialog
+      <EliminarEquipoDialog
         open={deleteDialog.open}
+        equipo={deleteDialog.equipo}
         onClose={() => setDeleteDialog({ open: false, equipoId: null, equipo: null })}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Delete color="error" />
-          Confirmar Eliminación
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            ¿Está seguro de que desea eliminar este equipo? Esta acción no se puede deshacer.
-          </DialogContentText>
-          {deleteDialog.equipo && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Equipo a eliminar:
-              </Typography>
-              <Typography variant="body2">
-                <strong>Número:</strong> {deleteDialog.equipo.numeroHeladera}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Tipo:</strong> {deleteDialog.equipo.tipo}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Modelo:</strong> {deleteDialog.equipo.modelo}
-              </Typography>
-              {deleteDialog.equipo.clienteNombre && (
-                <Typography variant="body2">
-                  <strong>Cliente:</strong> {deleteDialog.equipo.clienteNombre}
-                </Typography>
-              )}
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, equipoId: null, equipo: null })}>
-            Cancelar
-          </Button>
-          <Button onClick={handleDelete} color="error" variant="contained" startIcon={<Delete />}>
-            Eliminar
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={handleDelete}
+      />
 
-      {/* Unassign Confirmation Dialog */}
-      <Dialog
+      <DesasignarEquipoDialog
         open={unassignDialog.open}
+        equipo={unassignDialog.equipo}
         onClose={() => setUnassignDialog({ open: false, equipoId: null, equipo: null })}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            overflow: 'visible',
-          },
-        }}
-      >
-        <DialogContent sx={{ pt: 4, pb: 3 }}>
-          <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
-            {/* Warning Icon */}
-            <Box
-              sx={{
-                width: 80,
-                height: 80,
-                borderRadius: '50%',
-                bgcolor: (theme) => theme.palette.warning.main + '20',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mb: 2,
-              }}
-            >
-              <LinkOff sx={{ fontSize: 50, color: 'warning.main' }} />
-            </Box>
+        onConfirm={handleDesasignar}
+      />
 
-            {/* Title */}
-            <Typography variant="h5" fontWeight="600" gutterBottom>
-              Desasignar Equipo
-            </Typography>
-
-            {/* Message */}
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              ¿Está seguro de que desea desasignar este equipo del cliente?
-            </Typography>
-
-            {/* Equipment Details */}
-            {unassignDialog.equipo && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  width: '100%',
-                  p: 2,
-                  bgcolor: (theme) => theme.palette.warning.main + '08',
-                  borderColor: (theme) => theme.palette.warning.main + '30',
-                }}
-              >
-                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
-                  <Typography variant="body2" color="text.secondary">
-                    Número:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="600">
-                    {unassignDialog.equipo.numeroHeladera}
-                  </Typography>
-                </Box>
-                <Divider />
-                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
-                  <Typography variant="body2" color="text.secondary">
-                    Modelo:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="600">
-                    {unassignDialog.equipo.modelo}
-                  </Typography>
-                </Box>
-                {unassignDialog.equipo.clienteNombre && (
-                  <>
-                    <Divider />
-                    <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
-                      <Typography variant="body2" color="text.secondary">
-                        Cliente Actual:
-                      </Typography>
-                      <Typography variant="body1" fontWeight="600">
-                        {unassignDialog.equipo.clienteNombre}
-                      </Typography>
-                    </Box>
-                  </>
-                )}
-              </Paper>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center', gap: 2 }}>
-          <Button
-            onClick={() => setUnassignDialog({ open: false, equipoId: null, equipo: null })}
-            variant="outlined"
-            size="large"
-            sx={{ minWidth: 120 }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleDesasignar}
-            color="warning"
-            variant="contained"
-            startIcon={<LinkOff />}
-            size="large"
-            sx={{ minWidth: 120 }}
-          >
-            Desasignar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Unassign Error Dialog */}
-      <Dialog
+      <DesasignarErrorDialog
         open={unassignErrorDialog.open}
+        errorMessage={unassignErrorDialog.errorMessage}
         onClose={() => setUnassignErrorDialog({ open: false, errorMessage: '' })}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-          },
-        }}
-      >
-        <DialogContent sx={{ pt: 4, pb: 3 }}>
-          <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
-            {/* Error Icon */}
-            <Box
-              sx={{
-                width: 80,
-                height: 80,
-                borderRadius: '50%',
-                bgcolor: (theme) => theme.palette.error.main + '20',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mb: 2,
-              }}
-            >
-              <Cancel sx={{ fontSize: 50, color: 'error.main' }} />
-            </Box>
-
-            {/* Title */}
-            <Typography variant="h5" fontWeight="600" gutterBottom color="error">
-              No se puede desasignar
-            </Typography>
-
-            {/* Error Message */}
-            <Alert severity="error" sx={{ width: '100%', mt: 2, textAlign: 'left' }}>
-              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-                {unassignErrorDialog.errorMessage}
-              </Typography>
-            </Alert>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center' }}>
-          <Button
-            onClick={() => setUnassignErrorDialog({ open: false, errorMessage: '' })}
-            variant="contained"
-            size="large"
-            sx={{ minWidth: 120 }}
-          >
-            Entendido
-          </Button>
-        </DialogActions>
-      </Dialog>
+      />
 
       <AplicarTerminacionDialog
         open={terminacionDialog.open}
@@ -2287,125 +1537,14 @@ const EquiposList: React.FC = () => {
         }}
       />
 
-      <Dialog
+      <ChecklistEquipoDialog
         open={checklistDialog.open}
-        onClose={closeChecklistDialog}
-        fullWidth
-        maxWidth="md"
-      >
-        <DialogTitle>
-          Checklist de producción
-          {checklistDialog.equipo && (
-            <Typography variant="body2" color="text.secondary">
-              {checklistDialog.equipo.numeroHeladera} — {checklistDialog.equipo.modelo}
-            </Typography>
-          )}
-        </DialogTitle>
-        <DialogContent dividers>
-          {checklistDialog.loading ? (
-            <Box display="flex" justifyContent="center" py={4}>
-              <CircularProgress />
-            </Box>
-          ) : checklistDialog.error ? (
-            <Alert severity="error">{checklistDialog.error}</Alert>
-          ) : checklistDialog.equipoId != null && checklistDialog.etapas.length > 0 ? (
-            <ChecklistProduccionPanel
-              equipoId={checklistDialog.equipoId}
-              etapas={checklistDialog.etapas}
-              progreso={Math.round(
-                (checklistDialog.etapas.filter((e) => e.completado).length /
-                  (checklistDialog.etapas.length || 1)) * 100
-              )}
-              onEtapaActualizada={handleChecklistEtapaActualizada}
-              onEnviarControlCalidad={
-                checklistDialog.equipo?.estado === 'EN_PROCESO'
-                  ? async () => {
-                      if (!checklistDialog.equipo) return;
-                      try {
-                        await equipoFabricadoApi.enviarAControlCalidadPorNumero(
-                          checklistDialog.equipo.numeroHeladera
-                        );
-                        setSnackbar({
-                          open: true,
-                          message: 'Equipo enviado a control de calidad',
-                          severity: 'success'
-                        });
-                        closeChecklistDialog();
-                        refrescar();
-                      } catch (error) {
-                        const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
-                          (error as Error).message ||
-                          'Error al enviar a control de calidad';
-                        setSnackbar({
-                          open: true,
-                          message: msg,
-                          severity: 'error'
-                        });
-                      }
-                    }
-                  : undefined
-              }
-              modoRechazo={checklistDialog.modoRechazo}
-              onRechazarEtapas={
-                checklistDialog.equipo?.estado === 'PENDIENTE_CONTROL_CALIDAD'
-                  ? async (etapasRechazadas) => {
-                      if (!checklistDialog.equipo) return;
-                      try {
-                        await equipoFabricadoApi.rechazarEtapasEnControlCalidadPorNumero(
-                          checklistDialog.equipo.numeroHeladera,
-                          etapasRechazadas
-                        );
-                        setSnackbar({
-                          open: true,
-                          message: 'Etapas rechazadas correctamente',
-                          severity: 'success'
-                        });
-                        closeChecklistDialog();
-                        refrescar();
-                      } catch (error) {
-                        const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
-                          (error as Error).message ||
-                          'Error al rechazar etapas';
-                        setSnackbar({
-                          open: true,
-                          message: msg,
-                          severity: 'error'
-                        });
-                      }
-                    }
-                  : undefined
-              }
-              readOnly={checklistDialog.equipo?.estado === 'PENDIENTE_CONTROL_CALIDAD' && !checklistDialog.modoRechazo}
-            />
-          ) : (
-            <Alert severity="info">No hay etapas de producción registradas.</Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          {checklistDialog.equipo?.estado === 'PENDIENTE_CONTROL_CALIDAD' && esControlCalidad && (
-            <Button
-              variant={checklistDialog.modoRechazo ? 'contained' : 'outlined'}
-              color={checklistDialog.modoRechazo ? 'error' : 'primary'}
-              onClick={() => {
-                setChecklistDialog({
-                  ...checklistDialog,
-                  modoRechazo: !checklistDialog.modoRechazo
-                });
-              }}
-            >
-              {checklistDialog.modoRechazo ? 'Cancelar Rechazo' : 'Rechazar Etapas'}
-            </Button>
-          )}
-          <Button
-            onClick={() => {
-              closeChecklistDialog();
-              refrescar();
-            }}
-          >
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
+        equipo={checklistDialog.equipo}
+        esControlCalidad={esControlCalidad}
+        onClose={() => setChecklistDialog({ open: false, equipo: null })}
+        onNotify={onNotify}
+        onRefetch={refrescar}
+      />
 
       <Snackbar
         open={snackbar.open}
