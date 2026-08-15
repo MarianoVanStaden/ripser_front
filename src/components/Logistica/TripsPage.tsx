@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -111,15 +112,68 @@ const TripsPage2: React.FC = () => {
   // Fecha estimada = fecha de emisión de la factura + estos días.
   const { value: diasEntregaEstimada } = useParametroSistema('DIAS_ENTREGA_ESTIMADA', 25, parseIntOr(25));
 
-  const [trips, setTrips] = useState<Viaje[]>([]);
-  const [vehicles, setVehicles] = useState<Vehiculo[]>([]);
-  const [drivers, setDrivers] = useState<Empleado[]>([]);
-  const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
-  const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
-  const [ordenes, setOrdenes] = useState<OrdenServicio[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  // Datasets independientes: cada uno falla por separado y el banner acumula
+  // los errores (contrato del loadData original). Los catálogos comparten
+  // claves con las demás páginas de Logística.
+  const viajesQuery = useQuery({
+    queryKey: ['viajes', 'lista-completa'],
+    queryFn: () => viajeApi.getAll({ page: 0, size: 1000, sort: 'id,desc' }).then((r) => r.content || []),
+  });
+  const vehiculosQuery = useQuery({
+    queryKey: ['vehiculos', 'catalogo'],
+    queryFn: () => vehiculoApi.getAll({ page: 0, size: 1000 }).then((r: any) => (Array.isArray(r) ? r : r.content || [])),
+    staleTime: 300_000,
+  });
+  const empleadosQuery = useQuery({
+    queryKey: ['empleados', 'list'],
+    queryFn: () => employeeApi.getAllList(),
+    staleTime: 300_000,
+  });
+  const entregasQuery = useQuery({
+    queryKey: ['entregas'],
+    queryFn: () => entregaViajeApi.getAll(),
+  });
+  const facturasQuery = useQuery({
+    queryKey: ['documentos', 'facturas-trips'],
+    queryFn: () => documentoApi.getByTipo('FACTURA').then((data) =>
+      data.filter((f) => f.numeroDocumento?.startsWith('FAC-'))),
+  });
+  const ordenesQuery = useQuery({
+    queryKey: ['ordenes-servicio', 'finalizadas'],
+    queryFn: () => ordenServicioApi.getByEstado('FINALIZADA'),
+  });
+  const clientesQuery = useQuery({
+    queryKey: ['clientes', 'cache-trips'],
+    queryFn: () => clienteApi.getAll({ page: 0, size: 1000 }).then((r: any) => (Array.isArray(r) ? r : r.content || [])),
+    staleTime: 300_000,
+  });
+
+  const trips: Viaje[] = viajesQuery.data ?? [];
+  const vehicles: Vehiculo[] = vehiculosQuery.data ?? [];
+  const drivers: Empleado[] = empleadosQuery.data ?? [];
+  const deliveries: EntregaViaje[] = entregasQuery.data ?? [];
+  const facturas: DocumentoComercial[] = facturasQuery.data ?? [];
+  const ordenes: OrdenServicio[] = ordenesQuery.data ?? [];
+  const clientes: Cliente[] = clientesQuery.data ?? [];
+  const loading = viajesQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = useMemo(() => {
+    const errs: string[] = [];
+    const msg = (e: unknown) =>
+      (e as Error & { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      (e as Error)?.message || 'Error desconocido';
+    if (viajesQuery.error) errs.push(`Viajes: ${msg(viajesQuery.error)}`);
+    if (vehiculosQuery.error) errs.push(`Vehículos: ${msg(vehiculosQuery.error)}`);
+    if (empleadosQuery.error) errs.push(`Empleados: ${msg(empleadosQuery.error)}`);
+    if (entregasQuery.error) errs.push(`Entregas: ${msg(entregasQuery.error)}`);
+    if (facturasQuery.error) errs.push(`Facturas: ${msg(facturasQuery.error)}`);
+    if (ordenesQuery.error) errs.push(`Órdenes de Servicio: ${msg(ordenesQuery.error)}`);
+    if (clientesQuery.error) errs.push(`Clientes: ${msg(clientesQuery.error)}`);
+    return errs.length ? errs.join(' | ') : actionError;
+  }, [viajesQuery.error, vehiculosQuery.error, empleadosQuery.error, entregasQuery.error,
+      facturasQuery.error, ordenesQuery.error, clientesQuery.error, actionError]);
+  const setError = setActionError;
   const [dialogOpen, setDialogOpen] = useState(false);
   // Edición logística de entregas
   const [confirmQuitar, setConfirmQuitar] = useState<EntregaViaje | null>(null);
@@ -181,10 +235,6 @@ const TripsPage2: React.FC = () => {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
     const computePreflight = async () => {
       const planificados = trips.filter((t) => t.estado === 'PLANIFICADO');
@@ -223,94 +273,12 @@ const TripsPage2: React.FC = () => {
   }, [trips, deliveries]);
 
   const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      let tripsData: Viaje[] = [];
-      let vehiclesData: Vehiculo[] = [];
-      let employeesData: Empleado[] = [];
-      let deliveriesData: EntregaViaje[] = [];
-      let facturasData: DocumentoComercial[] = [];
-      let clientesData: Cliente[] = [];
-      const errors: string[] = [];
-
-      try {
-        const tripsResponse = await viajeApi.getAll({ page: 0, size: 1000, sort: 'id,desc' });
-        tripsData = tripsResponse.content || [];
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Viajes: ${errorMsg}`);
-      }
-
-      try {
-        const allVehiclesResponse = await vehiculoApi.getAll({ page: 0, size: 1000 });
-        vehiclesData = Array.isArray(allVehiclesResponse)
-          ? allVehiclesResponse
-          : (allVehiclesResponse as any).content || [];
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Vehículos: ${errorMsg}`);
-      }
-
-      try {
-        employeesData = await employeeApi.getAllList();
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Empleados: ${errorMsg}`);
-      }
-
-      try {
-        deliveriesData = await entregaViajeApi.getAll();
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Entregas: ${errorMsg}`);
-      }
-
-      try {
-        facturasData = await documentoApi.getByTipo('FACTURA');
-        facturasData = facturasData.filter(f => f.numeroDocumento?.startsWith('FAC-'));
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Facturas: ${errorMsg}`);
-      }
-
-      let ordenesData: any[] = [];
-      try {
-        ordenesData = await ordenServicioApi.getByEstado('FINALIZADA');
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Órdenes de Servicio: ${errorMsg}`);
-      }
-
-      try {
-        const clientesResponse = await clienteApi.getAll({ page: 0, size: 1000 });
-        clientesData = Array.isArray(clientesResponse)
-          ? clientesResponse
-          : (clientesResponse as any).content || [];
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Clientes: ${errorMsg}`);
-      }
-
-      if (errors.length > 0) {
-        setError(errors.join(' | '));
-      }
-
-      setTrips(Array.isArray(tripsData) ? tripsData : []);
-      setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
-      setDrivers(Array.isArray(employeesData) ? employeesData : []);
-      setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
-      setFacturas(Array.isArray(facturasData) ? facturasData : []);
-      setOrdenes(Array.isArray(ordenesData) ? ordenesData : []);
-      setClientes(Array.isArray(clientesData) ? clientesData : []);
-
-    } catch (err) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error?.response?.data?.message || 'Error al cargar los datos');
-    } finally {
-      setLoading(false);
-    }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['viajes'] }),
+      queryClient.invalidateQueries({ queryKey: ['entregas'] }),
+      queryClient.invalidateQueries({ queryKey: ['documentos'] }),
+      queryClient.invalidateQueries({ queryKey: ['ordenes-servicio'] }),
+    ]);
   };
 
   const filteredTrips = trips

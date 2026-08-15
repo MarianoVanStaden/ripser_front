@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
   Autocomplete,
@@ -87,13 +88,60 @@ const DeliveriesPage2: React.FC = () => {
   const esConductor = tieneRol('CONDUCTOR');
   const [searchParams] = useSearchParams();
 
-  const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
-  const [clients, setClients] = useState<Cliente[]>([]);
-  const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
-  const [ordenes, setOrdenes] = useState<any[]>([]);
-  const [trips, setTrips] = useState<Viaje[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  // Cinco datasets independientes; cada uno falla por separado y el banner
+  // de error acumula los que fallaron (mismo contrato que el loadData viejo).
+  const entregasQuery = useQuery({
+    queryKey: ['entregas'],
+    queryFn: () => entregaViajeApi.getAll(),
+  });
+  const clientesQuery = useQuery({
+    queryKey: ['clientes', 'cache-entregas'],
+    queryFn: () => clienteApi.getAll({ page: 0, size: 500 }).then((r) => r.content),
+    staleTime: 300_000,
+  });
+  const facturasQuery = useQuery({
+    queryKey: ['documentos', 'facturas-vigentes-entrega'],
+    queryFn: () => documentoApi.getByTipo('FACTURA').then((data) =>
+      data.filter((f) => f.numeroDocumento?.startsWith('FAC-') && f.estado !== 'ANULADA')),
+  });
+  const ordenesQuery = useQuery({
+    queryKey: ['ordenes-servicio', 'finalizadas'],
+    queryFn: () => ordenServicioApi.getByEstado('FINALIZADA'),
+  });
+  const viajesQuery = useQuery({
+    queryKey: ['viajes'],
+    queryFn: () => viajeApi.getAll().then((r) => r.content || []),
+  });
+
+  const deliveries: EntregaViaje[] = entregasQuery.data ?? [];
+  const facturas: DocumentoComercial[] = facturasQuery.data ?? [];
+  const ordenes: any[] = ordenesQuery.data ?? [];
+  const trips: Viaje[] = viajesQuery.data ?? [];
+  const loading = entregasQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = useMemo(() => {
+    const errs: string[] = [];
+    const msg = (e: unknown) =>
+      (e as Error & { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      (e as Error)?.message || 'Error desconocido';
+    if (entregasQuery.error) errs.push(`Entregas: ${msg(entregasQuery.error)}`);
+    if (clientesQuery.error) errs.push(`Clientes: ${msg(clientesQuery.error)}`);
+    if (facturasQuery.error) errs.push(`Facturas: ${msg(facturasQuery.error)}`);
+    if (ordenesQuery.error) errs.push(`Órdenes de Servicio: ${msg(ordenesQuery.error)}`);
+    if (viajesQuery.error) errs.push(`Viajes: ${msg(viajesQuery.error)}`);
+    return errs.length ? errs.join(' | ') : actionError;
+  }, [entregasQuery.error, clientesQuery.error, facturasQuery.error, ordenesQuery.error, viajesQuery.error, actionError]);
+  const setError = setActionError;
+
+  // Clientes fuera del cap de 500 del backend: se resuelven por id y se
+  // fusionan al catálogo local (getClientName/getClientPhone son síncronos).
+  const [extraClients, setExtraClients] = useState<Cliente[]>([]);
+  const clients: Cliente[] = useMemo(() => {
+    const base = clientesQuery.data ?? [];
+    const ids = new Set(base.map((c) => c.id));
+    return [...base, ...extraClients.filter((c) => !ids.has(c.id))];
+  }, [clientesQuery.data, extraClients]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editingDelivery, setEditingDelivery] = useState<EntregaViaje | null>(null);
@@ -172,118 +220,42 @@ const DeliveriesPage2: React.FC = () => {
     receptorDni: '',
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      let deliveriesData: EntregaViaje[] = [];
-      let clientsData: Cliente[] = [];
-      let facturasData: DocumentoComercial[] = [];
-      let ordenesData: any[] = [];
-      let tripsData: Viaje[] = [];
-      const errors: string[] = [];
-
-      try {
-        deliveriesData = await entregaViajeApi.getAll();
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Entregas: ${errorMsg}`);
-      }
-
-      try {
-        clientsData = (await clienteApi.getAll({ page: 0, size: 500 })).content;
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Clientes: ${errorMsg}`);
-      }
-
-      try {
-        facturasData = await documentoApi.getByTipo('FACTURA');
-        // Solo facturas vigentes: una ANULADA (por Nota de Crédito) no se entrega.
-        facturasData = facturasData.filter(
-          f => f.numeroDocumento?.startsWith('FAC-') && f.estado !== 'ANULADA'
-        );
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Facturas: ${errorMsg}`);
-      }
-
-      try {
-        ordenesData = await ordenServicioApi.getByEstado('FINALIZADA');
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Órdenes de Servicio: ${errorMsg}`);
-      }
-
-      try {
-        const tripsResponse = await viajeApi.getAll();
-        tripsData = tripsResponse.content || [];
-      } catch (err) {
-        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`Viajes: ${errorMsg}`);
-      }
-
-      if (errors.length > 0) {
-        setError(errors.join(' | '));
-      }
-
-      setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
-      setClients(Array.isArray(clientsData) ? clientsData : []);
-      setFacturas(Array.isArray(facturasData) ? facturasData : []);
-      setOrdenes(Array.isArray(ordenesData) ? ordenesData : []);
-      setTrips(Array.isArray(tripsData) ? tripsData : []);
-
-      // El backend capa el listado de clientes a 500 (ordenado por nombre), así
-      // que las entregas de clientes "altos" en el abecedario quedaban sin cliente
-      // en el cache → WhatsApp/nombre sin datos. Traemos los faltantes por id.
-      void resolveMissingClients(deliveriesData, facturasData, ordenesData, clientsData);
-
-    } catch (err) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error?.response?.data?.message || 'Error al cargar los datos');
-    } finally {
-      setLoading(false);
-    }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['entregas'] }),
+      queryClient.invalidateQueries({ queryKey: ['viajes'] }),
+      queryClient.invalidateQueries({ queryKey: ['documentos'] }),
+      queryClient.invalidateQueries({ queryKey: ['ordenes-servicio'] }),
+    ]);
   };
 
-  // Resuelve por id los clientes referenciados por las entregas que no entraron
-  // en la primera página del listado (cap 500 del backend) y los fusiona en el
-  // cache `clients`, para que getClientName/getClientPhone (síncronos) los vean.
-  const resolveMissingClients = async (
-    deliveriesData: EntregaViaje[],
-    facturasData: DocumentoComercial[],
-    ordenesData: any[],
-    loadedClients: Cliente[],
-  ) => {
-    const known = new Set(loadedClients.map(c => c.id));
+  useEffect(() => {
+    const known = new Set(clients.map((c) => c.id));
     const needed = new Set<number>();
-    for (const d of deliveriesData) {
+    for (const d of deliveries) {
       const facturaId = d.documentoComercialId ?? d.documentoComercial?.id ?? d.ventaId ?? d.venta?.id;
-      const factura = facturaId ? facturasData.find(f => f.id === facturaId) : undefined;
+      const factura = facturaId ? facturas.find((f) => f.id === facturaId) : undefined;
       if (factura?.clienteId && !known.has(factura.clienteId)) needed.add(factura.clienteId);
 
       const ordenId = (d as any).ordenServicioId;
-      const orden = ordenId ? ordenesData.find(o => o.id === ordenId) : undefined;
+      const orden = ordenId ? ordenes.find((o) => o.id === ordenId) : undefined;
       if (orden?.clienteId && !known.has(orden.clienteId)) needed.add(orden.clienteId);
     }
     if (needed.size === 0) return;
-
-    const fetched = await Promise.all(
-      [...needed].map(id => clienteApi.getById(id).catch(() => null))
-    );
-    const valid = fetched.filter((c): c is Cliente => c != null);
-    if (valid.length === 0) return;
-
-    setClients(prev => {
-      const ids = new Set(prev.map(c => c.id));
-      return [...prev, ...valid.filter(c => !ids.has(c.id))];
-    });
-  };
+    let cancelled = false;
+    Promise.all([...needed].map((id) => clienteApi.getById(id).catch(() => null)))
+      .then((fetched) => {
+        if (cancelled) return;
+        const valid = fetched.filter((c): c is Cliente => c != null);
+        if (valid.length === 0) return;
+        setExtraClients((prev) => {
+          const ids = new Set(prev.map((c) => c.id));
+          return [...prev, ...valid.filter((c) => !ids.has(c.id))];
+        });
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveries, facturas, ordenes, clientesQuery.data]);
 
   // Opciones del filtro de viaje, buscables por número, conductor y fecha.
   const viajesUnicos = useMemo(() => {
