@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -48,9 +49,21 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
   const puedeBackdatear = esAdmin || esSuperAdmin;
   const minFecha = dayjs().startOf('month').subtract(1, 'month').format('YYYY-MM-DD');
   const hoy = dayjs().format('YYYY-MM-DD');
-  const [movimientos, setMovimientos] = useState<CuentaCorriente[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const movimientosQuery = useQuery({
+    queryKey: ['clientes', clienteId, 'cuenta-corriente'],
+    queryFn: () => cuentaCorrienteApi.getByClienteId(clienteId).then((data) =>
+      (data.content ?? []).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    ),
+  });
+  const movimientos: CuentaCorriente[] = movimientosQuery.data ?? [];
+  const loading = movimientosQuery.isPending;
+  // Errores de acciones (los de carga se derivan de la query).
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = movimientosQuery.error ? 'Error al cargar los movimientos' : actionError;
+  const setError = setActionError;
+  const loadMovimientos = () =>
+    queryClient.invalidateQueries({ queryKey: ['clientes', clienteId, 'cuenta-corriente'] });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -70,24 +83,6 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
   const requiereCaja = esCobro && metodoPagoRequiereCaja(formData.metodoPago);
   const cajaFaltante = requiereCaja && !cajaRef;
 
-  useEffect(() => {
-    loadMovimientos();
-  }, [clienteId]);
-
-  const loadMovimientos = async () => {
-    try {
-      setLoading(true);
-      const data = await cuentaCorrienteApi.getByClienteId(clienteId);
-      const items = data.content ?? [];
-      // Ordenar por fecha descendente
-      setMovimientos(items.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()));
-    } catch (err) {
-      setError('Error al cargar los movimientos');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOpenDialog = () => {
     setFormData({

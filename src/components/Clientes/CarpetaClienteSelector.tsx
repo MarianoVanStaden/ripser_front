@@ -1,3 +1,4 @@
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -29,10 +30,6 @@ import type { Cliente } from '../../types';
 
 const CarpetaClienteSelector: React.FC = () => {
   const navigate = useNavigate();
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(12);
@@ -47,29 +44,17 @@ const CarpetaClienteSelector: React.FC = () => {
   // Búsqueda + paginación server-side: con ~942 clientes no podemos traer
   // todo y filtrar en memoria (truncaría resultados). El backend busca por
   // nombre, apellido, razón social, CUIT, email y teléfono.
-  useEffect(() => {
-    let cancelled = false;
-    const loadClientes = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = debouncedSearch
-          ? await clienteApi.search(debouncedSearch, { page, size: rowsPerPage })
-          : await clienteApi.getAll({ page, size: rowsPerPage });
-        if (cancelled) return;
-        setClientes(res.content);
-        setTotal(res.totalElements);
-      } catch (err) {
-        if (cancelled) return;
-        setError('Error al cargar los clientes');
-        console.error('Error loading clientes:', err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    loadClientes();
-    return () => { cancelled = true; };
-  }, [debouncedSearch, page, rowsPerPage]);
+  const clientesQuery = useQuery({
+    queryKey: ['clientes', 'carpeta-selector', { page, rowsPerPage, search: debouncedSearch || undefined }],
+    queryFn: () => (debouncedSearch
+      ? clienteApi.search(debouncedSearch, { page, size: rowsPerPage })
+      : clienteApi.getAll({ page, size: rowsPerPage })),
+    placeholderData: keepPreviousData,
+  });
+  const clientes: Cliente[] = clientesQuery.data?.content ?? [];
+  const total = clientesQuery.data?.totalElements ?? 0;
+  const loading = clientesQuery.isPending;
+  const error = clientesQuery.error ? 'Error al cargar los clientes' : null;
 
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);

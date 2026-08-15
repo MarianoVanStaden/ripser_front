@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Paper,
@@ -58,44 +59,25 @@ const ClienteDetailPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  const [leadsRecompra, setLeadsRecompra] = useState<LeadDTO[]>([]);
-  const [loadingLeads, setLoadingLeads] = useState(false);
+  const clienteId = id ? Number(id) : undefined;
 
-  useEffect(() => {
-    if (id) {
-      loadCliente(Number(id));
-      loadLeadsRecompra(Number(id));
-    }
-  }, [id]);
+  const clienteQuery = useQuery({
+    queryKey: ['clientes', clienteId],
+    queryFn: () => clienteApi.getById(clienteId!),
+    enabled: clienteId != null,
+  });
+  const leadsRecompraQuery = useQuery({
+    queryKey: ['clientes', clienteId, 'leads-recompra'],
+    queryFn: () => leadApi.getAll({}, { clienteOrigenId: clienteId! }).then((data) => data.content),
+    enabled: clienteId != null,
+  });
 
-  const loadCliente = async (clienteId: number) => {
-    try {
-      setLoading(true);
-      const data = await clienteApi.getById(clienteId);
-      setCliente(data);
-    } catch (err) {
-      setError('Error al cargar el cliente');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadLeadsRecompra = async (clienteId: number) => {
-    try {
-      setLoadingLeads(true);
-      const data = await leadApi.getAll({}, { clienteOrigenId: clienteId });
-      setLeadsRecompra(data.content);
-    } catch (err) {
-      console.error('Error al cargar leads de recompra:', err);
-    } finally {
-      setLoadingLeads(false);
-    }
-  };
+  const cliente: Cliente | null = clienteQuery.data ?? null;
+  const loading = clienteQuery.isPending;
+  const error = clienteQuery.error ? 'Error al cargar el cliente' : null;
+  const leadsRecompra: LeadDTO[] = leadsRecompraQuery.data ?? [];
+  const loadingLeads = leadsRecompraQuery.isPending;
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);

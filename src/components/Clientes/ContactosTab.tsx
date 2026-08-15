@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -33,9 +34,25 @@ interface ContactosTabProps {
 }
 
 const ContactosTab: React.FC<ContactosTabProps> = ({ clienteId }) => {
-  const [contactos, setContactos] = useState<ContactoCliente[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const contactosQuery = useQuery({
+    queryKey: ['clientes', clienteId, 'contactos'],
+    queryFn: () => contactoClienteApi.getByClienteId(clienteId).then((data) => data.content ?? []),
+  });
+  const contactos: ContactoCliente[] = contactosQuery.error ? [] : (contactosQuery.data ?? []);
+  const loading = contactosQuery.isPending;
+  // Errores de guardado/borrado (los de carga se derivan de la query).
+  const [actionError, setActionError] = useState<string | null>(null);
+  const queryErr = contactosQuery.error as { response?: { status?: number } } | null;
+  const error = queryErr
+    ? (queryErr?.response?.status === 403
+        ? 'No tenés permisos para ver el historial de contactos de este cliente.'
+        : 'Error al cargar los contactos')
+    : actionError;
+  const setError = setActionError;
+  const loadContactos = () =>
+    queryClient.invalidateQueries({ queryKey: ['clientes', clienteId, 'contactos'] });
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContacto, setEditingContacto] = useState<ContactoCliente | null>(null);
   const [contactoToDelete, setContactoToDelete] = useState<ContactoCliente | null>(null);
@@ -49,29 +66,6 @@ const ContactosTab: React.FC<ContactosTabProps> = ({ clienteId }) => {
     proximoContacto: '',
   });
 
-  useEffect(() => {
-    loadContactos();
-  }, [clienteId]);
-
-  const loadContactos = async () => {
-    try {
-      setLoading(true);
-      const data = await contactoClienteApi.getByClienteId(clienteId);
-      const items = data.content ?? [];
-      setContactos(items);
-      setError(null);
-    } catch (err: any) {
-      if (err?.response?.status === 403) {
-        setError('No tenés permisos para ver el historial de contactos de este cliente.');
-      } else {
-        setError('Error al cargar los contactos');
-      }
-      setContactos([]);
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOpenDialog = (contacto?: ContactoCliente) => {
     if (contacto) {

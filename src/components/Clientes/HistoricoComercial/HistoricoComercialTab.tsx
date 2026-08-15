@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { CANAL_LABELS, type CanalEnum } from '../../../types/lead.types';
 import {
   Alert,
@@ -69,10 +70,26 @@ const TIPOS_FILTRO: { value: TipoFiltro; label: string }[] = [
  * paginación y drill-down al detalle.
  */
 const HistoricoComercialTab: React.FC<HistoricoComercialTabProps> = ({ clienteId }) => {
-  const [documentos, setDocumentos] = useState<DocumentoComercial[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [kpisServer, setKpisServer] = useState<KPIsClienteDTO | null>(null);
+  // Documentos + KPIs server-side. Si los KPIs fallan, se cae al cómputo
+  // cliente (kpisServer null); si fallan los documentos, error visible.
+  const documentosQuery = useQuery({
+    queryKey: ['clientes', clienteId, 'historico-comercial'],
+    queryFn: () => documentoApi.getByCliente(clienteId),
+  });
+  const kpisQuery = useQuery({
+    queryKey: ['clientes', clienteId, 'kpis'],
+    queryFn: () => documentoApi.getKPIsCliente(clienteId),
+    retry: false,
+  });
+  const documentos: DocumentoComercial[] = documentosQuery.data ?? [];
+  const loading = documentosQuery.isPending;
+  const error = documentosQuery.error ? 'Error al cargar el histórico comercial del cliente' : null;
+  const kpisServer: KPIsClienteDTO | null = kpisQuery.data ?? null;
+  // Recargar/Reintentar del toolbar.
+  const cargarDocumentos = () => {
+    documentosQuery.refetch();
+    kpisQuery.refetch();
+  };
 
   // Filtros
   const [tipoFiltro, setTipoFiltro] = useState<TipoFiltro>('TODOS');
@@ -88,40 +105,6 @@ const HistoricoComercialTab: React.FC<HistoricoComercialTabProps> = ({ clienteId
   // Detalle
   const [docSeleccionado, setDocSeleccionado] = useState<DocumentoComercial | null>(null);
 
-  const cargarDocumentos = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      // En paralelo: documentos + KPIs server-side. Si los KPIs fallan, caemos a cómputo cliente.
-      const [docs, kpisRes] = await Promise.allSettled([
-        documentoApi.getByCliente(clienteId),
-        documentoApi.getKPIsCliente(clienteId),
-      ]);
-
-      if (docs.status === 'fulfilled') {
-        setDocumentos(docs.value);
-      } else {
-        console.error(docs.reason);
-        throw docs.reason;
-      }
-
-      if (kpisRes.status === 'fulfilled') {
-        setKpisServer(kpisRes.value);
-      } else {
-        console.error(kpisRes.reason);
-        setKpisServer(null);
-      }
-    } catch (err) {
-      console.error(err);
-      setError('Error al cargar el histórico comercial del cliente');
-    } finally {
-      setLoading(false);
-    }
-  }, [clienteId]);
-
-  useEffect(() => {
-    cargarDocumentos();
-  }, [cargarDocumentos]);
 
   // KPIs: server-side cuando estén disponibles; si no, cálculo cliente como fallback.
   const kpis: HistoricoKPIs = useMemo(() => {
