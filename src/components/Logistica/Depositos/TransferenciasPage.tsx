@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -97,10 +98,32 @@ dayjs.locale('es');
 
 const TransferenciasPage: React.FC = () => {
   const { user } = useAuth();
-  const [transferencias, setTransferencias] = useState<TransferenciaDepositoDTO[]>([]);
-  const [depositos, setDepositos] = useState<Deposito[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const arr = (r: any) => (Array.isArray(r) ? r : r?.content || []);
+  const depositosQuery = useQuery({
+    queryKey: ['depositos', 'activos-transferencias'],
+    queryFn: () => depositoApi.getAll().then((r: any) => arr(r).filter((d: any) => d.activo)),
+    staleTime: 300_000,
+  });
+  const transferenciasQuery = useQuery({
+    queryKey: ['transferencias-deposito'],
+    queryFn: () => transferenciaApi.getAll({}, { empresaId: user?.empresaId }).then((r: any) => arr(r)),
+    // 403/404 = endpoint no disponible: lista vacía sin reintentos (contrato previo).
+    retry: false,
+  });
+  const transferencias: TransferenciaDepositoDTO[] = transferenciasQuery.data ?? [];
+  const depositos: Deposito[] = depositosQuery.data ?? [];
+  const loading = transferenciasQuery.isPending || depositosQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false); // spinner de acciones
+  const tErr = transferenciasQuery.error as any;
+  const error = (tErr && tErr.response?.status !== 403 && tErr.response?.status !== 404)
+    ? 'Error al cargar los datos'
+    : actionError;
+  const setError = setActionError;
+  const loadData = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['transferencias-deposito'] });
+  };
   const [success, setSuccess] = useState<string | null>(null);
 
   // Filtros
@@ -146,50 +169,6 @@ const TransferenciasPage: React.FC = () => {
   // Export menu state
   const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
   const exportMenuOpen = Boolean(exportAnchorEl);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      
-      // Cargar depósitos primero (siempre necesarios)
-      try {
-        const depositosData = await depositoApi.getAll();
-        const depositosArray = Array.isArray(depositosData) 
-          ? depositosData 
-          : (depositosData as any)?.content || [];
-        setDepositos(depositosArray.filter((d: any) => d.activo));
-      } catch (errDepositos) {
-        console.error('Error loading depositos:', errDepositos);
-      }
-
-      // Cargar transferencias (puede fallar si el endpoint no existe aún)
-      try {
-        const transferenciasData = await transferenciaApi.getAll({}, { empresaId: user?.empresaId });
-        const transferenciasArray = Array.isArray(transferenciasData) 
-          ? transferenciasData 
-          : (transferenciasData as any)?.content || [];
-        setTransferencias(transferenciasArray);
-      } catch (errTransferencias: any) {
-        console.error('Error loading transferencias:', errTransferencias);
-        // Si es 403/404, el endpoint puede no estar implementado en el backend
-        if (errTransferencias.response?.status === 403 || errTransferencias.response?.status === 404) {
-          console.warn('Endpoint de transferencias no disponible o sin permisos');
-          setTransferencias([]);
-        }
-      }
-
-      setError(null);
-    } catch (err) {
-      console.error('Error loading data:', err);
-      setError('Error al cargar los datos');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadStocksDisponibles = async (depositoId: number) => {
     try {
@@ -282,7 +261,7 @@ const TransferenciasPage: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
 
       const dto: TransferenciaCreateDTO = {
         depositoOrigenId: newTransferencia.depositoOrigenId as number,
@@ -306,7 +285,7 @@ const TransferenciasPage: React.FC = () => {
       console.error('Error creating transferencia:', err);
       setError(err.response?.data?.message || 'Error al crear la transferencia');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -503,7 +482,7 @@ const TransferenciasPage: React.FC = () => {
     if (!selectedTransferencia) return;
 
     try {
-      setLoading(true);
+      setSaving(true);
       await transferenciaApi.confirmarEnvio(selectedTransferencia.id!);
       setSuccess('Transferencia enviada correctamente');
       setEnvioDialogOpen(false);
@@ -512,7 +491,7 @@ const TransferenciasPage: React.FC = () => {
       console.error('Error confirming envío:', err);
       setError(err.response?.data?.message || 'Error al confirmar el envío');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -536,7 +515,7 @@ const TransferenciasPage: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
 
       const dto: ConfirmarRecepcionDTO = {
         transferenciaId: selectedTransferencia.id!,
@@ -566,7 +545,7 @@ const TransferenciasPage: React.FC = () => {
       console.error('Error confirming recepción:', err);
       setError(err.response?.data?.message || 'Error al confirmar la recepción');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -583,7 +562,7 @@ const TransferenciasPage: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       await transferenciaApi.cancelar(selectedTransferencia.id!, motivoCancelacion);
       setSuccess('Transferencia cancelada correctamente');
       setCancelDialogOpen(false);
@@ -593,7 +572,7 @@ const TransferenciasPage: React.FC = () => {
       console.error('Error cancelling transferencia:', err);
       setError(err.response?.data?.message || 'Error al cancelar la transferencia');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -771,7 +750,7 @@ const TransferenciasPage: React.FC = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
       <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
-        <LoadingOverlay open={loading} message="Cargando transferencias..." />
+        <LoadingOverlay open={loading || saving} message="Cargando transferencias..." />
         <Box
           sx={{ 
             display: 'flex', 

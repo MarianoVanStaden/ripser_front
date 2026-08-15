@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -72,11 +73,36 @@ const InventarioDepositoPage: React.FC = () => {
   const { user } = useAuth();
 
   // State management
-  const [stockItems, setStockItems] = useState<StockDeposito[]>([]);
-  const [depositos, setDepositos] = useState<Deposito[]>([]);
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const puedeVer = tienePermiso('LOGISTICA');
+  const arr = (r: any) => (Array.isArray(r) ? r : r?.content || []);
+  const inventarioQuery = useQuery({
+    queryKey: ['stock-depositos', 'inventario'],
+    queryFn: async () => {
+      const [stockResponse, depositosResponse, productosData] = await Promise.all([
+        stockDepositoApi.getAll(),
+        depositoApi.getActivos(),
+        productApi.getAll({ page: 0, size: 10000 }),
+      ]);
+      return {
+        stockItems: arr(stockResponse) as StockDeposito[],
+        depositos: arr(depositosResponse) as Deposito[],
+        productos: arr(productosData) as Producto[],
+      };
+    },
+    enabled: puedeVer,
+  });
+  const stockItems: StockDeposito[] = inventarioQuery.data?.stockItems ?? [];
+  const depositos: Deposito[] = inventarioQuery.data?.depositos ?? [];
+  const productos: Producto[] = inventarioQuery.data?.productos ?? [];
+  const loading = inventarioQuery.isPending && puedeVer;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false); // spinner de acciones (ajustes/config)
+  const error = inventarioQuery.error ? 'Error al cargar los datos' : actionError;
+  const setError = setActionError;
+  const loadData = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['stock-depositos'] });
+  };
   const [success, setSuccess] = useState<string | null>(null);
 
   // Synchronization detection state
@@ -144,44 +170,6 @@ const InventarioDepositoPage: React.FC = () => {
   const [usarConfigExistente, setUsarConfigExistente] = useState(true);
   const [configExistente, setConfigExistente] = useState<{ stockMinimo: number; stockMaximo: number } | null>(null);
 
-  useEffect(() => {
-    if (tienePermiso('LOGISTICA')) {
-      loadData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [stockResponse, depositosResponse, productosData] = await Promise.all([
-        stockDepositoApi.getAll(),
-        depositoApi.getActivos(),
-        productApi.getAll({ page: 0, size: 10000 }),
-      ]);
-      // Handle paginated responses
-      const stockData = Array.isArray(stockResponse)
-        ? stockResponse
-        : (stockResponse as any)?.content || [];
-      const depositosData = Array.isArray(depositosResponse)
-        ? depositosResponse
-        : (depositosResponse as any)?.content || [];
-      
-      const productosList = Array.isArray(productosData) 
-        ? productosData 
-        : (productosData as any)?.content || [];
-        
-      setStockItems(stockData);
-      setDepositos(depositosData);
-      setProductos(productosList);
-      setError(null);
-    } catch (err: any) {
-      console.error('Error loading data:', err);
-      setError('Error al cargar los datos');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Verificar sincronización entre stock total y depósitos
   const verificarSincronizacion = () => {
@@ -327,7 +315,7 @@ const InventarioDepositoPage: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       await stockDepositoApi.transferir(
         selectedStock.productoId,
         selectedStock.depositoId,
@@ -357,7 +345,7 @@ const InventarioDepositoPage: React.FC = () => {
           setError(errorMsg);
       }
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -371,7 +359,7 @@ const InventarioDepositoPage: React.FC = () => {
     if (!selectedStock) return;
 
     try {
-      setLoading(true);
+      setSaving(true);
       await stockDepositoApi.ajustar(selectedStock.id, ajusteForm.cantidad);
       setSuccess('Ajuste realizado correctamente');
       await loadData();
@@ -396,7 +384,7 @@ const InventarioDepositoPage: React.FC = () => {
           setError(errorMsg);
       }
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -472,7 +460,7 @@ const InventarioDepositoPage: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       
       // Verificar si ya existe stock de este producto en este depósito
       const stockExistente = stockItems.find(
@@ -507,7 +495,7 @@ const InventarioDepositoPage: React.FC = () => {
       const errorMsg = formatearErrorBackend(err);
       setError(`Error al asignar el stock: ${errorMsg}`);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -1057,7 +1045,7 @@ const InventarioDepositoPage: React.FC = () => {
       {/* Content */}
       <TabPanel sx={{ pt: 3 }} value={tabValue} index={0}>
         {/* Por Depósito View */}
-        {loading ? (
+        {(loading || saving) ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
             <CircularProgress />
           </Box>
@@ -1129,7 +1117,7 @@ const InventarioDepositoPage: React.FC = () => {
 
       <TabPanel sx={{ pt: 3 }} value={tabValue} index={1}>
         {/* Por Producto View */}
-        {loading ? (
+        {(loading || saving) ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
             <CircularProgress />
           </Box>
