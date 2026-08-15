@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Grid, Card, CardContent, Typography, Alert,
   Button, Chip, Tabs, Tab, Table, TableBody, TableCell, TableContainer,
@@ -31,12 +32,10 @@ import {
   EstadoPrestamo, CategoriaPrestamo,
 } from '../../types/prestamo.types';
 import type {
-  PrestamoPersonalDTO, CuotaPrestamoDTO,
-  SeguimientoPrestamoDTO, RecordatorioCuotaDTO,
+  CuotaPrestamoDTO, RecordatorioCuotaDTO,
   PagoInformadoDTO,
 } from '../../types/prestamo.types';
 import type { DetalleDocumentoDTO } from '../../types/documentoComercial.types';
-import type { Cliente } from '../../types';
 import { formatPrice } from '../../utils/priceCalculations';
 import { PrestamoFormDialog } from './PrestamoFormDialog';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
@@ -74,17 +73,8 @@ export const PrestamoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const prestamoId = parseInt(id || '0');
 
-  const [prestamo, setPrestamo] = useState<PrestamoPersonalDTO | null>(null);
-  const [cuotas, setCuotas] = useState<CuotaPrestamoDTO[]>([]);
-  const [seguimientos, setSeguimientos] = useState<SeguimientoPrestamoDTO[]>([]);
-  const [recordatorios, setRecordatorios] = useState<RecordatorioCuotaDTO[]>([]);
-  const [pagosInformados, setPagosInformados] = useState<PagoInformadoDTO[]>([]);
-  const [equipos, setEquipos] = useState<DetalleDocumentoDTO[]>([]);
-  // Ficha completa del cliente (teléfonos, localidad) — el PrestamoPersonalDTO
-  // solo trae nombre/apellido. Best-effort: si falla, la cabecera degrada.
-  const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // prestamo, cuotas, seguimientos, recordatorios, pagosInformados, equipos y
+  // cliente se derivan del query agregado ['prestamo', id] (ver más abajo).
   const [tabValue, setTabValue] = useState(0);
 
   // Dialogs
@@ -129,10 +119,14 @@ export const PrestamoDetailPage: React.FC = () => {
   // Cascade highlight (Task 2)
   const [highlightedCuotaIds, setHighlightedCuotaIds] = useState<Set<number>>(new Set());
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const queryClient = useQueryClient();
+
+  // Detalle completo del préstamo en un único query agregado. El namespace
+  // ['prestamo', id] es el que invalidan todas las mutaciones (dialogs + hub).
+  const detalleQuery = useQuery({
+    queryKey: ['prestamo', prestamoId],
+    enabled: !!prestamoId,
+    queryFn: async () => {
       const [prestamoData, cuotasData, seguimientosData, pagosInformadosData, equiposData] = await Promise.all([
         prestamoPersonalApi.getById(prestamoId),
         cuotaPrestamoApi.getByPrestamo(prestamoId),
@@ -140,35 +134,45 @@ export const PrestamoDetailPage: React.FC = () => {
         pagoInformadoApi.historialPorPrestamo(prestamoId).catch(() => [] as PagoInformadoDTO[]),
         prestamoPersonalApi.getEquipos(prestamoId).catch(() => [] as DetalleDocumentoDTO[]),
       ]);
-      setPrestamo(prestamoData);
-      clienteApi.getById(prestamoData.clienteId).then(setCliente).catch(() => setCliente(null));
-      setCuotas(cuotasData);
-      setSeguimientos(seguimientosData);
-      setPagosInformados(pagosInformadosData);
-      setEquipos(equiposData);
-
-      // Load recordatorios for all cuotas
-      const allRecordatorios: RecordatorioCuotaDTO[] = [];
+      // Ficha completa del cliente (teléfonos, localidad): el DTO solo trae
+      // nombre/apellido. Best-effort: si falla, la cabecera degrada a null.
+      const clienteData = await clienteApi.getById(prestamoData.clienteId).catch(() => null);
+      // Recordatorios de todas las cuotas (best-effort por cuota).
+      const recordatoriosData: RecordatorioCuotaDTO[] = [];
       for (const cuota of cuotasData) {
         try {
-          const recs = await recordatorioCuotaApi.getByCuota(cuota.id);
-          allRecordatorios.push(...recs);
+          recordatoriosData.push(...await recordatorioCuotaApi.getByCuota(cuota.id));
         } catch {
           // ignore individual errors
         }
       }
-      setRecordatorios(allRecordatorios);
-    } catch (err) {
-      console.error('Error loading prestamo:', err);
-      setError('Error al cargar el crédito personal.');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return {
+        prestamo: prestamoData,
+        cuotas: cuotasData,
+        seguimientos: seguimientosData,
+        pagosInformados: pagosInformadosData,
+        equipos: equiposData,
+        cliente: clienteData,
+        recordatorios: recordatoriosData,
+      };
+    },
+  });
 
-  useEffect(() => {
-    if (prestamoId) loadData();
-  }, [prestamoId]);
+  const prestamo = detalleQuery.data?.prestamo ?? null;
+  const cuotas = detalleQuery.data?.cuotas ?? [];
+  const seguimientos = detalleQuery.data?.seguimientos ?? [];
+  const recordatorios = detalleQuery.data?.recordatorios ?? [];
+  const pagosInformados = detalleQuery.data?.pagosInformados ?? [];
+  const equipos = detalleQuery.data?.equipos ?? [];
+  const cliente = detalleQuery.data?.cliente ?? null;
+  const loading = detalleQuery.isPending && !!prestamoId;
+  const error = detalleQuery.error ? 'Error al cargar el crédito personal.' : null;
+
+  // Refresca el detalle invalidando el namespace del préstamo. Conserva el
+  // nombre `loadData` para no tocar los ~15 call-sites y props onSaved/onConflict.
+  const loadData = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['prestamo', prestamoId] });
+  };
 
   const [exportandoPdf, setExportandoPdf] = useState(false);
 
