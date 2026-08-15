@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -109,9 +110,8 @@ const UsersPage: React.FC = () => {
   const { empresaId: currentEmpresaId } = useTenant();
 
   // State for users with empresa info
-  const [users, setUsers] = useState<UsuarioWithEmpresa[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [actionError, setActionError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -144,9 +144,7 @@ const UsersPage: React.FC = () => {
   const [empleadosLoading, setEmpleadosLoading] = useState(false);
 
   // Empresa and Sucursal data
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
-  const [allSucursales, setAllSucursales] = useState<Sucursal[]>([]); // Para el modal de vista
 
   // Helper functions to get names
   const getEmpresaName = (empresaId: number): string => {
@@ -187,10 +185,6 @@ const UsersPage: React.FC = () => {
     roles: '',
   });
 
-   
-  useEffect(() => {
-    loadData();
-  }, []);
 
   // Debounced username validation (backend check)
 
@@ -230,48 +224,45 @@ const UsersPage: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [formData.username, editingUser]);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-
-      // Load empresas for Super Admin or current empresa for ADMIN_EMPRESA
+  // Empresas + sucursales (contexto de vista) y usuarios con asignaciones, en
+  // dos queries: el catálogo casi no cambia; los usuarios se invalidan tras
+  // cada mutación.
+  const contextoQuery = useQuery({
+    queryKey: ['usuarios-admin', 'contexto', { esSuperAdmin, currentEmpresaId }],
+    queryFn: async () => {
       if (esSuperAdmin) {
         const empresasData = await empresaService.getActive();
-        setEmpresas(empresasData);
-
-        // Load all sucursales for all empresas (for viewing user details)
-        const allSucursalesPromises = empresasData.map(emp =>
-          sucursalService.getByEmpresa(emp.id).catch(() => [])
+        const allSucursalesArrays = await Promise.all(
+          empresasData.map((emp) => sucursalService.getByEmpresa(emp.id).catch(() => []))
         );
-        const allSucursalesArrays = await Promise.all(allSucursalesPromises);
-        const flatSucursales = allSucursalesArrays.flat();
-        setAllSucursales(flatSucursales);
-      } else if (currentEmpresaId) {
-        // Load current empresa info
-        const currentEmpresa = await empresaService.getById(currentEmpresaId);
-        setEmpresas([currentEmpresa]);
-
-        // Load sucursales for current empresa
-        const sucursalesData = await sucursalService.getByEmpresa(currentEmpresaId);
-        setAllSucursales(sucursalesData);
+        return { empresas: empresasData, allSucursales: allSucursalesArrays.flat() };
       }
+      if (currentEmpresaId) {
+        const currentEmpresa = await empresaService.getById(currentEmpresaId);
+        const sucursalesData = await sucursalService.getByEmpresa(currentEmpresaId);
+        return { empresas: [currentEmpresa], allSucursales: sucursalesData };
+      }
+      return { empresas: [] as Empresa[], allSucursales: [] as Sucursal[] };
+    },
+    staleTime: 300_000,
+  });
+  const empresas: Empresa[] = contextoQuery.data?.empresas ?? [];
+  const allSucursales: Sucursal[] = contextoQuery.data?.allSucursales ?? [];
 
-      // Load users with empresa assignments (filtered by empresaId for ADMIN_EMPRESA)
-      const filterEmpresaId = esSuperAdmin ? undefined : currentEmpresaId!;
-      const response = await usuarioEmpresaIntegrationService.getUsuariosWithEmpresas(
-        filterEmpresaId,
-        0,
-        100
-      );
-
-      setUsers(response.content);
-      setError(null);
-    } catch (err: any) {
-      setError('Error al cargar los usuarios');
-      console.error('Error loading users:', err);
-    } finally {
-      setLoading(false);
-    }
+  const usersQuery = useQuery({
+    queryKey: ['usuarios-admin', 'lista', { esSuperAdmin, currentEmpresaId }],
+    queryFn: () => usuarioEmpresaIntegrationService.getUsuariosWithEmpresas(
+      esSuperAdmin ? undefined : currentEmpresaId!,
+      0,
+      100
+    ).then((r) => r.content),
+  });
+  const users: UsuarioWithEmpresa[] = usersQuery.data ?? [];
+  const loading = usersQuery.isPending;
+  const error = (usersQuery.error || contextoQuery.error) ? 'Error al cargar los usuarios' : actionError;
+  const setError = setActionError;
+  const loadData = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['usuarios-admin'] });
   };
 
   // Load sucursales when empresa changes

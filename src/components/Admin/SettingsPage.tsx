@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -44,9 +45,16 @@ import LoadingOverlay from '../common/LoadingOverlay';
 const SettingsPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [parameters, setParameters] = useState<ParametroSistema[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const parametersQuery = useQuery({
+    queryKey: ['parametros-sistema'],
+    queryFn: () => parametroSistemaApi.getAll(),
+  });
+  const parameters: ParametroSistema[] = parametersQuery.data ?? [];
+  const loading = parametersQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = parametersQuery.error ? 'Error al cargar los parámetros del sistema' : actionError;
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingParameter, setEditingParameter] = useState<ParametroSistema | null>(null);
@@ -60,22 +68,8 @@ const SettingsPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<ParametroSistema | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
-    try {
-      setLoading(true);
-      const data = await parametroSistemaApi.getAll();
-      setParameters(data);
-      setError(null);
-    } catch (err) {
-      setError('Error al cargar los parámetros del sistema');
-      console.error('Error loading parameters:', err);
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['parametros-sistema'] });
   };
 
   const handleAdd = () => {

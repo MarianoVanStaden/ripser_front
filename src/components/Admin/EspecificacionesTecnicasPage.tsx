@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -124,9 +125,8 @@ const blankToUndef = (s: string) => (s.trim() === '' ? undefined : s.trim());
  * Esta data se consume al imprimir la ficha + QR de un equipo.
  */
 export default function EspecificacionesTecnicasPage() {
-  const [items, setItems] = useState<EspecificacionTecnicaModeloDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [actionError, setActionError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(false);
 
@@ -136,24 +136,17 @@ export default function EspecificacionesTecnicasPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const itemsQuery = useQuery({
+    queryKey: ['especificaciones-tecnicas', { onlyActive }],
+    queryFn: () => especificacionTecnicaApi.list(onlyActive ? true : undefined),
+  });
+  const items: EspecificacionTecnicaModeloDTO[] = itemsQuery.data ?? [];
+  const loading = itemsQuery.isPending;
+  const error = itemsQuery.error ? 'No se pudieron cargar las fichas técnicas' : actionError;
+  void setActionError;
   const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await especificacionTecnicaApi.list(onlyActive ? true : undefined);
-      setItems(data);
-    } catch (err) {
-      console.error('Error loading especificaciones:', err);
-      setError('No se pudieron cargar las fichas técnicas');
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['especificaciones-tecnicas'] });
   };
-
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlyActive]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
