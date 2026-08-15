@@ -225,6 +225,8 @@ const PresupuestosPage: React.FC = () => {
   const [viewingPresupuesto, setViewingPresupuesto] = useState<DocumentoComercial | null>(null);
   const [editingObsView, setEditingObsView] = useState(false);
   const [obsViewValue, setObsViewValue] = useState('');
+  const [editingVendedorView, setEditingVendedorView] = useState(false);
+  const [vendedorViewValue, setVendedorViewValue] = useState<number | ''>('');
 
   // Deuda cliente confirmation
   const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
@@ -727,6 +729,7 @@ const PresupuestosPage: React.FC = () => {
     setViewDialogOpen(false);
     setViewingPresupuesto(null);
     setEditingObsView(false);
+    setEditingVendedorView(false);
   }, []);
 
   const handleSaveObsView = useCallback(async () => {
@@ -741,6 +744,19 @@ const PresupuestosPage: React.FC = () => {
       setSnackbar({ open: true, message: 'Error al guardar observaciones', severity: 'error' });
     }
   }, [viewingPresupuesto, obsViewValue, invalidatePresupuestos]);
+
+  const handleSaveVendedorView = useCallback(async () => {
+    if (!viewingPresupuesto || vendedorViewValue === '') return;
+    try {
+      const updated = await documentoApi.updateVendedor(viewingPresupuesto.id, vendedorViewValue);
+      setViewingPresupuesto(updated);
+      setEditingVendedorView(false);
+      invalidatePresupuestos();
+      setSnackbar({ open: true, message: 'Vendedor reasignado', severity: 'success' });
+    } catch {
+      setSnackbar({ open: true, message: 'Error al reasignar el vendedor', severity: 'error' });
+    }
+  }, [viewingPresupuesto, vendedorViewValue, invalidatePresupuestos]);
 
   const handleConfirmClose = useCallback(() => {
     setConfirmDialogOpen(false);
@@ -2223,6 +2239,13 @@ const PresupuestosPage: React.FC = () => {
         observacionesValue={obsViewValue}
         setObservacionesValue={setObsViewValue}
         onSaveObservaciones={handleSaveObsView}
+        canReassignVendedor={canReassignVendedor}
+        usuarioOptions={usuarioOptions}
+        editingVendedor={editingVendedorView}
+        setEditingVendedor={setEditingVendedorView}
+        vendedorValue={vendedorViewValue}
+        setVendedorValue={setVendedorViewValue}
+        onSaveVendedor={handleSaveVendedorView}
       />
 
 

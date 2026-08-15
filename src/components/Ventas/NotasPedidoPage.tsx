@@ -230,6 +230,8 @@ const NotasPedidoPage: React.FC = () => {
   const [selectedPresupuesto, setSelectedPresupuesto] = useState<DocumentoComercial | null>(null);
   const [editingObsNota, setEditingObsNota] = useState(false);
   const [obsNotaValue, setObsNotaValue] = useState('');
+  const [editingVendedorNota, setEditingVendedorNota] = useState(false);
+  const [vendedorNotaValue, setVendedorNotaValue] = useState<number | ''>('');
   const [convertForm, setConvertForm] = useState<ConvertFormData>(initialConvertForm);
   const [asignarEquiposDialogOpen, setAsignarEquiposDialogOpen] = useState(false);
   const [notaForAsignacion, setNotaForAsignacion] = useState<DocumentoComercial | null>(null);
@@ -966,6 +968,7 @@ const NotasPedidoPage: React.FC = () => {
     setViewDialogOpen(false);
     setSelectedNota(null);
     setEditingObsNota(false);
+    setEditingVendedorNota(false);
   }, []);
 
   const handleSaveObsNota = useCallback(async () => {
@@ -980,6 +983,19 @@ const NotasPedidoPage: React.FC = () => {
       setSnackbar({ open: true, message: 'Error al guardar observaciones', severity: 'error' });
     }
   }, [selectedNota, obsNotaValue, queryClient]);
+
+  const handleSaveVendedorNota = useCallback(async () => {
+    if (!selectedNota || vendedorNotaValue === '') return;
+    try {
+      const updated = await documentoApi.updateVendedor(selectedNota.id, vendedorNotaValue);
+      setSelectedNota(updated);
+      setEditingVendedorNota(false);
+      queryClient.invalidateQueries({ queryKey: ['notasPedido'] });
+      setSnackbar({ open: true, message: 'Vendedor reasignado (incluye la factura vinculada si existe)', severity: 'success' });
+    } catch {
+      setSnackbar({ open: true, message: 'Error al reasignar el vendedor', severity: 'error' });
+    }
+  }, [selectedNota, vendedorNotaValue, queryClient]);
 
   const handleOpenEditDialog = useCallback((nota: DocumentoComercial) => {
     setNotaToEdit(nota);
@@ -1782,6 +1798,14 @@ const NotasPedidoPage: React.FC = () => {
         onChangeObservacionesValue={setObsNotaValue}
         onSaveObservaciones={handleSaveObsNota}
         onCancelEditObservaciones={() => setEditingObsNota(false)}
+        canReassignVendedor={canReassignVendedor}
+        usuarioOptions={usuarioOptions}
+        editingVendedor={editingVendedorNota}
+        vendedorValue={vendedorNotaValue}
+        onStartEditVendedor={(initial) => { setVendedorNotaValue(initial); setEditingVendedorNota(true); }}
+        onChangeVendedorValue={setVendedorNotaValue}
+        onSaveVendedor={handleSaveVendedorNota}
+        onCancelEditVendedor={() => setEditingVendedorNota(false)}
       />
 
       <EditarNotaPedidoDialog

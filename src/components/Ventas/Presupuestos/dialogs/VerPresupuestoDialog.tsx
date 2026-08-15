@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  MenuItem,
   Paper,
   Table,
   TableBody,
@@ -23,7 +24,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Edit as EditIcon } from '@mui/icons-material';
-import type { DetalleDocumento, DocumentoComercial } from '../../../../types';
+import type { DetalleDocumento, DocumentoComercial, Usuario } from '../../../../types';
 import { calculateCostoEnvio } from '../../../../utils/financiamiento';
 import AuditoriaFlujo from '../../../common/AuditoriaFlujo';
 import { getStatusColor, getStatusLabel } from '../utils';
@@ -37,6 +38,15 @@ interface Props {
   observacionesValue: string;
   setObservacionesValue: (value: string) => void;
   onSaveObservaciones: () => void;
+
+  // Inline vendedor editor — solo ADMIN/SUPERVISOR (gate del orquestador).
+  canReassignVendedor: boolean;
+  usuarioOptions: Usuario[];
+  editingVendedor: boolean;
+  setEditingVendedor: (value: boolean) => void;
+  vendedorValue: number | '';
+  setVendedorValue: (value: number | '') => void;
+  onSaveVendedor: () => void;
 }
 
 const VerPresupuestoDialog: React.FC<Props> = ({
@@ -48,6 +58,13 @@ const VerPresupuestoDialog: React.FC<Props> = ({
   observacionesValue,
   setObservacionesValue,
   onSaveObservaciones,
+  canReassignVendedor,
+  usuarioOptions,
+  editingVendedor,
+  setEditingVendedor,
+  vendedorValue,
+  setVendedorValue,
+  onSaveVendedor,
 }) => {
   return (
     <Dialog
@@ -83,10 +100,54 @@ const VerPresupuestoDialog: React.FC<Props> = ({
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Usuario
-                </Typography>
-                <Typography>{presupuesto.usuarioNombre || '-'}</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Vendedor
+                  </Typography>
+                  {canReassignVendedor && !editingVendedor && (
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setVendedorValue(presupuesto.usuarioId ?? '');
+                        setEditingVendedor(true);
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+                {editingVendedor ? (
+                  <Box>
+                    <TextField
+                      select
+                      fullWidth
+                      size="small"
+                      value={vendedorValue}
+                      onChange={(e) => setVendedorValue(Number(e.target.value))}
+                    >
+                      {usuarioOptions.map((u) => (
+                        <MenuItem key={u.id} value={u.id}>
+                          {u.nombre}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={onSaveVendedor}
+                        disabled={vendedorValue === '' || vendedorValue === presupuesto.usuarioId}
+                      >
+                        Guardar
+                      </Button>
+                      <Button size="small" onClick={() => setEditingVendedor(false)}>
+                        Cancelar
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Typography>{presupuesto.usuarioNombre || '-'}</Typography>
+                )}
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">

@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  MenuItem,
   Paper,
   Table,
   TableBody,
@@ -27,6 +28,7 @@ import type {
   DetalleDocumento,
   DocumentoComercial,
   EstadoDocumento,
+  Usuario,
 } from '../../../../types';
 import { calculateCostoEnvio } from '../../../../utils/financiamiento';
 import AuditoriaFlujo from '../../../common/AuditoriaFlujo';
@@ -53,6 +55,17 @@ interface Props {
   onChangeObservacionesValue: (val: string) => void;
   onSaveObservaciones: () => void;
   onCancelEditObservaciones: () => void;
+
+  // Inline vendedor editor (state owned by orchestrator). Solo ADMIN/SUPERVISOR
+  // reasignan; el gate viene del orquestador (mismo criterio que el backend).
+  canReassignVendedor: boolean;
+  usuarioOptions: Usuario[];
+  editingVendedor: boolean;
+  vendedorValue: number | '';
+  onStartEditVendedor: (initialValue: number | '') => void;
+  onChangeVendedorValue: (val: number) => void;
+  onSaveVendedor: () => void;
+  onCancelEditVendedor: () => void;
 }
 
 const VerNotaPedidoDialog: React.FC<Props> = ({
@@ -67,6 +80,14 @@ const VerNotaPedidoDialog: React.FC<Props> = ({
   onChangeObservacionesValue,
   onSaveObservaciones,
   onCancelEditObservaciones,
+  canReassignVendedor,
+  usuarioOptions,
+  editingVendedor,
+  vendedorValue,
+  onStartEditVendedor,
+  onChangeVendedorValue,
+  onSaveVendedor,
+  onCancelEditVendedor,
 }) => {
   return (
     <Dialog
@@ -93,8 +114,49 @@ const VerNotaPedidoDialog: React.FC<Props> = ({
                 <Typography>{nota.clienteNombre}</Typography>
               </Box>
               <Box>
-                <Typography variant="subtitle2" color="text.secondary">Usuario</Typography>
-                <Typography>{nota.usuarioNombre}</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="subtitle2" color="text.secondary">Vendedor</Typography>
+                  {canReassignVendedor && !editingVendedor && (
+                    <IconButton
+                      size="small"
+                      onClick={() => onStartEditVendedor(nota.usuarioId ?? '')}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+                {editingVendedor ? (
+                  <Box>
+                    <TextField
+                      select
+                      fullWidth
+                      size="small"
+                      value={vendedorValue}
+                      onChange={(e) => onChangeVendedorValue(Number(e.target.value))}
+                    >
+                      {usuarioOptions.map((u) => (
+                        <MenuItem key={u.id} value={u.id}>
+                          {u.nombre}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={onSaveVendedor}
+                        disabled={vendedorValue === '' || vendedorValue === nota.usuarioId}
+                      >
+                        Guardar
+                      </Button>
+                      <Button size="small" onClick={onCancelEditVendedor}>
+                        Cancelar
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Typography>{nota.usuarioNombre}</Typography>
+                )}
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">Fecha de Emisión</Typography>
