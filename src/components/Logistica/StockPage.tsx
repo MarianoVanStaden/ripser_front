@@ -66,12 +66,7 @@ import { loadPriceCalculationParams, calculateSellingPrice } from '../../utils/p
 import type { PriceCalculationParams } from '../../utils/priceCalculations';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { usePermisos } from '../../hooks/usePermisos';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
+import TabPanel from '../common/TabPanel';
 
 // Estado inicial del formulario de creación de producto (material).
 const emptyCreateForm = {
@@ -89,21 +84,6 @@ const emptyCreateForm = {
   _ancho: null as number | null,
   _largo: null as number | null,
 };
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`stock-tabpanel-${index}`}
-      aria-labelledby={`stock-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
 
 const StockPage: React.FC = () => {
   const theme = useTheme();
@@ -676,7 +656,7 @@ const StockPage: React.FC = () => {
       </Box>
 
       {/* Tab Panel 0: Inventory */}
-      <TabPanel value={tabValue} index={0}>
+      <TabPanel idPrefix="stock" value={tabValue} index={0}>
         {/* Filters */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
@@ -921,7 +901,7 @@ const StockPage: React.FC = () => {
       </TabPanel>
 
       {/* Tab Panel 1: Movements */}
-      <TabPanel value={tabValue} index={1}>
+      <TabPanel idPrefix="stock" value={tabValue} index={1}>
         {/* Filters */}
         <Card sx={{ mb: 3 }}>
           <CardContent>

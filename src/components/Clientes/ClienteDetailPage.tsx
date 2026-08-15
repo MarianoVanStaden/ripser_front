@@ -43,28 +43,7 @@ import { HistoricoComercialTab } from './HistoricoComercial';
 import DocumentManager from '../shared/DocumentManager';
 import LoadingOverlay from '../common/LoadingOverlay';
 import NivelFidelizacionChip from '../common/NivelFidelizacionChip';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`cliente-tabpanel-${index}`}
-      aria-labelledby={`cliente-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+import TabPanel from '../common/TabPanel';
 
 function a11yProps(index: number) {
   return {
@@ -349,7 +328,7 @@ const ClienteDetailPage: React.FC = () => {
           </Tabs>
         </Box>
 
-        <TabPanel value={tabValue} index={0}>
+        <TabPanel idPrefix="cliente" value={tabValue} index={0}>
           <Box display="flex" flexDirection="column" gap={3}>
             <Box>
               <Typography variant="h6" gutterBottom>
@@ -439,15 +418,15 @@ const ClienteDetailPage: React.FC = () => {
           </Box>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={1}>
+        <TabPanel idPrefix="cliente" value={tabValue} index={1}>
           <ContactosTab clienteId={Number(id)} />
         </TabPanel>
 
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel idPrefix="cliente" value={tabValue} index={2}>
           <CuentaCorrienteTab clienteId={Number(id)} />
         </TabPanel>
 
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel idPrefix="cliente" value={tabValue} index={3}>
           {cliente && (
             <DocumentManager
               entityId={cliente.id}
@@ -468,7 +447,7 @@ const ClienteDetailPage: React.FC = () => {
           )}
         </TabPanel>
 
-        <TabPanel value={tabValue} index={4}>
+        <TabPanel idPrefix="cliente" value={tabValue} index={4}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">Leads de Recompra</Typography>
             <Button
@@ -513,7 +492,7 @@ const ClienteDetailPage: React.FC = () => {
           )}
         </TabPanel>
 
-        <TabPanel value={tabValue} index={5}>
+        <TabPanel idPrefix="cliente" value={tabValue} index={5}>
           <HistoricoComercialTab clienteId={cliente.id} />
         </TabPanel>
       </Paper>

@@ -51,6 +51,7 @@ import { EditarFechaPagoDialog } from './EditarFechaPagoDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { usePermisos } from '../../hooks/usePermisos';
 import { generarCreditoPDF } from '../../services/pdfService';
+import TabPanel from '../common/TabPanel';
 
 const TIPO_INTERACCION_ICONS: Record<string, React.ReactElement> = {
   LLAMADA: <Phone fontSize="small" />,
@@ -60,18 +61,6 @@ const TIPO_INTERACCION_ICONS: Record<string, React.ReactElement> = {
   VISITA: <PersonPin fontSize="small" />,
   VIDEOLLAMADA: <Videocam fontSize="small" />,
 };
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
-  <div hidden={value !== index}>
-    {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
-  </div>
-);
 
 export const PrestamoDetailPage: React.FC = () => {
   const navigate = useNavigate();
@@ -548,7 +537,7 @@ export const PrestamoDetailPage: React.FC = () => {
       </Box>
 
       {/* Tab: Cuotas */}
-      <TabPanel value={tabValue} index={0}>
+      <TabPanel sx={{ pt: 2 }} value={tabValue} index={0}>
         {cuotas.length > 0 && cuotas.every(c => !c.fechaVencimiento) && (
           <Alert severity="info" sx={{ mb: 2 }}>
             El cronograma de cuotas se anclará automáticamente cuando Transporte confirme la entrega del equipo.
@@ -740,7 +729,7 @@ export const PrestamoDetailPage: React.FC = () => {
       </TabPanel>
 
       {/* Tab: Seguimientos */}
-      <TabPanel value={tabValue} index={1}>
+      <TabPanel sx={{ pt: 2 }} value={tabValue} index={1}>
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
           <Button variant="contained" startIcon={<Add />} onClick={() => setSeguimientoOpen(true)}>
             Nuevo Seguimiento
@@ -789,7 +778,7 @@ export const PrestamoDetailPage: React.FC = () => {
       </TabPanel>
 
       {/* Tab: Recordatorios */}
-      <TabPanel value={tabValue} index={2}>
+      <TabPanel sx={{ pt: 2 }} value={tabValue} index={2}>
         {recordatorios.length === 0 ? (
           <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
             No hay recordatorios

@@ -59,6 +59,7 @@ import type { ProveedorDTO, CompraDTO, Producto } from '../../types';
 import { exportToPDF } from '../../utils/exportPDF';
 import { exportToExcel } from '../../utils/exportExcel';
 import LoadingOverlay from '../common/LoadingOverlay';
+import TabPanel from '../common/TabPanel';
 
 dayjs.locale('es');
 
@@ -92,27 +93,6 @@ interface EstadisticasCompra {
   proveedorTop: ProveedorDTO | null;
   categoriaTop: string;
   tendencia: 'subiendo' | 'bajando' | 'estable';
-}
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`historial-tabpanel-${index}`}
-      aria-labelledby={`historial-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
 }
 
 const HistorialComprasPage: React.FC = () => {
@@ -463,7 +443,7 @@ const HistorialComprasPage: React.FC = () => {
           </Tabs>
 
           {/* Purchase History Tab */}
-          <TabPanel value={tabValue} index={0}>
+          <TabPanel idPrefix="historial" value={tabValue} index={0}>
             {/* Summary Cards */}
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 3 }}>
               <Card>
@@ -688,7 +668,7 @@ const HistorialComprasPage: React.FC = () => {
           </TabPanel>
 
           {/* Statistics Tab */}
-          <TabPanel value={tabValue} index={1}>
+          <TabPanel idPrefix="historial" value={tabValue} index={1}>
             {estadisticas && (
               <Box>
                 <Typography variant="h6" gutterBottom>
@@ -790,7 +770,7 @@ const HistorialComprasPage: React.FC = () => {
           </TabPanel>
 
           {/* Supplier Analysis Tab */}
-          <TabPanel value={tabValue} index={2}>
+          <TabPanel idPrefix="historial" value={tabValue} index={2}>
             <Typography variant="h6" gutterBottom>
               Análisis por Proveedor
             </Typography>

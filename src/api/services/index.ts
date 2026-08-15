@@ -9,13 +9,6 @@ export { presupuestoApi } from "./presupuestoApi";
 export { serviceApi, serviceAppointmentApi } from "./serviceApi";
 export { supplierApi } from "./supplierApi";
 export { documentoApi } from "./documentoApi";
-export {
-  stockMovementApi,
-  warehouseApi,
-  vehicleApi,
-  tripApi,
-  deliveryApi,
-} from "./stockApi";
 export { usuarioApi } from "./usuarioApi";
 export { default as usuarioAdminApi } from "./usuarioAdminApi";
 export { default as opcionFinanciamientoApi } from "./opcionFinanciamientoApi";

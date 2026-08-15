@@ -55,6 +55,7 @@ import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { generarPuestoPDF } from '../../services/puestoPdfService';
 import dayjs from 'dayjs';
+import TabPanel from '../common/TabPanel';
 
 // El usuario suele cargar los ítems en minúscula; los normalizamos al
 // renderizar para que el manual se vea prolijo sin forzar el formato en
@@ -64,18 +65,6 @@ const capFirst = (s?: string | null): string => {
   const t = s.trimStart();
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  value: number;
-  index: number;
-}
-
-const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
-  <div role="tabpanel" hidden={value !== index}>
-    {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
-  </div>
-);
 
 const PuestoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -376,7 +365,7 @@ const PuestoDetailPage: React.FC = () => {
         </Tabs>
 
         {/* Tab 0: Manual de Puestos — secciones del Excel */}
-        <TabPanel value={tabValue} index={0}>
+        <TabPanel sx={{ pt: 2 }} value={tabValue} index={0}>
           <Box px={2} pb={2}>
             {(!puesto.objetivos?.length
               && !puesto.responsabilidades?.length
@@ -682,7 +671,7 @@ const PuestoDetailPage: React.FC = () => {
         </TabPanel>
 
         {/* Tab 1: Tareas */}
-        <TabPanel value={tabValue} index={1}>
+        <TabPanel sx={{ pt: 2 }} value={tabValue} index={1}>
           <Box px={2} pb={2}>
             {canWrite && (
               <Box display="flex" justifyContent="flex-end" mb={2}>
@@ -811,7 +800,7 @@ const PuestoDetailPage: React.FC = () => {
         </TabPanel>
 
         {/* Tab 2: Versiones */}
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel sx={{ pt: 2 }} value={tabValue} index={2}>
           <Box px={2} pb={2}>
             {versiones.length === 0 ? (
               <Alert severity="info">No hay versiones registradas.</Alert>

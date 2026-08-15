@@ -66,6 +66,7 @@ import type {
 import { exportToExcel, prepareTableDataForExport } from '../../../utils/exportExcel';
 import { exportToPDF, prepareTableDataForPDF } from '../../../utils/exportPDF';
 import dayjs from 'dayjs';
+import TabPanel from '../../common/TabPanel';
 
 // Extended interface to handle both backend response formats
 interface MovimientoStockAuditoria {
@@ -105,21 +106,6 @@ const getMovTipo = (mov: MovimientoStockAuditoria): string => {
 const getMovReferencia = (mov: MovimientoStockAuditoria): string => {
   return mov.documentoReferencia || mov.numeroComprobante || mov.concepto || '-';
 };
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div role="tabpanel" hidden={value !== index} {...other}>
-      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
-    </div>
-  );
-}
 
 const AuditoriaPage: React.FC = () => {
   const { tienePermiso } = usePermisos();
@@ -1043,7 +1029,7 @@ const AuditoriaPage: React.FC = () => {
         </Accordion>
 
         {/* Content */}
-        <TabPanel value={tabValue} index={0}>
+        <TabPanel sx={{ pt: 3 }} value={tabValue} index={0}>
           {/* Stock Movements */}
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
@@ -1147,7 +1133,7 @@ const AuditoriaPage: React.FC = () => {
           )}
         </TabPanel>
 
-        <TabPanel value={tabValue} index={1}>
+        <TabPanel sx={{ pt: 3 }} value={tabValue} index={1}>
           {/* Equipment Movements */}
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>

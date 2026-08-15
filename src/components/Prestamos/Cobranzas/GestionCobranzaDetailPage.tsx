@@ -47,6 +47,7 @@ import {
   ESTADO_PROMESA_COLORS,
 } from '../../../types/cobranza.types';
 import LoadingOverlay from '../../common/LoadingOverlay';
+import TabPanel from '../../common/TabPanel';
 
 // ── Icons per tipo acción ─────────────────────────────────────────────────────
 const TIPO_ACCION_ICONS: Record<string, React.ReactElement> = {
@@ -71,17 +72,6 @@ const TIPO_RECORDATORIO_ICONS: Record<string, React.ReactElement> = {
 };
 
 // ── TabPanel ──────────────────────────────────────────────────────────────────
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
-  <div hidden={value !== index}>
-    {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
-  </div>
-);
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export const GestionCobranzaDetailPage: React.FC = () => {
   const navigate = useNavigate();
@@ -429,7 +419,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
       </Box>
 
       {/* Tab 0: Acciones */}
-      <TabPanel value={tabValue} index={0}>
+      <TabPanel sx={{ pt: 2 }} value={tabValue} index={0}>
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
           <Button
             variant="contained"
@@ -528,7 +518,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
       </TabPanel>
 
       {/* Tab 1: Recordatorios */}
-      <TabPanel value={tabValue} index={1}>
+      <TabPanel sx={{ pt: 2 }} value={tabValue} index={1}>
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
           <Button
             variant="contained"
@@ -641,7 +631,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
       </TabPanel>
 
       {/* Tab 2: Historial de promesas */}
-      <TabPanel value={tabValue} index={2}>
+      <TabPanel sx={{ pt: 2 }} value={tabValue} index={2}>
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
           <Button
             variant="contained"
@@ -692,7 +682,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
       </TabPanel>
 
       {/* Tab 3: Timeline */}
-      <TabPanel value={tabValue} index={3}>
+      <TabPanel sx={{ pt: 2 }} value={tabValue} index={3}>
         <TimelineCobranza eventos={timeline} />
       </TabPanel>
 

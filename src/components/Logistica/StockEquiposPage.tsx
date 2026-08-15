@@ -57,27 +57,7 @@ import type {
 import { generateEquiposInventoryPDF } from '../../utils/pdfExportUtils';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ColorPicker from '../common/ColorPicker';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`stock-equipos-tabpanel-${index}`}
-      aria-labelledby={`stock-equipos-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+import TabPanel from '../common/TabPanel';
 
 interface EquipoMovimiento {
   id: number;
@@ -614,7 +594,7 @@ const StockEquiposPage: React.FC = () => {
       </Card>
 
       {/* Tab Panel 0: Inventario de Equipos */}
-      <TabPanel value={tabValue} index={0}>
+      <TabPanel idPrefix="stock-equipos" value={tabValue} index={0}>
         {/* Filters */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
@@ -783,7 +763,7 @@ const StockEquiposPage: React.FC = () => {
       </TabPanel>
 
       {/* Tab Panel 1: Registro de Movimientos de Equipos */}
-      <TabPanel value={tabValue} index={1}>
+      <TabPanel idPrefix="stock-equipos" value={tabValue} index={1}>
         {/* Filters */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
@@ -926,7 +906,7 @@ const StockEquiposPage: React.FC = () => {
       </TabPanel>
 
       {/* Tab Panel 2: Movimientos de Materias Primas */}
-      <TabPanel value={tabValue} index={2}>
+      <TabPanel idPrefix="stock-equipos" value={tabValue} index={2}>
         {/* Filters */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
@@ -1042,7 +1022,7 @@ const StockEquiposPage: React.FC = () => {
       </TabPanel>
 
       {/* Tab Panel 3: Historial de Entregas */}
-      <TabPanel value={tabValue} index={3}>
+      <TabPanel idPrefix="stock-equipos" value={tabValue} index={3}>
         {/* Filters */}
         <Card sx={{ mb: 3 }}>
           <CardContent>

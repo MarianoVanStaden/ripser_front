@@ -55,6 +55,7 @@ import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 import type { Cliente, DocumentoCliente } from '../../types';
 import { HistoricoComercialTab } from './HistoricoComercial';
+import TabPanel from '../common/TabPanel';
 
 // Categorías de documentos para clientes
 const CATEGORIAS_CLIENTE = [
@@ -77,27 +78,6 @@ interface NotaCliente {
   fechaCreacion: string;
   importante: boolean;
   autor: string;
-}
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`carpeta-tabpanel-${index}`}
-      aria-labelledby={`carpeta-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
 }
 
 const CarpetaClientePage: React.FC = () => {
@@ -438,7 +418,7 @@ const CarpetaClientePage: React.FC = () => {
         </Tabs>
 
         {/* Tab 1: General Information */}
-        <TabPanel value={tabValue} index={0}>
+        <TabPanel idPrefix="carpeta" value={tabValue} index={0}>
           <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
             <Box sx={{ flex: '1 1 400px', minWidth: 0 }}>
               <Card>
@@ -624,7 +604,7 @@ const CarpetaClientePage: React.FC = () => {
         </TabPanel>
 
         {/* Tab 2: Documents */}
-        <TabPanel value={tabValue} index={1}>
+        <TabPanel idPrefix="carpeta" value={tabValue} index={1}>
           {successMessage && (
             <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>
               {successMessage}
@@ -720,7 +700,7 @@ const CarpetaClientePage: React.FC = () => {
         </TabPanel>
 
         {/* Tab 3: Notes */}
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel idPrefix="carpeta" value={tabValue} index={2}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
             <Typography variant="h6">
               Notas y Observaciones ({sortedNotas.length})
@@ -784,7 +764,7 @@ const CarpetaClientePage: React.FC = () => {
         </TabPanel>
 
         {/* Tab 4: Histórico Comercial */}
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel idPrefix="carpeta" value={tabValue} index={3}>
           {tabValue === 3 && <HistoricoComercialTab clienteId={cliente.id} />}
         </TabPanel>
       </Paper>
