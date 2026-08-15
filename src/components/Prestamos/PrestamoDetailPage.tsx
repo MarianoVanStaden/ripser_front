@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   Box, Grid, Card, CardContent, Typography, Alert,
   Button, Chip, Tabs, Tab, Table, TableBody, TableCell, TableContainer,
@@ -198,40 +198,42 @@ export const PrestamoDetailPage: React.FC = () => {
     }
   };
 
-  const handleEstadoChange = async (estado: EstadoPrestamo) => {
-    try {
-      await prestamoPersonalApi.cambiarEstado(prestamoId, estado);
+  const estadoMutation = useMutation({
+    mutationFn: (estado: EstadoPrestamo) => prestamoPersonalApi.cambiarEstado(prestamoId, estado),
+    onSuccess: () => {
       setEstadoAnchor(null);
       setSnackbar({ open: true, message: 'Estado actualizado', severity: 'success' });
       loadData();
-    } catch {
-      setSnackbar({ open: true, message: 'Error al cambiar estado', severity: 'error' });
-    }
-  };
+    },
+    onError: () => setSnackbar({ open: true, message: 'Error al cambiar estado', severity: 'error' }),
+  });
+  const handleEstadoChange = (estado: EstadoPrestamo) => estadoMutation.mutate(estado);
 
-  const handleCategoriaChange = async (cat: CategoriaPrestamo) => {
-    try {
-      await prestamoPersonalApi.cambiarCategoria(prestamoId, cat);
+  const categoriaMutation = useMutation({
+    mutationFn: (cat: CategoriaPrestamo) => prestamoPersonalApi.cambiarCategoria(prestamoId, cat),
+    onSuccess: () => {
       setCategoriaAnchor(null);
       setSnackbar({ open: true, message: 'Categoría actualizada', severity: 'success' });
       loadData();
-    } catch {
-      setSnackbar({ open: true, message: 'Error al cambiar categoría', severity: 'error' });
-    }
-  };
+    },
+    onError: () => setSnackbar({ open: true, message: 'Error al cambiar categoría', severity: 'error' }),
+  });
+  const handleCategoriaChange = (cat: CategoriaPrestamo) => categoriaMutation.mutate(cat);
 
-  const handleMarcarEnviado = async (recId: number) => {
-    try {
-      await recordatorioCuotaApi.marcarEnviado(recId);
+  const marcarEnviadoMutation = useMutation({
+    mutationFn: (recId: number) => recordatorioCuotaApi.marcarEnviado(recId),
+    onSuccess: () => {
       setSnackbar({ open: true, message: 'Recordatorio marcado como enviado', severity: 'success' });
       loadData();
-    } catch {
-      setSnackbar({ open: true, message: 'Error al marcar como enviado', severity: 'error' });
-    }
-  };
+    },
+    onError: () => setSnackbar({ open: true, message: 'Error al marcar como enviado', severity: 'error' }),
+  });
+  const handleMarcarEnviado = (recId: number) => marcarEnviadoMutation.mutate(recId);
 
-  const handleMarcarPagado = async (recId: number) => {
-    try {
+  // Registra el pago del saldo pendiente (si la cuota no está saldada) y marca el
+  // recordatorio como enviado/pagado. Toca dinero → guard anti-doble-submit.
+  const marcarPagadoMutation = useMutation({
+    mutationFn: async (recId: number) => {
       const rec = recordatorios.find(r => r.id === recId);
       if (rec) {
         const cuota = cuotas.find(c => c.id === rec.cuotaId);
@@ -241,31 +243,37 @@ export const PrestamoDetailPage: React.FC = () => {
             await cuotaPrestamoApi.registrarPago({
               cuotaId: cuota.id,
               montoPagado: saldoRestante,
-              fechaPago: dayjs().format('YYYY-MM-DD'),              metodoPago: 'EFECTIVO',            });
+              fechaPago: dayjs().format('YYYY-MM-DD'),
+              metodoPago: 'EFECTIVO',
+            });
           }
         }
-      }
-      const rec2 = recordatorios.find(r => r.id === recId);
-      if (rec2 && !rec2.enviado) {
-        await recordatorioCuotaApi.marcarEnviado(recId);
+        if (!rec.enviado) {
+          await recordatorioCuotaApi.marcarEnviado(recId);
+        }
       }
       await recordatorioCuotaApi.marcarPagado(recId);
+    },
+    onSuccess: () => {
       setSnackbar({ open: true, message: 'Cuota marcada como pagada', severity: 'success' });
       loadData();
-    } catch {
-      setSnackbar({ open: true, message: 'Error al marcar como pagado', severity: 'error' });
-    }
+    },
+    onError: () => setSnackbar({ open: true, message: 'Error al marcar como pagado', severity: 'error' }),
+  });
+  const handleMarcarPagado = (recId: number) => {
+    if (marcarPagadoMutation.isPending) return;
+    marcarPagadoMutation.mutate(recId);
   };
 
-  const handleDeleteRecordatorio = async (recId: number) => {
-    try {
-      await recordatorioCuotaApi.delete(recId);
+  const deleteRecordatorioMutation = useMutation({
+    mutationFn: (recId: number) => recordatorioCuotaApi.delete(recId),
+    onSuccess: () => {
       setSnackbar({ open: true, message: 'Recordatorio eliminado', severity: 'success' });
       loadData();
-    } catch {
-      setSnackbar({ open: true, message: 'Error al eliminar', severity: 'error' });
-    }
-  };
+    },
+    onError: () => setSnackbar({ open: true, message: 'Error al eliminar', severity: 'error' }),
+  });
+  const handleDeleteRecordatorio = (recId: number) => deleteRecordatorioMutation.mutate(recId);
 
   const handlePagoRevertido = async () => {
     await loadData();
