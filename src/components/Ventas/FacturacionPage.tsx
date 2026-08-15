@@ -4,14 +4,14 @@ import { useDebounce } from '../../hooks/useDebounce';
 import {
   Box,
   Button,
-  Checkbox,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
-  MenuItem,
-  TextField,
+
+
+
+
+
+
+
+
   Typography,
   Alert,
   Tab,
@@ -59,6 +59,9 @@ import DeudaClienteConfirmDialog from './DeudaClienteConfirmDialog';
 // FRONT-002: extracted to keep this file orchestrator-shaped.
 import { IVA_OPTIONS, type TipoIva } from './Facturacion/constants';
 import type { CartItem, NotaCartItem } from './Facturacion/types';
+import type { DetalleForm } from './Presupuestos/types';
+import RevestimientoDialog from './Presupuestos/dialogs/RevestimientoDialog';
+import EnvioDialog from './Presupuestos/dialogs/EnvioDialog';
 import {
   isFinanciamiento,
   buildCajaPayload,
@@ -72,8 +75,6 @@ import FabricacionConfirmDialog from './Facturacion/dialogs/FabricacionConfirmDi
 import ConvertToFacturaDialog from './Facturacion/dialogs/ConvertToFacturaDialog';
 import DesdeNotaPedidoTab from './Facturacion/tabs/DesdeNotaPedidoTab';
 import FacturarManualTab from './Facturacion/tabs/FacturarManualTab';
-import { costoEnvioApi } from '../../api/services/costoEnvioApi';
-import type { CostoEnvioDTO } from '../../types/costoEnvio.types';
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { defaultFechaEntregaISO } from '../../utils/entregaDeadline';
 
@@ -127,18 +128,9 @@ const FacturacionPage = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedIva, setSelectedIva] = useState<TipoIva>('EXENTO');
 
-  // Envío dialog state
-  const [costosEnvioFact, setCostosEnvioFact] = useState<CostoEnvioDTO[]>([]);
+  // Envío / revestimiento: dialogs compartidos con Presupuestos; solo el flag.
   const [envioDialogOpenFact, setEnvioDialogOpenFact] = useState(false);
-  const [envioProvinciaFact, setEnvioProvinciaFact] = useState('');
-  const [envioPrecioFact, setEnvioPrecioFact] = useState(0);
-  const [envioCantidadFact, setEnvioCantidadFact] = useState(1);
-  const [envioBonificadoFact, setEnvioBonificadoFact] = useState(false);
-
-  // Revestimiento dialog state
   const [revestimientoDialogOpenFact, setRevestimientoDialogOpenFact] = useState(false);
-  const [revestimientoPrecioFact, setRevestimientoPrecioFact] = useState(0);
-  const [revestimientoCantidadFact, setRevestimientoCantidadFact] = useState(1);
   const [descuentoTipo, setDescuentoTipo] = useState<'NONE' | 'PORCENTAJE' | 'MONTO_FIJO'>('NONE');
   const [descuentoValor, setDescuentoValor] = useState<number>(0);
   const [notaDescuentoTipo, setNotaDescuentoTipo] = useState<'NONE' | 'PORCENTAJE' | 'MONTO_FIJO'>('NONE');
@@ -634,72 +626,25 @@ const FacturacionPage = () => {
     }
   };
 
-  const handleOpenEnvioDialogFact = async () => {
-    if (costosEnvioFact.length === 0) {
-      try {
-        await costoEnvioApi.seed().catch(() => {});
-        const data = await costoEnvioApi.getAll();
-        setCostosEnvioFact(data);
-      } catch {
-        // silent
-      }
-    }
-    // Auto-detect cantidad: sum of EQUIPO items in the current cart
-    const cantEquipos = cart
-      .filter((c) => c.tipoItem === 'EQUIPO')
-      .reduce((sum, c) => sum + (c.cantidad || 0), 0);
-    setEnvioProvinciaFact('');
-    setEnvioPrecioFact(0);
-    setEnvioCantidadFact(cantEquipos > 0 ? cantEquipos : 1);
-    setEnvioBonificadoFact(false);
-    setEnvioDialogOpenFact(true);
-  };
+  // Envío/revestimiento reusan los dialogs autocontenidos de Presupuestos
+  // (mismo linaje de UI); acá solo se mapea el DetalleForm que devuelven al
+  // shape del carrito manual (con descuento 0).
+  const cantEquiposEnCart = useMemo(
+    () => cart.filter((c) => c.tipoItem === 'EQUIPO').reduce((sum, c) => sum + (c.cantidad || 0), 0),
+    [cart]
+  );
 
-  const handleConfirmEnvioFact = () => {
-    if (!envioProvinciaFact) return;
-    const label = costosEnvioFact.find((c) => c.provincia === envioProvinciaFact)?.provinciaNombre ?? envioProvinciaFact;
-    const precioUnit = envioBonificadoFact ? 0 : envioPrecioFact;
-    const cantidad = Math.max(1, envioCantidadFact);
+  const handleAgregarExtraAlCarrito = (detalle: DetalleForm) => {
     setCart((prev) => [
       ...prev,
       {
-        tipoItem: 'ENVIO' as const,
-        descripcion: envioBonificadoFact ? `Envío a ${label} (Bonificado)` : `Envío a ${label}`,
-        cantidad,
-        precioUnitario: precioUnit,
+        tipoItem: detalle.tipoItem as 'ENVIO' | 'REVESTIMIENTO',
+        descripcion: detalle.descripcion,
+        cantidad: detalle.cantidad,
+        precioUnitario: detalle.precioUnitario,
         descuento: 0,
       },
     ]);
-    setEnvioDialogOpenFact(false);
-  };
-
-  const handleOpenRevestimientoDialogFact = async () => {
-    const cantEquipos = cart
-      .filter((c) => c.tipoItem === 'EQUIPO')
-      .reduce((sum, c) => sum + (c.cantidad || 0), 0);
-    try {
-      const precio = await documentoApi.getPrecioRevestimiento();
-      setRevestimientoPrecioFact(precio);
-    } catch {
-      setRevestimientoPrecioFact(280000);
-    }
-    setRevestimientoCantidadFact(cantEquipos > 0 ? cantEquipos : 1);
-    setRevestimientoDialogOpenFact(true);
-  };
-
-  const handleConfirmRevestimientoFact = () => {
-    const cantidad = Math.max(1, revestimientoCantidadFact);
-    setCart((prev) => [
-      ...prev,
-      {
-        tipoItem: 'REVESTIMIENTO' as const,
-        descripcion: 'Revestimiento de acero',
-        cantidad,
-        precioUnitario: revestimientoPrecioFact,
-        descuento: 0,
-      },
-    ]);
-    setRevestimientoDialogOpenFact(false);
   };
 
   // Función para verificar stock disponible de un equipo
@@ -1885,8 +1830,8 @@ const FacturacionPage = () => {
           onChangeGestionanteTelefono={setGestionanteTelefono}
           cart={cart}
           onAddItem={addItemToCart}
-          onAddEnvio={handleOpenEnvioDialogFact}
-          onAddRevestimiento={handleOpenRevestimientoDialogFact}
+          onAddEnvio={() => setEnvioDialogOpenFact(true)}
+          onAddRevestimiento={() => setRevestimientoDialogOpenFact(true)}
           onUpdateCartItem={updateCartItem}
           onRemoveCartItem={removeItemFromCart}
           products={products}
@@ -2065,122 +2010,19 @@ const FacturacionPage = () => {
       />
 
       {/* Revestimiento de acero dialog — Factura Manual */}
-      <Dialog open={revestimientoDialogOpenFact} onClose={() => setRevestimientoDialogOpenFact(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Agregar revestimiento de acero</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <TextField
-            label="Precio por unidad"
-            type="number"
-            value={revestimientoPrecioFact}
-            onChange={(e) => setRevestimientoPrecioFact(parseFloat(e.target.value) || 0)}
-            size="small"
-            fullWidth
-            InputProps={{ startAdornment: <span style={{ marginRight: 4 }}>$</span> }}
-            helperText="Tomado del parámetro de sistema. Puede ajustarlo."
-          />
-          <TextField
-            label="Cantidad de equipos"
-            type="number"
-            value={revestimientoCantidadFact}
-            onChange={(e) => setRevestimientoCantidadFact(Math.max(1, parseInt(e.target.value) || 1))}
-            size="small"
-            fullWidth
-            inputProps={{ min: 1 }}
-            helperText="Auto-detectado desde los equipos del documento. No puede superar la cantidad de equipos."
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: 1, borderColor: 'divider' }}>
-            <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
-            <Typography variant="body1" fontWeight={600}>
-              ${(revestimientoPrecioFact * revestimientoCantidadFact).toLocaleString('es-AR', { minimumFractionDigits: 0 })}
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRevestimientoDialogOpenFact(false)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={handleConfirmRevestimientoFact}
-            disabled={revestimientoPrecioFact <= 0 || revestimientoCantidadFact <= 0}
-          >
-            Agregar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <RevestimientoDialog
+        open={revestimientoDialogOpenFact}
+        onClose={() => setRevestimientoDialogOpenFact(false)}
+        cantidadInicial={cantEquiposEnCart}
+        onConfirm={handleAgregarExtraAlCarrito}
+      />
 
-      {/* Province / envío selector dialog — Factura Manual */}
-      <Dialog open={envioDialogOpenFact} onClose={() => setEnvioDialogOpenFact(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Agregar costo de envío</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <TextField
-            select
-            label="Provincia"
-            value={envioProvinciaFact}
-            onChange={(e) => {
-              const prov = e.target.value;
-              setEnvioProvinciaFact(prov);
-              const costo = costosEnvioFact.find((c) => c.provincia === prov);
-              setEnvioPrecioFact(costo ? costo.precio : 0);
-            }}
-            size="small"
-            fullWidth
-          >
-            <MenuItem value="">Seleccionar provincia</MenuItem>
-            {costosEnvioFact.map((c) => (
-              <MenuItem key={c.provincia} value={c.provincia}>
-                {c.provinciaNombre}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Precio por equipo"
-            type="number"
-            value={envioPrecioFact}
-            onChange={(e) => setEnvioPrecioFact(parseFloat(e.target.value) || 0)}
-            size="small"
-            fullWidth
-            disabled={envioBonificadoFact}
-            InputProps={{ startAdornment: <span style={{ marginRight: 4 }}>$</span> }}
-            helperText="Tomado de la tabla de costos de envío. Puede ajustarlo."
-          />
-          <TextField
-            label="Cantidad de equipos"
-            type="number"
-            value={envioCantidadFact}
-            onChange={(e) => setEnvioCantidadFact(Math.max(1, parseInt(e.target.value) || 1))}
-            size="small"
-            fullWidth
-            inputProps={{ min: 1 }}
-            helperText="Auto-detectado desde los equipos del documento. Editable."
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={envioBonificadoFact}
-                onChange={(e) => setEnvioBonificadoFact(e.target.checked)}
-              />
-            }
-            label="Bonificar envío (no cobrar)"
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: 1, borderColor: 'divider' }}>
-            <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
-            <Typography variant="body1" fontWeight={600} color={envioBonificadoFact ? 'success.main' : 'text.primary'}>
-              {envioBonificadoFact
-                ? 'BONIFICADO ($0)'
-                : `$${(envioPrecioFact * envioCantidadFact).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`}
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEnvioDialogOpenFact(false)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={handleConfirmEnvioFact}
-            disabled={!envioProvinciaFact || (!envioBonificadoFact && envioPrecioFact <= 0) || envioCantidadFact <= 0}
-          >
-            Agregar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <EnvioDialog
+        open={envioDialogOpenFact}
+        onClose={() => setEnvioDialogOpenFact(false)}
+        cantidadInicial={cantEquiposEnCart}
+        onConfirm={handleAgregarExtraAlCarrito}
+      />
     </Box>
   );
 };
