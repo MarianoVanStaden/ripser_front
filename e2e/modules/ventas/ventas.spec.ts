@@ -151,10 +151,10 @@ test.describe('Ventas — Documentos Comerciales', () => {
     // Navigate to facturacion and assert the page loads correctly
     await ventasPage.gotoFacturacion();
     await expect(page).toHaveURL(/\/ventas\/facturacion/);
-    // The page heading or tab should be visible
+    // El título de la página debe estar visible (heading específico para evitar
+    // strict-mode: /factura/i matchea también el nav lateral y el heading del tab).
     await expect(
-      page.getByRole('heading', { name: /factura/i })
-        .or(page.getByText(/factura/i).first())
+      page.getByRole('heading', { name: /sistema de facturación/i })
     ).toBeVisible({ timeout: 10_000 });
   });
 
