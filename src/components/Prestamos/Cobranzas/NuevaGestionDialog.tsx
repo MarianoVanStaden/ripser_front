@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -49,7 +50,6 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
     fechaProximaGestion: getTodayStr(),
     observaciones: '',
   });
-  const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   // Id de la gestión activa ya existente (409): habilita el botón "Ir a la gestión activa".
   const [gestionActivaId, setGestionActivaId] = useState<number | null>(null);
@@ -101,7 +101,45 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
     onClose();
   };
 
-  const handleSubmit = async () => {
+  const crearGestionMutation = useMutation({
+    mutationFn: () => {
+      const prestamoId = selectedPrestamo?.id;
+      return gestionCobranzaApi.create({
+        ...(modo === 'libre'
+          ? {
+              clienteId: selectedCliente!.id,
+              tipoOrigen,
+              descripcionOrigen: descripcionOrigen || undefined,
+            }
+          : { prestamoId }),
+        prioridad: (form.prioridad || undefined) as PrioridadType | undefined,
+        montoPendiente: form.montoPendiente !== '' ? Number(form.montoPendiente) : undefined,
+        fechaProximaGestion: form.fechaProximaGestion || undefined,
+        observaciones: form.observaciones || undefined,
+      });
+    },
+    onSuccess: () => { onSaved(); handleClose(); },
+    onError: async (err: any) => {
+      // 409: ya existe una gestión activa para este crédito. Mostramos motivo claro y
+      // resolvemos el id de esa gestión para ofrecer un atajo al detalle.
+      const prestamoId = selectedPrestamo?.id;
+      if (err?.response?.status === 409 && prestamoId != null) {
+        setFormError('Ya existe una gestión activa para este crédito.');
+        try {
+          const activa = await gestionCobranzaApi.getActivaByPrestamo(prestamoId);
+          setGestionActivaId(activa.id);
+        } catch {
+          // Si no se pudo resolver la gestión, se muestra igual el mensaje sin botón.
+        }
+      } else {
+        setFormError(err?.response?.data?.message || err?.response?.data?.error
+          || 'Error al crear la gestión. Intente nuevamente.');
+      }
+    },
+  });
+  const submitting = crearGestionMutation.isPending;
+
+  const handleSubmit = () => {
     if (modo === 'libre') {
       if (!selectedCliente?.id) {
         setFormError('Seleccione un cliente.');
@@ -115,44 +153,9 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
       setFormError('Seleccione un crédito personal.');
       return;
     }
-    const prestamoId = selectedPrestamo?.id;
-    setSubmitting(true);
     setFormError(null);
     setGestionActivaId(null);
-    try {
-      await gestionCobranzaApi.create({
-        ...(modo === 'libre'
-          ? {
-              clienteId: selectedCliente!.id,
-              tipoOrigen,
-              descripcionOrigen: descripcionOrigen || undefined,
-            }
-          : { prestamoId }),
-        prioridad: (form.prioridad || undefined) as PrioridadType | undefined,
-        montoPendiente: form.montoPendiente !== '' ? Number(form.montoPendiente) : undefined,
-        fechaProximaGestion: form.fechaProximaGestion || undefined,
-        observaciones: form.observaciones || undefined,
-      });
-      onSaved();
-      handleClose();
-    } catch (err: any) {
-      // 409: ya existe una gestión activa para este crédito. Mostramos motivo claro y
-      // resolvemos el id de esa gestión para ofrecer un atajo al detalle.
-      if (err?.response?.status === 409 && prestamoId != null) {
-        setFormError('Ya existe una gestión activa para este crédito.');
-        try {
-          const activa = await gestionCobranzaApi.getActivaByPrestamo(prestamoId);
-          setGestionActivaId(activa.id);
-        } catch {
-          // Si no se pudo resolver la gestión, se muestra igual el mensaje sin botón.
-        }
-      } else {
-        setFormError(err?.response?.data?.message || err?.response?.data?.error
-          || 'Error al crear la gestión. Intente nuevamente.');
-      }
-    } finally {
-      setSubmitting(false);
-    }
+    crearGestionMutation.mutate();
   };
 
   const handleIrAGestionActiva = () => {

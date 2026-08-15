@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Stack, Typography, Alert, Chip,
@@ -34,7 +35,6 @@ export const PromesaPagoDialog: React.FC<PromesaPagoDialogProps> = ({
   );
   const [monto, setMonto] = useState('');
   const [observaciones, setObservaciones] = useState('');
-  const [loading, setLoading] = useState(false);
   const [loadingCuotas, setLoadingCuotas] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +71,24 @@ export const PromesaPagoDialog: React.FC<PromesaPagoDialogProps> = ({
     );
   };
 
-  const handleSave = async () => {
+  const registrarPromesaMutation = useMutation({
+    mutationFn: () => gestionCobranzaApi.registrarPromesa(gestionId, {
+      fechaPromesa: fechaPromesa!.format('YYYY-MM-DD'),
+      montoPrometido: montoNum,
+      cuotaIds: selectedCuotaIds,
+      observaciones: observaciones || undefined,
+    }),
+    onSuccess: () => onSaved(),
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })
+          ?.response?.data?.message ?? 'Error al registrar la promesa.';
+      setError(msg);
+    },
+  });
+  const loading = registrarPromesaMutation.isPending;
+
+  const handleSave = () => {
     setError(null);
 
     if (!fechaPromesa || !fechaPromesa.isValid() || fechaPromesa.isBefore(dayjs(), 'day')) {
@@ -87,23 +104,7 @@ export const PromesaPagoDialog: React.FC<PromesaPagoDialogProps> = ({
       return;
     }
 
-    setLoading(true);
-    try {
-      await gestionCobranzaApi.registrarPromesa(gestionId, {
-        fechaPromesa: fechaPromesa.format('YYYY-MM-DD'),
-        montoPrometido: montoNum,
-        cuotaIds: selectedCuotaIds,
-        observaciones: observaciones || undefined,
-      });
-      onSaved();
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })
-          ?.response?.data?.message ?? 'Error al registrar la promesa.';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
+    registrarPromesaMutation.mutate();
   };
 
   const handleClose = () => {

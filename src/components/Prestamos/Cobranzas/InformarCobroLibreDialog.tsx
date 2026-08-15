@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, MenuItem, FormControl, InputLabel, Select,
@@ -44,7 +45,6 @@ export const InformarCobroLibreDialog: React.FC<InformarCobroLibreDialogProps> =
   const [numeroComprobante, setNumeroComprobante] = useState('');
   const [fechaPago, setFechaPago] = useState(getTodayStr());
   const [observaciones, setObservaciones] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleClose = () => {
@@ -55,7 +55,22 @@ export const InformarCobroLibreDialog: React.FC<InformarCobroLibreDialogProps> =
     onClose();
   };
 
-  const handleSubmit = async () => {
+  const informarMutation = useMutation({
+    mutationFn: () => pagoInformadoApi.informar({
+      gestionCobranzaId: gestionId,
+      montoInformado: Number(monto),
+      numeroComprobante: numeroComprobante.trim(),
+      metodoPago,
+      fechaPagoInformada: fechaPago,
+      observaciones: observaciones || undefined,
+    }),
+    onSuccess: () => { onSaved(); handleClose(); },
+    onError: (err: any) => setError(err?.response?.data?.message || err?.response?.data?.error
+      || 'Error al informar el cobro. Intente nuevamente.'),
+  });
+  const submitting = informarMutation.isPending;
+
+  const handleSubmit = () => {
     if (monto === '' || Number(monto) <= 0) {
       setError('Ingrese un monto mayor a 0.');
       return;
@@ -64,25 +79,8 @@ export const InformarCobroLibreDialog: React.FC<InformarCobroLibreDialogProps> =
       setError('El número de comprobante es obligatorio.');
       return;
     }
-    setSubmitting(true);
     setError(null);
-    try {
-      await pagoInformadoApi.informar({
-        gestionCobranzaId: gestionId,
-        montoInformado: Number(monto),
-        numeroComprobante: numeroComprobante.trim(),
-        metodoPago,
-        fechaPagoInformada: fechaPago,
-        observaciones: observaciones || undefined,
-      });
-      onSaved();
-      handleClose();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err?.response?.data?.error
-        || 'Error al informar el cobro. Intente nuevamente.');
-    } finally {
-      setSubmitting(false);
-    }
+    informarMutation.mutate();
   };
 
   return (

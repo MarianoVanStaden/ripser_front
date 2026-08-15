@@ -4,6 +4,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, MenuItem, FormControl, InputLabel, Select,
@@ -50,7 +51,6 @@ export const RegistrarAccionDialog: React.FC<RegistrarAccionDialogProps> = ({
     fechaProximoContacto: '',
     actualizarGestion: true,
   });
-  const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const handleClose = () => {
@@ -68,28 +68,26 @@ export const RegistrarAccionDialog: React.FC<RegistrarAccionDialogProps> = ({
     onClose();
   };
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
+  const crearAccionMutation = useMutation({
+    mutationFn: () => gestionCobranzaApi.createAccion({
+      gestionId,
+      tipo: form.tipo,
+      resultado: (form.resultado || undefined) as ResultadoType | undefined,
+      fecha: new Date(form.fecha).toISOString(),
+      descripcion: form.descripcion || undefined,
+      duracionMinutos: form.duracionMinutos !== '' ? Number(form.duracionMinutos) : undefined,
+      fechaPrometePago: form.fechaPrometePago || undefined,
+      fechaProximoContacto: form.fechaProximoContacto || undefined,
+      actualizarGestion: form.actualizarGestion,
+    }),
+    onSuccess: () => { onSaved(); handleClose(); },
+    onError: () => setFormError('Error al registrar la acción. Intente nuevamente.'),
+  });
+  const submitting = crearAccionMutation.isPending;
+
+  const handleSubmit = () => {
     setFormError(null);
-    try {
-      await gestionCobranzaApi.createAccion({
-        gestionId,
-        tipo: form.tipo,
-        resultado: (form.resultado || undefined) as ResultadoType | undefined,
-        fecha: new Date(form.fecha).toISOString(),
-        descripcion: form.descripcion || undefined,
-        duracionMinutos: form.duracionMinutos !== '' ? Number(form.duracionMinutos) : undefined,
-        fechaPrometePago: form.fechaPrometePago || undefined,
-        fechaProximoContacto: form.fechaProximoContacto || undefined,
-        actualizarGestion: form.actualizarGestion,
-      });
-      onSaved();
-      handleClose();
-    } catch {
-      setFormError('Error al registrar la acción. Intente nuevamente.');
-    } finally {
-      setSubmitting(false);
-    }
+    crearAccionMutation.mutate();
   };
 
   const showFechaPromesa = form.resultado === ResultadoAccionCobranza.PROMETIO_PAGO;

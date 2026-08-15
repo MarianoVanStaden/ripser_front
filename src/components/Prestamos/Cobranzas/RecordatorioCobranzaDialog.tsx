@@ -1,5 +1,6 @@
 import FechaField from '../../common/FechaField';
 import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, MenuItem, FormControl, InputLabel, Select,
@@ -42,7 +43,6 @@ export const RecordatorioCobranzaDialog: React.FC<RecordatorioCobranzaDialogProp
     prioridad: PrioridadCobranza.MEDIA as PrioridadType,
     mensaje: '',
   });
-  const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const handleClose = () => {
@@ -57,29 +57,27 @@ export const RecordatorioCobranzaDialog: React.FC<RecordatorioCobranzaDialogProp
     onClose();
   };
 
-  const handleSubmit = async () => {
+  const crearRecordatorioMutation = useMutation({
+    mutationFn: () => gestionCobranzaApi.createRecordatorio({
+      gestionId,
+      fechaRecordatorio: form.fechaRecordatorio,
+      hora: form.hora || undefined,
+      tipo: form.tipo,
+      prioridad: form.prioridad,
+      mensaje: form.mensaje || undefined,
+    }),
+    onSuccess: () => { onSaved(); handleClose(); },
+    onError: () => setFormError('Error al crear el recordatorio. Intente nuevamente.'),
+  });
+  const submitting = crearRecordatorioMutation.isPending;
+
+  const handleSubmit = () => {
     if (!form.fechaRecordatorio) {
       setFormError('La fecha es requerida.');
       return;
     }
-    setSubmitting(true);
     setFormError(null);
-    try {
-      await gestionCobranzaApi.createRecordatorio({
-        gestionId,
-        fechaRecordatorio: form.fechaRecordatorio,
-        hora: form.hora || undefined,
-        tipo: form.tipo,
-        prioridad: form.prioridad,
-        mensaje: form.mensaje || undefined,
-      });
-      onSaved();
-      handleClose();
-    } catch {
-      setFormError('Error al crear el recordatorio. Intente nuevamente.');
-    } finally {
-      setSubmitting(false);
-    }
+    crearRecordatorioMutation.mutate();
   };
 
   return (
