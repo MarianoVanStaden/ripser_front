@@ -1,5 +1,6 @@
 import FechaField from '../../common/FechaField';
 import { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Alert, Box, Grid, TextField, Typography, CircularProgress,
@@ -30,7 +31,6 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
   const [chequeData, setChequeData] = useState<ChequeCobroData>(blankCheque());
   const [bancos, setBancos] = useState<Banco[]>([]);
   const [loadingBancos, setLoadingBancos] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function blankCheque(): ChequeCobroData {
@@ -73,6 +73,32 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
     }
   }, [open, pago?.metodoPago, bancos.length, loadingBancos]);
 
+  const confirmarMutation = useMutation({
+    mutationFn: () => pagoInformadoApi.confirmar(pago!.id, {
+      montoConfirmado,
+      cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
+      cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
+      ...(pago!.cuotaId == null && { impactarCuentaCorriente: impactarCC }),
+      ...(pago!.metodoPago === 'CHEQUE' && {
+        cheque: {
+          numeroCheque: chequeData.numeroCheque.trim(),
+          bancoId: chequeData.bancoId,
+          titular: chequeData.titular.trim(),
+          cuitTitular: chequeData.cuitTitular?.trim() || undefined,
+          fechaEmision: chequeData.fechaEmision,
+          fechaCobro: chequeData.fechaCobro,
+          numeroCuenta: chequeData.numeroCuenta?.trim() || undefined,
+          cbu: chequeData.cbu?.trim() || undefined,
+          esEcheq: !!chequeData.esEcheq,
+          observaciones: chequeData.observaciones?.trim() || undefined,
+        },
+      }),
+    }),
+    onSuccess: () => { onConfirmado(); onClose(); },
+    onError: (err: any) => setError(err.response?.data?.message || err.response?.data?.error || 'Error al confirmar el pago'),
+  });
+  const saving = confirmarMutation.isPending;
+
   if (!pago) return null;
 
   const requiereCaja = metodoPagoRequiereCaja(pago.metodoPago);
@@ -85,7 +111,7 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
     !chequeData.fechaCobro
   );
 
-  const handleConfirm = async () => {
+  const handleConfirm = () => {
     if (montoConfirmado <= 0) {
       setError('El monto confirmado debe ser mayor a 0.');
       return;
@@ -98,36 +124,8 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
       setError('Completá los datos obligatorios del cheque.');
       return;
     }
-    try {
-      setSaving(true);
-      setError(null);
-      await pagoInformadoApi.confirmar(pago.id, {
-        montoConfirmado,
-        cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
-        cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
-        ...(pago.cuotaId == null && { impactarCuentaCorriente: impactarCC }),
-        ...(pago.metodoPago === 'CHEQUE' && {
-          cheque: {
-            numeroCheque: chequeData.numeroCheque.trim(),
-            bancoId: chequeData.bancoId,
-            titular: chequeData.titular.trim(),
-            cuitTitular: chequeData.cuitTitular?.trim() || undefined,
-            fechaEmision: chequeData.fechaEmision,
-            fechaCobro: chequeData.fechaCobro,
-            numeroCuenta: chequeData.numeroCuenta?.trim() || undefined,
-            cbu: chequeData.cbu?.trim() || undefined,
-            esEcheq: !!chequeData.esEcheq,
-            observaciones: chequeData.observaciones?.trim() || undefined,
-          },
-        }),
-      });
-      onConfirmado();
-      onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Error al confirmar el pago');
-    } finally {
-      setSaving(false);
-    }
+    setError(null);
+    confirmarMutation.mutate();
   };
 
   return (

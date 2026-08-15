@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Alert, TextField, CircularProgress, Typography,
@@ -19,7 +20,6 @@ export const RechazarPagoInformadoDialog: React.FC<Props> = ({
   open, onClose, onRechazado, pago,
 }) => {
   const [motivo, setMotivo] = useState('');
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,23 +29,21 @@ export const RechazarPagoInformadoDialog: React.FC<Props> = ({
     }
   }, [open]);
 
-  const handleConfirm = async () => {
+  const rechazarMutation = useMutation({
+    mutationFn: () => pagoInformadoApi.rechazar(pago!.id, { motivoRechazo: motivo.trim() }),
+    onSuccess: () => { onRechazado(); onClose(); },
+    onError: (err: any) => setError(err.response?.data?.message || err.response?.data?.error || 'Error al rechazar el informe'),
+  });
+  const saving = rechazarMutation.isPending;
+
+  const handleConfirm = () => {
     if (!pago) return;
     if (!motivo.trim()) {
       setError('Indicá el motivo del rechazo.');
       return;
     }
-    try {
-      setSaving(true);
-      setError(null);
-      await pagoInformadoApi.rechazar(pago.id, { motivoRechazo: motivo.trim() });
-      onRechazado();
-      onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Error al rechazar el informe');
-    } finally {
-      setSaving(false);
-    }
+    setError(null);
+    rechazarMutation.mutate();
   };
 
   if (!pago) return null;
