@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Alert, TextField, CircularProgress, Typography,
@@ -20,7 +21,6 @@ export const RevertirPagoDialog: React.FC<RevertirPagoDialogProps> = ({
   open, onClose, onReverted, cuota, cantidadCuotas, prestamoId,
 }) => {
   const [motivo, setMotivo] = useState('');
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,19 +30,17 @@ export const RevertirPagoDialog: React.FC<RevertirPagoDialogProps> = ({
     }
   }, [open]);
 
-  const handleConfirm = async () => {
+  const revertirMutation = useMutation({
+    mutationFn: () => cuotaPrestamoApi.revertirPago({ cuotaId: cuota!.id, motivo: motivo.trim() || undefined }),
+    onSuccess: () => { onReverted(); onClose(); },
+    onError: (err: any) => setError(err.response?.data?.message || err.response?.data?.error || 'Error al revertir el pago'),
+  });
+  const saving = revertirMutation.isPending;
+
+  const handleConfirm = () => {
     if (!cuota) return;
-    try {
-      setSaving(true);
-      setError(null);
-      await cuotaPrestamoApi.revertirPago({ cuotaId: cuota.id, motivo: motivo.trim() || undefined });
-      onReverted();
-      onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Error al revertir el pago');
-    } finally {
-      setSaving(false);
-    }
+    setError(null);
+    revertirMutation.mutate();
   };
 
   if (!cuota) return null;

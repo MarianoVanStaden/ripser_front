@@ -1,5 +1,6 @@
 import FechaField from '../common/FechaField';
 import { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Grid, TextField, Box, Typography, Alert, CircularProgress,
@@ -54,7 +55,6 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
   const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
   const [numeroComprobante, setNumeroComprobante] = useState<string>('');
   const [observaciones, setObservaciones] = useState<string>('');
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saldoDisponible, setSaldoDisponible] = useState<number | null>(null);
   const [loadingSaldo, setLoadingSaldo] = useState(false);
@@ -153,32 +153,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
 
   const comprobanteRequeridoFaltante = modoCobranzas && !numeroComprobante.trim();
 
-  const handleSave = async () => {
-    if (!cuota) return;
-    if (montoPagado <= 0) { setError('El monto debe ser mayor a 0'); return; }
-    if (saldoInsuficiente) {
-      setError(`Saldo insuficiente. Disponible: ${formatPrice(saldoDisponible!)}`);
-      return;
-    }
-    if (cajaFaltante) {
-      setError('Seleccioná la caja donde ingresa el pago.');
-      return;
-    }
-    if (chequeInvalido) {
-      setError('Completá los datos obligatorios del cheque: número, banco, titular, fechas.');
-      return;
-    }
-    if (comprobanteRequeridoFaltante) {
-      setError('El número de comprobante es obligatorio para informar el pago.');
-      return;
-    }
-    try {
-      setSaving(true);
-      setError(null);
-
+  const registrarMutation = useMutation({
+    mutationFn: async () => {
       if (modoCobranzas) {
         await pagoInformadoApi.informar({
-          cuotaId: cuota.id,
+          cuotaId: cuota!.id,
           montoInformado: montoPagado,
           numeroComprobante: numeroComprobante.trim(),
           metodoPago,
@@ -187,7 +166,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
         });
       } else {
         await cuotaPrestamoApi.registrarPago({
-          cuotaId: cuota.id,
+          cuotaId: cuota!.id,
           montoPagado,
           fechaPago,
           metodoPago,
@@ -212,19 +191,38 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
       }
 
       const newCuotas = await cuotaPrestamoApi.getByPrestamo(prestamoId);
-      const changed = newCuotas.filter(c => {
+      return newCuotas.filter(c => {
         const prev = allCuotas.find(p => p.id === c.id);
         return prev && prev.estado !== c.estado;
       });
+    },
+    onSuccess: (changed) => { onSaved(changed); onClose(); },
+    onError: (err: any) => setError(err.response?.data?.message || err.response?.data?.error
+      || (modoCobranzas ? 'Error al informar el pago' : 'Error al registrar el pago')),
+  });
+  const saving = registrarMutation.isPending;
 
-      onSaved(changed);
-      onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error
-        || (modoCobranzas ? 'Error al informar el pago' : 'Error al registrar el pago'));
-    } finally {
-      setSaving(false);
+  const handleSave = () => {
+    if (!cuota) return;
+    if (montoPagado <= 0) { setError('El monto debe ser mayor a 0'); return; }
+    if (saldoInsuficiente) {
+      setError(`Saldo insuficiente. Disponible: ${formatPrice(saldoDisponible!)}`);
+      return;
     }
+    if (cajaFaltante) {
+      setError('Seleccioná la caja donde ingresa el pago.');
+      return;
+    }
+    if (chequeInvalido) {
+      setError('Completá los datos obligatorios del cheque: número, banco, titular, fechas.');
+      return;
+    }
+    if (comprobanteRequeridoFaltante) {
+      setError('El número de comprobante es obligatorio para informar el pago.');
+      return;
+    }
+    setError(null);
+    registrarMutation.mutate();
   };
 
   if (!cuota) return null;

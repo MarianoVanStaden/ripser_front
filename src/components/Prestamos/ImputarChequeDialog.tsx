@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Box, Typography, Alert, CircularProgress, Grid,
@@ -34,7 +35,6 @@ export const ImputarChequeDialog: React.FC<ImputarChequeDialogProps> = ({
   const [cheques, setCheques] = useState<Cheque[]>([]);
   const [loading, setLoading] = useState(false);
   const [chequeId, setChequeId] = useState<number | ''>('');
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,29 +51,29 @@ export const ImputarChequeDialog: React.FC<ImputarChequeDialogProps> = ({
 
   const chequeSel = cheques.find(c => c.id === chequeId) || null;
 
-  const handleSave = async () => {
-    if (!chequeId) { setError('Seleccioná un cheque para imputar.'); return; }
-    try {
-      setSaving(true);
-      setError(null);
+  const imputarMutation = useMutation({
+    mutationFn: async () => {
       await cuotaPrestamoApi.imputarCheque({
         prestamoId,
         cuotaId: cuota?.id,
         chequeId: chequeId as number,
       });
       const newCuotas = await cuotaPrestamoApi.getByPrestamo(prestamoId);
-      const changed = newCuotas.filter(c => {
+      return newCuotas.filter(c => {
         const prev = allCuotas.find(p => p.id === c.id);
         return prev && (prev.estado !== c.estado || prev.montoPagado !== c.montoPagado);
       });
-      onSaved(changed);
-      onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error
-        || 'Error al imputar el cheque');
-    } finally {
-      setSaving(false);
-    }
+    },
+    onSuccess: (changed) => { onSaved(changed); onClose(); },
+    onError: (err: any) => setError(err.response?.data?.message || err.response?.data?.error
+      || 'Error al imputar el cheque'),
+  });
+  const saving = imputarMutation.isPending;
+
+  const handleSave = () => {
+    if (!chequeId) { setError('Seleccioná un cheque para imputar.'); return; }
+    setError(null);
+    imputarMutation.mutate();
   };
 
   return (
