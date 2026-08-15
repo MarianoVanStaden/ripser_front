@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Box, Button, TextField, MenuItem, Chip, Typography, Stack,
   Accordion, AccordionSummary, AccordionDetails, Checkbox,
@@ -57,7 +58,6 @@ interface EquiposTipoSectionProps {
   colores: Color[];
   medidasOptions: Medida[];
   /** Al cambiar, la sección re-consulta (usado tras mutaciones en el padre). */
-  refreshKey: number;
   defaultExpanded?: boolean;
 }
 
@@ -67,11 +67,8 @@ interface EquiposTipoSectionProps {
  * a su `tipo`. Se instancia una vez por tipo en {@link EquiposList}.
  */
 const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
-  tipo, columns, columnVisibilityModel, isMobile, colores, medidasOptions, refreshKey, defaultExpanded,
+  tipo, columns, columnVisibilityModel, isMobile, colores, medidasOptions, defaultExpanded,
 }) => {
-  const [equipos, setEquipos] = useState<EquipoFabricadoListDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [rowCount, setRowCount] = useState(0);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 25 });
 
   // Filtros propios de la sección
@@ -98,43 +95,36 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
     setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
   }, [estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter, modeloFilter, searchFilter]);
 
-  // Cargar cuando cambian filtros/paginación o refreshKey (tras mutación en el padre).
-  useEffect(() => {
-    let cancelado = false;
-    (async () => {
-      try {
-        setLoading(true);
-        const response = await equipoFabricadoApi.findAll({
-          tipo,
-          page: paginationModel.page,
-          size: paginationModel.pageSize,
-          sort: 'fechaCreacion,desc',
-          modelo: modeloFilter || undefined,
-          estados: estadosFilter.length ? estadosFilter : undefined,
-          estadosAsignacion: estadosAsignacionFilter.length ? estadosAsignacionFilter : undefined,
-          colorId: colorFilter === '' ? undefined : colorFilter,
-          medidaId: medidaFilter === '' ? undefined : medidaFilter,
-          search: searchFilter || undefined,
-        });
-        if (cancelado) return;
-        setEquipos(response.content || []);
-        setRowCount(response.totalElements ?? 0);
-      } catch (error) {
-        if (!cancelado) {
-          console.error(`Error loading equipos (${tipo}):`, error);
-          setEquipos([]);
-          setRowCount(0);
-        }
-      } finally {
-        if (!cancelado) setLoading(false);
-      }
-    })();
-    return () => { cancelado = true; };
-  }, [
-    tipo, paginationModel.page, paginationModel.pageSize,
-    estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter,
-    modeloFilter, searchFilter, refreshKey,
-  ]);
+  // Lista paginada server-side de la sección. El padre refresca tras cada
+  // mutación invalidando ['equipos'].
+  const equiposQuery = useQuery({
+    queryKey: ['equipos', tipo, {
+      page: paginationModel.page,
+      size: paginationModel.pageSize,
+      estados: estadosFilter,
+      estadosAsignacion: estadosAsignacionFilter,
+      colorId: colorFilter === '' ? undefined : colorFilter,
+      medidaId: medidaFilter === '' ? undefined : medidaFilter,
+      modelo: modeloFilter || undefined,
+      search: searchFilter || undefined,
+    }],
+    queryFn: () => equipoFabricadoApi.findAll({
+      tipo,
+      page: paginationModel.page,
+      size: paginationModel.pageSize,
+      sort: 'fechaCreacion,desc',
+      modelo: modeloFilter || undefined,
+      estados: estadosFilter.length ? estadosFilter : undefined,
+      estadosAsignacion: estadosAsignacionFilter.length ? estadosAsignacionFilter : undefined,
+      colorId: colorFilter === '' ? undefined : colorFilter,
+      medidaId: medidaFilter === '' ? undefined : medidaFilter,
+      search: searchFilter || undefined,
+    }),
+    placeholderData: keepPreviousData,
+  });
+  const equipos: EquipoFabricadoListDTO[] = equiposQuery.data?.content ?? [];
+  const rowCount = equiposQuery.data?.totalElements ?? 0;
+  const loading = equiposQuery.isPending;
 
   const hayFiltrosActivos =
     estadosFilter.length > 0 || estadosAsignacionFilter.length > 0 ||

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box, Paper, Typography, Card, CardContent, Grid,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -33,31 +34,18 @@ const DashboardFabricacion: React.FC = () => {
   );
   const [reasignarOpen, setReasignarOpen] = useState(false);
   const [sanearOpen, setSanearOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [equipos, setEquipos] = useState<any[]>([]);
   const [fechaInicio, setFechaInicio] = useState(
     dayjs().subtract(30, 'days').format('YYYY-MM-DD')
   );
   const [fechaFin, setFechaFin] = useState(dayjs().format('YYYY-MM-DD'));
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const equiposRes = await equipoFabricadoApi.findAll({ page: 0, size: 1000 });
-
-      const equiposData = equiposRes.content || [];
-
-      setEquipos(equiposData);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const equiposQuery = useQuery({
+    queryKey: ['equipos', 'dashboard-list'],
+    queryFn: () => equipoFabricadoApi.findAll({ page: 0, size: 1000 }).then((r) => r.content || []),
+  });
+  const equipos: any[] = equiposQuery.data ?? [];
+  const loading = equiposQuery.isPending;
+  const loadData = () => equiposQuery.refetch();
 
   // Calcular KPIs
   const totalEquipos = equipos.length;

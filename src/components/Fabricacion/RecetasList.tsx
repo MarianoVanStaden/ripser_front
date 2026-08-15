@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Paper,
@@ -41,8 +42,6 @@ import type { RecetaFabricacionListDTO, TipoEquipo } from '../../types';
 import SuccessDialog from '../common/SuccessDialog';
 const RecetasList: React.FC = () => {
   const navigate = useNavigate();
-  const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
-  const [loading, setLoading] = useState(true);
   const [page] = useState(0);
   // Large pageSize: la lista se filtra/agrupa client-side, el endpoint pagina
   // y con size=10 silencia recetas extras cuando el catálogo crece.
@@ -52,6 +51,33 @@ const RecetasList: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [tipoEquipoFilter, setTipoEquipoFilter] = useState<TipoEquipo | ''>('');
   const [soloActivas, setSoloActivas] = useState(false);
+
+  // Lista cruda del server; el filtrado (búsqueda/tipo/activas) se deriva en
+  // memoria y es VIVO — "Aplicar Filtros" pasa a refetchear del server.
+  const queryClient = useQueryClient();
+  const recetasQuery = useQuery({
+    queryKey: ['recetas', { page, pageSize }],
+    queryFn: () => recetaFabricacionApi.findAll({ page, size: pageSize }).then((r) => r.content || []),
+  });
+  const loading = recetasQuery.isPending;
+  const recetasRaw: RecetaFabricacionListDTO[] = recetasQuery.data ?? [];
+  const recetas: RecetaFabricacionListDTO[] = useMemo(() => {
+    let filtered = recetasRaw;
+    if (searchText) {
+      const q = searchText.toLowerCase();
+      filtered = filtered.filter((r) =>
+        r.nombre.toLowerCase().includes(q) || r.codigo.toLowerCase().includes(q));
+    }
+    if (tipoEquipoFilter) {
+      filtered = filtered.filter((r) => r.tipoEquipo === tipoEquipoFilter);
+    }
+    if (soloActivas) {
+      filtered = filtered.filter((r) => r.activo);
+    }
+    return filtered;
+  }, [recetasRaw, searchText, tipoEquipoFilter, soloActivas]);
+  const loadRecetas = (_overrides?: unknown) =>
+    queryClient.invalidateQueries({ queryKey: ['recetas'] });
 
   // Estado para notificaciones
   const [snackbar, setSnackbar] = useState<{
@@ -88,53 +114,6 @@ const RecetasList: React.FC = () => {
     return grupos;
   }, [recetas]);
 
-  useEffect(() => {
-    loadRecetas();
-  }, [page, pageSize]);
-
-  const loadRecetas = async (overrides?: {
-    searchText?: string;
-    tipoEquipoFilter?: TipoEquipo | '';
-    soloActivas?: boolean;
-  }) => {
-    try {
-      setLoading(true);
-      const response = await recetaFabricacionApi.findAll({ page, size: pageSize });
-
-      const search = overrides?.searchText ?? searchText;
-      const tipo = overrides?.tipoEquipoFilter ?? tipoEquipoFilter;
-      const activas = overrides?.soloActivas ?? soloActivas;
-
-      // Filtrar localmente según los criterios
-      let filtered = response.content || [];
-
-      if (search) {
-        filtered = filtered.filter((r: RecetaFabricacionListDTO) =>
-          r.nombre.toLowerCase().includes(search.toLowerCase()) ||
-          r.codigo.toLowerCase().includes(search.toLowerCase())
-        );
-      }
-
-      if (tipo) {
-        filtered = filtered.filter((r: RecetaFabricacionListDTO) => r.tipoEquipo === tipo);
-      }
-
-      if (activas) {
-        filtered = filtered.filter((r: RecetaFabricacionListDTO) => r.activo);
-      }
-
-      setRecetas(filtered);
-    } catch (error) {
-      console.error('Error loading recetas:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al cargar las recetas',
-        severity: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleToggleActive = async (id: number, currentActive: boolean) => {
     try {

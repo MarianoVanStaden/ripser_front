@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme, useMediaQuery } from '@mui/material';
 import {
   Box, Paper, Typography, Button, Chip, IconButton,
@@ -151,15 +152,28 @@ const EquiposList: React.FC = () => {
 
   const esControlCalidad = tieneRol('LOGISTICO', 'ADMIN', 'ADMIN_EMPRESA_LIMITADO');
 
+  const queryClient = useQueryClient();
+
   // Resumen global (empresa) para tarjetas de métricas y KPIs — independiente del filtro/página.
-  const [resumen, setResumen] = useState<EquipoResumenEstadosDTO | null>(null);
+  const resumenQuery = useQuery({
+    queryKey: ['equipos', 'resumen'],
+    queryFn: () => equipoFabricadoApi.getResumenEstados(),
+  });
+  const resumen: EquipoResumenEstadosDTO | null = resumenQuery.data ?? null;
 
-  // Catálogos para los selects de filtro (se pasan a cada sección)
-  const [colores, setColores] = useState<Color[]>([]);
-  const [medidas, setMedidas] = useState<Medida[]>([]);
-
-  // Se incrementa tras cada mutación → fuerza a las secciones a re-consultar.
-  const [refreshKey, setRefreshKey] = useState(0);
+  // Catálogos para los selects de filtro (se pasan a cada sección).
+  const coloresQuery = useQuery({
+    queryKey: ['colores', 'activos'],
+    queryFn: () => colorApi.list(true),
+    staleTime: 300_000,
+  });
+  const medidasQuery = useQuery({
+    queryKey: ['medidas', 'activas'],
+    queryFn: () => medidaApi.list(true),
+    staleTime: 300_000,
+  });
+  const colores: Color[] = coloresQuery.data ?? [];
+  const medidas: Medida[] = medidasQuery.data ?? [];
 
   // Opciones de medida del filtro: intersección del catálogo con la whitelist, en orden.
   const medidasOptions = useMemo(
@@ -271,24 +285,10 @@ const EquiposList: React.FC = () => {
     disponibles: resumen?.disponibles ?? 0,
   }), [resumen]);
 
-  // Cargar catálogos de color/medida una vez (se pasan a las secciones).
-  useEffect(() => {
-    colorApi.list(true).then(setColores).catch(() => setColores([]));
-    medidaApi.list(true).then(setMedidas).catch(() => setMedidas([]));
-  }, []);
-
-  const loadResumen = async () => {
-    try {
-      setResumen(await equipoFabricadoApi.getResumenEstados());
-    } catch (error) {
-      console.error('Error loading resumen de equipos:', error);
-    }
-  };
-
-  // Refresca las secciones (bump de refreshKey) + los conteos globales de tarjetas/KPIs.
+  // Refresca secciones + resumen invalidando el namespace: toda query de
+  // equipos (lista por tipo, resumen, etapas de los dialogs) se refetchea.
   const refrescar = () => {
-    setRefreshKey((k) => k + 1);
-    loadResumen();
+    queryClient.invalidateQueries({ queryKey: ['equipos'] });
   };
 
   // Cargar el resumen al montar y al volver a la página; refrescar secciones al navegar.
@@ -1261,7 +1261,6 @@ const EquiposList: React.FC = () => {
                   isMobile={isMobile}
                   colores={colores}
                   medidasOptions={medidasOptions}
-                  refreshKey={refreshKey}
                   defaultExpanded
                 />
               ))}
