@@ -5,6 +5,7 @@ import {
   FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 import { Link as LinkIcon } from '@mui/icons-material';
+import { useMutation } from '@tanstack/react-query';
 import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import type { Cheque } from '../../types';
@@ -30,7 +31,6 @@ const ImputarChequeACreditoDialog: React.FC<ImputarChequeACreditoDialogProps> = 
   const [prestamos, setPrestamos] = useState<PrestamoPersonalDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [prestamoId, setPrestamoId] = useState<number | ''>('');
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,20 +45,17 @@ const ImputarChequeACreditoDialog: React.FC<ImputarChequeACreditoDialogProps> = 
     }
   }, [open, cheque?.clienteId]);
 
-  const handleSave = async () => {
+  const imputarMutation = useMutation({
+    mutationFn: () => cuotaPrestamoApi.imputarCheque({ prestamoId: prestamoId as number, chequeId: cheque!.id }),
+    onSuccess: () => { onSaved(); onClose(); },
+    onError: (err: any) => setError(err.response?.data?.message || err.response?.data?.error
+      || 'Error al imputar el cheque'),
+  });
+
+  const handleSave = () => {
     if (!cheque || !prestamoId) { setError('Seleccioná un crédito para imputar.'); return; }
-    try {
-      setSaving(true);
-      setError(null);
-      await cuotaPrestamoApi.imputarCheque({ prestamoId: prestamoId as number, chequeId: cheque.id });
-      onSaved();
-      onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error
-        || 'Error al imputar el cheque');
-    } finally {
-      setSaving(false);
-    }
+    setError(null);
+    imputarMutation.mutate();
   };
 
   if (!cheque) return null;
@@ -114,12 +111,12 @@ const ImputarChequeACreditoDialog: React.FC<ImputarChequeACreditoDialogProps> = 
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancelar</Button>
+        <Button onClick={onClose} disabled={imputarMutation.isPending}>Cancelar</Button>
         <Button
           onClick={handleSave}
           variant="contained"
-          disabled={saving || loading || !prestamoId}
-          startIcon={saving ? <CircularProgress size={20} /> : <LinkIcon />}
+          disabled={imputarMutation.isPending || loading || !prestamoId}
+          startIcon={imputarMutation.isPending ? <CircularProgress size={20} /> : <LinkIcon />}
         >
           Imputar
         </Button>
