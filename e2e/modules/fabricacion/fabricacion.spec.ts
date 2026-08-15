@@ -24,8 +24,11 @@ test.describe('Fabricación — Equipos', () => {
     await expect(equiposPage.tabLista).toBeVisible();
     await expect(equiposPage.tabKpis).toBeVisible();
 
-    // Filter selects should be present
-    await expect(equiposPage.tipoFilter).toBeVisible();
+    // El tipo se expresa como una sección (accordion) por cada tipo de equipo
+    await expect(equiposPage.tipoSection(/heladeras/i)).toBeVisible();
+    await expect(equiposPage.tipoSection(/coolbox/i)).toBeVisible();
+
+    // Cada sección está expandida por defecto → sus filtros de estado son visibles
     await expect(equiposPage.estadoFabricacionFilter).toBeVisible();
     await expect(equiposPage.estadoAsignacionFilter).toBeVisible();
   });

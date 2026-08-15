@@ -8,7 +8,10 @@ import { BasePage } from '../../pages/base.page';
  *   - Heading: "Gestión de Equipos Fabricados"
  *   - Button: "Nuevo Equipo"
  *   - Tabs: "Lista de Equipos", "KPIs y Análisis"
- *   - Filters: Select "Tipo de Equipo", Select "Estado Fabricación", Select "Estado Asignación"
+ *   - Secciones por tipo: accordions "Heladeras" / "Coolbox" / "Exhibidores" / "Otros"
+ *     (EquiposTipoSection, todas `defaultExpanded`). El antiguo select "Tipo de
+ *     Equipo" ya no existe — el tipo es cada sección. Los filtros "Estado
+ *     Fabricación" / "Estado Asignación" viven dentro de cada sección.
  */
 export class EquiposPage extends BasePage {
   readonly path = '/fabricacion/equipos';
@@ -17,7 +20,6 @@ export class EquiposPage extends BasePage {
   readonly nuevoEquipoButton: Locator;
   readonly tabLista: Locator;
   readonly tabKpis: Locator;
-  readonly tipoFilter: Locator;
   readonly estadoFabricacionFilter: Locator;
   readonly estadoAsignacionFilter: Locator;
 
@@ -28,9 +30,13 @@ export class EquiposPage extends BasePage {
     this.nuevoEquipoButton   = page.getByRole('button', { name: /nuevo equipo/i });
     this.tabLista            = page.getByRole('tab', { name: /lista de equipos/i });
     this.tabKpis             = page.getByRole('tab', { name: /kpis/i });
-    this.tipoFilter          = page.getByLabel(/tipo de equipo/i).first();
     this.estadoFabricacionFilter  = page.getByLabel(/estado fabricación/i).first();
     this.estadoAsignacionFilter   = page.getByLabel(/estado asignación/i).first();
+  }
+
+  /** Accordion (AccordionSummary = role button) de una sección por tipo. */
+  tipoSection(nombre: RegExp): Locator {
+    return this.page.getByRole('button', { name: nombre }).first();
   }
 
   async assertOnPage(): Promise<void> {
