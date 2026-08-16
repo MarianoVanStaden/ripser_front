@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Button, Card, CardContent, Chip, CircularProgress, IconButton,
+  Box, Button, Card, CardContent, Chip, IconButton,
   List, ListItem, ListItemText, Stack, SwipeableDrawer, Tab, Tabs, Typography,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
@@ -12,11 +12,10 @@ import {
   Close as CloseIcon,
   LocationOn as LocationIcon,
   Inventory as EquipmentIcon,
-  PhotoCamera as PhotoCameraIcon,
-  Download as DownloadIcon,
   WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material';
 import BottomSheet from './components/BottomSheet';
+import EntregaDocumentosCard from './EntregaDocumentosCard';
 import { openWhatsAppWeb } from '../../../utils/whatsapp';
 import { getEstadoAsignacionColor, getEstadoAsignacionLabel } from './utils';
 import type { EntregaViaje } from '../../../types';
@@ -264,85 +263,17 @@ export default function DeliveryDetailsPanel({
                   )}
 
                   {/* Imágenes / Documentos — disponible para todos los estados */}
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-                        <Box display="flex" alignItems="center" gap={0.5}>
-                          <PhotoCameraIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                          <Typography variant="caption" color="text.secondary">Imágenes / Documentos</Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          startIcon={addingDocumentos ? <CircularProgress size={12} /> : <PhotoCameraIcon />}
-                          onClick={() => addDocInputRef.current?.click()}
-                          disabled={addingDocumentos}
-                        >
-                          {addingDocumentos ? 'Subiendo...' : 'Agregar fotos'}
-                        </Button>
-                      </Box>
-                      {loadingDocumentos ? (
-                        <Box display="flex" justifyContent="center" py={1}>
-                          <CircularProgress size={20} />
-                        </Box>
-                      ) : (
-                        <>
-                          {/* Imágenes en grid */}
-                          {entregaDocumentos.filter((d) => d.mimeType?.startsWith('image/')).length > 0 && (
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0.75, mb: 1 }}>
-                              {entregaDocumentos.filter((d) => d.mimeType?.startsWith('image/')).map((doc) => (
-                                <Box
-                                  key={doc.id}
-                                  onClick={() => handleViewImage(doc)}
-                                  sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider', cursor: 'pointer' }}
-                                >
-                                  <Box sx={{ height: 64, overflow: 'hidden', bgcolor: 'grey.100', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {docThumbnails[doc.id] ? (
-                                      <img src={docThumbnails[doc.id]} alt={doc.originalName ?? doc.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    ) : (
-                                      <PhotoCameraIcon color="action" fontSize="small" />
-                                    )}
-                                  </Box>
-                                  <Typography variant="caption" noWrap sx={{ display: 'block', px: 0.5, pb: 0.25, fontSize: 10 }}>
-                                    {doc.originalName ?? doc.fileName}
-                                  </Typography>
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteDocumento(doc); }}
-                                    sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.45)', color: 'white', p: '2px' }}
-                                  >
-                                    <CloseIcon sx={{ fontSize: 12 }} />
-                                  </IconButton>
-                                </Box>
-                              ))}
-                            </Box>
-                          )}
-                          {/* Otros archivos */}
-                          {entregaDocumentos.filter((d) => !d.mimeType?.startsWith('image/')).map((doc) => (
-                            <ListItem
-                              key={doc.id}
-                              disableGutters
-                              secondaryAction={
-                                <Box display="flex">
-                                  <IconButton size="small" onClick={() => handleDownloadDocumento(doc)}><DownloadIcon fontSize="small" /></IconButton>
-                                  <IconButton size="small" onClick={() => handleDeleteDocumento(doc)}><CloseIcon fontSize="small" /></IconButton>
-                                </Box>
-                              }
-                            >
-                              <ListItemText
-                                primary={doc.descripcion || doc.originalName || doc.fileName}
-                                secondary={doc.fechaCreacion ? new Date(doc.fechaCreacion).toLocaleString() : undefined}
-                                primaryTypographyProps={{ variant: 'body2' }}
-                                secondaryTypographyProps={{ variant: 'caption' }}
-                              />
-                            </ListItem>
-                          ))}
-                          {entregaDocumentos.length === 0 && (
-                            <Typography variant="body2" color="text.secondary">Sin documentos adjuntos.</Typography>
-                          )}
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <EntregaDocumentosCard
+                    compact
+                    documentos={entregaDocumentos}
+                    loading={loadingDocumentos}
+                    adding={addingDocumentos}
+                    thumbnails={docThumbnails}
+                    onAddClick={() => addDocInputRef.current?.click()}
+                    onViewImage={handleViewImage}
+                    onDownload={handleDownloadDocumento}
+                    onDelete={handleDeleteDocumento}
+                  />
                 </Stack>
               )}
 
@@ -542,82 +473,16 @@ export default function DeliveryDetailsPanel({
 
                 {/* Imágenes / Documentos — disponible para todos los estados */}
                 <Grid item xs={12}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <PhotoCameraIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                          <Typography variant="subtitle2">Imágenes / Documentos</Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          startIcon={addingDocumentos ? <CircularProgress size={14} /> : <PhotoCameraIcon />}
-                          onClick={() => addDocInputRef.current?.click()}
-                          disabled={addingDocumentos}
-                        >
-                          {addingDocumentos ? 'Subiendo...' : 'Agregar fotos'}
-                        </Button>
-                      </Box>
-                      {loadingDocumentos ? (
-                        <Box display="flex" justifyContent="center" py={2}>
-                          <CircularProgress size={24} />
-                        </Box>
-                      ) : (
-                        <>
-                          {/* Imágenes en grid */}
-                          {entregaDocumentos.filter((d) => d.mimeType?.startsWith('image/')).length > 0 && (
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, mb: 1.5 }}>
-                              {entregaDocumentos.filter((d) => d.mimeType?.startsWith('image/')).map((doc) => (
-                                <Box
-                                  key={doc.id}
-                                  onClick={() => handleViewImage(doc)}
-                                  sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider', cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
-                                >
-                                  <Box sx={{ height: 80, overflow: 'hidden', bgcolor: 'grey.100', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {docThumbnails[doc.id] ? (
-                                      <img src={docThumbnails[doc.id]} alt={doc.originalName ?? doc.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    ) : (
-                                      <PhotoCameraIcon color="action" />
-                                    )}
-                                  </Box>
-                                  <Typography variant="caption" noWrap sx={{ display: 'block', px: 0.5, pb: 0.5 }}>
-                                    {doc.originalName ?? doc.fileName}
-                                  </Typography>
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteDocumento(doc); }}
-                                    sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.45)', color: 'white', p: '2px' }}
-                                  >
-                                    <CloseIcon sx={{ fontSize: 14 }} />
-                                  </IconButton>
-                                </Box>
-                              ))}
-                            </Box>
-                          )}
-                          {/* Otros archivos */}
-                          {entregaDocumentos.filter((d) => !d.mimeType?.startsWith('image/')).map((doc) => (
-                            <ListItem
-                              key={doc.id}
-                              secondaryAction={
-                                <Box display="flex">
-                                  <IconButton size="small" onClick={() => handleDownloadDocumento(doc)}><DownloadIcon fontSize="small" /></IconButton>
-                                  <IconButton size="small" onClick={() => handleDeleteDocumento(doc)}><CloseIcon fontSize="small" /></IconButton>
-                                </Box>
-                              }
-                            >
-                              <ListItemText
-                                primary={doc.descripcion || doc.originalName || doc.fileName}
-                                secondary={doc.fechaCreacion ? new Date(doc.fechaCreacion).toLocaleString() : undefined}
-                              />
-                            </ListItem>
-                          ))}
-                          {entregaDocumentos.length === 0 && (
-                            <Typography variant="body2" color="text.secondary">Sin documentos adjuntos.</Typography>
-                          )}
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <EntregaDocumentosCard
+                    documentos={entregaDocumentos}
+                    loading={loadingDocumentos}
+                    adding={addingDocumentos}
+                    thumbnails={docThumbnails}
+                    onAddClick={() => addDocInputRef.current?.click()}
+                    onViewImage={handleViewImage}
+                    onDownload={handleDownloadDocumento}
+                    onDelete={handleDeleteDocumento}
+                  />
                 </Grid>
               </Grid>
 
