@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Avatar,
@@ -70,10 +71,24 @@ const DisciplinaPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [tab, setTab] = useState<'lista' | 'dashboard'>('lista');
-  const [sanciones, setSanciones] = useState<SancionDTO[]>([]);
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const disciplinaQuery = useQuery({
+    queryKey: ['sanciones', 'panel'],
+    queryFn: async () => {
+      const [sanc, emps] = await Promise.all([
+        sancionApi.getAll(),
+        employeeApi.getAllList(),
+      ]);
+      return { sanciones: sanc, empleados: emps };
+    },
+  });
+  const sanciones: SancionDTO[] = disciplinaQuery.data?.sanciones ?? [];
+  const empleados: Empleado[] = disciplinaQuery.data?.empleados ?? [];
+  const loading = disciplinaQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const dErr = disciplinaQuery.error as any;
+  const error = dErr ? (dErr?.response?.data?.message ?? 'No se pudo cargar la información') : actionError;
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
 
   // Filtros
@@ -99,23 +114,8 @@ const DisciplinaPage: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const load = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [s, emps] = await Promise.all([
-        sancionApi.getAll(),
-        employeeApi.getAllList(),
-      ]);
-      setSanciones(s);
-      setEmpleados(emps);
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'No se pudo cargar la información');
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['sanciones'] });
   };
-
-  useEffect(() => { load(); }, []);
 
   // Opciones de filtros derivadas
   const sectores = useMemo(() => {

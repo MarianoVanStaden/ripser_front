@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   Box, Card, CardContent, Typography, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, IconButton, Dialog, DialogTitle,
@@ -34,15 +35,11 @@ const UsuariosPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   // State
-  const [usuarios, setUsuarios] = useState<UsuarioDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   // Pagination
   const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
   const pageSize = 10;
 
   // Dialogs
@@ -90,25 +87,21 @@ const UsuariosPage: React.FC = () => {
     { value: 'USUARIO', label: 'Usuario', color: '#9c27b0' },
   ];
 
-  // Load users
-  useEffect(() => {
-    loadUsuarios();
-  }, [page]);
-
+  const queryClient = useQueryClient();
+  const usuariosQuery = useQuery({
+    queryKey: ['usuarios-admin', 'rrhh-lista', { page, pageSize }],
+    queryFn: () => usuarioAdminApi.getAll(page, pageSize),
+    placeholderData: keepPreviousData,
+  });
+  const usuarios: UsuarioDTO[] = usuariosQuery.data?.content ?? [];
+  const totalPages = usuariosQuery.data?.totalPages ?? 0;
+  const totalElements = usuariosQuery.data?.totalElements ?? 0;
+  const loading = usuariosQuery.isPending;
+  const qErr = usuariosQuery.error as any;
+  const error = qErr ? (qErr.response?.data?.message || 'Error al cargar los usuarios') : actionError;
+  const setError = setActionError;
   const loadUsuarios = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await usuarioAdminApi.getAll(page, pageSize);
-      setUsuarios(response.content);
-      setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
-    } catch (err: any) {
-      console.error('Error loading users:', err);
-      setError(err.response?.data?.message || 'Error al cargar los usuarios');
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['usuarios-admin'] });
   };
 
   // Create user

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
 // @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -102,11 +103,29 @@ const CapacitacionesPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const [capacitaciones, setCapacitaciones] = useState<Capacitacion[]>([]);
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const panelQuery = useQuery({
+    queryKey: ['capacitaciones', 'panel'],
+    queryFn: async () => {
+      const [caps, emps, ars] = await Promise.all([
+        capacitacionApi.getAll(),
+        employeeApi.getAllList(),
+        areaApi.list(true),
+      ]);
+      return {
+        capacitaciones: Array.isArray(caps) ? caps : [],
+        empleados: Array.isArray(emps) ? emps : [],
+        areas: Array.isArray(ars) ? ars : [],
+      };
+    },
+  });
+  const capacitaciones = panelQuery.data?.capacitaciones ?? [];
+  const empleados = panelQuery.data?.empleados ?? [];
+  const areas = panelQuery.data?.areas ?? [];
+  const loading = panelQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = panelQuery.error ? 'Error al cargar los datos' : actionError;
+  const setError = setActionError;
 
   const [selected, setSelected] = useState<Capacitacion | null>(null);
   const [openDetail, setOpenDetail] = useState(false);
@@ -123,26 +142,8 @@ const CapacitacionesPage: React.FC = () => {
 
   const [formData, setFormData] = useState(emptyForm());
 
-  useEffect(() => { loadData(); }, []);
-
   const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [caps, emps, ars] = await Promise.all([
-        capacitacionApi.getAll(),
-        employeeApi.getAllList(),
-        areaApi.list(true),
-      ]);
-      setCapacitaciones(Array.isArray(caps) ? caps : []);
-      setEmpleados(Array.isArray(emps) ? emps : []);
-      setAreas(Array.isArray(ars) ? ars : []);
-    } catch (err) {
-      setError('Error al cargar los datos');
-      console.error('Error loading data:', err);
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['capacitaciones'] });
   };
 
   const empleadosById = useMemo(() => {
