@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert, Autocomplete, Box, Button, Checkbox, Chip, CircularProgress, Dialog,
   DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, LinearProgress,
@@ -23,7 +24,6 @@ import {
   type ReasignacionRequest,
   type ReasignacionPreviewResponse,
   type ReasignacionResultado,
-  type HistorialReasignacionLeadDTO,
 } from '../../../types/leadReasignacion.types';
 import type { LeadListItemDTO } from '../../../types/lead.types';
 import { EstadoLeadEnum, ESTADO_LABELS } from '../../../types/lead.types';
@@ -61,12 +61,11 @@ const ReasignacionLeadsPage: React.FC = () => {
   const [tab, setTab] = useState(0);
 
   // ---- catálogos ----
-  const [vendedores, setVendedores] = useState<Vendedor[]>([]);
-  useEffect(() => {
-    usuarioApi.getVendedores()
-      .then((vs) => setVendedores((vs as unknown as Vendedor[]) ?? []))
-      .catch(() => setVendedores([]));
-  }, []);
+  const vendedoresQuery = useQuery({
+    queryKey: ['vendedores-reasignacion'],
+    queryFn: () => usuarioApi.getVendedores(),
+  });
+  const vendedores = (vendedoresQuery.data as unknown as Vendedor[]) ?? [];
 
   // ---- estado del flujo ----
   const [activeStep, setActiveStep] = useState(0);
@@ -100,9 +99,7 @@ const ReasignacionLeadsPage: React.FC = () => {
 
   // ---- preview / ejecución ----
   const [preview, setPreview] = useState<ReasignacionPreviewResponse | null>(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [ejecutando, setEjecutando] = useState(false);
   const [resultado, setResultado] = useState<ReasignacionResultado | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -218,36 +215,32 @@ const ReasignacionLeadsPage: React.FC = () => {
     return hayDestino && !!motivo;
   }, [vendedorDestino, sucursalDestinoId, motivo]);
 
-  const goPreview = async () => {
+  const previewMutation = useMutation({
+    mutationFn: () => leadReasignacionApi.preview(buildRequest(false)),
+    onSuccess: (res) => { setPreview(res); setActiveStep(2); },
+    onError: (err) => setError(extractError(err)),
+  });
+  const loadingPreview = previewMutation.isPending;
+  const goPreview = () => {
     setError(null);
-    setLoadingPreview(true);
     setPreview(null);
-    try {
-      const res = await leadReasignacionApi.preview(buildRequest(false));
-      setPreview(res);
-      setActiveStep(2);
-    } catch (err) {
-      setError(extractError(err));
-    } finally {
-      setLoadingPreview(false);
-    }
+    previewMutation.mutate();
   };
 
-  const doEjecutar = async () => {
-    setError(null);
-    setEjecutando(true);
-    try {
-      const res = await leadReasignacionApi.ejecutar(buildRequest(true));
+  const ejecutarMutation = useMutation({
+    mutationFn: () => leadReasignacionApi.ejecutar(buildRequest(true)),
+    onSuccess: (res) => {
       setResultado(res);
       setConfirmOpen(false);
       // reset selección para evitar reejecución accidental
       limpiarSeleccion();
-    } catch (err) {
-      setError(extractError(err));
-      setConfirmOpen(false);
-    } finally {
-      setEjecutando(false);
-    }
+    },
+    onError: (err) => { setError(extractError(err)); setConfirmOpen(false); },
+  });
+  const ejecutando = ejecutarMutation.isPending;
+  const doEjecutar = () => {
+    setError(null);
+    ejecutarMutation.mutate();
   };
 
   const resetFlujo = () => {
@@ -747,13 +740,9 @@ const ResultadoView: React.FC<{ resultado: ReasignacionResultado; onNuevo: () =>
 
 // ============ HISTORIAL ============
 const HistorialTab: React.FC<{ vendedores: Vendedor[] }> = ({ vendedores }) => {
-  const [rows, setRows] = useState<HistorialReasignacionLeadDTO[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loteARevertir, setLoteARevertir] = useState<string | null>(null);
-  const [revirtiendo, setRevirtiendo] = useState(false);
 
   // ---- filtros + paginación ----
   const [vendedorFiltro, setVendedorFiltro] = useState<Vendedor | null>(null);
@@ -762,24 +751,23 @@ const HistorialTab: React.FC<{ vendedores: Vendedor[] }> = ({ vendedores }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
 
-  const load = React.useCallback(() => {
-    let cancelled = false;
-    setLoading(true);
-    leadReasignacionApi.getHistorial(
+  const queryClient = useQueryClient();
+  const historialQuery = useQuery({
+    queryKey: ['reasignacion-historial', page, rowsPerPage, vendedorFiltro?.id ?? null, fechaDesde, fechaHasta],
+    queryFn: () => leadReasignacionApi.getHistorial(
       { page, size: rowsPerPage },
       {
         ...(vendedorFiltro ? { vendedorId: vendedorFiltro.id } : {}),
         ...(fechaDesde ? { fechaDesde: `${fechaDesde}T00:00:00` } : {}),
         ...(fechaHasta ? { fechaHasta: `${fechaHasta}T23:59:59` } : {}),
       },
-    )
-      .then((res) => { if (!cancelled) { setRows(res.content ?? []); setTotal(res.totalElements ?? 0); } })
-      .catch((err) => { if (!cancelled) setError(extractError(err)); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [page, rowsPerPage, vendedorFiltro, fechaDesde, fechaHasta]);
-
-  useEffect(() => { return load(); }, [load]);
+    ),
+  });
+  const rows = historialQuery.data?.content ?? [];
+  const total = historialQuery.data?.totalElements ?? 0;
+  const loading = historialQuery.isFetching;
+  const loadError = historialQuery.error ? extractError(historialQuery.error) : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['reasignacion-historial'] });
 
   // Tiempo real: refrescar el historial cuando otro usuario reasigna/revierte.
   useSseEvent([SSE_EVENTS.LEAD_REASIGNADO], load);
@@ -787,22 +775,21 @@ const HistorialTab: React.FC<{ vendedores: Vendedor[] }> = ({ vendedores }) => {
   // Al cambiar un filtro, volver a la primera página.
   const onFiltroChange = (fn: () => void) => { setPage(0); fn(); };
 
-  const doRevertir = async () => {
-    if (!loteARevertir) return;
-    setRevirtiendo(true);
-    setError(null);
-    try {
-      const res = await leadReasignacionApi.revertirLote(loteARevertir);
+  const revertirMutation = useMutation({
+    mutationFn: (lote: string) => leadReasignacionApi.revertirLote(lote),
+    onSuccess: (res) => {
       setInfo(`Lote revertido: ${res.cantidadAfectada} restaurado(s), ${res.cantidadOmitida} omitido(s)`
         + (res.fallas.length ? `, ${res.fallas.length} falla(s)` : '') + '.');
       setLoteARevertir(null);
       load();
-    } catch (err) {
-      setError(extractError(err));
-      setLoteARevertir(null);
-    } finally {
-      setRevirtiendo(false);
-    }
+    },
+    onError: (err) => { setError(extractError(err)); setLoteARevertir(null); },
+  });
+  const revirtiendo = revertirMutation.isPending;
+  const doRevertir = () => {
+    if (!loteARevertir) return;
+    setError(null);
+    revertirMutation.mutate(loteARevertir);
   };
 
   // El botón "Revertir" se muestra una sola vez por lote (en su primera fila).
@@ -810,7 +797,7 @@ const HistorialTab: React.FC<{ vendedores: Vendedor[] }> = ({ vendedores }) => {
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error || loadError}</Alert>}
       {info && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setInfo(null)}>{info}</Alert>}
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }} alignItems="center">
