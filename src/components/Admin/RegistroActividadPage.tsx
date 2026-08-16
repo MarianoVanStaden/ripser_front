@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Paper,
@@ -142,19 +143,17 @@ export const RegistroActividadPage = () => {
   const [customHasta, setCustomHasta] = useState<Dayjs | null>(null);
   const [tiposSel, setTiposSel] = useState<TipoAccionActividad[]>([]);
   const [soloFueraHorario, setSoloFueraHorario] = useState(false);
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [usuarioSel, setUsuarioSel] = useState<Usuario | null>(null);
   const [horarioOpen, setHorarioOpen] = useState(false);
 
   // Carga usuarios para el filtro Autocomplete. Si falla, dejamos vacío y
   // el usuario igual puede filtrar por otros campos.
-  useEffect(() => {
-    if (!tienePermiso('ADMINISTRACION')) return;
-    usuarioApi
-      .getAll()
-      .then(setUsuarios)
-      .catch(() => setUsuarios([]));
-  }, [tienePermiso]);
+  const usuariosQuery = useQuery({
+    queryKey: ['usuarios-registro-actividad'],
+    queryFn: () => usuarioApi.getAll(),
+    enabled: tienePermiso('ADMINISTRACION'),
+  });
+  const usuarios = usuariosQuery.data ?? [];
 
   // backendFilters: se reconstruye solo cuando cambia algún filtro real.
   // El switch a múltiples tipos es client-side via 1 query por tipo (raro);

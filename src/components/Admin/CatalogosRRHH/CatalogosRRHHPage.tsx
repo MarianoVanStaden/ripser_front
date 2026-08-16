@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   MenuItem,
@@ -25,7 +26,6 @@ import {
   unidadNegocioApi,
 } from '../../../api/services/catalogosApi';
 import type {
-  Area,
   BandaJerarquica,
   Competencia,
   CreateBandaJerarquicaPayload,
@@ -269,8 +269,8 @@ export default function CatalogosRRHHPage() {
 // ======================== TABS CON DEPENDENCIA DE OTRO CATÁLOGO ========================
 
 function DepartamentosTab() {
-  const [areas, setAreas] = useState<Area[]>([]);
-  useEffect(() => { void areaApi.list().then(setAreas).catch(() => setAreas([])); }, []);
+  const areasQuery = useQuery({ queryKey: ['areas-options'], queryFn: () => areaApi.list() });
+  const areas = areasQuery.data ?? [];
 
   return (
     <CatalogoTablaCRUD<Departamento, CreateDepartamentoPayload>
@@ -297,8 +297,8 @@ function DepartamentosTab() {
 }
 
 function SectoresTab() {
-  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
-  useEffect(() => { void departamentoApi.list().then(setDepartamentos).catch(() => setDepartamentos([])); }, []);
+  const departamentosQuery = useQuery({ queryKey: ['departamentos-options'], queryFn: () => departamentoApi.list() });
+  const departamentos = departamentosQuery.data ?? [];
 
   return (
     <CatalogoTablaCRUD<Sector, CreateSectorPayload>
@@ -325,8 +325,8 @@ function SectoresTab() {
 }
 
 function CompetenciasTab() {
-  const [niveles, setNiveles] = useState<NivelJerarquico[]>([]);
-  useEffect(() => { void nivelJerarquicoApi.list().then(setNiveles).catch(() => setNiveles([])); }, []);
+  const nivelesQuery = useQuery({ queryKey: ['niveles-jerarquicos-options'], queryFn: () => nivelJerarquicoApi.list() });
+  const niveles = nivelesQuery.data ?? [];
 
   return (
     <CatalogoTablaCRUD<Competencia, CreateCompetenciaPayload>
