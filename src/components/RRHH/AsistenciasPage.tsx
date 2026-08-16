@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -51,33 +52,12 @@ import ReportesTab from './Asistencias/tabs/ReportesTab';
 const AsistenciasPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isFirstRender = useRef(true);
   // Tab state
   const [tabValue, setTabValue] = useState(0);
 
-  // `asistencias` (dataset completo) sólo se usa en el tab Reportes y se carga
-  // de forma diferida al abrirlo. El Resumen Diario usa paginación de servidor.
-  const [asistencias, setAsistencias] = useState<RegistroAsistencia[]>([]);
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-
-  // Resumen Diario: tabla paginada en servidor + totales exactos del rango.
-  const [resumenRowsRaw, setResumenRowsRaw] = useState<RegistroAsistencia[]>([]);
-  const [resumenTotal, setResumenTotal] = useState(0);
-  const [resumenKpis, setResumenKpis] = useState<ResumenAsistencia>({
-    totalAsistencias: 0,
-    asistenciasNormales: 0,
-  });
   const [resumenPage, setResumenPage] = useState(0);
   const [resumenRowsPerPage, setResumenRowsPerPage] = useState(50);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Configuraciones y excepciones
-  const [configuraciones, setConfiguraciones] = useState<any[]>([]);
-  const [excepciones, setExcepciones] = useState<any[]>([]);
-  // Licencias del período visible (cualquier estado). Las APROBADAS se
-  // pintan como chip "En Licencia" en el Resumen Diario y suman al KPI propio.
-  const [licencias, setLicencias] = useState<Licencia[]>([]);
   const [openConfigDialog, setOpenConfigDialog] = useState(false);
   const [openExcepcionDialog, setOpenExcepcionDialog] = useState(false);
   const [openMasivaDialog, setOpenMasivaDialog] = useState(false);
@@ -109,14 +89,42 @@ const AsistenciasPage: React.FC = () => {
     dayjs().subtract(1, 'month').endOf('month').format('YYYY-MM-DD')
   );
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const queryClient = useQueryClient();
 
-  // Resumen Diario: trae la página actual + los totales exactos del rango.
-  const loadResumenAsistencias = useCallback(async () => {
-    if (!fechaDesde || !fechaHasta) return;
-    try {
+  // Base: empleados + configuraciones + excepciones. Es lo que refresca el
+  // botón Recargar y las mutaciones (via loadData = invalidate).
+  const baseQuery = useQuery({
+    queryKey: ['asistencias-base'],
+    queryFn: async () => {
+      // Primero empleados (el resto de la página los usa para resolver nombres).
+      const empleadosData = await employeeApi.getAllList().catch(() => []);
+      const [configsData, excepcionesData] = await Promise.all([
+        configuracionAsistenciaApi.getAll().catch(() => []),
+        excepcionAsistenciaApi.getByPeriodo(
+          dayjs().subtract(1, 'year').format('YYYY-MM-DD'),
+          dayjs().format('YYYY-MM-DD')
+        ).catch(() => []),
+      ]);
+      return {
+        empleados: Array.isArray(empleadosData) ? empleadosData : [],
+        configuraciones: Array.isArray(configsData) ? configsData : [],
+        excepciones: Array.isArray(excepcionesData) ? excepcionesData : [],
+      };
+    },
+  });
+  const empleados = baseQuery.data?.empleados ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const configuraciones: any[] = baseQuery.data?.configuraciones ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const excepciones: any[] = baseQuery.data?.excepciones ?? [];
+  const loading = baseQuery.isPending;
+  const loadError = baseQuery.error ? 'Error al cargar los datos' : null;
+
+  // Resumen Diario: página actual + totales exactos del rango, keyed por
+  // rango y paginación. Errores degradan a tabla vacía (sin alert), como antes.
+  const resumenQuery = useQuery({
+    queryKey: ['asistencias-resumen', fechaDesde, fechaHasta, resumenPage, resumenRowsPerPage],
+    queryFn: async () => {
       const [pageData, kpis] = await Promise.all([
         registroAsistenciaApi.getByPeriodoPaged(fechaDesde, fechaHasta, {
           page: resumenPage,
@@ -124,146 +132,82 @@ const AsistenciasPage: React.FC = () => {
         }),
         registroAsistenciaApi.getResumenPeriodo(fechaDesde, fechaHasta),
       ]);
-      setResumenRowsRaw(Array.isArray(pageData.content) ? pageData.content : []);
-      setResumenTotal(pageData.totalElements ?? 0);
-      setResumenKpis(kpis ?? { totalAsistencias: 0, asistenciasNormales: 0 });
-    } catch (err) {
-      console.error('Error loading resumen asistencias:', err);
-      setResumenRowsRaw([]);
-      setResumenTotal(0);
-    }
-  }, [fechaDesde, fechaHasta, resumenPage, resumenRowsPerPage]);
+      return {
+        rows: Array.isArray(pageData.content) ? pageData.content : [],
+        total: pageData.totalElements ?? 0,
+        kpis: kpis ?? { totalAsistencias: 0, asistenciasNormales: 0 },
+      };
+    },
+    enabled: !!fechaDesde && !!fechaHasta,
+  });
+  const resumenRowsRaw = resumenQuery.data?.rows ?? [];
+  const resumenTotal = resumenQuery.data?.total ?? 0;
+  const resumenKpis: ResumenAsistencia = resumenQuery.data?.kpis ?? {
+    totalAsistencias: 0,
+    asistenciasNormales: 0,
+  };
 
-  useEffect(() => {
-    loadResumenAsistencias();
-  }, [loadResumenAsistencias]);
+  // Tab Reportes: dataset completo, solo se fetchea con el tab abierto
+  // (enabled). Al volver al tab con el mismo rango se sirve de cache.
+  const asistenciasQuery = useQuery({
+    queryKey: ['asistencias-completas', fechaDesde, fechaHasta],
+    queryFn: () => registroAsistenciaApi.getByPeriodo(fechaDesde, fechaHasta),
+    enabled: tabValue === 3 && !!fechaDesde && !!fechaHasta,
+  });
+  // Mapear las asistencias para incluir el objeto empleado completo.
+  const asistencias = useMemo<RegistroAsistencia[]>(() => {
+    const data = asistenciasQuery.data;
+    return Array.isArray(data)
+      ? data.map((asistencia: any) => {
+          const empleado = empleados.find((e: any) => e.id === asistencia.empleadoId);
+          return {
+            ...asistencia,
+            empleado: empleado || {
+              id: asistencia.empleadoId,
+              nombre: asistencia.empleadoNombre || '',
+              apellido: asistencia.empleadoApellido || '',
+              dni: asistencia.empleadoDni || '',
+            },
+          };
+        })
+      : [];
+  }, [asistenciasQuery.data, empleados]);
 
-  // Tab Reportes: carga el dataset completo de asistencias sólo al abrirlo.
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    if (tabValue === 3 && fechaDesde && fechaHasta) {
-      loadAsistenciasByPeriodo();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabValue, fechaDesde, fechaHasta]);
-
-  // Licencias necesitan cubrir cualquier rango visible (Resumen, Reportes,
-  // Comparación). Recargamos cuando cambia alguno de esos rangos usando la
-  // unión [min(desde), max(hasta)] así un único fetch alcanza para todos los tabs.
-  useEffect(() => {
+  // Licencias: cubren cualquier rango visible (Resumen, Reportes, Comparación)
+  // usando la unión [min(desde), max(hasta)] — un único fetch alcanza para
+  // todos los tabs, y el cambio de rango refetchea solo por la queryKey.
+  const rangoLicencias = useMemo(() => {
     const allDates = [
       fechaDesde, fechaHasta,
       reportFechaDesde, reportFechaHasta,
       ...(showComparison ? [comparisonFechaDesde, comparisonFechaHasta] : []),
     ].filter(Boolean);
-    if (allDates.length === 0) return;
-    const minDesde = allDates.reduce((min, d) => (d < min ? d : min), allDates[0]);
-    const maxHasta = allDates.reduce((max, d) => (d > max ? d : max), allDates[0]);
-    licenciaApi
-      .getByPeriodo(minDesde, maxHasta)
-      .then((data) => setLicencias(Array.isArray(data) ? data : []))
-      .catch((err) => {
-        console.error('Error loading licencias (unión rangos):', err);
-        setLicencias([]);
-      });
+    if (allDates.length === 0) return null;
+    return {
+      desde: allDates.reduce((min, d) => (d < min ? d : min), allDates[0]),
+      hasta: allDates.reduce((max, d) => (d > max ? d : max), allDates[0]),
+    };
   }, [
     fechaDesde, fechaHasta,
     reportFechaDesde, reportFechaHasta,
     showComparison, comparisonFechaDesde, comparisonFechaHasta,
   ]);
+  const licenciasQuery = useQuery({
+    queryKey: ['asistencias-licencias', rangoLicencias?.desde, rangoLicencias?.hasta],
+    queryFn: () => licenciaApi.getByPeriodo(rangoLicencias!.desde, rangoLicencias!.hasta)
+      .then((data) => (Array.isArray(data) ? data : []))
+      .catch(() => [] as Licencia[]),
+    enabled: rangoLicencias != null,
+  });
+  const licencias = licenciasQuery.data ?? [];
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Primero cargar empleados
-      const empleadosData = await employeeApi.getAllList().catch(() => []);
-      const empleadosArray = Array.isArray(empleadosData) ? empleadosData : [];
-      setEmpleados(empleadosArray);
-      
-      // Luego cargar configuraciones, excepciones y licencias en paralelo
-      const [configsData, excepcionesData, licenciasData] = await Promise.all([
-        configuracionAsistenciaApi.getAll().catch(() => []),
-        excepcionAsistenciaApi.getByPeriodo(
-          dayjs().subtract(1, 'year').format('YYYY-MM-DD'),
-          dayjs().format('YYYY-MM-DD')
-        ).catch(() => []),
-        licenciaApi.getByPeriodo(fechaDesde, fechaHasta).catch(() => [])
-      ]);
-
-      console.log('Configuraciones data:', configsData);
-      console.log('Excepciones data:', excepcionesData);
-      console.log('Licencias data:', licenciasData);
-
-      setConfiguraciones(Array.isArray(configsData) ? configsData : []);
-      setExcepciones(Array.isArray(excepcionesData) ? excepcionesData : []);
-      setLicencias(Array.isArray(licenciasData) ? licenciasData : []);
-
-      // La tabla del Resumen Diario se carga paginada vía efecto aparte
-      // (loadResumenAsistencias). El dataset completo de `asistencias` queda
-      // para el tab Reportes y se carga al abrirlo.
-    } catch (err) {
-      setError('Error al cargar los datos');
-      console.error('Error loading data:', err);
-      setEmpleados([]);
-      setAsistencias([]);
-      setConfiguraciones([]);
-      setExcepciones([]);
-      setLicencias([]);
-    } finally {
-      setLoading(false);
-    }
+  // Conserva los nombres de las funciones de recarga: ahora invalidan.
+  const loadData = () => {
+    queryClient.invalidateQueries({ queryKey: ['asistencias-base'] });
+    queryClient.invalidateQueries({ queryKey: ['asistencias-licencias'] });
   };
-
-  const loadAsistenciasByPeriodoWithEmpleados = async (empleadosData: Empleado[]) => {
-    try {
-      setError(null);
-      const data = await registroAsistenciaApi.getByPeriodo(fechaDesde, fechaHasta);
-      
-      console.log('Asistencias raw data:', data);
-      console.log('Empleados disponibles:', empleadosData);
-      
-      // Mapear las asistencias para incluir el objeto empleado completo
-      const asistenciasConEmpleado = Array.isArray(data)
-        ? data.map((asistencia: any) => {
-            const empleado = empleadosData.find((e: any) => e.id === asistencia.empleadoId);
-            return {
-              ...asistencia,
-              empleado: empleado || {
-                id: asistencia.empleadoId,
-                nombre: asistencia.empleadoNombre || '',
-                apellido: asistencia.empleadoApellido || '',
-                dni: asistencia.empleadoDni || ''
-              }
-            };
-          })
-        : [];
-      
-      console.log('Asistencias mapped:', asistenciasConEmpleado);
-      
-      setAsistencias(asistenciasConEmpleado);
-    } catch (err) {
-      setError('Error al cargar las asistencias');
-      console.error('Error loading asistencias:', err);
-      setAsistencias([]);
-    }
-  };
-
-  const loadAsistenciasByPeriodo = async () => {
-    await loadAsistenciasByPeriodoWithEmpleados(empleados);
-    // Recargar licencias para el nuevo rango así el chip "En Licencia" sigue al día.
-    try {
-      const data = await licenciaApi.getByPeriodo(fechaDesde, fechaHasta);
-      setLicencias(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Error loading licencias:', err);
-      setLicencias([]);
-    }
-  };
+  const loadResumenAsistencias = () =>
+    queryClient.invalidateQueries({ queryKey: ['asistencias-resumen'] });
 
   // Filas de la página actual del Resumen Diario con el objeto empleado resuelto
   // (el backend devuelve empleadoId; el nombre se arma desde la lista de empleados).
@@ -288,41 +232,37 @@ const AsistenciasPage: React.FC = () => {
   );
 
 
-  const handleGenerarAutomaticas = async () => {
-    try {
-      await asistenciaAutomaticaApi.ejecutarGeneracionDiaria();
-      await loadData();
-      await loadResumenAsistencias();
-    } catch (err) {
+  const generarAutomaticasMutation = useMutation({
+    mutationFn: () => asistenciaAutomaticaApi.ejecutarGeneracionDiaria(),
+    onSuccess: () => { loadData(); loadResumenAsistencias(); },
+    onError: (err) => {
       console.error('Error al generar asistencias:', err);
       setError('Error al generar asistencias automáticas');
-    }
-  };
+    },
+  });
+  const handleGenerarAutomaticas = () => generarAutomaticasMutation.mutate();
 
   // Handlers para configuración de horarios
-  const handleCrearHorarioEstandar = async (empleadoId: number) => {
-    try {
-      await configuracionAsistenciaApi.createHorarioEstandar(empleadoId);
-      await loadData();
-      // Mostrar notificación de éxito
-    } catch (error) {
+  const horarioEstandarMutation = useMutation({
+    mutationFn: (empleadoId: number) => configuracionAsistenciaApi.createHorarioEstandar(empleadoId),
+    onSuccess: () => loadData(),
+    onError: (error) => {
       console.error('Error al crear horario estándar:', error);
       setError('Error al crear horario estándar');
-    }
-  };
+    },
+  });
+  const handleCrearHorarioEstandar = (empleadoId: number) => horarioEstandarMutation.mutate(empleadoId);
 
   // Handlers para excepciones
-  const handleDeleteExcepcion = async (excepcionId: number) => {
-    try {
-      await excepcionAsistenciaApi.delete(excepcionId);
-      await loadData();
-      await loadResumenAsistencias();
-      // Mostrar notificación de éxito
-    } catch (error) {
+  const deleteExcepcionMutation = useMutation({
+    mutationFn: (excepcionId: number) => excepcionAsistenciaApi.delete(excepcionId),
+    onSuccess: () => { loadData(); loadResumenAsistencias(); },
+    onError: (error) => {
       console.error('Error al eliminar excepción:', error);
       setError('Error al eliminar excepción');
-    }
-  };
+    },
+  });
+  const handleDeleteExcepcion = (excepcionId: number) => deleteExcepcionMutation.mutate(excepcionId);
 
   const handleOpenConfigDialog = (empleado: Empleado | null = null) => {
     setSelectedEmpleado(empleado);
@@ -346,29 +286,29 @@ const AsistenciasPage: React.FC = () => {
     setConfigFormData(DEFAULT_DIA_CONFIG);
   };
 
-  const handleSaveConfiguracion = async () => {
-    if (!selectedEmpleado) return;
-    
-    try {
-      const config = Array.isArray(configuraciones) ? configuraciones.find(c => c.empleadoId === selectedEmpleado.id) : null;
+  const saveConfiguracionMutation = useMutation({
+    mutationFn: () => {
+      const config = Array.isArray(configuraciones)
+        ? configuraciones.find(c => c.empleadoId === selectedEmpleado!.id)
+        : null;
       const payload = {
-        empleadoId: selectedEmpleado.id,
+        empleadoId: selectedEmpleado!.id,
         activo: true,
         ...configFormData
       };
-      
-      if (config) {
-        await configuracionAsistenciaApi.update(config.id, payload);
-      } else {
-        await configuracionAsistenciaApi.create(payload);
-      }
-      
-      await loadData();
-      handleCloseConfigDialog();
-    } catch (error) {
+      return config
+        ? configuracionAsistenciaApi.update(config.id, payload)
+        : configuracionAsistenciaApi.create(payload);
+    },
+    onSuccess: () => { loadData(); handleCloseConfigDialog(); },
+    onError: (error) => {
       console.error('Error al guardar configuración:', error);
       setError('Error al guardar configuración de horarios');
-    }
+    },
+  });
+  const handleSaveConfiguracion = () => {
+    if (!selectedEmpleado) return;
+    saveConfiguracionMutation.mutate();
   };
 
   const handleOpenExcepcionDialog = () => {
@@ -389,19 +329,35 @@ const AsistenciasPage: React.FC = () => {
     setExcepcionFormData(createInitialExcepcionForm());
   };
 
+  const saveExcepcionMutation = useMutation({
+    mutationFn: (payload: any) =>
+      editingExcepcionId != null
+        ? excepcionAsistenciaApi.update(editingExcepcionId, payload)
+        : excepcionAsistenciaApi.create(payload),
+    onSuccess: () => {
+      loadData();
+      loadResumenAsistencias();
+      handleCloseExcepcionDialog();
+    },
+    onError: (error) => {
+      console.error('Error al guardar excepción:', error);
+      setError('Error al guardar excepción');
+    },
+  });
+
   const handleSaveExcepcion = async () => {
     try {
-      // Validar que debe trabajar ese día
+      // Validar que debe trabajar ese día (guard async previo a la mutación).
       const debeTrabajar = await asistenciaAutomaticaApi.debeTrabajar(
         parseInt(excepcionFormData.empleadoId),
         excepcionFormData.fecha
       );
-      
+
       if (!debeTrabajar && excepcionFormData.tipo !== 'INASISTENCIA' && excepcionFormData.tipo !== 'HORAS_EXTRAS') {
         setError('El empleado no tiene configurado trabajar este día');
         return;
       }
-      
+
       const payload: any = {
         empleadoId: parseInt(excepcionFormData.empleadoId),
         fecha: excepcionFormData.fecha,
@@ -409,25 +365,24 @@ const AsistenciasPage: React.FC = () => {
         justificado: excepcionFormData.justificado,
         observaciones: excepcionFormData.observaciones
       };
-      
+
       // Agregar campos específicos según tipo
       if (excepcionFormData.tipo === 'LLEGADA_TARDE' && excepcionFormData.minutosTardanza) {
         payload.minutosTardanza = parseInt(excepcionFormData.minutosTardanza);
-        
+
         // Calcular la hora de entrada real sumando los minutos de tardanza
         // Buscar la asistencia del día para obtener la hora de entrada configurada
-        const asistenciaDelDia = asistencias.find(a => 
+        const asistenciaDelDia = asistencias.find(a =>
           a.empleado?.id === parseInt(excepcionFormData.empleadoId) &&
           dayjs(a.fecha).format('YYYY-MM-DD') === excepcionFormData.fecha
         );
-        
+
         if (asistenciaDelDia && asistenciaDelDia.horaEntrada) {
           const [horas, minutos] = asistenciaDelDia.horaEntrada.split(':').map(Number);
           const totalMinutos = horas * 60 + minutos + parseInt(excepcionFormData.minutosTardanza);
           const nuevasHoras = Math.floor(totalMinutos / 60);
           const nuevosMinutos = totalMinutos % 60;
           payload.horaEntradaReal = `${String(nuevasHoras).padStart(2, '0')}:${String(nuevosMinutos).padStart(2, '0')}:00`;
-          console.log('Calculada hora entrada real para tardanza:', payload.horaEntradaReal);
         }
       }
       if (excepcionFormData.tipo === 'HORAS_EXTRAS' && excepcionFormData.horasExtras) {
@@ -440,16 +395,8 @@ const AsistenciasPage: React.FC = () => {
       if (excepcionFormData.tipo === 'INASISTENCIA' && excepcionFormData.motivo) {
         payload.motivo = excepcionFormData.motivo;
       }
-      
-      console.log('Payload de excepción a enviar:', payload);
-      if (editingExcepcionId != null) {
-        await excepcionAsistenciaApi.update(editingExcepcionId, payload);
-      } else {
-        await excepcionAsistenciaApi.create(payload);
-      }
-      await loadData();
-      await loadResumenAsistencias();
-      handleCloseExcepcionDialog();
+
+      saveExcepcionMutation.mutate(payload);
     } catch (error) {
       console.error('Error al guardar excepción:', error);
       setError('Error al guardar excepción');
@@ -472,9 +419,9 @@ const AsistenciasPage: React.FC = () => {
         </Stack>
       </Box>
 
-      {error && (
+      {(error || loadError) && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+          {error || loadError}
         </Alert>
       )}
 
