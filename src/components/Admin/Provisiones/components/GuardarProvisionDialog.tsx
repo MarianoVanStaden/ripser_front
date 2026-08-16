@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -48,7 +49,6 @@ const MONTH_NAMES = [
 
 export default function GuardarProvisionDialog({ open, tipoId, tipoNombre, anio, mes, existing, onClose, onSaved }: Props) {
   const [apiError, setApiError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   const {
     control,
@@ -72,21 +72,22 @@ export default function GuardarProvisionDialog({ open, tipoId, tipoNombre, anio,
     });
   }, [open, existing, reset]);
 
-  const onSubmit = async (data: FormData) => {
-    setSaving(true);
-    setApiError(null);
-    try {
-      await provisionApi.guardar(tipoId, anio, mes, {
-        montoProvisionado: data.montoProvisionado,
-        observaciones: data.observaciones || null,
-      });
-      onSaved();
-    } catch (err) {
+  const guardarMutation = useMutation({
+    mutationFn: (data: FormData) => provisionApi.guardar(tipoId, anio, mes, {
+      montoProvisionado: data.montoProvisionado,
+      observaciones: data.observaciones || null,
+    }),
+    onSuccess: () => onSaved(),
+    onError: (err) => {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setApiError(msg ?? 'Error al guardar la provisión');
-    } finally {
-      setSaving(false);
-    }
+    },
+  });
+  const saving = guardarMutation.isPending;
+
+  const onSubmit = (data: FormData) => {
+    setApiError(null);
+    guardarMutation.mutate(data);
   };
 
   const isEdit = existing !== null;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -55,7 +56,6 @@ interface Props {
 
 export default function RegistrarPagoDialog({ open, tipoId, tipoNombre, anio, mes, montoSugerido = 0, onClose, onSaved }: Props) {
   const [apiError, setApiError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [cajasPesos, setCajasPesos] = useState<CajaPesos[]>([]);
   const [cajasUsd, setCajasUsd] = useState<CajaAhorroDolares[]>([]);
   const [origenPesosId, setOrigenPesosId] = useState('');
@@ -104,22 +104,15 @@ export default function RegistrarPagoDialog({ open, tipoId, tipoNombre, anio, me
   const equivalenteUsd = tcValido && montoPagadoValue > 0 ? montoPagadoValue / tcNum : 0;
   const incompleto = !origenPesosId || !destinoUsdId || !tcValido;
 
-  const onSubmit = async (data: FormData) => {
-    if (incompleto) {
-      setApiError('Completá caja origen (pesos), caja destino (dólares) y una cotización válida.');
-      return;
-    }
-    setSaving(true);
-    setApiError(null);
-    try {
-      await provisionApi.registrarPago(tipoId, anio, mes, {
-        montoPagado: data.montoPagado,
-        cajaPesosId: Number(origenPesosId),
-        cajaDestinoAhorroId: Number(destinoUsdId),
-        valorDolar: tcNum,
-      });
-      onSaved();
-    } catch (err) {
+  const registrarMutation = useMutation({
+    mutationFn: (data: FormData) => provisionApi.registrarPago(tipoId, anio, mes, {
+      montoPagado: data.montoPagado,
+      cajaPesosId: Number(origenPesosId),
+      cajaDestinoAhorroId: Number(destinoUsdId),
+      valorDolar: tcNum,
+    }),
+    onSuccess: () => onSaved(),
+    onError: (err) => {
       const status = (err as { response?: { status?: number } })?.response?.status;
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       if (status === 404) {
@@ -127,9 +120,17 @@ export default function RegistrarPagoDialog({ open, tipoId, tipoNombre, anio, me
       } else {
         setApiError(msg ?? 'Error al registrar el pago');
       }
-    } finally {
-      setSaving(false);
+    },
+  });
+  const saving = registrarMutation.isPending;
+
+  const onSubmit = (data: FormData) => {
+    if (incompleto) {
+      setApiError('Completá caja origen (pesos), caja destino (dólares) y una cotización válida.');
+      return;
     }
+    setApiError(null);
+    registrarMutation.mutate(data);
   };
 
   return (

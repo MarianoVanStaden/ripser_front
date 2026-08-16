@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -69,10 +70,7 @@ export default function ProvisionesPage() {
   const [anio, setAnio] = useState(anioParam ? Number(anioParam) : CURRENT_YEAR);
   const [mes, setMes] = useState(mesParam ? Number(mesParam) : CURRENT_MONTH);
 
-  const [tipos, setTipos] = useState<TipoProvisionDTO[]>([]);
-  const [provisiones, setProvisiones] = useState<ProvisionMensualDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // tipos/provisiones/loading/error se derivan del query ['provisiones', anio, mes].
 
   const [guardarDialog, setGuardarDialog] = useState<{
     open: boolean;
@@ -85,27 +83,24 @@ export default function ProvisionesPage() {
     tipo: TipoProvisionDTO | null;
   }>({ open: false, tipo: null });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const queryClient = useQueryClient();
+  const provisionesQuery = useQuery({
+    queryKey: ['provisiones', anio, mes],
+    queryFn: async () => {
       const [tiposData, provisionesData] = await Promise.all([
         tipoProvisionApi.list(),
         provisionApi.getByMes(anio, mes),
       ]);
-      setTipos(tiposData);
-      setProvisiones(provisionesData);
-    } catch (err) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? 'Error al cargar las provisiones');
-    } finally {
-      setLoading(false);
-    }
-  }, [anio, mes]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+      return { tipos: tiposData, provisiones: provisionesData };
+    },
+  });
+  const tipos = provisionesQuery.data?.tipos ?? [];
+  const provisiones = provisionesQuery.data?.provisiones ?? [];
+  const loading = provisionesQuery.isPending;
+  const error = provisionesQuery.error
+    ? ((provisionesQuery.error as any)?.response?.data?.message ?? 'Error al cargar las provisiones')
+    : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['provisiones', anio, mes] });
 
   useEffect(() => {
     navigate(`/admin/provisiones/${anio}/${mes}`, { replace: true });
@@ -184,7 +179,7 @@ export default function ProvisionesPage() {
       </Stack>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>
+        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
       )}
 
       {loading ? (
