@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Autocomplete,
@@ -29,10 +30,8 @@ import dayjs from 'dayjs';
 import {
   asistenciaTerminalApi,
   type CodigoTerminalDescartado,
-  type DiferenciaFichaje,
   type EnNoNoAsignado,
   type ImportResumen,
-  type ResumenAsistenciaEmpleado,
   type TipoDiferenciaFichaje,
 } from '../../api/services/asistenciaTerminalApi';
 import { employeeApi } from '../../api/services/employeeApi';
@@ -57,159 +56,138 @@ const AsistenciaTerminalPage: React.FC = () => {
   const tallerInputRef = useRef<HTMLInputElement>(null);
   const oficinaInputRef = useRef<HTMLInputElement>(null);
 
-  const [uploading, setUploading] = useState<OrigenTerminal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resumenImport, setResumenImport] = useState<ImportResumen | null>(null);
   const [origenImport, setOrigenImport] = useState<OrigenTerminal | null>(null);
 
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [noAsignadas, setNoAsignadas] = useState<EnNoNoAsignado[]>([]);
   const [seleccion, setSeleccion] = useState<Record<string, number | ''>>({});
-  const [asignando, setAsignando] = useState<string | null>(null);
   const [motivoDescarte, setMotivoDescarte] = useState<Record<string, string>>({});
-  const [descartando, setDescartando] = useState<string | null>(null);
-
-  const [descartados, setDescartados] = useState<CodigoTerminalDescartado[]>([]);
-  const [restaurando, setRestaurando] = useState<string | null>(null);
   const [mostrarDescartados, setMostrarDescartados] = useState(false);
 
   const [desde, setDesde] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
   const [hasta, setHasta] = useState(dayjs().format('YYYY-MM-DD'));
-  const [resumen, setResumen] = useState<ResumenAsistenciaEmpleado[]>([]);
-  const [loadingResumen, setLoadingResumen] = useState(false);
-
-  const [diferencias, setDiferencias] = useState<DiferenciaFichaje[]>([]);
-  const [loadingDiferencias, setLoadingDiferencias] = useState(false);
 
   const nombreEmpleado = (e: Empleado) =>
     `${e.apellido ?? ''}, ${e.nombre ?? ''}`.trim();
 
-  const cargarNoAsignadas = useCallback(async () => {
-    try {
-      setNoAsignadas(await asistenciaTerminalApi.getNoAsignadas());
-    } catch {
-      /* silencioso: el panel simplemente queda vacío */
-    }
-  }, []);
+  const queryClient = useQueryClient();
 
-  const cargarDescartados = useCallback(async () => {
-    try {
-      setDescartados(await asistenciaTerminalApi.getDescartados());
-    } catch {
-      /* silencioso: el panel simplemente queda vacío */
-    }
-  }, []);
+  const empleadosQuery = useQuery({
+    queryKey: ['terminal-empleados'],
+    queryFn: () => employeeApi.getAllList().catch(() => [] as Empleado[]),
+  });
+  const empleados = empleadosQuery.data ?? [];
 
-  const cargarResumen = useCallback(async () => {
-    setLoadingResumen(true);
-    try {
-      setResumen(await asistenciaTerminalApi.getResumen(desde, hasta));
-    } catch (e: any) {
-      setError(e?.response?.data ?? 'Error al cargar el resumen');
-    } finally {
-      setLoadingResumen(false);
-    }
-  }, [desde, hasta]);
+  // Errores silenciosos: el panel simplemente queda vacío (igual que antes).
+  const noAsignadasQuery = useQuery({
+    queryKey: ['terminal-no-asignadas'],
+    queryFn: () => asistenciaTerminalApi.getNoAsignadas().catch(() => [] as EnNoNoAsignado[]),
+  });
+  const noAsignadas = noAsignadasQuery.data ?? [];
 
-  useEffect(() => {
-    employeeApi.getAllList().then(setEmpleados).catch(() => setEmpleados([]));
-    cargarNoAsignadas();
-    cargarDescartados();
-  }, [cargarNoAsignadas, cargarDescartados]);
+  const descartadosQuery = useQuery({
+    queryKey: ['terminal-descartados'],
+    queryFn: () => asistenciaTerminalApi.getDescartados().catch(() => [] as CodigoTerminalDescartado[]),
+  });
+  const descartados = descartadosQuery.data ?? [];
 
-  const cargarDiferencias = useCallback(async () => {
-    setLoadingDiferencias(true);
-    try {
-      setDiferencias(await asistenciaTerminalApi.getDiferencias(desde, hasta));
-    } catch (e: any) {
-      setError(e?.response?.data ?? 'Error al cargar las diferencias de fichaje');
-    } finally {
-      setLoadingDiferencias(false);
-    }
-  }, [desde, hasta]);
+  const resumenQuery = useQuery({
+    queryKey: ['terminal-resumen', desde, hasta],
+    queryFn: () => asistenciaTerminalApi.getResumen(desde, hasta),
+  });
+  const resumen = resumenQuery.data ?? [];
+  const loadingResumen = resumenQuery.isPending;
 
-  useEffect(() => {
-    cargarResumen();
-  }, [cargarResumen]);
+  const diferenciasQuery = useQuery({
+    queryKey: ['terminal-diferencias', desde, hasta],
+    queryFn: () => asistenciaTerminalApi.getDiferencias(desde, hasta),
+  });
+  const diferencias = diferenciasQuery.data ?? [];
+  const loadingDiferencias = diferenciasQuery.isPending;
 
-  useEffect(() => {
-    cargarDiferencias();
-  }, [cargarDiferencias]);
+  const loadError = resumenQuery.error
+    ? ((resumenQuery.error as any)?.response?.data ?? 'Error al cargar el resumen')
+    : diferenciasQuery.error
+      ? ((diferenciasQuery.error as any)?.response?.data ?? 'Error al cargar las diferencias de fichaje')
+      : null;
 
-  const handleFile = async (origen: OrigenTerminal, e: React.ChangeEvent<HTMLInputElement>) => {
+  const invalidateNoAsignadas = () => queryClient.invalidateQueries({ queryKey: ['terminal-no-asignadas'] });
+  const invalidateDescartados = () => queryClient.invalidateQueries({ queryKey: ['terminal-descartados'] });
+  const invalidateResumen = () => queryClient.invalidateQueries({ queryKey: ['terminal-resumen'] });
+
+  const importMutation = useMutation({
+    mutationFn: ({ file }: { origen: OrigenTerminal; file: File }) => asistenciaTerminalApi.importar(file),
+    onSuccess: (res, { origen }) => {
+      setResumenImport(res);
+      setOrigenImport(origen);
+      invalidateNoAsignadas();
+      invalidateResumen();
+    },
+    onError: (err: any) => setError(err?.response?.data ?? 'Error al importar el archivo.'),
+  });
+  const uploading = importMutation.isPending ? importMutation.variables?.origen ?? null : null;
+
+  const handleFile = (origen: OrigenTerminal, e: React.ChangeEvent<HTMLInputElement>) => {
     const inputRef = origen === 'Taller' ? tallerInputRef : oficinaInputRef;
     const file = e.target.files?.[0];
+    if (inputRef.current) inputRef.current.value = '';
     if (!file) return;
     setError(null);
     setResumenImport(null);
     setOrigenImport(null);
     if (!file.name.toLowerCase().endsWith('.txt')) {
       setError('El archivo debe ser un .txt exportado del terminal de huella.');
-      if (inputRef.current) inputRef.current.value = '';
       return;
     }
-    setUploading(origen);
-    try {
-      const res = await asistenciaTerminalApi.importar(file);
-      setResumenImport(res);
-      setOrigenImport(origen);
-      await cargarNoAsignadas();
-      await cargarResumen();
-    } catch (err: any) {
-      setError(err?.response?.data ?? 'Error al importar el archivo.');
-    } finally {
-      setUploading(null);
-      if (inputRef.current) inputRef.current.value = '';
-    }
+    importMutation.mutate({ origen, file });
   };
 
-  const handleAsignar = async (enNo: string) => {
+  const asignarMutation = useMutation({
+    mutationFn: ({ empleadoId, enNo }: { empleadoId: number; enNo: string }) =>
+      asistenciaTerminalApi.asignar(empleadoId, enNo),
+    onSuccess: () => { invalidateNoAsignadas(); invalidateResumen(); },
+    onError: (err: any) => setError(err?.response?.data ?? 'Error al asignar el código.'),
+  });
+  const asignando = asignarMutation.isPending ? asignarMutation.variables?.enNo ?? null : null;
+
+  const handleAsignar = (enNo: string) => {
     const empleadoId = seleccion[enNo];
     if (!empleadoId) return;
-    setAsignando(enNo);
     setError(null);
-    try {
-      await asistenciaTerminalApi.asignar(empleadoId, enNo);
-      await cargarNoAsignadas();
-      await cargarResumen();
-    } catch (err: any) {
-      setError(err?.response?.data ?? 'Error al asignar el código.');
-    } finally {
-      setAsignando(null);
-    }
+    asignarMutation.mutate({ empleadoId: Number(empleadoId), enNo });
   };
 
-  const handleDescartar = async (enNo: string) => {
-    setDescartando(enNo);
-    setError(null);
-    try {
-      await asistenciaTerminalApi.descartar(enNo, motivoDescarte[enNo]?.trim() || undefined);
+  const descartarMutation = useMutation({
+    mutationFn: (enNo: string) =>
+      asistenciaTerminalApi.descartar(enNo, motivoDescarte[enNo]?.trim() || undefined),
+    onSuccess: (_data, enNo) => {
       setMotivoDescarte((prev) => {
         const copia = { ...prev };
         delete copia[enNo];
         return copia;
       });
-      await cargarNoAsignadas();
-      await cargarDescartados();
-    } catch (err: any) {
-      setError(err?.response?.data ?? 'Error al descartar el código.');
-    } finally {
-      setDescartando(null);
-    }
+      invalidateNoAsignadas();
+      invalidateDescartados();
+    },
+    onError: (err: any) => setError(err?.response?.data ?? 'Error al descartar el código.'),
+  });
+  const descartando = descartarMutation.isPending ? descartarMutation.variables ?? null : null;
+
+  const handleDescartar = (enNo: string) => {
+    setError(null);
+    descartarMutation.mutate(enNo);
   };
 
-  const handleRestaurar = async (enNo: string) => {
-    setRestaurando(enNo);
+  const restaurarMutation = useMutation({
+    mutationFn: (enNo: string) => asistenciaTerminalApi.restaurar(enNo),
+    onSuccess: () => { invalidateNoAsignadas(); invalidateDescartados(); },
+    onError: (err: any) => setError(err?.response?.data ?? 'Error al restaurar el código.'),
+  });
+  const restaurando = restaurarMutation.isPending ? restaurarMutation.variables ?? null : null;
+
+  const handleRestaurar = (enNo: string) => {
     setError(null);
-    try {
-      await asistenciaTerminalApi.restaurar(enNo);
-      await cargarNoAsignadas();
-      await cargarDescartados();
-    } catch (err: any) {
-      setError(err?.response?.data ?? 'Error al restaurar el código.');
-    } finally {
-      setRestaurando(null);
-    }
+    restaurarMutation.mutate(enNo);
   };
 
   const empleadosOrdenados = useMemo(
@@ -238,9 +216,9 @@ const AsistenciaTerminalPage: React.FC = () => {
         y horas extra por día, y arma la asistencia para la liquidación de sueldos.
       </Typography>
 
-      {error && (
+      {(error || loadError) && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {typeof error === 'string' ? error : 'Ocurrió un error.'}
+          {typeof (error || loadError) === 'string' ? (error || loadError) : 'Ocurrió un error.'}
         </Alert>
       )}
 
@@ -477,7 +455,7 @@ const AsistenciaTerminalPage: React.FC = () => {
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
-            onClick={cargarResumen}
+            onClick={() => resumenQuery.refetch()}
             disabled={loadingResumen}
           >
             Actualizar
@@ -543,7 +521,7 @@ const AsistenciaTerminalPage: React.FC = () => {
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
-            onClick={cargarDiferencias}
+            onClick={() => diferenciasQuery.refetch()}
             disabled={loadingDiferencias}
           >
             Actualizar
