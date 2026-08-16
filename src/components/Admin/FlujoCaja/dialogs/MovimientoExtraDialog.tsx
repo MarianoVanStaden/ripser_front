@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -127,7 +128,6 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
   const [observaciones, setObservaciones] = useState('');
   const [responsableNombre, setResponsableNombre] = useState('');
   const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const requiereCaja = metodoPagoRequiereCaja(metodoPago);
@@ -173,7 +173,47 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
     }
   }, [editingMovimiento, open, tipoInicial]);
 
-  const handleSubmit = async () => {
+  const guardarMutation = useMutation({
+    mutationFn: () => {
+      // Convertir tipo de frontend (INGRESO/EGRESO) a backend (CREDITO/DEBITO)
+      // CREDITO = Ingreso/Cobro Extra, DEBITO = Egreso/Gasto Extra
+      const tipoBackend: 'CREDITO' | 'DEBITO' = tipo === 'INGRESO' ? 'CREDITO' : 'DEBITO';
+
+      const dto: CreateMovimientoExtraDTO = {
+        fecha: fecha.format('YYYY-MM-DD'),
+        tipo: tipoBackend,
+        ...(tipo === 'EGRESO'
+          ? { categoriaGasto: categoria as CategoriaGastoExtra }
+          : { categoriaCobro: categoria as CategoriaCobroExtra }),
+        descripcion: concepto.trim(),
+        monto: parseFloat(importe), // Backend espera 'monto', no 'importe'
+        metodoPago: metodoPago as CreateMovimientoExtraDTO['metodoPago'],
+        numeroComprobante: numeroComprobante.trim() || undefined,
+        observaciones: observaciones.trim() || undefined,
+        cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
+        cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
+      };
+
+      return editingMovimiento?.movimientoExtraId
+        ? movimientoExtraApi.actualizar(editingMovimiento.movimientoExtraId, {
+            ...dto,
+            id: editingMovimiento.movimientoExtraId,
+          })
+        : movimientoExtraApi.crear(dto);
+    },
+    onSuccess: () => onSuccess(),
+    onError: (err: any) => {
+      console.error('Error al guardar movimiento extra:', err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          'Error al guardar el movimiento. Por favor intentá de nuevo.'
+      );
+    },
+  });
+  const loading = guardarMutation.isPending;
+
+  const handleSubmit = () => {
     // Validaciones
     if (!categoria) {
       setError('Por favor seleccioná una categoría');
@@ -200,49 +240,8 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
       return;
     }
 
-    setLoading(true);
     setError('');
-
-    try {
-      // Convertir tipo de frontend (INGRESO/EGRESO) a backend (CREDITO/DEBITO)
-      // CREDITO = Ingreso/Cobro Extra, DEBITO = Egreso/Gasto Extra
-      const tipoBackend: 'CREDITO' | 'DEBITO' = tipo === 'INGRESO' ? 'CREDITO' : 'DEBITO';
-
-      const dto: CreateMovimientoExtraDTO = {
-        fecha: fecha.format('YYYY-MM-DD'),
-        tipo: tipoBackend,
-        ...(tipo === 'EGRESO'
-          ? { categoriaGasto: categoria as CategoriaGastoExtra }
-          : { categoriaCobro: categoria as CategoriaCobroExtra }),
-        descripcion: concepto.trim(),
-        monto: parseFloat(importe), // Backend espera 'monto', no 'importe'
-        metodoPago: metodoPago as CreateMovimientoExtraDTO['metodoPago'],
-        numeroComprobante: numeroComprobante.trim() || undefined,
-        observaciones: observaciones.trim() || undefined,
-        cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
-        cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
-      };
-
-      if (editingMovimiento?.movimientoExtraId) {
-        await movimientoExtraApi.actualizar(editingMovimiento.movimientoExtraId, {
-          ...dto,
-          id: editingMovimiento.movimientoExtraId,
-        });
-      } else {
-        await movimientoExtraApi.crear(dto);
-      }
-
-      onSuccess();
-    } catch (err: any) {
-      console.error('Error al guardar movimiento extra:', err);
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Error al guardar el movimiento. Por favor intentá de nuevo.'
-      );
-    } finally {
-      setLoading(false);
-    }
+    guardarMutation.mutate();
   };
 
   const handleClose = () => {
