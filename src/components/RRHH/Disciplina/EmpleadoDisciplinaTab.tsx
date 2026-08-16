@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -31,7 +32,6 @@ import {
   TIPO_SANCION_COLOR,
   TIPO_SANCION_LABEL,
   type SancionDTO,
-  type SancionEmpleadoResumenDTO,
 } from '../../../types/sancion.types';
 import type { Empleado } from '../../../types';
 import SancionFormDialog from './SancionFormDialog';
@@ -71,27 +71,28 @@ const MetricCard: React.FC<{
 );
 
 const EmpleadoDisciplinaTab: React.FC<EmpleadoDisciplinaTabProps> = ({ empleado }) => {
-  const [resumen, setResumen] = useState<SancionEmpleadoResumenDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SancionDTO | null>(null);
   const [drawerSancion, setDrawerSancion] = useState<SancionDTO | null>(null);
 
-  const load = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await sancionApi.getResumenEmpleado(empleado.id);
-      setResumen(data);
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'No se pudo cargar el historial disciplinario');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const queryClient = useQueryClient();
+  const resumenQuery = useQuery({
+    queryKey: ['sancion-resumen', empleado.id],
+    queryFn: () => sancionApi.getResumenEmpleado(empleado.id),
+  });
+  const resumen = resumenQuery.data ?? null;
+  const loading = resumenQuery.isPending;
+  const error = resumenQuery.error ? ((resumenQuery.error as any)?.response?.data?.message ?? 'No se pudo cargar el historial disciplinario') : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['sancion-resumen', empleado.id] });
 
-  useEffect(() => { load(); }, [empleado.id]);
+  const saveMutation = useMutation({
+    mutationFn: (dto: Parameters<typeof sancionApi.create>[0]) => (editing ? sancionApi.update(editing.id, dto) : sancionApi.create(dto)),
+    onSuccess: () => load(),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => sancionApi.delete(id),
+    onSuccess: () => { setDrawerSancion(null); load(); },
+  });
 
   if (loading) {
     return (
@@ -283,11 +284,7 @@ const EmpleadoDisciplinaTab: React.FC<EmpleadoDisciplinaTabProps> = ({ empleado 
         initial={editing}
         motivosAcumuladosSugeridos={Object.keys(resumen.motivosAcumulados ?? {})}
         onClose={() => setFormOpen(false)}
-        onSubmit={async (dto) => {
-          if (editing) await sancionApi.update(editing.id, dto);
-          else await sancionApi.create(dto);
-          await load();
-        }}
+        onSubmit={async (dto) => { await saveMutation.mutateAsync(dto); }}
       />
 
       <SancionDetailDrawer
@@ -295,13 +292,7 @@ const EmpleadoDisciplinaTab: React.FC<EmpleadoDisciplinaTabProps> = ({ empleado 
         sancion={drawerSancion}
         onClose={() => setDrawerSancion(null)}
         onEdit={(s) => { setEditing(s); setDrawerSancion(null); setFormOpen(true); }}
-        onDelete={async (s) => {
-          if (window.confirm('¿Eliminar la sanción?')) {
-            await sancionApi.delete(s.id);
-            setDrawerSancion(null);
-            await load();
-          }
-        }}
+        onDelete={(s) => { if (window.confirm('¿Eliminar la sanción?')) deleteMutation.mutate(s.id); }}
       />
     </Stack>
   );

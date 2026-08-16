@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Box, Button, IconButton, Stack, Typography, CircularProgress, Alert } from '@mui/material';
 import { PhotoCamera as PhotoCameraIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { documentoEmpleadoApi } from '../../api/services/documentoEmpleadoApi';
@@ -20,19 +21,38 @@ interface Props {
  * Solo disponible en modo edit (necesita empleadoId real).
  */
 const EmpleadoFotoUploader: React.FC<Props> = ({ empleadoId, nombre, apellido }) => {
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [hasFoto, setHasFoto] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    documentoEmpleadoApi.getByEmpleadoIdAndCategoria(empleadoId, 'FOTO')
-      .then(docs => setHasFoto(docs.length > 0))
-      .catch(() => setHasFoto(false));
-  }, [empleadoId, refreshKey]);
+  const queryClient = useQueryClient();
+  const fotoQuery = useQuery({
+    queryKey: ['empleado-foto', empleadoId],
+    queryFn: () => documentoEmpleadoApi.getByEmpleadoIdAndCategoria(empleadoId, 'FOTO').then(docs => docs.length > 0),
+  });
+  const hasFoto = fotoQuery.data ?? null;
+  const invalidateFoto = () => queryClient.invalidateQueries({ queryKey: ['empleado-foto', empleadoId] });
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => documentoEmpleadoApi.upload(empleadoId, file, 'FOTO', 'Foto de perfil 4x4'),
+    onSuccess: () => { clearEmpleadoFotoCache(empleadoId); invalidateFoto(); },
+    onError: (err: any) => setError(err?.response?.data?.message || 'Error al subir la foto'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const docs = await documentoEmpleadoApi.getByEmpleadoIdAndCategoria(empleadoId, 'FOTO');
+      // Eliminamos todas las FOTOs para reset clean — operativamente RRHH solo
+      // tiene una vigente; las históricas se borran si pidieron "quitar foto".
+      await Promise.all(docs.map(d => documentoEmpleadoApi.delete(empleadoId, d.id)));
+    },
+    onSuccess: () => { clearEmpleadoFotoCache(empleadoId); invalidateFoto(); },
+    onError: (err: any) => setError(err?.response?.data?.message || 'Error al eliminar la foto'),
+  });
+
+  const uploading = uploadMutation.isPending || deleteMutation.isPending;
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setError('El archivo debe ser una imagen.');
@@ -42,42 +62,20 @@ const EmpleadoFotoUploader: React.FC<Props> = ({ empleadoId, nombre, apellido })
       setError('La imagen excede los 5 MB.');
       return;
     }
-    setUploading(true);
     setError(null);
-    try {
-      await documentoEmpleadoApi.upload(empleadoId, file, 'FOTO', 'Foto de perfil 4x4');
-      clearEmpleadoFotoCache(empleadoId);
-      setRefreshKey(k => k + 1);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al subir la foto');
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
+    uploadMutation.mutate(file);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!hasFoto) return;
-    setUploading(true);
     setError(null);
-    try {
-      const docs = await documentoEmpleadoApi.getByEmpleadoIdAndCategoria(empleadoId, 'FOTO');
-      // Eliminamos todas las FOTOs para reset clean — operativamente RRHH solo
-      // tiene una vigente; las históricas se borran si pidieron "quitar foto".
-      await Promise.all(docs.map(d => documentoEmpleadoApi.delete(empleadoId, d.id)));
-      clearEmpleadoFotoCache(empleadoId);
-      setRefreshKey(k => k + 1);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al eliminar la foto');
-    } finally {
-      setUploading(false);
-    }
+    deleteMutation.mutate();
   };
 
   return (
     <Stack direction="row" spacing={2} alignItems="center">
       <EmpleadoFotoAvatar
-        key={refreshKey}
+        key={fotoQuery.dataUpdatedAt}
         empleadoId={empleadoId}
         nombre={nombre}
         apellido={apellido}
