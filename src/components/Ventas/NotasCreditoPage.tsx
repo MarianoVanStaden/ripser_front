@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useDebounce } from '../../hooks/useDebounce';
 import {
   Box, Typography, Button, TextField, Grid,
@@ -75,12 +76,9 @@ const NotasCreditoPage: React.FC = () => {
   const { empresaId } = useTenant();
 
   // Factura search
-  const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState<DocumentoComercial | null>(null);
-  const [loadingFacturas, setLoadingFacturas] = useState(false);
   const [facturaInput, setFacturaInput] = useState('');
   const debouncedFacturaInput = useDebounce(facturaInput, 300);
-  const abortRef = useRef<AbortController | null>(null);
 
   // Factura content
   const [facturaDetalles, setFacturaDetalles] = useState<DetalleDocumento[]>([]);
@@ -118,35 +116,25 @@ const NotasCreditoPage: React.FC = () => {
   }>({ open: false, data: null });
 
   // ── Facturas load / search ──
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingFacturas(true);
-    documentoApi.getByTipoPaginated('FACTURA', { page: 0, size: 20, sort: 'fechaEmision,desc' }, {})
-      .then((res) => { if (!cancelled) setFacturas(res.content); })
-      .catch((err) => {
-        if (cancelled) return;
-        console.error('Error loading facturas:', err);
-        setAlert({ open: true, message: 'Error al cargar las facturas.', severity: 'error' });
-      })
-      .finally(() => { if (!cancelled) setLoadingFacturas(false); });
-    return () => { cancelled = true; };
-  }, [empresaId]);
-
-  useEffect(() => {
-    if (debouncedFacturaInput.trim().length === 0) return;
-    abortRef.current?.abort();
-    abortRef.current = new AbortController();
-    setLoadingFacturas(true);
-    documentoApi.getByTipoPaginated(
+  // Un solo query para el picker: sin búsqueda trae las últimas 20; con
+  // búsqueda, el typeahead server-side (react-query cancela la anterior).
+  const facturasQuery = useQuery({
+    queryKey: ['documentos', 'facturas-picker-nc', { empresaId, busqueda: debouncedFacturaInput.trim() || undefined }],
+    queryFn: () => documentoApi.getByTipoPaginated(
       'FACTURA',
       { page: 0, size: 20, sort: 'fechaEmision,desc' },
-      { busqueda: debouncedFacturaInput.trim() }
-    )
-      .then((res) => setFacturas(res.content))
-      .catch((err) => { if ((err as any)?.code !== 'ERR_CANCELED') console.error(err); })
-      .finally(() => setLoadingFacturas(false));
-  }, [debouncedFacturaInput]);
+      debouncedFacturaInput.trim() ? { busqueda: debouncedFacturaInput.trim() } : {}
+    ).then((res) => res.content),
+    placeholderData: keepPreviousData,
+  });
+  const facturas: DocumentoComercial[] = facturasQuery.data ?? [];
+  const loadingFacturas = facturasQuery.isFetching;
+  useEffect(() => {
+    if (facturasQuery.error) {
+      setAlert({ open: true, message: 'Error al cargar las facturas.', severity: 'error' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facturasQuery.error]);
 
   // ── Handlers ──
 

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Paper,
@@ -51,7 +52,7 @@ import 'dayjs/locale/es';
 import { supplierApi } from '../../api/services/supplierApi';
 import { compraApi} from '../../api/services/compraApi';
 import { proveedorProductoApi } from '../../api/services/proveedorProductoApi';
-import type { ProveedorDTO, CompraDTO, CreateCompraDTO, RecepcionCompraDTO, Producto, OrdenCompra, CategoriaProducto, ProveedorProductoDTO } from '../../types';
+import type { ProveedorDTO, CreateCompraDTO, RecepcionCompraDTO, Producto, OrdenCompra, CategoriaProducto, ProveedorProductoDTO } from '../../types';
 import Autocomplete from '@mui/material/Autocomplete';
 import { productApi } from '../../api/services/productApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
@@ -87,13 +88,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, { hasError: bool
 }
 const ComprasPedidosPage: React.FC = () => {
   const { esAdminCompras } = usePermisos();
-  const [ordenes, setOrdenes] = useState<OrdenCompra[]>([]);
-  const [proveedores, setProveedores] = useState<ProveedorDTO[]>([]);
-  const [compras, setCompras] = useState<CompraDTO[]>([]);
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false); // spinner de acciones (crear/editar/recibir orden)
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('');
   const [supplierFilter, setSupplierFilter] = useState<string>('');
@@ -133,45 +130,25 @@ const ComprasPedidosPage: React.FC = () => {
 
 const [newOrden, setNewOrden] = useState<NewOrdenForm>(createInitialNewOrden);
 
-  useEffect(() => {
-    loadProveedores();
-    loadCompras();
-    loadProductos();
-    loadCategorias();
-  }, []);
+  // ── Datos del panel: 4 queries; el mapping compras→ordenes vive en la
+  // queryFn (se quitaron los console.log de debug por compra).
+  const errMsg = (err: any, base: string) =>
+    err?.response?.status === 403
+      ? 'No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.'
+      : err?.response?.status === 401
+        ? 'Su sesión ha expirado. Por favor, inicie sesión nuevamente.'
+        : base;
 
-const loadProveedores = async () => {
-  try {
-    setLoading(true);
-    const data = await supplierApi.getAll();
-    console.log('Proveedores:', data); // Debug log
-    setProveedores(data as ProveedorDTO[]);
-    setError(null);
-  } catch (err: any) {
-    if (err.response?.status === 403) {
-      setError('No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.');
-    } else if (err.response?.status === 401) {
-      setError('Su sesión ha expirado. Por favor, inicie sesión nuevamente.');
-    } else {
-      setError('Error al cargar los proveedores');
-    }
-    console.error('Error loading proveedores:', err);
-  } finally {
-    setLoading(false);
-  }
-};
-
-const loadCompras = async () => {
-  try {
-    setLoading(true);
-    const pageData = await compraApi.getAll({ size: 1000 });
-    const data = Array.isArray(pageData) ? pageData : (pageData?.content ?? []);
-    console.log('Compras data:', JSON.stringify(data, null, 2));
-    setCompras((data as unknown) as CompraDTO[]);
-    setOrdenes(
-      data.map((compra) => {
-        console.log(`Compra ID: ${compra.id}, proveedorId: ${compra.proveedorId}, proveedor: ${JSON.stringify(compra.proveedor, null, 2)}`);
-        const orden = {
+  const proveedoresQuery = useQuery({
+    queryKey: ['proveedores', 'lista'],
+    queryFn: () => supplierApi.getAll().then((d) => d as ProveedorDTO[]),
+  });
+  const comprasQuery = useQuery({
+    queryKey: ['compras', 'panel'],
+    queryFn: async () => {
+      const pageData = await compraApi.getAll({ size: 1000 });
+      const data = Array.isArray(pageData) ? pageData : (pageData?.content ?? []);
+      const ordenes: OrdenCompra[] = data.map((compra) => ({
           id: compra.id,
           numero: (compra as any).numero || `COMPRA-${compra.id}`,
           proveedor: (compra.proveedor as unknown) as ProveedorDTO,
@@ -216,57 +193,46 @@ const loadCompras = async () => {
           usuarioCreadorNombre: (compra as any).usuarioCreadorNombre ?? null,
           requerimientoOrigenId: (compra as any).requerimientoOrigenId ?? null,
           historialEstados: (compra as any).historialEstados ?? [],
-        };
-        return orden;
-      })
-    );
-    setError(null);
-  } catch (err: any) {
-    console.error('Error loading compras:', err);
-    if (err.response?.status === 403) {
-      setError('No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.');
-    } else if (err.response?.status === 401) {
-      setError('Su sesión ha expirado. Por favor, inicie sesión nuevamente.');
-    } else {
-      setError('Error al cargar las compras');
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+      }));
+      return { ordenes };
+    },
+  });
+  const productosQuery = useQuery({
+    queryKey: ['productos', 'picker-compras'],
+    queryFn: () => productApi.getAll({ size: 10000 })
+      .then((r: any) => (Array.isArray(r) ? r : (r?.content ?? [])) as Producto[]),
+    staleTime: 300_000,
+  });
+  const categoriasQuery = useQuery({
+    queryKey: ['categorias-producto', 'todas'],
+    queryFn: () => categoriaProductoApi.getAll().then((d) => d || []),
+    staleTime: 300_000,
+    retry: false,
+  });
 
-const loadProductos = async () => {
-  try {
-    setLoading(true);
-    const productosPage = await productApi.getAll({ size: 10000 });
-    const data = Array.isArray(productosPage) ? productosPage : (productosPage?.content ?? []);
-    console.log('Productos response:', data); // Log the full response
-    setProductos(data || []);
-    setError(null);
-  } catch (err: any) {
-    console.error('Error loading productos:', err);
-    if (err.response?.status === 403) {
-      setError('No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.');
-    } else if (err.response?.status === 401) {
-      setError('Su sesión ha expirado. Por favor, inicie sesión nuevamente.');
-    } else {
-      setError('Error al cargar los productos');
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  const proveedores: ProveedorDTO[] = proveedoresQuery.data ?? [];
+  const ordenes: OrdenCompra[] = comprasQuery.data?.ordenes ?? [];
+  const productos: Producto[] = productosQuery.data ?? [];
+  const categorias: CategoriaProducto[] = categoriasQuery.data ?? [];
+  const loading = comprasQuery.isPending || proveedoresQuery.isPending;
+  const error = proveedoresQuery.error
+    ? errMsg(proveedoresQuery.error, 'Error al cargar los proveedores')
+    : comprasQuery.error
+      ? errMsg(comprasQuery.error, 'Error al cargar las compras')
+      : productosQuery.error
+        ? errMsg(productosQuery.error, 'Error al cargar los productos')
+        : actionError;
+  const setError = setActionError;
 
-const loadCategorias = async () => {
-  try {
-    const data = await categoriaProductoApi.getAll();
-    console.log('Categorías response:', data);
-    setCategorias(data || []);
-  } catch (err: any) {
-    console.error('Error loading categorías:', err);
-    // No mostramos error porque las categorías son opcionales
-  }
-};
+  const loadProveedores = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['proveedores'] });
+  };
+  const loadCompras = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['compras'] });
+  };
+  const loadProductos = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['productos'] });
+  };
 
 const loadProductosDelProveedor = async (proveedorId: string) => {
   if (!proveedorId) {
@@ -462,11 +428,11 @@ const detectPriceChanges = (): PriceChange[] => {
 
 const handleSaveOrden = async () => {
   try {
-    setLoading(true);
+    setSaving(true);
 
     if (!newOrden.supplierId) {
       setError('Debe seleccionar un proveedor');
-      setLoading(false);
+      setSaving(false);
       return;
     }
     if (
@@ -479,12 +445,12 @@ const handleSaveOrden = async () => {
       )
     ) {
       setError('Todos los items deben tener un producto (existente o nuevo), cantidad y precio unitario válidos');
-      setLoading(false);
+      setSaving(false);
       return;
     }
     if (!newOrden.estado) {
       setError('Debe seleccionar un estado válido');
-      setLoading(false);
+      setSaving(false);
       return;
     }
 
@@ -493,7 +459,7 @@ const handleSaveOrden = async () => {
     if (detectedChanges.length > 0) {
       setPriceChanges(detectedChanges);
       setOpenPriceChangeDialog(true);
-      setLoading(false);
+      setSaving(false);
       return; // Stop here and wait for user confirmation
     }
 
@@ -503,14 +469,14 @@ const handleSaveOrden = async () => {
     const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
     setError(`Error al guardar la compra: ${errorMessage}`);
     console.error('Error saving compra:', err);
-    setLoading(false);
+    setSaving(false);
   }
 };
 
 // Separated function to save orden and update prices
 const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: number; precioNuevo: number }>) => {
   try {
-    setLoading(true);
+    setSaving(true);
 
     // Productos cuyo costo el usuario decidió actualizar (Caso B) → flag por detalle.
     const productosAActualizar = new Set(priceUpdates.map((u) => u.productoId));
@@ -541,13 +507,10 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
 
     console.log('Compra Payload:', JSON.stringify(compraPayload, null, 2));
 
-    let createdOrUpdatedCompra: CompraDTO;
     if (isEditMode && selectedOrden?.id) {
-      createdOrUpdatedCompra = await compraApi.update(selectedOrden.id, compraPayload);
-      setCompras(compras.map((c) => (c.id === selectedOrden.id ? createdOrUpdatedCompra : c)));
+      await compraApi.update(selectedOrden.id, compraPayload);
     } else {
-      createdOrUpdatedCompra = await compraApi.create(compraPayload);
-      setCompras([createdOrUpdatedCompra, ...compras]);
+      await compraApi.create(compraPayload);
     }
 
     // Actualizar el COSTO (no el precio de venta) de los productos seleccionados.
@@ -585,7 +548,7 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
     setError(errorMessage);
     console.error('Error saving compra:', err);
   } finally {
-    setLoading(false);
+    setSaving(false);
   }
 };
 
@@ -609,7 +572,7 @@ const handleConfirmDelete = async () => {
   }
 
   try {
-    setLoading(true);
+    setSaving(true);
     await compraApi.delete(ordenToDelete.id);
     setError(null);
     setDeleteConfirmOpen(false);
@@ -624,7 +587,7 @@ const handleConfirmDelete = async () => {
     setDeleteErrorMessage(errorMessage);
     console.error('Error deleting compra:', err);
   } finally {
-    setLoading(false);
+    setSaving(false);
   }
 };
 
@@ -825,7 +788,7 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
     <ErrorBoundary>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <Box p={{ xs: 1.5, sm: 2, md: 3 }}>
-          <LoadingOverlay open={loading} message="Cargando compras..." />
+          <LoadingOverlay open={loading || saving} message="Cargando compras..." />
           {/* Header */}
           <Box 
             sx={{ 

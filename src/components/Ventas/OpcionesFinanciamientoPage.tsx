@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -47,11 +48,35 @@ import LoadingOverlay from '../common/LoadingOverlay';
 
 const OpcionesFinanciamientoPage: React.FC = () => {
   const { empresaId } = useTenant();
-  const [opciones, setOpciones] = useState<OpcionFinanciamientoDTO[]>([]);
-  const [documentos, setDocumentos] = useState<DocumentoComercial[]>([]);
+  const queryClient = useQueryClient();
   const [selectedDocumentoId, setSelectedDocumentoId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const documentosQuery = useQuery({
+    queryKey: ['documentos', 'presupuestos-opciones', empresaId],
+    queryFn: () => documentoApi.getPresupuestos(),
+  });
+  const documentos: DocumentoComercial[] = documentosQuery.data ?? [];
+  // Auto-seleccionar el primero cuando llega la lista (semántica original).
+  useEffect(() => {
+    if (documentos.length > 0 && !selectedDocumentoId) {
+      setSelectedDocumentoId(documentos[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentos]);
+  const opcionesQuery = useQuery({
+    queryKey: ['opciones-financiamiento', selectedDocumentoId],
+    queryFn: () => opcionFinanciamientoApi.obtenerOpcionesPorDocumento(selectedDocumentoId!),
+    enabled: !!selectedDocumentoId,
+  });
+  const opciones: OpcionFinanciamientoDTO[] = selectedDocumentoId ? (opcionesQuery.data ?? []) : [];
+  const loading = documentosQuery.isPending || (opcionesQuery.isPending && !!selectedDocumentoId);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false); // spinner de crear defaults
+  const error = documentosQuery.error
+    ? 'Error al cargar los documentos'
+    : opcionesQuery.error
+      ? 'Error al cargar las opciones de financiamiento'
+      : actionError;
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingOpcion, setEditingOpcion] = useState<OpcionFinanciamientoDTO | null>(null);
@@ -70,52 +95,8 @@ const OpcionesFinanciamientoPage: React.FC = () => {
     esSeleccionada: false,
   });
 
-  useEffect(() => {
-    loadDocumentos();
-  }, [empresaId]); // Re-fetch when tenant changes
-
-  useEffect(() => {
-    if (selectedDocumentoId) {
-      loadOpciones();
-    } else {
-      setOpciones([]);
-    }
-  }, [selectedDocumentoId]);
-
-  const loadDocumentos = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      // Load presupuestos
-      const presupuestos = await documentoApi.getPresupuestos();
-      setDocumentos(presupuestos);
-
-      // Auto-select first documento if available
-      if (presupuestos.length > 0 && !selectedDocumentoId) {
-        setSelectedDocumentoId(presupuestos[0].id);
-      }
-    } catch (err) {
-      console.error('Error loading documentos:', err);
-      setError('Error al cargar los documentos');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadOpciones = async () => {
-    if (!selectedDocumentoId) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      const opcionesData = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(selectedDocumentoId);
-      setOpciones(opcionesData);
-    } catch (err) {
-      console.error('Error loading opciones:', err);
-      setError('Error al cargar las opciones de financiamiento');
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['opciones-financiamiento'] });
   };
 
   const handleOpenDialog = (opcion?: OpcionFinanciamientoDTO) => {
@@ -214,15 +195,13 @@ const OpcionesFinanciamientoPage: React.FC = () => {
 
       if (editingOpcion && editingOpcion.id) {
         // Update existing option
-        const updated = await opcionFinanciamientoApi.actualizar(editingOpcion.id, opcionData);
-        setOpciones((prev) =>
-          prev.map((op) => (op.id === editingOpcion.id ? updated : op))
-        );
+        await opcionFinanciamientoApi.actualizar(editingOpcion.id, opcionData);
+        await loadOpciones();
         setSuccess('Opción actualizada correctamente');
       } else {
         // Create new option
-        const newOpcion = await opcionFinanciamientoApi.crear(selectedDocumentoId, opcionData);
-        setOpciones((prev) => [...prev, newOpcion]);
+        await opcionFinanciamientoApi.crear(selectedDocumentoId, opcionData);
+        await loadOpciones();
         setSuccess('Opción creada correctamente');
       }
 
@@ -246,7 +225,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
       if (opcionToDelete.id) {
         await opcionFinanciamientoApi.eliminar(opcionToDelete.id);
       }
-      setOpciones((prev) => prev.filter((op) => op.id !== opcionToDelete.id));
+      await loadOpciones();
       setSuccess('Opción eliminada correctamente');
       setDeleteDialogOpen(false);
       setOpcionToDelete(null);
@@ -263,7 +242,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       setError(null);
 
       // Get the selected document to use its total as base amount
@@ -357,13 +336,13 @@ const OpcionesFinanciamientoPage: React.FC = () => {
         createdOptions.push(newOpcion);
       }
 
-      setOpciones(createdOptions);
+      await loadOpciones();
       setSuccess('Opciones por defecto creadas correctamente');
     } catch (err) {
       console.error('Error creating default options:', err);
       setError('Error al crear las opciones por defecto');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -382,7 +361,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
-      <LoadingOverlay open={loading} message="Procesando opciones de financiamiento..." />
+      <LoadingOverlay open={loading || saving} message="Procesando opciones de financiamiento..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <PaymentIcon />
