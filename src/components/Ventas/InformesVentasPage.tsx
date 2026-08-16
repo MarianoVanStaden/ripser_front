@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -74,15 +75,9 @@ type UsuarioRecord = any;
 
 const InformeVentasPage = () => {
   const { empresaId } = useTenant();
-  const [sales, setSales] = useState<SaleRecord[]>([]);
-  const [clients, setClients] = useState<ClientRecord[]>([]);
-  const [usuarios, setUsuarios] = useState<UsuarioRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [errorSnack, setErrorSnack] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState<SaleRecord | null>(null);
-  const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState<Record<number, unknown[]>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
@@ -97,14 +92,9 @@ const InformeVentasPage = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  useEffect(() => {
-    loadData();
-  }, [empresaId]); // Re-fetch when tenant changes
-
-const loadData = async () => {
-  try {
-    setLoading(true);
-    setError(null);
+  const informesQuery = useQuery({
+    queryKey: ['informes-ventas', empresaId],
+    queryFn: async () => {
 
     const [facturasResponse, notasCreditoResponse, usuariosResponse] = await Promise.all([
       documentoApi.getByTipo('FACTURA').catch(err => {
@@ -272,9 +262,6 @@ const loadData = async () => {
       if (sale.cliente?.id) uniqueClientsMap.set(sale.cliente.id, sale.cliente);
     });
 
-    setSales(sortedSales);
-    setClients(Array.from(uniqueClientsMap.values()));
-    setUsuarios(usuariosData);
 
     // Load opciones de financiamiento for all facturas in a single batch request
     const opcionesMap: Record<number, unknown[]> = {};
@@ -289,15 +276,24 @@ const loadData = async () => {
     } catch (err) {
       console.warn('No se pudieron cargar las opciones de financiamiento:', err);
     }
-    setOpcionesFinanciamiento(opcionesMap);
-
-  } catch (err: unknown) {
-    console.error('Error loading data:', err);
-    setError(err instanceof Error ? err.message : 'Error al cargar los datos. Verifique la conexión con el servidor.');
-  } finally {
-    setLoading(false);
-  }
-};
+    return {
+        sales: sortedSales,
+        clients: Array.from(uniqueClientsMap.values()),
+        usuarios: usuariosData,
+        opcionesFinanciamiento: opcionesMap,
+      };
+    },
+  });
+  const sales: SaleRecord[] = informesQuery.data?.sales ?? [];
+  const clients: ClientRecord[] = informesQuery.data?.clients ?? [];
+  const usuarios: UsuarioRecord[] = informesQuery.data?.usuarios ?? [];
+  const opcionesFinanciamiento: Record<number, unknown[]> = informesQuery.data?.opcionesFinanciamiento ?? {};
+  const loading = informesQuery.isPending;
+  const error = informesQuery.error
+    ? (informesQuery.error instanceof Error
+        ? informesQuery.error.message
+        : 'Error al cargar los datos. Verifique la conexión con el servidor.')
+    : null;
 
   const handleViewSale = (sale: SaleRecord) => {
     setViewingSale(sale);
