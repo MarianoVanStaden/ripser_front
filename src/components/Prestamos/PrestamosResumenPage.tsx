@@ -169,7 +169,10 @@ const FocoItem: React.FC<FocoItemProps> = ({ icon, label, value, color, hint, to
 export const PrestamosResumenPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { esAdmin } = usePermisos();
+  const { esAdmin, esSuperAdmin } = usePermisos();
+  // Los montos de cartera (prestado/cobrado/pendiente y monto en gestión) solo se
+  // muestran a ADMIN o SuperAdmin; roles inferiores ven el resto del resumen sin importes.
+  const puedeVerMontos = esAdmin || esSuperAdmin;
   const [resumen, setResumen] = useState<ResumenPrestamosDTO | null>(null);
   const [resumenCob, setResumenCob] = useState<ResumenCobranzaDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -431,11 +434,13 @@ export const PrestamosResumenPage: React.FC = () => {
                 icon={<PhoneCallback sx={{ color: '#1976d2', fontSize: 28 }} />} color="#1976d2"
                 to={linkActivas} />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <KpiCard title="Monto en Gestión" value={formatPrice(resumenCob.totalMontoPendiente)}
-                icon={<AttachMoney sx={{ color: '#FF9800', fontSize: 28 }} />} color="#FF9800"
-                to={linkActivasOrdenadoPorMonto} subtitle="Ordenadas por monto" />
-            </Grid>
+            {puedeVerMontos && (
+              <Grid item xs={12} sm={6} md={3}>
+                <KpiCard title="Monto en Gestión" value={formatPrice(resumenCob.totalMontoPendiente)}
+                  icon={<AttachMoney sx={{ color: '#FF9800', fontSize: 28 }} />} color="#FF9800"
+                  to={linkActivasOrdenadoPorMonto} subtitle="Ordenadas por monto" />
+              </Grid>
+            )}
             <Grid item xs={12} sm={6} md={3}>
               <KpiCard title="Sin Gestión con Mora" value={resumenCob.sinGestionConMora}
                 icon={<Warning sx={{ color: '#FF5722', fontSize: 28 }} />} color="#FF5722"
@@ -453,6 +458,7 @@ export const PrestamosResumenPage: React.FC = () => {
       {/* Montos + cartera por categoría (vigente) */}
       {resumen && (
         <Grid container spacing={3} sx={{ mb: 4 }}>
+          {puedeVerMontos && (
           <Grid item xs={12} md={5}>
             <Paper sx={{ p: 3, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -495,8 +501,9 @@ export const PrestamosResumenPage: React.FC = () => {
               </Stack>
             </Paper>
           </Grid>
+          )}
 
-          <Grid item xs={12} md={7}>
+          <Grid item xs={12} md={puedeVerMontos ? 7 : 12}>
             <Paper sx={{ p: 3, height: '100%' }}>
               <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Cartera por Categoría</Typography>
               {categoriasCartera.length === 0 ? (
