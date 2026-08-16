@@ -4,7 +4,8 @@
 // único MovimientoExtra; si necesitás distribución multi-caja por empleado,
 // hacé pago individual desde la grilla de SueldosPage.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert, Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress,
   FormControl, Grid, IconButton, InputLabel, MenuItem, Paper, Select, Stack,
@@ -23,7 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { sueldoApi } from '../../../api/services/sueldoApi';
 import { employeeApi } from '../../../api/services/employeeApi';
 import { cajasPesosApi } from '../../../api/services/cajasPesosApi';
-import type { CajaPesos, Empleado, Sueldo } from '../../../types';
+import type { CajaPesos, Sueldo } from '../../../types';
 import type { MetodoPago } from '../../../types/prestamo.types';
 import LoadingOverlay from '../../common/LoadingOverlay';
 
@@ -47,10 +48,6 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
 
-  const [sueldos, setSueldos] = useState<Sueldo[]>([]);
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [cajas, setCajas] = useState<CajaPesos[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -65,63 +62,72 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
   // Selección de empleados a pagar
   const [seleccion, setSeleccion] = useState<Record<number, boolean>>({});
 
-  const loadInitial = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const queryClient = useQueryClient();
+
+  // Empleados + cajas activas (una sola vez).
+  const initQuery = useQuery({
+    queryKey: ['pago-masivo-sueldos-init'],
+    queryFn: async () => {
       const [empleadosData, cajasData] = await Promise.all([
         employeeApi.getAllList(),
         cajasPesosApi.getAll(),
       ]);
-      setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
-      const activas = (Array.isArray(cajasData) ? cajasData : []).filter(c => c.estado === 'ACTIVA');
-      setCajas(activas);
-      if (activas.length > 0 && cajaId === '') {
-        setCajaId(activas[0].id);
-        setMetodoPago(metodoDefaultDeCaja(activas[0]));
-      }
-    } catch (err) {
-      console.error(err);
-      setError('Error al cargar datos iniciales');
-    } finally {
-      setLoading(false);
+      return {
+        empleados: Array.isArray(empleadosData) ? empleadosData : [],
+        cajas: (Array.isArray(cajasData) ? cajasData : []).filter(c => c.estado === 'ACTIVA'),
+      };
+    },
+  });
+  const empleados = initQuery.data?.empleados ?? [];
+  const cajas = initQuery.data?.cajas ?? [];
+  const loading = initQuery.isPending;
+  const loadError = initQuery.error ? 'Error al cargar datos iniciales' : null;
+
+  // Auto-seleccionar la primera caja activa (y su método) al cargar.
+  useEffect(() => {
+    if (cajas.length > 0 && cajaId === '') {
+      setCajaId(cajas[0].id);
+      setMetodoPago(metodoDefaultDeCaja(cajas[0]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cajas]);
 
-  useEffect(() => { loadInitial(); }, [loadInitial]);
+  // Sueldos del período seleccionado (errores del endpoint degradan a lista vacía,
+  // igual que el .catch original).
+  const sueldosQuery = useQuery({
+    queryKey: ['sueldos-periodo', periodo],
+    queryFn: () => sueldoApi.getByPeriodo(periodo).catch(() => [] as Sueldo[]),
+    enabled: !!periodo,
+  });
+  const sueldosRaw = sueldosQuery.data;
 
-  // Cargar sueldos del período seleccionado
-  const loadPeriodo = useCallback(async () => {
-    if (!periodo) return;
-    try {
-      setError(null);
-      const list = await sueldoApi.getByPeriodo(periodo).catch(() => [] as Sueldo[]);
-      // Enriquecer con empleado (igual que SueldosPage)
-      const enriched = (Array.isArray(list) ? list : []).map((s: any) => {
-        const emp = empleados.find(e => e.id === (s.empleadoId ?? s.empleado?.id));
-        return {
-          ...s,
-          empleado: emp || {
-            id: s.empleadoId,
-            nombre: s.empleadoNombre || '',
-            apellido: s.empleadoApellido || '',
-            dni: s.empleadoDni || '',
-          },
-        } as Sueldo;
-      });
-      setSueldos(enriched);
-      // Por default, todos los pendientes seleccionados.
-      const next: Record<number, boolean> = {};
-      enriched.forEach(s => { if (!s.fechaPago) next[s.id] = true; });
-      setSeleccion(next);
-    } catch (err) {
-      console.error(err);
-      setError('Error al cargar sueldos del período');
-    }
-  }, [periodo, empleados]);
+  // Enriquecer con empleado (igual que SueldosPage).
+  const sueldos = useMemo<Sueldo[]>(() => {
+    return (Array.isArray(sueldosRaw) ? sueldosRaw : []).map((s: any) => {
+      const emp = empleados.find(e => e.id === (s.empleadoId ?? s.empleado?.id));
+      return {
+        ...s,
+        empleado: emp || {
+          id: s.empleadoId,
+          nombre: s.empleadoNombre || '',
+          apellido: s.empleadoApellido || '',
+          dni: s.empleadoDni || '',
+        },
+      } as Sueldo;
+    });
+  }, [sueldosRaw, empleados]);
 
-  useEffect(() => { loadPeriodo(); }, [loadPeriodo]);
+  // Por default, todos los pendientes seleccionados cada vez que (re)carga el período.
+  useEffect(() => {
+    if (!sueldosRaw) return;
+    const next: Record<number, boolean> = {};
+    (Array.isArray(sueldosRaw) ? sueldosRaw : []).forEach((s: any) => {
+      if (!s.fechaPago) next[s.id] = true;
+    });
+    setSeleccion(next);
+  }, [sueldosRaw]);
+
+  const loadPeriodo = () => queryClient.invalidateQueries({ queryKey: ['sueldos-periodo', periodo] });
 
   const pendientes = useMemo(() => sueldos.filter(s => !s.fechaPago), [sueldos]);
   const seleccionados = useMemo(
@@ -149,7 +155,58 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
     setSeleccion(next);
   };
 
-  const handlePagarMasivo = async () => {
+  // Pagamos secuencialmente para que el saldo de la caja se actualice entre
+  // pagos en el backend, y para que los errores sean fáciles de reportar.
+  // Toda la corrida es UNA mutación; el progreso por ítem se reporta via setProgress.
+  const pagarMutation = useMutation({
+    mutationFn: async () => {
+      setProgress({ done: 0, total: seleccionados.length });
+      let okCount = 0;
+      let errCount = 0;
+      const errores: string[] = [];
+
+      for (let i = 0; i < seleccionados.length; i++) {
+        const s = seleccionados[i];
+        try {
+          await sueldoApi.pagarSueldo(s.id, {
+            fecha,
+            items: [{
+              cajaPesosId: Number(cajaId),
+              monto: Number(s.sueldoNeto || 0),
+              metodoPago,
+              observaciones: observaciones?.trim() || undefined,
+            }],
+            observaciones: observaciones?.trim() || undefined,
+          });
+          okCount++;
+        } catch (err: any) {
+          errCount++;
+          const nombre = s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : `Sueldo #${s.id}`;
+          errores.push(`${nombre}: ${err?.response?.data?.message || 'Error desconocido'}`);
+        }
+        setProgress({ done: i + 1, total: seleccionados.length });
+      }
+      return { okCount, errCount, errores };
+    },
+    onSuccess: ({ okCount, errCount, errores }) => {
+      if (errCount === 0) {
+        setSuccess(`${okCount} sueldo(s) pagado(s) correctamente desde "${cajaSeleccionada?.nombre}".`);
+      } else {
+        setError(
+          `Procesados ${okCount + errCount}: ${okCount} OK, ${errCount} con error.\n` +
+          errores.slice(0, 10).join('\n') +
+          (errores.length > 10 ? `\n... y ${errores.length - 10} más` : ''),
+        );
+      }
+    },
+    onError: () => setError('Error al pagar sueldos'),
+    onSettled: () => {
+      setProgress(null);
+      loadPeriodo();
+    },
+  });
+
+  const handlePagarMasivo = () => {
     setError(null);
     setSuccess(null);
     if (seleccionados.length === 0) {
@@ -164,47 +221,7 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
       setError('Indicá la fecha de pago');
       return;
     }
-
-    setProgress({ done: 0, total: seleccionados.length });
-    let okCount = 0;
-    let errCount = 0;
-    const errores: string[] = [];
-
-    // Pagamos secuencialmente para que el saldo de la caja se actualice entre
-    // pagos en el backend, y para que los errores sean fáciles de reportar.
-    for (let i = 0; i < seleccionados.length; i++) {
-      const s = seleccionados[i];
-      try {
-        await sueldoApi.pagarSueldo(s.id, {
-          fecha,
-          items: [{
-            cajaPesosId: Number(cajaId),
-            monto: Number(s.sueldoNeto || 0),
-            metodoPago,
-            observaciones: observaciones?.trim() || undefined,
-          }],
-          observaciones: observaciones?.trim() || undefined,
-        });
-        okCount++;
-      } catch (err: any) {
-        errCount++;
-        const nombre = s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : `Sueldo #${s.id}`;
-        errores.push(`${nombre}: ${err?.response?.data?.message || 'Error desconocido'}`);
-      }
-      setProgress({ done: i + 1, total: seleccionados.length });
-    }
-
-    setProgress(null);
-    if (errCount === 0) {
-      setSuccess(`${okCount} sueldo(s) pagado(s) correctamente desde "${cajaSeleccionada?.nombre}".`);
-    } else {
-      setError(
-        `Procesados ${okCount + errCount}: ${okCount} OK, ${errCount} con error.\n` +
-        errores.slice(0, 10).join('\n') +
-        (errores.length > 10 ? `\n... y ${errores.length - 10} más` : ''),
-      );
-    }
-    await loadPeriodo();
+    pagarMutation.mutate();
   };
 
   const getEmpleadoNombre = (s: Sueldo) => {
@@ -225,9 +242,9 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
         </Stack>
       )}
 
-      {error && (
+      {(error || loadError) && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2, whiteSpace: 'pre-line' }}>
-          {error}
+          {error || loadError}
         </Alert>
       )}
       {success && <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 2 }}>{success}</Alert>}
