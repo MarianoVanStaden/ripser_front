@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { empresaService } from '../../services/empresaService';
 import type { Empresa, CreateEmpresaDTO, EstadoEmpresa } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -6,10 +7,9 @@ import { useTenant } from '../../context/TenantContext';
 import './EmpresasPage.css';
 
 export const EmpresasPage: React.FC = () => {
-  const { esSuperAdmin, user } = useAuth();
+  const { esSuperAdmin } = useAuth();
   const { empresaId } = useTenant();
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [loading, setLoading] = useState(true);
+  // empresas/loading se derivan del query ['empresas', esSuperAdmin, empresaId].
   const [showModal, setShowModal] = useState(false);
   const [editingEmpresa, setEditingEmpresa] = useState<Empresa | null>(null);
   const [formData, setFormData] = useState<CreateEmpresaDTO>({
@@ -18,40 +18,19 @@ export const EmpresasPage: React.FC = () => {
   });
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    console.log('🏢 EmpresasPage mounted:', {
-      esSuperAdmin,
-      empresaId,
-      username: user?.username,
-      userRoles: user?.roles
-    });
-    loadEmpresas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [empresaId, esSuperAdmin]);
-
-  const loadEmpresas = async () => {
-    try {
-      setLoading(true);
-      console.log('📥 EmpresasPage: Loading empresas...', { esSuperAdmin, empresaId });
+  const queryClient = useQueryClient();
+  const empresasQuery = useQuery({
+    queryKey: ['empresas', esSuperAdmin, empresaId],
+    queryFn: async () => {
       const data = await empresaService.getAll();
-      console.log(`📊 Empresas loaded from API: ${data.length} total`);
-
       // Si no es SUPER_ADMIN, filtrar solo su empresa
-      if (!esSuperAdmin && empresaId) {
-        const filtered = data.filter(e => e.id === empresaId);
-        console.log(`🔒 Regular user: Filtered to ${filtered.length} empresa(s)`);
-        setEmpresas(filtered);
-      } else {
-        console.log(`🔑 SuperAdmin: Showing all ${data.length} empresas`);
-        setEmpresas(data);
-      }
-    } catch (err) {
-      console.error('❌ Error loading empresas:', err);
-      setError('Error al cargar empresas');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return (!esSuperAdmin && empresaId) ? data.filter(e => e.id === empresaId) : data;
+    },
+  });
+  const empresas = empresasQuery.data ?? [];
+  const loading = empresasQuery.isPending;
+  const loadError = empresasQuery.error ? 'Error al cargar empresas' : null;
+  const loadEmpresas = () => queryClient.invalidateQueries({ queryKey: ['empresas', esSuperAdmin, empresaId] });
 
   const handleCreate = () => {
     setEditingEmpresa(null);
@@ -73,54 +52,43 @@ export const EmpresasPage: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const saveMutation = useMutation({
+    mutationFn: () => editingEmpresa
+      ? empresaService.update(editingEmpresa.id, formData)
+      : empresaService.create(formData),
+    onSuccess: () => { setShowModal(false); loadEmpresas(); },
+    onError: (err) => { console.error('Error saving empresa:', err); setError('Error al guardar empresa'); },
+  });
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      if (editingEmpresa) {
-        await empresaService.update(editingEmpresa.id, formData);
-      } else {
-        await empresaService.create(formData);
-      }
-      setShowModal(false);
-      loadEmpresas();
-    } catch (err) {
-      console.error('Error saving empresa:', err);
-      setError('Error al guardar empresa');
-    }
+    saveMutation.mutate();
   };
 
-  const handleSuspend = async (id: number) => {
+  const suspendMutation = useMutation({
+    mutationFn: (id: number) => empresaService.suspend(id),
+    onSuccess: () => loadEmpresas(),
+    onError: (err) => { console.error('Error suspending empresa:', err); setError('Error al suspender empresa'); },
+  });
+  const handleSuspend = (id: number) => {
     if (!confirm('¿Está seguro de suspender esta empresa?')) return;
-
-    try {
-      await empresaService.suspend(id);
-      loadEmpresas();
-    } catch (err) {
-      console.error('Error suspending empresa:', err);
-      setError('Error al suspender empresa');
-    }
+    suspendMutation.mutate(id);
   };
 
-  const handleReactivate = async (id: number) => {
-    try {
-      await empresaService.reactivate(id);
-      loadEmpresas();
-    } catch (err) {
-      console.error('Error reactivating empresa:', err);
-      setError('Error al reactivar empresa');
-    }
-  };
+  const reactivateMutation = useMutation({
+    mutationFn: (id: number) => empresaService.reactivate(id),
+    onSuccess: () => loadEmpresas(),
+    onError: (err) => { console.error('Error reactivating empresa:', err); setError('Error al reactivar empresa'); },
+  });
+  const handleReactivate = (id: number) => reactivateMutation.mutate(id);
 
-  const handleDelete = async (id: number) => {
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => empresaService.delete(id),
+    onSuccess: () => loadEmpresas(),
+    onError: (err) => { console.error('Error deleting empresa:', err); setError('Error al eliminar empresa'); },
+  });
+  const handleDelete = (id: number) => {
     if (!confirm('¿Está seguro de eliminar esta empresa? Esta acción no se puede deshacer.')) return;
-
-    try {
-      await empresaService.delete(id);
-      loadEmpresas();
-    } catch (err) {
-      console.error('Error deleting empresa:', err);
-      setError('Error al eliminar empresa');
-    }
+    deleteMutation.mutate(id);
   };
 
   const getEstadoClass = (estado: EstadoEmpresa) => {
@@ -147,7 +115,7 @@ export const EmpresasPage: React.FC = () => {
         )}
       </div>
 
-      {error && <div className="alert alert-danger">{error}</div>}
+      {(error || loadError) && <div className="alert alert-danger">{error || loadError}</div>}
 
       {loading ? (
         <div className="loading">Cargando empresas...</div>
