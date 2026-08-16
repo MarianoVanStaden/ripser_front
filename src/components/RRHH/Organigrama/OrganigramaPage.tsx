@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Card, CardContent, Stack, Chip, CircularProgress, Alert,
   TextField, MenuItem, InputAdornment, IconButton, Tooltip, Paper, Button,
@@ -176,9 +177,7 @@ const EmpleadoCard: React.FC<EmpleadoCardProps> = ({ e }) => (
 
 const OrganigramaPage: React.FC = () => {
   const navigate = useNavigate();
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // empleados/loading/error se derivan del query ['organigrama-empleados'].
   const [search, setSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<'TODOS' | 'ACTIVO' | 'INACTIVO' | 'LICENCIA'>('ACTIVO');
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
@@ -187,21 +186,14 @@ const OrganigramaPage: React.FC = () => {
   // — así la página muestra contenido útil aunque nadie tenga supervisor asignado.
   const [autoSwitched, setAutoSwitched] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await employeeApi.getAllList();
-      setEmpleados(data);
-      setAutoSwitched(false);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error cargando empleados');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
+  const organigramaQuery = useQuery({
+    queryKey: ['organigrama-empleados'],
+    queryFn: () => employeeApi.getAllList(),
+  });
+  const empleados = organigramaQuery.data ?? [];
+  const loading = organigramaQuery.isFetching;
+  const error = organigramaQuery.error ? ((organigramaQuery.error as any)?.response?.data?.message || 'Error cargando empleados') : null;
+  const load = () => { setAutoSwitched(false); return organigramaQuery.refetch(); };
 
   const empleadosFiltrados = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -345,7 +337,7 @@ const OrganigramaPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {stats.jerarquiaVacia && !loading && (
         <Alert severity="info" sx={{ mb: 2 }}>

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -51,15 +52,12 @@ const PuestosPage: React.FC = () => {
   const { tieneRol } = usePermisos();
   const canWrite = tieneRol('ADMIN', 'ADMIN_EMPRESA', 'RECURSOS_HUMANOS');
 
-  const [puestos, setPuestos] = useState<PuestoListDTO[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [departamentoFilter, setDepartamentoFilter] = useState('TODOS');
-  const [departamentos, setDepartamentos] = useState<string[]>([]);
 
   // Pagination
   const [page, setPage] = useState(0);
@@ -71,28 +69,25 @@ const PuestosPage: React.FC = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedForDelete, setSelectedForDelete] = useState<PuestoListDTO | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const queryClient = useQueryClient();
+  const puestosQuery = useQuery({
+    queryKey: ['puestos-lista'],
+    queryFn: async () => {
       const [puestosData, deptsData] = await Promise.all([
         puestoApi.getActivos(),
         puestoApi.getDepartamentos(),
       ]);
-      setPuestos(Array.isArray(puestosData) ? puestosData : []);
-      setDepartamentos(Array.isArray(deptsData) ? deptsData : []);
-    } catch (err) {
-      setError('Error al cargar los puestos');
-      console.error('Error loading puestos:', err);
-      setPuestos([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return {
+        puestos: Array.isArray(puestosData) ? puestosData : [],
+        departamentos: Array.isArray(deptsData) ? deptsData : [],
+      };
+    },
+  });
+  const puestos = puestosQuery.data?.puestos ?? [];
+  const departamentos = puestosQuery.data?.departamentos ?? [];
+  const loading = puestosQuery.isPending;
+  const loadError = puestosQuery.error ? 'Error al cargar los puestos' : null;
+  const loadData = () => queryClient.invalidateQueries({ queryKey: ['puestos-lista'] });
 
   const filteredPuestos = useMemo(() => {
     return puestos.filter((p) => {
@@ -140,32 +135,38 @@ const PuestosPage: React.FC = () => {
     setDeleteOpen(true);
   };
 
-  const handleDeletePuesto = async () => {
-    if (!selectedForDelete) return;
-    try {
-      setError(null);
-      await puestoApi.delete(selectedForDelete.id);
-      await loadData();
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => puestoApi.delete(id),
+    onSuccess: () => {
+      loadData();
       setDeleteOpen(false);
       setSelectedForDelete(null);
       setSuccess('Puesto eliminado correctamente');
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       setError(err.response?.data?.message || 'Error al eliminar el puesto');
       setDeleteOpen(false);
-    }
+    },
+  });
+  const handleDeletePuesto = () => {
+    if (!selectedForDelete) return;
+    setError(null);
+    deleteMutation.mutate(selectedForDelete.id);
   };
 
-  const handleActivar = async (puesto: PuestoListDTO) => {
-    try {
-      setError(null);
-      await puestoApi.activar(puesto.id);
-      await loadData();
+  const activarMutation = useMutation({
+    mutationFn: (id: number) => puestoApi.activar(id),
+    onSuccess: () => {
+      loadData();
       setSuccess('Puesto activado correctamente');
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al activar el puesto');
-    }
+    },
+    onError: (err: any) => setError(err.response?.data?.message || 'Error al activar el puesto'),
+  });
+  const handleActivar = (puesto: PuestoListDTO) => {
+    setError(null);
+    activarMutation.mutate(puesto.id);
   };
 
   return (
@@ -194,9 +195,9 @@ const PuestosPage: React.FC = () => {
       </Box>
 
       {/* Alerts */}
-      {error && (
+      {(error || loadError) && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+          {error || loadError}
         </Alert>
       )}
       {success && (
