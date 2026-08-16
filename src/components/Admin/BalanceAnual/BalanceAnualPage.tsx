@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -17,7 +18,6 @@ import {
 } from '@mui/material';
 import BalanceIcon from '@mui/icons-material/AccountBalance';
 import { balanceAnualApi } from '../../../api/services/balanceAnualApi';
-import type { BalanceAnualResponseDTO } from '../../../types';
 import TablaBalanceAnual from './components/TablaBalanceAnual';
 
 const MESES = [
@@ -31,45 +31,34 @@ const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i);
 export default function BalanceAnualPage() {
   const navigate = useNavigate();
   const [anio, setAnio] = useState(CURRENT_YEAR);
-  const [data, setData] = useState<BalanceAnualResponseDTO | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [moneda, setMoneda] = useState<'pesos' | 'dolares'>('pesos');
 
   // Cerrar mes dialog
   const [cerrarDialog, setCerrarDialog] = useState<{ open: boolean; mes: number }>({ open: false, mes: 0 });
-  const [cerrando, setCerrando] = useState(false);
   const [cerrarError, setCerrarError] = useState<string | null>(null);
 
-  const loadData = useCallback(async (year: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await balanceAnualApi.getAnual(year);
-      setData(result);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Error al cargar el balance anual');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const queryClient = useQueryClient();
+  const balanceQuery = useQuery({
+    queryKey: ['balance-anual', anio],
+    queryFn: () => balanceAnualApi.getAnual(anio),
+  });
+  const data = balanceQuery.data ?? null;
+  const loading = balanceQuery.isPending;
+  const error = balanceQuery.error
+    ? ((balanceQuery.error as any)?.response?.data?.message ?? 'Error al cargar el balance anual')
+    : null;
+  const loadData = () => queryClient.invalidateQueries({ queryKey: ['balance-anual', anio] });
 
-  useEffect(() => {
-    loadData(anio);
-  }, [anio, loadData]);
+  const cerrarMutation = useMutation({
+    mutationFn: () => balanceAnualApi.cerrar(anio, cerrarDialog.mes),
+    onSuccess: () => { setCerrarDialog({ open: false, mes: 0 }); loadData(); },
+    onError: (err: any) => setCerrarError(err?.response?.data?.message ?? 'Error al cerrar el mes'),
+  });
+  const cerrando = cerrarMutation.isPending;
 
-  const handleCerrar = async () => {
-    setCerrando(true);
+  const handleCerrar = () => {
     setCerrarError(null);
-    try {
-      await balanceAnualApi.cerrar(anio, cerrarDialog.mes);
-      setCerrarDialog({ open: false, mes: 0 });
-      loadData(anio);
-    } catch (err: any) {
-      setCerrarError(err?.response?.data?.message ?? 'Error al cerrar el mes');
-    } finally {
-      setCerrando(false);
-    }
+    cerrarMutation.mutate();
   };
 
   return (
@@ -95,7 +84,7 @@ export default function BalanceAnualPage() {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}

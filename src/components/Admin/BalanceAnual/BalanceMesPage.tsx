@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -137,10 +138,6 @@ export default function BalanceMesPage() {
   const [valorDolarCalc, setValorDolarCalc] = useState<string>('');
 
   const [loadingInit, setLoadingInit] = useState(true);
-  const [calculating, setCalculating] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [cerrando, setCerrando] = useState(false);
-
   const [initError, setInitError] = useState<string | null>(null);
   const [calcError, setCalcError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -186,45 +183,47 @@ export default function BalanceMesPage() {
     setForm((prev) => ({ ...prev, [key]: val }));
   };
 
-  const handleCalcular = async () => {
+  const calcularMutation = useMutation({
+    mutationFn: (vd: number) => balanceAnualApi.calcular(anioNum, mesNum, vd),
+    onSuccess: (result) => {
+      setForm(dtoToForm(result));
+      // calcular may have persisted the record — sync saved state so a subsequent
+      // guardar call knows the record already exists (avoids duplicate-create 400)
+      setSaved(result);
+    },
+    onError: (err: any) => {
+      const data = err?.response?.data;
+      setCalcError(data?.message ?? data?.error ?? (typeof data === 'string' ? data : null) ?? 'Error al calcular');
+    },
+  });
+  const calculating = calcularMutation.isPending;
+  const handleCalcular = () => {
     const vd = parseFloat(valorDolarCalc);
     if (!valorDolarCalc || isNaN(vd) || vd <= 0) {
       setCalcError('Ingresá un valor de dólar válido para calcular');
       return;
     }
-    setCalculating(true);
     setCalcError(null);
-    try {
-      const result = await balanceAnualApi.calcular(anioNum, mesNum, vd);
-      setForm(dtoToForm(result));
-      // calcular may have persisted the record — sync saved state so a subsequent
-      // guardar call knows the record already exists (avoids duplicate-create 400)
-      setSaved(result);
-    } catch (err: any) {
-      const data = err?.response?.data;
-      setCalcError(data?.message ?? data?.error ?? (typeof data === 'string' ? data : null) ?? 'Error al calcular');
-    } finally {
-      setCalculating(false);
-    }
+    calcularMutation.mutate(vd);
   };
 
-  const handleGuardar = async () => {
-    setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
-    try {
+  const guardarMutation = useMutation({
+    mutationFn: () => {
       // anio + mes are @NotNull in the backend DTO even though they're also in the URL path
       const cleanBody: GuardarBalanceMensualDTO = {
         anio: anioNum,
         mes: mesNum,
         ...Object.fromEntries(Object.entries(form).filter(([, v]) => v != null)),
       };
-      const dto = await balanceAnualApi.guardar(anioNum, mesNum, cleanBody);
+      return balanceAnualApi.guardar(anioNum, mesNum, cleanBody);
+    },
+    onSuccess: (dto) => {
       setSaved(dto);
       setForm(dtoToForm(dto));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       const data = err?.response?.data;
       const msg =
         data?.message ??
@@ -233,22 +232,24 @@ export default function BalanceMesPage() {
         (data ? JSON.stringify(data) : null) ??
         'Error al guardar';
       setSaveError(msg);
-    } finally {
-      setSaving(false);
-    }
+    },
+  });
+  const saving = guardarMutation.isPending;
+  const handleGuardar = () => {
+    setSaveError(null);
+    setSaveSuccess(false);
+    guardarMutation.mutate();
   };
 
-  const handleCerrar = async () => {
-    setCerrando(true);
+  const cerrarMutation = useMutation({
+    mutationFn: () => balanceAnualApi.cerrar(anioNum, mesNum),
+    onSuccess: () => load(),
+    onError: (err: any) => setSaveError(err?.response?.data?.message ?? 'Error al cerrar el mes'),
+  });
+  const cerrando = cerrarMutation.isPending;
+  const handleCerrar = () => {
     setSaveError(null);
-    try {
-      await balanceAnualApi.cerrar(anioNum, mesNum);
-      load();
-    } catch (err: any) {
-      setSaveError(err?.response?.data?.message ?? 'Error al cerrar el mes');
-    } finally {
-      setCerrando(false);
-    }
+    cerrarMutation.mutate();
   };
 
   return (
