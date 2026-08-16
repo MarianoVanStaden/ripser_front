@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, IconButton, Paper, Stack, Switch, Table, TableBody, TableCell,
@@ -18,9 +19,7 @@ import {
  * MM + AAAA + códigoModelo + códigoMedida + correlativo.
  */
 export default function ModeloCodigoEquipoPage() {
-  const [items, setItems] = useState<ModeloCodigoEquipo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // items/loading/error se derivan del query ['modelo-codigo-equipo'].
   const [search, setSearch] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -29,25 +28,19 @@ export default function ModeloCodigoEquipoPage() {
   const [formCodigo, setFormCodigo] = useState('');
   const [formActivo, setFormActivo] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   const [toDelete, setToDelete] = useState<ModeloCodigoEquipo | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setItems(await modeloCodigoEquipoApi.list());
-    } catch (err) {
-      console.error('Error loading modelo-codigo:', err);
-      setError('No se pudo cargar el catálogo de códigos de modelo');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { void load(); }, []);
+  const queryClient = useQueryClient();
+  const modeloQuery = useQuery({
+    queryKey: ['modelo-codigo-equipo'],
+    queryFn: () => modeloCodigoEquipoApi.list(),
+  });
+  const items = modeloQuery.data ?? [];
+  const loading = modeloQuery.isPending;
+  const error = modeloQuery.error ? 'No se pudo cargar el catálogo de códigos de modelo' : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['modelo-codigo-equipo'] });
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -75,44 +68,43 @@ export default function ModeloCodigoEquipoPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: (vars: { modelo: string; codigo: string }) => editing
+      ? modeloCodigoEquipoApi.update(editing.id, { modelo: vars.modelo, codigo: vars.codigo, activo: formActivo })
+      : modeloCodigoEquipoApi.create({ modelo: vars.modelo, codigo: vars.codigo, activo: formActivo }),
+    onSuccess: () => { load(); setDialogOpen(false); },
+    onError: (err: unknown) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      setFormError(status === 409 ? 'Ya existe un mapeo para ese modelo' : 'No se pudo guardar');
+    },
+  });
+  const saving = saveMutation.isPending;
+
+  const handleSave = () => {
     const modelo = formModelo.trim();
     const codigo = formCodigo.trim().toUpperCase();
     if (!modelo || !codigo) {
       setFormError('Modelo y código son obligatorios');
       return;
     }
-    setSaving(true);
     setFormError(null);
-    try {
-      if (editing) {
-        await modeloCodigoEquipoApi.update(editing.id, { modelo, codigo, activo: formActivo });
-      } else {
-        await modeloCodigoEquipoApi.create({ modelo, codigo, activo: formActivo });
-      }
-      await load();
-      setDialogOpen(false);
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      setFormError(status === 409 ? 'Ya existe un mapeo para ese modelo' : 'No se pudo guardar');
-    } finally {
-      setSaving(false);
-    }
+    saveMutation.mutate({ modelo, codigo });
   };
 
-  const handleDelete = async () => {
-    if (!toDelete) return;
-    setDeleting(true);
-    try {
-      await modeloCodigoEquipoApi.remove(toDelete.id);
-      await load();
-      setToDelete(null);
-    } catch (err) {
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => modeloCodigoEquipoApi.remove(id),
+    onSuccess: () => { load(); setToDelete(null); },
+    onError: (err) => {
       console.error('Error deleting modelo-codigo:', err);
-      setError('No se pudo eliminar el mapeo');
-    } finally {
-      setDeleting(false);
-    }
+      setDeleteError('No se pudo eliminar el mapeo');
+    },
+  });
+  const deleting = deleteMutation.isPending;
+
+  const handleDelete = () => {
+    if (!toDelete) return;
+    setDeleteError(null);
+    deleteMutation.mutate(toDelete.id);
   };
 
   return (
@@ -138,7 +130,7 @@ export default function ModeloCodigoEquipoPage() {
         />
       </Paper>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {(error || deleteError) && <Alert severity="error" sx={{ mb: 2 }}>{error || deleteError}</Alert>}
 
       <TableContainer component={Paper}>
         <Table size="small">

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -33,9 +34,7 @@ import { useMedidas } from '../../context/useMedidas';
  * Listado + buscador + activo toggle + create/edit modal. Sin baja física.
  */
 export default function MedidasPage() {
-  const [medidas, setMedidas] = useState<Medida[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // medidas/loading/error se derivan del query ['medidas-admin', onlyActive].
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(false);
 
@@ -44,28 +43,18 @@ export default function MedidasPage() {
   const [formNombre, setFormNombre] = useState('');
   const [formActivo, setFormActivo] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   const { refresh: refreshGlobal } = useMedidas();
 
-  const loadMedidas = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await medidaApi.list(onlyActive ? true : undefined);
-      setMedidas(data);
-    } catch (err) {
-      console.error('Error loading medidas:', err);
-      setError('No se pudieron cargar las medidas');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadMedidas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlyActive]);
+  const queryClient = useQueryClient();
+  const medidasQuery = useQuery({
+    queryKey: ['medidas-admin', onlyActive],
+    queryFn: () => medidaApi.list(onlyActive ? true : undefined),
+  });
+  const medidas = medidasQuery.data ?? [];
+  const loading = medidasQuery.isPending;
+  const error = medidasQuery.error ? 'No se pudieron cargar las medidas' : null;
+  const loadMedidas = () => queryClient.invalidateQueries({ queryKey: ['medidas-admin', onlyActive] });
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -89,36 +78,36 @@ export default function MedidasPage() {
     setCreateOpen(true);
   };
 
-  const handleSave = async () => {
-    const trimmed = formNombre.trim();
-    if (!trimmed) {
-      setFormError('El nombre es obligatorio');
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      if (editing) {
-        await medidaApi.update(editing.id, {
-          nombre: trimmed !== editing.nombre ? trimmed : undefined,
-          activo: formActivo,
-        });
-      } else {
-        await medidaApi.create({ nombre: trimmed });
-      }
-      await loadMedidas();
-      await refreshGlobal();
-      setCreateOpen(false);
-    } catch (err: unknown) {
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const trimmed = formNombre.trim();
+      return editing
+        ? medidaApi.update(editing.id, {
+            nombre: trimmed !== editing.nombre ? trimmed : undefined,
+            activo: formActivo,
+          })
+        : medidaApi.create({ nombre: trimmed });
+    },
+    onSuccess: () => { loadMedidas(); refreshGlobal(); setCreateOpen(false); },
+    onError: (err: unknown) => {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
         setFormError('Ya existe otra medida con ese nombre');
       } else {
         setFormError('No se pudo guardar la medida');
       }
-    } finally {
-      setSaving(false);
+    },
+  });
+  const saving = saveMutation.isPending;
+
+  const handleSave = () => {
+    const trimmed = formNombre.trim();
+    if (!trimmed) {
+      setFormError('El nombre es obligatorio');
+      return;
     }
+    setFormError(null);
+    saveMutation.mutate();
   };
 
   return (

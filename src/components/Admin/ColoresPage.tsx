@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -37,9 +38,7 @@ import { useColores } from '../../context/useColores';
  *   activar/desactivar.
  */
 export default function ColoresPage() {
-  const [colores, setColores] = useState<Color[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // colores/loading/error se derivan del query ['colores-admin', onlyActive].
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(false);
 
@@ -48,30 +47,20 @@ export default function ColoresPage() {
   const [formNombre, setFormNombre] = useState('');
   const [formActivo, setFormActivo] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   // Refresh the global cache so any color picker visible elsewhere stays
   // in sync after edits.
   const { refresh: refreshGlobal } = useColores();
 
-  const loadColores = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await colorApi.list(onlyActive ? true : undefined);
-      setColores(data);
-    } catch (err) {
-      console.error('Error loading colores:', err);
-      setError('No se pudieron cargar los colores');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadColores();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlyActive]);
+  const queryClient = useQueryClient();
+  const coloresQuery = useQuery({
+    queryKey: ['colores-admin', onlyActive],
+    queryFn: () => colorApi.list(onlyActive ? true : undefined),
+  });
+  const colores = coloresQuery.data ?? [];
+  const loading = coloresQuery.isPending;
+  const error = coloresQuery.error ? 'No se pudieron cargar los colores' : null;
+  const loadColores = () => queryClient.invalidateQueries({ queryKey: ['colores-admin', onlyActive] });
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -95,36 +84,36 @@ export default function ColoresPage() {
     setCreateOpen(true);
   };
 
-  const handleSave = async () => {
-    const trimmed = formNombre.trim();
-    if (!trimmed) {
-      setFormError('El nombre es obligatorio');
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      if (editing) {
-        await colorApi.update(editing.id, {
-          nombre: trimmed !== editing.nombre ? trimmed : undefined,
-          activo: formActivo,
-        });
-      } else {
-        await colorApi.create({ nombre: trimmed });
-      }
-      await loadColores();
-      await refreshGlobal();
-      setCreateOpen(false);
-    } catch (err: unknown) {
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const trimmed = formNombre.trim();
+      return editing
+        ? colorApi.update(editing.id, {
+            nombre: trimmed !== editing.nombre ? trimmed : undefined,
+            activo: formActivo,
+          })
+        : colorApi.create({ nombre: trimmed });
+    },
+    onSuccess: () => { loadColores(); refreshGlobal(); setCreateOpen(false); },
+    onError: (err: unknown) => {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
         setFormError('Ya existe otro color con ese nombre');
       } else {
         setFormError('No se pudo guardar el color');
       }
-    } finally {
-      setSaving(false);
+    },
+  });
+  const saving = saveMutation.isPending;
+
+  const handleSave = () => {
+    const trimmed = formNombre.trim();
+    if (!trimmed) {
+      setFormError('El nombre es obligatorio');
+      return;
     }
+    setFormError(null);
+    saveMutation.mutate();
   };
 
   return (
