@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -189,13 +190,6 @@ export const VentasDashboard = () => {
   const { tieneRol } = usePermisos();
   const isVendedor = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('VENDEDOR');
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
-  const [metricas, setMetricas] = useState<LeadMetricasResponseDTO | null>(null);
-  const [recentLeads, setRecentLeads] = useState<LeadDTO[]>([]);
-  const [allReminders, setAllReminders] = useState<ReminderItem[]>([]);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   const sucursalNombre = sucursalFiltro
     ? sucursales.find(s => s.id === sucursalFiltro)?.nombre || 'Sucursal'
@@ -214,34 +208,17 @@ export const VentasDashboard = () => {
       .catch((err) => console.warn('No se pudieron cargar vendedores:', err));
   }, [isVendedor]);
 
-  // Reminders for today (overdue + today) — shown in "Foco de hoy"
-  const focusItems = useMemo(() => {
-    const endOfToday = dayjs().endOf('day');
-    return allReminders.filter(r => {
-      const d = dayjs(`${r.fechaRecordatorio} ${r.hora || '00:00'}`);
-      return d.isBefore(endOfToday);
-    });
-  }, [allReminders]);
 
-  // Reminders after today
-  const futureReminders = useMemo(() => {
-    const endOfToday = dayjs().endOf('day');
-    return allReminders.filter(r => {
-      const d = dayjs(`${r.fechaRecordatorio} ${r.hora || '00:00'}`);
-      return d.isAfter(endOfToday);
-    });
-  }, [allReminders]);
-
-  useEffect(() => {
-    loadDashboardData();
-    const interval = setInterval(loadDashboardData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [empresaId, sucursalFiltro, user?.id, fechaInicio, fechaFin, vendedorSeleccionado]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Dashboard completo en una query; el polling de 5 min pasa a
+  // refetchInterval (mismo período que el setInterval original).
+  const dashboardQuery = useQuery({
+    queryKey: ['dashboard-ventas', {
+      empresaId, sucursalFiltro,
+      usuarioId: isVendedor ? user?.id : vendedorSeleccionado?.id,
+      desde: (fechaInicio ?? dayjs().startOf('month')).format('YYYY-MM-DD'),
+      hasta: (fechaFin ?? dayjs().endOf('month')).format('YYYY-MM-DD'),
+    }],
+    queryFn: async () => {
 
       const params = {
         sucursalId: sucursalFiltro !== null ? sucursalFiltro : undefined,
@@ -333,18 +310,43 @@ export const VentasDashboard = () => {
         return dA.diff(dB);
       });
 
-      setQuickStats(stats);
-      setMetricas(metricasData);
-      setRecentLeads(allLeads.slice(0, 6));
-      setAllReminders(reminders.slice(0, 15));
-      setLastRefresh(new Date());
-    } catch (err: any) {
-      console.error('Error loading dashboard data:', err);
-      setError('Error al cargar el dashboard. Por favor, intente nuevamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return {
+        quickStats: stats,
+        metricas: metricasData,
+        recentLeads: allLeads.slice(0, 6),
+        allReminders: reminders.slice(0, 15),
+        lastRefresh: new Date(),
+      };
+    },
+    refetchInterval: 5 * 60 * 1000,
+  });
+  const loading = dashboardQuery.isPending;
+  const error = dashboardQuery.error
+    ? 'Error al cargar el dashboard. Por favor, intente nuevamente.'
+    : null;
+  const quickStats: QuickStats | null = dashboardQuery.data?.quickStats ?? null;
+  const metricas: LeadMetricasResponseDTO | null = dashboardQuery.data?.metricas ?? null;
+  const recentLeads: LeadDTO[] = dashboardQuery.data?.recentLeads ?? [];
+  const allReminders: ReminderItem[] = dashboardQuery.data?.allReminders ?? [];
+  const lastRefresh: Date = dashboardQuery.data?.lastRefresh ?? new Date();
+
+  // Reminders for today (overdue + today) — shown in "Foco de hoy"
+  const focusItems = useMemo(() => {
+    const endOfToday = dayjs().endOf('day');
+    return allReminders.filter(r => {
+      const d = dayjs(`${r.fechaRecordatorio} ${r.hora || '00:00'}`);
+      return d.isBefore(endOfToday);
+    });
+  }, [allReminders]);
+
+  // Reminders after today
+  const futureReminders = useMemo(() => {
+    const endOfToday = dayjs().endOf('day');
+    return allReminders.filter(r => {
+      const d = dayjs(`${r.fechaRecordatorio} ${r.hora || '00:00'}`);
+      return d.isAfter(endOfToday);
+    });
+  }, [allReminders]);
 
   const hasUrgent = !loading && quickStats &&
     (quickStats.recordatoriosVencidos > 0 || quickStats.hotLeads > 0);
@@ -416,7 +418,7 @@ export const VentasDashboard = () => {
             <Tooltip title="Actualizar datos">
               <span>
                 <IconButton
-                  onClick={loadDashboardData}
+                  onClick={() => dashboardQuery.refetch()}
                   disabled={loading}
                   size="small"
                   sx={{
@@ -435,7 +437,7 @@ export const VentasDashboard = () => {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 3 }} >
           {error}
         </Alert>
       )}

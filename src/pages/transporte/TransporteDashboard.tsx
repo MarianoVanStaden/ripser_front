@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box, Grid2 as Grid, Card, CardContent, Typography, Chip, LinearProgress,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
@@ -128,25 +129,12 @@ const estadoChip = (estado: string) => {
 const TransporteDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [errors, setErrors] = useState<string[]>([]);
 
-  const [equipoMetrics, setEquipoMetrics] = useState<EquipoMetrics>(initialEquipoMetrics);
-  const [fabMetrics, setFabMetrics] = useState<FabricacionMetrics>(initialFabMetrics);
-  const [viajes, setViajes] = useState<ViajeResponse[]>([]);
-
-  const [notasPedidoMes, setNotasPedidoMes] = useState<DocumentoLite[]>([]);
-  const [facturasMes, setFacturasMes] = useState<DocumentoLite[]>([]);
-
-  const [stockBajo, setStockBajo] = useState<ProductoLite[]>([]);
-  const [stockBajoUnavailable, setStockBajoUnavailable] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
+  const dashQuery = useQuery({
+    queryKey: ['dashboard-transporte'],
+    queryFn: async () => {
       const errs: string[] = [];
+      let stockUnavailable = false;
 
       const startMonth = dayjs().startOf('month').format('YYYY-MM-DD');
       const endMonth = dayjs().endOf('month').format('YYYY-MM-DD');
@@ -206,15 +194,13 @@ const TransporteDashboard: React.FC = () => {
         })
         .catch((e) => {
           console.warn('No se pudo cargar stock bajo', e);
-          if (!cancelled) setStockBajoUnavailable(true);
+          stockUnavailable = true;
           return [] as ProductoLite[];
         });
 
       const [equipos, viajesData, notas, facturas, stock] = await Promise.all([
         equiposReq, viajesReq, notasReq, facturasReq, stockReq,
       ]);
-
-      if (cancelled) return;
 
       // Equipos: estado de asignación y métricas de fabricación
       const nextEq: EquipoMetrics = { ...initialEquipoMetrics };
@@ -245,22 +231,27 @@ const TransporteDashboard: React.FC = () => {
           }
         }
       }
-      setEquipoMetrics(nextEq);
-      setFabMetrics(nextFab);
-
-      setViajes(viajesData);
-      setNotasPedidoMes(notas);
-      setFacturasMes(facturas);
-
-      const activeStock = stock.filter((p) => p.activo !== false).slice(0, 8);
-      setStockBajo(activeStock);
-      setErrors(errs);
-      setLoading(false);
-    };
-
-    load();
-    return () => { cancelled = true; };
-  }, []);
+      return {
+        equipoMetrics: nextEq,
+        fabMetrics: nextFab,
+        viajes: viajesData,
+        notasPedidoMes: notas,
+        facturasMes: facturas,
+        stockBajo: stock.filter((pr) => pr.activo !== false).slice(0, 8),
+        stockBajoUnavailable: stockUnavailable,
+        errors: errs,
+      };
+    },
+  });
+  const loading = dashQuery.isPending;
+  const errors: string[] = dashQuery.data?.errors ?? [];
+  const equipoMetrics: EquipoMetrics = dashQuery.data?.equipoMetrics ?? initialEquipoMetrics;
+  const fabMetrics: FabricacionMetrics = dashQuery.data?.fabMetrics ?? initialFabMetrics;
+  const viajes: ViajeResponse[] = dashQuery.data?.viajes ?? [];
+  const notasPedidoMes: DocumentoLite[] = dashQuery.data?.notasPedidoMes ?? [];
+  const facturasMes: DocumentoLite[] = dashQuery.data?.facturasMes ?? [];
+  const stockBajo: ProductoLite[] = dashQuery.data?.stockBajo ?? [];
+  const stockBajoUnavailable = dashQuery.data?.stockBajoUnavailable ?? false;
 
   // Derivados
   const viajesEnCurso = viajes.filter((v) => v.estado === 'EN_CURSO');
