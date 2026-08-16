@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Alert,
   Avatar,
@@ -39,7 +40,6 @@ import { sancionApi } from '../../../api/services/sancionApi';
 import {
   NIVEL_GRAVEDAD_COLOR,
   TIPO_SANCION_LABEL,
-  type DisciplinaDashboardDTO,
   type SancionEmpleadoResumenDTO,
   type TipoSancion,
 } from '../../../types/sancion.types';
@@ -109,25 +109,15 @@ interface DisciplinaDashboardProps {
 }
 
 const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmpleado }) => {
-  const [data, setData] = useState<DisciplinaDashboardDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const dto = await sancionApi.getDashboard();
-        setData(dto);
-      } catch (e: any) {
-        setError(e?.response?.data?.message ?? 'No se pudo cargar el dashboard');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+  const dashboardQuery = useQuery({
+    queryKey: ['disciplina-dashboard'],
+    queryFn: () => sancionApi.getDashboard(),
+  });
+  const data = dashboardQuery.data ?? null;
+  const loading = dashboardQuery.isPending;
+  const error = dashboardQuery.error
+    ? ((dashboardQuery.error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'No se pudo cargar el dashboard')
+    : null;
 
   const distTipoChart = useMemo(() => {
     if (!data) return [];

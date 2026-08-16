@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert, Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent,
   DialogTitle, FormControl, Grid, IconButton, InputAdornment, InputLabel, MenuItem,
@@ -12,7 +13,6 @@ import { bonoVentasApi } from '../../../api/services/bonoVentasApi';
 import type {
   BonoProduccionTabla, BonoProduccionTablaCreateDTO,
   BonoVentasTabla, BonoVentasTablaCreateDTO,
-  CategoriaSalarial,
 } from '../../../types';
 
 interface Props {
@@ -25,10 +25,7 @@ const BonosUmbralTab: React.FC<Props> = ({ variant }) => {
   const api = variant === 'PRODUCCION' ? bonoProduccionApi : bonoVentasApi;
   const label = variant === 'PRODUCCION' ? 'Producción' : 'Ventas';
 
-  const [categorias, setCategorias] = useState<CategoriaSalarial[]>([]);
-  const [bonos, setBonos] = useState<Bono[]>([]);
   const [filterCategoria, setFilterCategoria] = useState<number | ''>('');
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [open, setOpen] = useState(false);
@@ -41,24 +38,22 @@ const BonosUmbralTab: React.FC<Props> = ({ variant }) => {
 
   const [confirmDelete, setConfirmDelete] = useState<Bono | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [cats, list] = await Promise.all([
-        categoriaSalarialApi.getAll(),
-        api.getAll(),
-      ]);
-      setCategorias(Array.isArray(cats) ? cats : []);
-      setBonos(Array.isArray(list) ? list : []);
-    } catch {
-      setError(`Error al cargar bonos de ${label.toLowerCase()}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [api, label]);
-
-  useEffect(() => { load(); }, [load]);
+  const queryClient = useQueryClient();
+  const dataQuery = useQuery({
+    queryKey: ['bonos-umbral', variant],
+    queryFn: async () => {
+      const [cats, list] = await Promise.all([categoriaSalarialApi.getAll(), api.getAll()]);
+      return {
+        categorias: Array.isArray(cats) ? cats : [],
+        bonos: Array.isArray(list) ? list : [],
+      };
+    },
+  });
+  const categorias = dataQuery.data?.categorias ?? [];
+  const bonos = dataQuery.data?.bonos ?? [];
+  const loading = dataQuery.isPending;
+  const loadError = dataQuery.error ? `Error al cargar bonos de ${label.toLowerCase()}` : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['bonos-umbral', variant] });
 
   const filtered = useMemo(() => {
     return filterCategoria ? bonos.filter(b => b.categoriaSalarialId === filterCategoria) : bonos;
@@ -83,35 +78,31 @@ const BonosUmbralTab: React.FC<Props> = ({ variant }) => {
     setOpen(true);
   };
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: () => (editing
+      ? (api as typeof bonoProduccionApi).update(editing.id, form as any)
+      : (api as typeof bonoProduccionApi).create(form as any)),
+    onSuccess: () => { setOpen(false); load(); },
+    onError: (err: any) => setError(err?.response?.data?.message || 'Error al guardar (¿umbral duplicado?)'),
+  });
+  const handleSave = () => {
     if (!form.categoriaSalarialId) { setError('Seleccione una categoría'); return; }
-    try {
-      if (editing) {
-        await (api as typeof bonoProduccionApi).update(editing.id, form as any);
-      } else {
-        await (api as typeof bonoProduccionApi).create(form as any);
-      }
-      setOpen(false);
-      await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al guardar (¿umbral duplicado?)');
-    }
+    saveMutation.mutate();
   };
 
-  const handleDelete = async () => {
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(id),
+    onSuccess: () => { setConfirmDelete(null); load(); },
+    onError: (err: any) => setError(err?.response?.data?.message || 'Error al eliminar'),
+  });
+  const handleDelete = () => {
     if (!confirmDelete) return;
-    try {
-      await api.delete(confirmDelete.id);
-      setConfirmDelete(null);
-      await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al eliminar');
-    }
+    deleteMutation.mutate(confirmDelete.id);
   };
 
   return (
     <Box>
-      {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error || loadError}</Alert>}
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={2} alignItems={{ sm: 'center' }} justifyContent="space-between">
         <FormControl size="small" sx={{ minWidth: 240 }}>

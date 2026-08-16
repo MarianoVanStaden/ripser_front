@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle,
   Grid, IconButton, InputAdornment, Stack, Switch, Table, TableBody, TableCell,
@@ -21,8 +22,6 @@ const emptyForm: CategoriaSalarialCreateDTO = {
 };
 
 const CategoriasSalarialesTab: React.FC = () => {
-  const [items, setItems] = useState<CategoriaSalarial[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [open, setOpen] = useState(false);
@@ -31,20 +30,18 @@ const CategoriasSalarialesTab: React.FC = () => {
 
   const [confirmDelete, setConfirmDelete] = useState<CategoriaSalarial | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const queryClient = useQueryClient();
+  const itemsQuery = useQuery({
+    queryKey: ['categorias-salariales'],
+    queryFn: async () => {
       const data = await categoriaSalarialApi.getAll();
-      setItems(Array.isArray(data) ? data : []);
-    } catch {
-      setError('Error al cargar categorías salariales');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
+      return Array.isArray(data) ? data : [];
+    },
+  });
+  const items = itemsQuery.data ?? [];
+  const loading = itemsQuery.isPending;
+  const loadError = itemsQuery.error ? 'Error al cargar categorías salariales' : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['categorias-salariales'] });
 
   const handleOpen = (cat?: CategoriaSalarial) => {
     if (cat) {
@@ -65,35 +62,29 @@ const CategoriasSalarialesTab: React.FC = () => {
     setOpen(true);
   };
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: () => (editing ? categoriaSalarialApi.update(editing.id, form) : categoriaSalarialApi.create(form)),
+    onSuccess: () => { setOpen(false); load(); },
+    onError: (err: any) => setError(err?.response?.data?.message || 'Error al guardar'),
+  });
+  const handleSave = () => {
     if (!form.nombre.trim()) { setError('Nombre obligatorio'); return; }
-    try {
-      if (editing) {
-        await categoriaSalarialApi.update(editing.id, form);
-      } else {
-        await categoriaSalarialApi.create(form);
-      }
-      setOpen(false);
-      await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al guardar');
-    }
+    saveMutation.mutate();
   };
 
-  const handleDelete = async () => {
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => categoriaSalarialApi.delete(id),
+    onSuccess: () => { setConfirmDelete(null); load(); },
+    onError: (err: any) => setError(err?.response?.data?.message || 'Error al eliminar (¿está en uso?)'),
+  });
+  const handleDelete = () => {
     if (!confirmDelete) return;
-    try {
-      await categoriaSalarialApi.delete(confirmDelete.id);
-      setConfirmDelete(null);
-      await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al eliminar (¿está en uso?)');
-    }
+    deleteMutation.mutate(confirmDelete.id);
   };
 
   return (
     <Box>
-      {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error || loadError}</Alert>}
 
       <Box display="flex" justifyContent="flex-end" mb={2}>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()}>
