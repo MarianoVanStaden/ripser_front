@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -34,9 +35,7 @@ import type { TipoProvisionDTO } from '../../../types';
 
 export default function TiposProvisionPage() {
   const navigate = useNavigate();
-  const [tipos, setTipos] = useState<TipoProvisionDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // tipos/loading/error se derivan del query ['tipos-provision', onlyActive].
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(false);
 
@@ -47,26 +46,16 @@ export default function TiposProvisionPage() {
   const [formCuentaPatrimonio, setFormCuentaPatrimonio] = useState(true);
   const [formActivo, setFormActivo] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await tipoProvisionApi.list(onlyActive ? true : undefined);
-      setTipos(data);
-    } catch (err) {
-      console.error('Error loading tipos de provisión:', err);
-      setError('No se pudieron cargar los tipos de provisión');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlyActive]);
+  const queryClient = useQueryClient();
+  const tiposQuery = useQuery({
+    queryKey: ['tipos-provision', onlyActive],
+    queryFn: () => tipoProvisionApi.list(onlyActive ? true : undefined),
+  });
+  const tipos = tiposQuery.data ?? [];
+  const loading = tiposQuery.isPending;
+  const error = tiposQuery.error ? 'No se pudieron cargar los tipos de provisión' : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['tipos-provision', onlyActive] });
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -98,7 +87,35 @@ export default function TiposProvisionPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: (vars: { codigo: string; nombre: string }) => {
+      if (editing) {
+        return tipoProvisionApi.update(editing.id, {
+          nombre: vars.nombre !== editing.nombre ? vars.nombre : undefined,
+          cuentaEnPatrimonio:
+            formCuentaPatrimonio !== editing.cuentaEnPatrimonio ? formCuentaPatrimonio : undefined,
+          activo: formActivo !== editing.activo ? formActivo : undefined,
+        });
+      }
+      return tipoProvisionApi.create({
+        codigo: vars.codigo,
+        nombre: vars.nombre,
+        cuentaEnPatrimonio: formCuentaPatrimonio,
+      });
+    },
+    onSuccess: () => { load(); setDialogOpen(false); },
+    onError: (err: unknown) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        setFormError('Ya existe un tipo de provisión con ese código');
+      } else {
+        setFormError('No se pudo guardar el tipo de provisión');
+      }
+    },
+  });
+  const saving = saveMutation.isPending;
+
+  const handleSave = () => {
     const codigo = formCodigo.trim().toUpperCase();
     const nombre = formNombre.trim();
     if (!codigo) {
@@ -109,35 +126,8 @@ export default function TiposProvisionPage() {
       setFormError('El nombre es obligatorio');
       return;
     }
-    setSaving(true);
     setFormError(null);
-    try {
-      if (editing) {
-        await tipoProvisionApi.update(editing.id, {
-          nombre: nombre !== editing.nombre ? nombre : undefined,
-          cuentaEnPatrimonio:
-            formCuentaPatrimonio !== editing.cuentaEnPatrimonio ? formCuentaPatrimonio : undefined,
-          activo: formActivo !== editing.activo ? formActivo : undefined,
-        });
-      } else {
-        await tipoProvisionApi.create({
-          codigo,
-          nombre,
-          cuentaEnPatrimonio: formCuentaPatrimonio,
-        });
-      }
-      await load();
-      setDialogOpen(false);
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) {
-        setFormError('Ya existe un tipo de provisión con ese código');
-      } else {
-        setFormError('No se pudo guardar el tipo de provisión');
-      }
-    } finally {
-      setSaving(false);
-    }
+    saveMutation.mutate({ codigo, nombre });
   };
 
   return (
