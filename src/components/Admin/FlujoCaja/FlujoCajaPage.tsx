@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -82,7 +83,6 @@ const FlujoCajaPage: React.FC = () => {
   const [transferirDialogOpen, setTransferirDialogOpen] = useState(false);
   const [movimientoToAnular, setMovimientoToAnular] = useState<number | null>(null);
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
-  const [anularLoading, setAnularLoading] = useState(false);
 
   // Anular movimientos: solo ADMIN / SUPER_ADMIN (mismo criterio que el backend)
   const { esAdmin, esSuperAdmin } = usePermisos();
@@ -242,20 +242,22 @@ const FlujoCajaPage: React.FC = () => {
     setMovimientoToAnular(movimientoExtraId);
   };
 
-  const handleConfirmAnularMovimiento = async () => {
-    if (movimientoToAnular == null || !motivoAnulacion.trim()) return;
-    setAnularLoading(true);
-    try {
-      await movimientoExtraApi.anular(movimientoToAnular, motivoAnulacion.trim());
+  const anularMutation = useMutation({
+    mutationFn: () => movimientoExtraApi.anular(movimientoToAnular!, motivoAnulacion.trim()),
+    onSuccess: () => {
       invalidate();
       setMovimientoToAnular(null);
       setMotivoAnulacion('');
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       console.error('Error al anular movimiento:', err);
       setLocalError('Error al anular el movimiento. Por favor intentá de nuevo.');
-    } finally {
-      setAnularLoading(false);
-    }
+    },
+  });
+  const anularLoading = anularMutation.isPending;
+  const handleConfirmAnularMovimiento = () => {
+    if (movimientoToAnular == null || !motivoAnulacion.trim()) return;
+    anularMutation.mutate();
   };
 
   return (
