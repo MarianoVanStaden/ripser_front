@@ -7,6 +7,7 @@
 // todo en una sola operación que hace upsert por empleado+período.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert, Autocomplete, Box, Button, Card, CardContent, Checkbox, Chip,
   CircularProgress, FormControl, Grid, IconButton, InputAdornment, InputLabel,
@@ -33,7 +34,7 @@ import { bonoProduccionApi } from '../../../api/services/bonoProduccionApi';
 import { adelantoApi } from '../../../api/services/adelantoApi';
 import type {
   Adelanto, BonoProduccionTabla,
-  CategoriaSalarial, ConceptoSueldo, Empleado, Sueldo,
+  CategoriaSalarial, ConceptoSueldo, Sueldo,
 } from '../../../types';
 import { CONCEPTO_SUELDO_LABELS, CONCEPTOS_SUELDO } from '../../../types/remuneraciones.types';
 import { calcularDiasComputados, calcularRemuneracion } from '../../../utils/remuneracionesCalc';
@@ -108,62 +109,59 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
   // Se puede destildar para revisar / corregir lo ya hecho.
   const [ocultarLiquidados, setOcultarLiquidados] = useState<boolean>(true);
 
-  // ─── Data ──────────────────────────────────────────────────────────────
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaSalarial[]>([]);
-  const [bonosProduccion, setBonosProduccion] = useState<BonoProduccionTabla[]>([]);
-  const [sueldosExistentes, setSueldosExistentes] = useState<Sueldo[]>([]);
-  const [adelantosPeriodo, setAdelantosPeriodo] = useState<Adelanto[]>([]);
-
   const [rows, setRows] = useState<RowState[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   // ─── Carga de datos ────────────────────────────────────────────────────
-  const loadEverything = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const queryClient = useQueryClient();
+
+  const initQuery = useQuery({
+    queryKey: ['liquidacion-masiva-init'],
+    queryFn: async () => {
       const [empleadosData, catsData, bonosP] = await Promise.all([
         employeeApi.getAllList(),
         categoriaSalarialApi.getAll().catch(() => [] as CategoriaSalarial[]),
         bonoProduccionApi.getAll().catch(() => [] as BonoProduccionTabla[]),
       ]);
-      setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
-      setCategorias(Array.isArray(catsData) ? catsData : []);
-      setBonosProduccion(Array.isArray(bonosP) ? bonosP : []);
-    } catch (err) {
-      console.error(err);
-      setError('Error al cargar datos iniciales');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return {
+        empleados: Array.isArray(empleadosData) ? empleadosData : [],
+        categorias: Array.isArray(catsData) ? catsData : [],
+        bonosProduccion: Array.isArray(bonosP) ? bonosP : [],
+      };
+    },
+  });
+  const empleados = initQuery.data?.empleados ?? [];
+  const categorias = initQuery.data?.categorias ?? [];
+  const bonosProduccion = initQuery.data?.bonosProduccion ?? [];
+  const loading = initQuery.isPending;
 
-  useEffect(() => { loadEverything(); }, [loadEverything]);
-
-  // Recargo sueldos existentes + adelantos cuando cambia el período.
-  const loadPeriodo = useCallback(async () => {
-    if (!periodo) return;
-    try {
-      setError(null);
+  // Sueldos existentes + adelantos del período (keyed por período; errores
+  // de endpoint degradan a lista vacía como los .catch originales).
+  const periodoQuery = useQuery({
+    queryKey: ['liquidacion-masiva-periodo', periodo],
+    queryFn: async () => {
       const [sueldos, adelantos] = await Promise.all([
         sueldoApi.getByPeriodo(periodo).catch(() => [] as Sueldo[]),
         adelantoApi.getAll().catch(() => [] as Adelanto[]),
       ]);
-      setSueldosExistentes(Array.isArray(sueldos) ? sueldos : []);
-      const adelantosFiltrados = (Array.isArray(adelantos) ? adelantos : [])
-        .filter(a => a.periodo === periodo);
-      setAdelantosPeriodo(adelantosFiltrados);
-    } catch (err) {
-      console.error(err);
-      setError('Error al cargar el período');
-    }
-  }, [periodo]);
+      return {
+        sueldosExistentes: Array.isArray(sueldos) ? sueldos : [],
+        adelantosPeriodo: (Array.isArray(adelantos) ? adelantos : [])
+          .filter(a => a.periodo === periodo),
+      };
+    },
+    enabled: !!periodo,
+  });
+  const sueldosExistentes = periodoQuery.data?.sueldosExistentes ?? [];
+  const adelantosPeriodo = periodoQuery.data?.adelantosPeriodo ?? [];
+  const loadError = initQuery.error
+    ? 'Error al cargar datos iniciales'
+    : periodoQuery.error ? 'Error al cargar el período' : null;
 
-  useEffect(() => { loadPeriodo(); }, [loadPeriodo]);
+  // Conserva el nombre: refresca sueldos/adelantos del período (post-liquidación).
+  const loadPeriodo = () =>
+    queryClient.invalidateQueries({ queryKey: ['liquidacion-masiva-periodo', periodo] });
 
   // Carga automática de unidades del mes (equipos fabricados + notas pedido
   // aprobadas) cuando cambia el período. El usuario puede sobreescribir los
@@ -405,7 +403,21 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     })));
   };
 
-  const handleLiquidar = async () => {
+  const liquidarMutation = useMutation({
+    mutationFn: (items: Parameters<typeof sueldoApi.liquidarMasivo>[0]) =>
+      sueldoApi.liquidarMasivo(items),
+    onSuccess: (result) => {
+      setSuccess(`Liquidación masiva OK — ${result.length} sueldo(s) procesados (creados o actualizados).`);
+      loadPeriodo();   // refresca para que aparezcan los existingId
+    },
+    onError: (err: any) => {
+      console.error(err);
+      setError(err?.response?.data?.message || 'Error al ejecutar la liquidación masiva');
+    },
+  });
+  const submitting = liquidarMutation.isPending;
+
+  const handleLiquidar = () => {
     setError(null);
     setSuccess(null);
 
@@ -428,50 +440,40 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       return;
     }
 
-    try {
-      setSubmitting(true);
-      const items = aLiquidar.map(row => {
-        const calc = computeRow(row)!;
-        return {
-          empleadoId: row.empleadoId,
-          categoriaSalarialId: row.categoriaSalarialId,
-          periodo,
-          concepto: row.concepto,
-          diasComputados: getDiasRow(row),
-          sueldoBasico: calc.sueldoBasico,
-          bonificaciones: calc.bonificaciones,
-          horasExtras: calc.horasExtraMonto,
-          horasExtraCant: row.horasExtraCant,
-          comisiones: calc.comisiones,
-          presentismoPct: row.presentismoPct,
-          presentismoMonto: calc.presentismoMonto,
-          kmCant: row.kmCant,
-          kmMonto: calc.kmMonto,
-          bonoProduccion: calc.bonoProduccion,
-          bonoVentas: calc.bonoVentas,
-          unidadesBonoVentas: getUnidadesNetasRow(row),
-          bonoEspecial: calc.bonoEspecial,
-          totalBruto: calc.totalBruto,
-          descuentosLegales: calc.descuentosLegales,
-          descuentosOtros: calc.descuentosOtros,
-          horasAusenteCant: row.horasAusenteCant,
-          horasAusenteMonto: calc.horasAusenteMonto,
-          adelantos: calc.adelantos,
-          totalDescuentos: calc.totalDescuentos,
-          sueldoNeto: calc.sueldoNeto,
-          observaciones: row.observaciones?.trim() || null,
-        };
-      });
+    const items = aLiquidar.map(row => {
+      const calc = computeRow(row)!;
+      return {
+        empleadoId: row.empleadoId,
+        categoriaSalarialId: row.categoriaSalarialId,
+        periodo,
+        concepto: row.concepto,
+        diasComputados: getDiasRow(row),
+        sueldoBasico: calc.sueldoBasico,
+        bonificaciones: calc.bonificaciones,
+        horasExtras: calc.horasExtraMonto,
+        horasExtraCant: row.horasExtraCant,
+        comisiones: calc.comisiones,
+        presentismoPct: row.presentismoPct,
+        presentismoMonto: calc.presentismoMonto,
+        kmCant: row.kmCant,
+        kmMonto: calc.kmMonto,
+        bonoProduccion: calc.bonoProduccion,
+        bonoVentas: calc.bonoVentas,
+        unidadesBonoVentas: getUnidadesNetasRow(row),
+        bonoEspecial: calc.bonoEspecial,
+        totalBruto: calc.totalBruto,
+        descuentosLegales: calc.descuentosLegales,
+        descuentosOtros: calc.descuentosOtros,
+        horasAusenteCant: row.horasAusenteCant,
+        horasAusenteMonto: calc.horasAusenteMonto,
+        adelantos: calc.adelantos,
+        totalDescuentos: calc.totalDescuentos,
+        sueldoNeto: calc.sueldoNeto,
+        observaciones: row.observaciones?.trim() || null,
+      };
+    });
 
-      const result = await sueldoApi.liquidarMasivo(items);
-      setSuccess(`Liquidación masiva OK — ${result.length} sueldo(s) procesados (creados o actualizados).`);
-      await loadPeriodo();   // refresca para que aparezcan los existingId
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.response?.data?.message || 'Error al ejecutar la liquidación masiva');
-    } finally {
-      setSubmitting(false);
-    }
+    liquidarMutation.mutate(items);
   };
 
   // ─── Render ────────────────────────────────────────────────────────────
@@ -542,7 +544,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
         </Stack>
       )}
 
-      {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error || loadError}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 2 }}>{success}</Alert>}
 
       {/* Parámetros globales del lote */}
@@ -617,7 +619,10 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                   fullWidth
                   variant="outlined"
                   startIcon={<RefreshIcon />}
-                  onClick={() => { loadEverything(); loadPeriodo(); }}
+                  onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ['liquidacion-masiva-init'] });
+                    loadPeriodo();
+                  }}
                   size="small"
                 >
                   Recargar
