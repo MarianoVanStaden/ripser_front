@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -189,37 +190,17 @@ const CajasAhorroUSDSection: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
 
-  const [cajas, setCajas] = useState<CajaAhorroDolares[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    cajasAhorroApi
-      .getAll()
-      .then((data) => {
-        if (!cancelled) {
-          setCajas(data);
-          setError(null);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          const msg =
-            typeof err?.response?.data === 'string'
-              ? err.response.data
-              : err?.message ?? 'Error al cargar cajas de ahorro';
-          setError(msg);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const cajasQuery = useQuery({
+    queryKey: ['cajas-ahorro-usd-section'],
+    queryFn: () => cajasAhorroApi.getAll(),
+  });
+  const cajas = cajasQuery.data ?? [];
+  const loading = cajasQuery.isPending;
+  const error = cajasQuery.error
+    ? (typeof (cajasQuery.error as any)?.response?.data === 'string'
+        ? (cajasQuery.error as any).response.data
+        : (cajasQuery.error as any)?.message ?? 'Error al cargar cajas de ahorro')
+    : null;
 
   const activas = cajas.filter((c) => c.estado === 'ACTIVA');
   const totalUSD = activas.reduce((acc, c) => acc + c.saldoActual, 0);
