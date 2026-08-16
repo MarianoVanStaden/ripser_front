@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Button, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
@@ -19,22 +20,19 @@ const nivelColor = (n: NivelIdioma): 'success' | 'warning' | 'default' =>
   n === 'ALTO' ? 'success' : n === 'MEDIO' ? 'warning' : 'default';
 
 const IdiomasEmpleadoTab: React.FC<Props> = ({ empleadoId }) => {
-  const [items, setItems] = useState<IdiomaEmpleadoItem[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<IdiomaEmpleadoItem | null>(null);
 
-  const load = async () => {
-    try {
-      setItems(await idiomasEmpleadoApi.getByEmpleado(empleadoId));
-      setError(null);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error cargando idiomas');
-    }
-  };
-
-  useEffect(() => { load(); }, [empleadoId]);
+  const queryClient = useQueryClient();
+  const itemsQuery = useQuery({
+    queryKey: ['idiomas-empleado', empleadoId],
+    queryFn: () => idiomasEmpleadoApi.getByEmpleado(empleadoId),
+  });
+  const items = itemsQuery.data ?? [];
+  const loadError = itemsQuery.error ? ((itemsQuery.error as any)?.response?.data?.message || 'Error cargando idiomas') : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['idiomas-empleado', empleadoId] });
 
   const handleOpenNew = () => { setForm(emptyForm); setDialogOpen(true); };
   const handleOpenEdit = (i: IdiomaEmpleadoItem) => {
@@ -42,30 +40,29 @@ const IdiomasEmpleadoTab: React.FC<Props> = ({ empleadoId }) => {
     setDialogOpen(true);
   };
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const dto = { idioma: form.idioma.trim(), nivel: form.nivel as NivelIdioma };
+      return form.id ? idiomasEmpleadoApi.update(empleadoId, form.id, dto) : idiomasEmpleadoApi.create(empleadoId, dto);
+    },
+    onSuccess: () => { setDialogOpen(false); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al guardar'),
+  });
+  const handleSave = () => {
     if (!form.idioma.trim() || !form.nivel) {
       setError('Idioma y nivel son requeridos'); return;
     }
-    const dto = { idioma: form.idioma.trim(), nivel: form.nivel as NivelIdioma };
-    try {
-      if (form.id) await idiomasEmpleadoApi.update(empleadoId, form.id, dto);
-      else await idiomasEmpleadoApi.create(empleadoId, dto);
-      setDialogOpen(false);
-      await load();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error al guardar');
-    }
+    saveMutation.mutate();
   };
 
-  const handleConfirmDelete = async () => {
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => idiomasEmpleadoApi.delete(empleadoId, id),
+    onSuccess: () => { setToDelete(null); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al eliminar'),
+  });
+  const handleConfirmDelete = () => {
     if (!toDelete) return;
-    try {
-      await idiomasEmpleadoApi.delete(empleadoId, toDelete.id);
-      setToDelete(null);
-      await load();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error al eliminar');
-    }
+    deleteMutation.mutate(toDelete.id);
   };
 
   return (
@@ -77,7 +74,7 @@ const IdiomasEmpleadoTab: React.FC<Props> = ({ empleadoId }) => {
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error || loadError}</Alert>}
 
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">

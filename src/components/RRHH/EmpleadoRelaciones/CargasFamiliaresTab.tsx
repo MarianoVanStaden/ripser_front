@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Button, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
@@ -27,27 +28,20 @@ const emptyForm: FormState = {
 };
 
 const CargasFamiliaresTab: React.FC<Props> = ({ empleadoId }) => {
-  const [items, setItems] = useState<CargaFamiliar[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [toDelete, setToDelete] = useState<CargaFamiliar | null>(null);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const data = await cargasFamiliaresApi.getByEmpleado(empleadoId);
-      setItems(data);
-      setError(null);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error cargando cargas familiares');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, [empleadoId]);
+  const queryClient = useQueryClient();
+  const itemsQuery = useQuery({
+    queryKey: ['cargas-familiares', empleadoId],
+    queryFn: () => cargasFamiliaresApi.getByEmpleado(empleadoId),
+  });
+  const items = itemsQuery.data ?? [];
+  const loading = itemsQuery.isPending;
+  const loadError = itemsQuery.error ? ((itemsQuery.error as any)?.response?.data?.message || 'Error cargando cargas familiares') : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['cargas-familiares', empleadoId] });
 
   const handleOpenNew = () => { setForm(emptyForm); setDialogOpen(true); };
   const handleOpenEdit = (c: CargaFamiliar) => {
@@ -59,36 +53,35 @@ const CargasFamiliaresTab: React.FC<Props> = ({ empleadoId }) => {
     setDialogOpen(true);
   };
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const dto = {
+        vinculo: form.vinculo as VinculoCargaFamiliar,
+        nombreCompleto: form.nombreCompleto.trim(),
+        dni: form.dni.trim() || null,
+        cuil: form.cuil.trim() || null,
+        fechaNacimiento: form.fechaNacimiento || null,
+        observaciones: form.observaciones.trim() || null,
+      };
+      return form.id ? cargasFamiliaresApi.update(empleadoId, form.id, dto) : cargasFamiliaresApi.create(empleadoId, dto);
+    },
+    onSuccess: () => { setDialogOpen(false); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al guardar'),
+  });
+  const handleSave = () => {
     if (!form.vinculo) { setError('Vínculo requerido'); return; }
     if (!form.nombreCompleto.trim()) { setError('Nombre completo requerido'); return; }
-    const dto = {
-      vinculo: form.vinculo as VinculoCargaFamiliar,
-      nombreCompleto: form.nombreCompleto.trim(),
-      dni: form.dni.trim() || null,
-      cuil: form.cuil.trim() || null,
-      fechaNacimiento: form.fechaNacimiento || null,
-      observaciones: form.observaciones.trim() || null,
-    };
-    try {
-      if (form.id) await cargasFamiliaresApi.update(empleadoId, form.id, dto);
-      else await cargasFamiliaresApi.create(empleadoId, dto);
-      setDialogOpen(false);
-      await load();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error al guardar');
-    }
+    saveMutation.mutate();
   };
 
-  const handleConfirmDelete = async () => {
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => cargasFamiliaresApi.delete(empleadoId, id),
+    onSuccess: () => { setToDelete(null); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al eliminar'),
+  });
+  const handleConfirmDelete = () => {
     if (!toDelete) return;
-    try {
-      await cargasFamiliaresApi.delete(empleadoId, toDelete.id);
-      setToDelete(null);
-      await load();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error al eliminar');
-    }
+    deleteMutation.mutate(toDelete.id);
   };
 
   // Bajita de asignación cuando cumple 18 (no aplica a hijo con discapacidad)
@@ -119,7 +112,7 @@ const CargasFamiliaresTab: React.FC<Props> = ({ empleadoId }) => {
         duplica la asignación.
       </Alert>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error || loadError}</Alert>}
 
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">

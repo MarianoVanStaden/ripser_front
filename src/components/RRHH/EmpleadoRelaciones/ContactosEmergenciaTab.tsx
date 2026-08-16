@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Button, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
@@ -27,22 +28,19 @@ const emptyForm: FormState = {
 };
 
 const ContactosEmergenciaTab: React.FC<Props> = ({ empleadoId }) => {
-  const [items, setItems] = useState<ContactoEmergencia[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<ContactoEmergencia | null>(null);
 
-  const load = async () => {
-    try {
-      setItems(await contactosEmergenciaApi.getByEmpleado(empleadoId));
-      setError(null);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error cargando contactos');
-    }
-  };
-
-  useEffect(() => { load(); }, [empleadoId]);
+  const queryClient = useQueryClient();
+  const itemsQuery = useQuery({
+    queryKey: ['contactos-emergencia', empleadoId],
+    queryFn: () => contactosEmergenciaApi.getByEmpleado(empleadoId),
+  });
+  const items = itemsQuery.data ?? [];
+  const loadError = itemsQuery.error ? ((itemsQuery.error as any)?.response?.data?.message || 'Error cargando contactos') : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['contactos-emergencia', empleadoId] });
 
   const handleOpenNew = () => {
     // Si no hay ninguno, el primero queda como principal por default.
@@ -59,36 +57,35 @@ const ContactosEmergenciaTab: React.FC<Props> = ({ empleadoId }) => {
     setDialogOpen(true);
   };
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const dto = {
+        nombreCompleto: form.nombreCompleto.trim(),
+        relacion: form.relacion.trim() || null,
+        telCodigoPais: form.telCodigoPais.trim() || null,
+        telArea: form.telArea.trim() || null,
+        telNumero: form.telNumero.trim() || null,
+        email: form.email.trim() || null,
+        esPrincipal: form.esPrincipal,
+      };
+      return form.id ? contactosEmergenciaApi.update(empleadoId, form.id, dto) : contactosEmergenciaApi.create(empleadoId, dto);
+    },
+    onSuccess: () => { setDialogOpen(false); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al guardar'),
+  });
+  const handleSave = () => {
     if (!form.nombreCompleto.trim()) { setError('Nombre completo requerido'); return; }
-    const dto = {
-      nombreCompleto: form.nombreCompleto.trim(),
-      relacion: form.relacion.trim() || null,
-      telCodigoPais: form.telCodigoPais.trim() || null,
-      telArea: form.telArea.trim() || null,
-      telNumero: form.telNumero.trim() || null,
-      email: form.email.trim() || null,
-      esPrincipal: form.esPrincipal,
-    };
-    try {
-      if (form.id) await contactosEmergenciaApi.update(empleadoId, form.id, dto);
-      else await contactosEmergenciaApi.create(empleadoId, dto);
-      setDialogOpen(false);
-      await load();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error al guardar');
-    }
+    saveMutation.mutate();
   };
 
-  const handleConfirmDelete = async () => {
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => contactosEmergenciaApi.delete(empleadoId, id),
+    onSuccess: () => { setToDelete(null); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al eliminar'),
+  });
+  const handleConfirmDelete = () => {
     if (!toDelete) return;
-    try {
-      await contactosEmergenciaApi.delete(empleadoId, toDelete.id);
-      setToDelete(null);
-      await load();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error al eliminar');
-    }
+    deleteMutation.mutate(toDelete.id);
   };
 
   const telFormat = (c: ContactoEmergencia) => {
@@ -107,7 +104,7 @@ const ContactosEmergenciaTab: React.FC<Props> = ({ empleadoId }) => {
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error || loadError}</Alert>}
 
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
