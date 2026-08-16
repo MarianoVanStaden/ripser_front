@@ -5,6 +5,7 @@
 // por adelanto, hacé pago individual desde la grilla de Adelantos.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert, Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress,
   FormControl, Grid, IconButton, InputLabel, MenuItem, Paper, Select, Stack,
@@ -54,7 +55,6 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   // Filtros / parámetros del lote
   const [periodo, setPeriodo] = useState<string>(dayjs().format('YYYY-MM'));
@@ -136,7 +136,23 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
     setSeleccion(next);
   };
 
-  const handlePagarMasivo = async () => {
+  const pagarMutation = useMutation({
+    mutationFn: () => adelantoApi.pagarMasivo({
+      adelantoIds: seleccionados.map(a => a.id),
+      fecha,
+      cajaPesosId: Number(cajaId),
+      metodoPago,
+      observaciones: observaciones?.trim() || undefined,
+    }),
+    onSuccess: (result) => {
+      setSuccess(`${result.length} adelanto(s) pagado(s) correctamente desde "${cajaSeleccionada?.nombre}".`);
+      loadInitial();
+    },
+    onError: (err: any) => setError(err?.response?.data?.message || 'Error al pagar adelantos'),
+  });
+  const submitting = pagarMutation.isPending;
+
+  const handlePagarMasivo = () => {
     setError(null);
     setSuccess(null);
     if (seleccionados.length === 0) {
@@ -151,23 +167,7 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
       setError('Indicá la fecha de pago');
       return;
     }
-
-    try {
-      setSubmitting(true);
-      const result = await adelantoApi.pagarMasivo({
-        adelantoIds: seleccionados.map(a => a.id),
-        fecha,
-        cajaPesosId: Number(cajaId),
-        metodoPago,
-        observaciones: observaciones?.trim() || undefined,
-      });
-      setSuccess(`${result.length} adelanto(s) pagado(s) correctamente desde "${cajaSeleccionada?.nombre}".`);
-      await loadInitial();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al pagar adelantos');
-    } finally {
-      setSubmitting(false);
-    }
+    pagarMutation.mutate();
   };
 
   return (
