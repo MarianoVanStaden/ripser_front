@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sucursalService } from '../../services/sucursalService';
 import { empresaService } from '../../services/empresaService';
-import type { Sucursal, Empresa, CreateSucursalDTO, EstadoSucursal } from '../../types';
+import type { Sucursal, CreateSucursalDTO, EstadoSucursal } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import '../Admin/EmpresasPage.css'; // Reuse styles
@@ -9,10 +10,8 @@ import '../Admin/EmpresasPage.css'; // Reuse styles
 export const SucursalesPage: React.FC = () => {
   const { esSuperAdmin } = useAuth();
   const { empresaId: userEmpresaId } = useTenant();
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  // sucursales/empresas/loading se derivan de queries (ver abajo).
   const [selectedEmpresa, setSelectedEmpresa] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingSucursal, setEditingSucursal] = useState<Sucursal | null>(null);
   const [formData, setFormData] = useState<CreateSucursalDTO>({
@@ -24,52 +23,37 @@ export const SucursalesPage: React.FC = () => {
   });
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadEmpresas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userEmpresaId, esSuperAdmin]);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (selectedEmpresa) {
-      loadSucursales(selectedEmpresa);
-    }
-  }, [selectedEmpresa]);
-
-  const loadEmpresas = async () => {
-    try {
+  const empresasQuery = useQuery({
+    queryKey: ['empresas-activas', esSuperAdmin, userEmpresaId],
+    queryFn: async () => {
       const data = await empresaService.getActive();
-
       // Si no es SUPER_ADMIN, filtrar solo su empresa
-      let empresasFiltradas = data;
-      if (!esSuperAdmin && userEmpresaId) {
-        empresasFiltradas = data.filter(e => e.id === userEmpresaId);
-      }
+      return (!esSuperAdmin && userEmpresaId) ? data.filter(e => e.id === userEmpresaId) : data;
+    },
+  });
+  const empresas = empresasQuery.data ?? [];
 
-      setEmpresas(empresasFiltradas);
-
-      // Auto-seleccionar la empresa del usuario o la primera
-      if (empresasFiltradas.length > 0 && !selectedEmpresa) {
-        const defaultEmpresa = userEmpresaId && empresasFiltradas.find(e => e.id === userEmpresaId);
-        setSelectedEmpresa(defaultEmpresa ? defaultEmpresa.id : empresasFiltradas[0].id);
-      }
-    } catch (err) {
-      console.error('Error loading empresas:', err);
-      setError('Error al cargar empresas');
+  // Auto-seleccionar la empresa del usuario o la primera cuando cargan las empresas.
+  useEffect(() => {
+    if (empresas.length > 0 && !selectedEmpresa) {
+      const defaultEmpresa = userEmpresaId && empresas.find(e => e.id === userEmpresaId);
+      setSelectedEmpresa(defaultEmpresa ? defaultEmpresa.id : empresas[0].id);
     }
-  };
+  }, [empresas, selectedEmpresa, userEmpresaId]);
 
-  const loadSucursales = async (empresaId: number) => {
-    try {
-      setLoading(true);
-      const data = await sucursalService.getByEmpresa(empresaId);
-      setSucursales(data);
-    } catch (err) {
-      console.error('Error loading sucursales:', err);
-      setError('Error al cargar sucursales');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const sucursalesQuery = useQuery({
+    queryKey: ['sucursales', selectedEmpresa],
+    queryFn: () => sucursalService.getByEmpresa(selectedEmpresa!),
+    enabled: selectedEmpresa != null,
+  });
+  const sucursales = sucursalesQuery.data ?? [];
+  const loading = sucursalesQuery.isFetching && selectedEmpresa != null;
+  const loadError = empresasQuery.error
+    ? 'Error al cargar empresas'
+    : sucursalesQuery.error ? 'Error al cargar sucursales' : null;
+  const loadSucursales = () => queryClient.invalidateQueries({ queryKey: ['sucursales', selectedEmpresa] });
 
   const handleCreate = () => {
     if (!selectedEmpresa) return;
@@ -99,42 +83,33 @@ export const SucursalesPage: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const saveMutation = useMutation({
+    mutationFn: () => editingSucursal
+      ? sucursalService.update(editingSucursal.id, formData)
+      : sucursalService.create(formData),
+    onSuccess: () => { setShowModal(false); loadSucursales(); },
+    onError: (err) => { console.error('Error saving sucursal:', err); setError('Error al guardar sucursal'); },
+  });
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      if (editingSucursal) {
-        await sucursalService.update(editingSucursal.id, formData);
-      } else {
-        await sucursalService.create(formData);
-      }
-      setShowModal(false);
-      if (selectedEmpresa) loadSucursales(selectedEmpresa);
-    } catch (err) {
-      console.error('Error saving sucursal:', err);
-      setError('Error al guardar sucursal');
-    }
+    saveMutation.mutate();
   };
 
-  const handleSetPrincipal = async (id: number) => {
-    try {
-      await sucursalService.setPrincipal(id);
-      if (selectedEmpresa) loadSucursales(selectedEmpresa);
-    } catch (err) {
-      console.error('Error setting principal:', err);
-      setError('Error al establecer sucursal principal');
-    }
-  };
+  const setPrincipalMutation = useMutation({
+    mutationFn: (id: number) => sucursalService.setPrincipal(id),
+    onSuccess: () => loadSucursales(),
+    onError: (err) => { console.error('Error setting principal:', err); setError('Error al establecer sucursal principal'); },
+  });
+  const handleSetPrincipal = (id: number) => setPrincipalMutation.mutate(id);
 
-  const handleDelete = async (id: number) => {
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => sucursalService.delete(id),
+    onSuccess: () => loadSucursales(),
+    onError: (err) => { console.error('Error deleting sucursal:', err); setError('Error al eliminar sucursal'); },
+  });
+  const handleDelete = (id: number) => {
     if (!confirm('¿Está seguro de eliminar esta sucursal?')) return;
-
-    try {
-      await sucursalService.delete(id);
-      if (selectedEmpresa) loadSucursales(selectedEmpresa);
-    } catch (err) {
-      console.error('Error deleting sucursal:', err);
-      setError('Error al eliminar sucursal');
-    }
+    deleteMutation.mutate(id);
   };
 
   return (
@@ -171,7 +146,7 @@ export const SucursalesPage: React.FC = () => {
         </div>
       </div>
 
-      {error && <div className="alert alert-danger">{error}</div>}
+      {(error || loadError) && <div className="alert alert-danger">{error || loadError}</div>}
 
       {loading ? (
         <div className="loading">Cargando sucursales...</div>

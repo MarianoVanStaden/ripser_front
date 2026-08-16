@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -41,8 +42,6 @@ import {
   type AnyBackupTier,
   type BackupApiClient,
   type BackupFileDTO,
-  type BackupStatusDTO,
-  type BackupsPorTier,
   type EstadoBackup,
 } from '../../../api/services/backupApi';
 
@@ -102,68 +101,48 @@ interface BackupPanelProps {
 }
 
 function BackupPanel({ api, tiers, defaultTab }: BackupPanelProps) {
-  const [status, setStatus] = useState<BackupStatusDTO | null>(null);
-  const [backups, setBackups] = useState<BackupsPorTier>({});
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
   const [tab, setTab] = useState<AnyBackupTier>(defaultTab);
-  const [running, setRunning] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<BackupFileDTO | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    setError(null);
-    try {
+  const queryClient = useQueryClient();
+  const backupsQuery = useQuery({
+    queryKey: ['backups', defaultTab],
+    queryFn: async () => {
       const [st, list] = await Promise.all([api.status(), api.list()]);
-      setStatus(st);
-      setBackups(list);
-    } catch (err) {
-      console.error('Error cargando backups:', err);
-      setError('No se pudieron cargar los backups. Verificá tus permisos y la conexión.');
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [api]);
+      return { status: st, backups: list };
+    },
+    // Polling automático mientras hay un backup en progreso (reemplaza el setInterval).
+    refetchInterval: (query) =>
+      (query.state.data?.status?.estadoUltimo === 'EN_PROGRESO') ? 5000 : false,
+  });
+  const status = backupsQuery.data?.status ?? null;
+  const backups = backupsQuery.data?.backups ?? {};
+  const loading = backupsQuery.isPending;
+  const loadError = backupsQuery.error
+    ? 'No se pudieron cargar los backups. Verificá tus permisos y la conexión.'
+    : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['backups', defaultTab] });
 
-  useEffect(() => {
-    void load();
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Polling mientras hay un backup en progreso.
-  useEffect(() => {
-    const enProgreso = status?.estadoUltimo === 'EN_PROGRESO';
-    if (enProgreso && !pollRef.current) {
-      pollRef.current = setInterval(() => { void load(true); }, 5000);
-    } else if (!enProgreso && pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, [status?.estadoUltimo, load]);
-
-  const handleRun = async () => {
-    setRunning(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const res = await api.run();
+  const runMutation = useMutation({
+    mutationFn: () => api.run(),
+    onSuccess: (res) => {
       setInfo(res.mensaje ?? 'Backup solicitado.');
-      setTimeout(() => { void load(true); }, 2000);
-    } catch (err) {
+      setTimeout(() => { void load(); }, 2000);
+    },
+    onError: (err) => {
       console.error('Error solicitando backup:', err);
       setError('No se pudo solicitar el backup.');
-    } finally {
-      setRunning(false);
-    }
+    },
+  });
+  const running = runMutation.isPending;
+  const handleRun = () => {
+    setError(null);
+    setInfo(null);
+    runMutation.mutate();
   };
 
   const handleDownload = async (b: BackupFileDTO) => {
@@ -180,21 +159,23 @@ function BackupPanel({ api, tiers, defaultTab }: BackupPanelProps) {
     }
   };
 
-  const handleDelete = async () => {
-    if (!toDelete) return;
-    setDeleting(true);
-    setError(null);
-    try {
-      await api.remove(toDelete.tier, toDelete.nombre);
-      setInfo(`Backup ${toDelete.nombre} eliminado.`);
+  const deleteMutation = useMutation({
+    mutationFn: (b: BackupFileDTO) => api.remove(b.tier, b.nombre),
+    onSuccess: (_data, b) => {
+      setInfo(`Backup ${b.nombre} eliminado.`);
       setToDelete(null);
-      await load(true);
-    } catch (err) {
+      load();
+    },
+    onError: (err, b) => {
       console.error('Error eliminando backup:', err);
-      setError(`No se pudo eliminar ${toDelete.nombre}.`);
-    } finally {
-      setDeleting(false);
-    }
+      setError(`No se pudo eliminar ${b.nombre}.`);
+    },
+  });
+  const deleting = deleteMutation.isPending;
+  const handleDelete = () => {
+    if (!toDelete) return;
+    setError(null);
+    deleteMutation.mutate(toDelete);
   };
 
   const enProgreso = status?.estadoUltimo === 'EN_PROGRESO';
@@ -219,7 +200,7 @@ function BackupPanel({ api, tiers, defaultTab }: BackupPanelProps) {
         </Stack>
       </Stack>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error || loadError}</Alert>}
       {info && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setInfo(null)}>{info}</Alert>}
       {status?.estadoUltimo === 'ERROR' && status.mensajeError && (
         <Alert severity="warning" sx={{ mb: 2 }}>
