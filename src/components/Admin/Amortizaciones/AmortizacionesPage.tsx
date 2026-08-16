@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -69,9 +70,7 @@ function fmt(n: number): string {
 
 export default function AmortizacionesPage() {
   const navigate = useNavigate();
-  const [activos, setActivos] = useState<ActivoAmortizableDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // activos/loading/error se derivan del query ['amortizacion-activos'] (ver abajo).
   const [showInactivos, setShowInactivos] = useState(false);
 
   // Form dialog
@@ -81,7 +80,6 @@ export default function AmortizacionesPage() {
 
   // Delete dialog
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; activo: ActivoAmortizableDTO | null }>({ open: false, activo: null });
-  const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Navigate to month
@@ -89,20 +87,17 @@ export default function AmortizacionesPage() {
   const [navMes, setNavMes] = useState(CURRENT_MONTH);
   const [cierreOpen, setCierreOpen] = useState(false);
 
-  const loadActivos = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await amortizacionApi.getActivos();
-      setActivos(data);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Error al cargar los activos');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadActivos(); }, [loadActivos]);
+  const queryClient = useQueryClient();
+  const activosQuery = useQuery({
+    queryKey: ['amortizacion-activos'],
+    queryFn: () => amortizacionApi.getActivos(),
+  });
+  const activos = activosQuery.data ?? [];
+  const loading = activosQuery.isPending;
+  const error = activosQuery.error
+    ? ((activosQuery.error as any)?.response?.data?.message ?? 'Error al cargar los activos')
+    : null;
+  const loadActivos = () => queryClient.invalidateQueries({ queryKey: ['amortizacion-activos'] });
 
   const handleEdit = (activo: ActivoAmortizableDTO) => {
     setSelectedActivo(activo);
@@ -110,19 +105,17 @@ export default function AmortizacionesPage() {
     setFormOpen(true);
   };
 
-  const handleDelete = async () => {
+  const deleteMutation = useMutation({
+    mutationFn: (activoId: number) => amortizacionApi.deleteActivo(activoId),
+    onSuccess: () => { setDeleteDialog({ open: false, activo: null }); loadActivos(); },
+    onError: (err: any) => setDeleteError(err?.response?.data?.message ?? 'Error al desactivar el activo'),
+  });
+  const deleting = deleteMutation.isPending;
+
+  const handleDelete = () => {
     if (!deleteDialog.activo) return;
-    setDeleting(true);
     setDeleteError(null);
-    try {
-      await amortizacionApi.deleteActivo(deleteDialog.activo.id);
-      setDeleteDialog({ open: false, activo: null });
-      loadActivos();
-    } catch (err: any) {
-      setDeleteError(err?.response?.data?.message ?? 'Error al desactivar el activo');
-    } finally {
-      setDeleting(false);
-    }
+    deleteMutation.mutate(deleteDialog.activo.id);
   };
 
   return (
@@ -171,7 +164,7 @@ export default function AmortizacionesPage() {
         </Stack>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Box display="flex" justifyContent="flex-end" mb={1}>
         <FormControlLabel

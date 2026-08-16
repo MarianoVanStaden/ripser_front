@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -20,7 +21,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import { amortizacionApi } from '../../../api/services/amortizacionApi';
-import type { ActivoAmortizableDTO, AmortizacionMensualDTO } from '../../../types';
+import type { AmortizacionMensualDTO } from '../../../types';
 import AmortizacionMesRow from './components/AmortizacionMesRow';
 import CierreMensualDialog from './components/CierreMensualDialog';
 import LoadingOverlay from '../../common/LoadingOverlay';
@@ -41,30 +42,26 @@ export default function AmortizacionMesPage() {
   const anioNum = Number(anio);
   const mesNum = Number(mes);
 
-  const [activos, setActivos] = useState<ActivoAmortizableDTO[]>([]);
-  const [detalles, setDetalles] = useState<AmortizacionMensualDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [cierreOpen, setCierreOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const queryClient = useQueryClient();
+  const mesQuery = useQuery({
+    queryKey: ['amortizacion-mes', anioNum, mesNum],
+    queryFn: async () => {
       const [activosData, detallesData] = await Promise.all([
         amortizacionApi.getActivos(),
         amortizacionApi.getDetallesMes(anioNum, mesNum),
       ]);
-      setActivos(activosData.filter((a) => a.activo));
-      setDetalles(detallesData);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Error al cargar los datos');
-    } finally {
-      setLoading(false);
-    }
-  }, [anioNum, mesNum]);
-
-  useEffect(() => { load(); }, [load]);
+      return { activos: activosData.filter((a) => a.activo), detalles: detallesData };
+    },
+  });
+  const activos = mesQuery.data?.activos ?? [];
+  const detalles = mesQuery.data?.detalles ?? [];
+  const loading = mesQuery.isPending;
+  const error = mesQuery.error
+    ? ((mesQuery.error as any)?.response?.data?.message ?? 'Error al cargar los datos')
+    : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['amortizacion-mes', anioNum, mesNum] });
 
   const detalleMap = new Map<number, AmortizacionMensualDTO>();
   detalles.forEach((d) => detalleMap.set(d.activoId, d));
@@ -98,7 +95,7 @@ export default function AmortizacionMesPage() {
         </Typography>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Grid container spacing={2} mb={3}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
