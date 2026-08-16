@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -10,7 +10,6 @@ import {
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { posicionPatrimonialApi } from '../../../api/services/posicionPatrimonialApi';
-import type { PosicionPatrimonialDTO } from '../../../types';
 import ResumenPatrimonial from './components/ResumenPatrimonial';
 import DesgloseFijo from './components/DesgloseFijo';
 import DesgloseStock from './components/DesgloseStock';
@@ -28,25 +27,17 @@ function formatFecha(iso: string): string {
 }
 
 export default function PosicionPatrimonialPage() {
-  const [data, setData] = useState<PosicionPatrimonialDTO | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await posicionPatrimonialApi.getPosicion();
-      setData(result);
-    } catch (err) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? 'Error al cargar la posición patrimonial');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  const posicionQuery = useQuery({
+    queryKey: ['posicion-patrimonial'],
+    queryFn: () => posicionPatrimonialApi.getPosicion(),
+  });
+  const data = posicionQuery.data ?? null;
+  const loading = posicionQuery.isFetching;
+  const error = posicionQuery.error
+    ? ((posicionQuery.error as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? 'Error al cargar la posición patrimonial')
+    : null;
+  const loadData = () => posicionQuery.refetch();
 
   return (
     <Box p={3}>

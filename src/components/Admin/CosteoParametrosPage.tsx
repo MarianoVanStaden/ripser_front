@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Box,
   Paper,
@@ -30,7 +31,6 @@ const CosteoParametrosPage: React.FC = () => {
   const [parametros, setParametros] = useState<ParametroSistema[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -67,9 +67,8 @@ const CosteoParametrosPage: React.FC = () => {
     setValues((prev) => ({ ...prev, [clave]: raw }));
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
+  const saveMutation = useMutation({
+    mutationFn: () => {
       const updates = parametros.map((p) => {
         const inputVal = parseFloat(values[p.clave] ?? '0');
         const decimalVal = (inputVal / 100).toFixed(4);
@@ -78,15 +77,17 @@ const CosteoParametrosPage: React.FC = () => {
           valor: decimalVal,
         });
       });
-      await Promise.all(updates);
+      return Promise.all(updates);
+    },
+    onSuccess: () => {
       setSnackbar({ open: true, message: 'Parámetros guardados correctamente.', severity: 'success' });
       loadParametros();
-    } catch {
-      setSnackbar({ open: true, message: 'Error al guardar los parámetros.', severity: 'error' });
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+    onError: () => setSnackbar({ open: true, message: 'Error al guardar los parámetros.', severity: 'error' }),
+  });
+  const saving = saveMutation.isPending;
+
+  const handleSave = () => saveMutation.mutate();
 
   return (
     <Box p={3} maxWidth={500}>
