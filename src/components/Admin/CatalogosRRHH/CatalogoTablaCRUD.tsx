@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import {
   Alert,
@@ -69,8 +70,7 @@ export default function CatalogoTablaCRUD<T extends CatalogoBase, C extends Cata
   renderExtraFields,
   buildPayload,
 }: CatalogoTablaCRUDProps<T, C>) {
-  const [rows, setRows] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
+  // rows/loading se derivan del query; error queda local para el delete.
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(false);
@@ -79,25 +79,16 @@ export default function CatalogoTablaCRUD<T extends CatalogoBase, C extends Cata
   const [editing, setEditing] = useState<T | null>(null);
   const [formState, setFormState] = useState<Partial<C>>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.list(onlyActive);
-      setRows(data);
-    } catch {
-      setError(`No se pudieron cargar los ${pluralLabel}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlyActive]);
+  const queryClient = useQueryClient();
+  const rowsQuery = useQuery({
+    queryKey: ['catalogo-crud', titulo, onlyActive],
+    queryFn: () => api.list(onlyActive),
+  });
+  const rows = rowsQuery.data ?? [];
+  const loading = rowsQuery.isPending;
+  const loadError = rowsQuery.error ? `No se pudieron cargar los ${pluralLabel}` : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['catalogo-crud', titulo, onlyActive] });
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -131,7 +122,30 @@ export default function CatalogoTablaCRUD<T extends CatalogoBase, C extends Cata
     setOpen(true);
   };
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: (payload: C) => (editing ? api.update(editing.id, payload) : api.create(payload)),
+    onSuccess: () => { invalidateCatalogosCache(); load(); setOpen(false); },
+    onError: (err: unknown) => {
+      const resp = (err as { response?: { status?: number; data?: { message?: string } } })?.response;
+      const status = resp?.status;
+      const apiMsg = resp?.data?.message ?? '';
+      const msgLower = apiMsg.toLowerCase();
+      const isDuplicate =
+        status === 409 ||
+        msgLower.includes('ya existe') ||
+        msgLower.includes('duplicate entry') ||
+        msgLower.includes('unique constraint');
+      const baseCodigo = (formState.codigo ?? '').trim();
+      if (isDuplicate) {
+        setFormError(`Ya existe otro registro con código '${baseCodigo}'`);
+      } else {
+        setFormError(apiMsg || 'No se pudo guardar');
+      }
+    },
+  });
+  const saving = saveMutation.isPending;
+
+  const handleSave = () => {
     setFormError(null);
 
     const baseCodigo = (formState.codigo ?? '').trim();
@@ -153,42 +167,18 @@ export default function CatalogoTablaCRUD<T extends CatalogoBase, C extends Cata
       } as C;
     }
 
-    setSaving(true);
-    try {
-      if (editing) await api.update(editing.id, payload);
-      else await api.create(payload);
-      invalidateCatalogosCache();
-      await load();
-      setOpen(false);
-    } catch (err: unknown) {
-      const resp = (err as { response?: { status?: number; data?: { message?: string } } })?.response;
-      const status = resp?.status;
-      const apiMsg = resp?.data?.message ?? '';
-      const msgLower = apiMsg.toLowerCase();
-      const isDuplicate =
-        status === 409 ||
-        msgLower.includes('ya existe') ||
-        msgLower.includes('duplicate entry') ||
-        msgLower.includes('unique constraint');
-      if (isDuplicate) {
-        setFormError(`Ya existe otro registro con código '${baseCodigo}'`);
-      } else {
-        setFormError(apiMsg || 'No se pudo guardar');
-      }
-    } finally {
-      setSaving(false);
-    }
+    saveMutation.mutate(payload);
   };
 
-  const handleDelete = async (row: T) => {
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(id),
+    onSuccess: () => { invalidateCatalogosCache(); load(); },
+    onError: () => setError('No se pudo desactivar el registro'),
+  });
+
+  const handleDelete = (row: T) => {
     if (!window.confirm(`¿Desactivar "${row.nombre}"?`)) return;
-    try {
-      await api.delete(row.id);
-      invalidateCatalogosCache();
-      await load();
-    } catch {
-      setError('No se pudo desactivar el registro');
-    }
+    deleteMutation.mutate(row.id);
   };
 
   return (
@@ -216,7 +206,7 @@ export default function CatalogoTablaCRUD<T extends CatalogoBase, C extends Cata
         </Stack>
       </Paper>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" sx={{ mb: 2 }}>{error || loadError}</Alert>}
 
       <TableContainer component={Paper}>
         <Table size="small">

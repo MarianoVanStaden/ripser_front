@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Tabs, Tab, Button, Stack, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, IconButton, Dialog,
@@ -37,8 +38,6 @@ interface FlatProps<T extends CatalogoFlat> {
 }
 
 function CatalogoFlatCRUD<T extends CatalogoFlat>({ titulo, api, hideCodigo, codigoLabel = 'Código' }: FlatProps<T>) {
-  const [rows, setRows] = useState<T[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -46,19 +45,17 @@ function CatalogoFlatCRUD<T extends CatalogoFlat>({ titulo, api, hideCodigo, cod
   const [form, setForm] = useState<CatalogoFlatPayload>({ codigo: '', nombre: '', activo: true });
   const [toDelete, setToDelete] = useState<T | null>(null);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      setRows(await api.list());
-      setError(null);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || `Error cargando ${titulo.toLowerCase()}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  const queryClient = useQueryClient();
+  const rowsQuery = useQuery({
+    queryKey: ['catalogo-flat', titulo],
+    queryFn: () => api.list(),
+  });
+  const rows = rowsQuery.data ?? [];
+  const loading = rowsQuery.isPending;
+  const loadError = rowsQuery.error
+    ? ((rowsQuery.error as any)?.response?.data?.message || `Error cargando ${titulo.toLowerCase()}`)
+    : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['catalogo-flat', titulo] });
 
   const handleOpenNew = () => {
     setEditing(null);
@@ -72,32 +69,31 @@ function CatalogoFlatCRUD<T extends CatalogoFlat>({ titulo, api, hideCodigo, cod
     setDialogOpen(true);
   };
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const dto = {
+        codigo: form.codigo?.trim() || null,
+        nombre: form.nombre.trim(),
+        activo: form.activo ?? true,
+      };
+      return editing ? api.update(editing.id, dto) : api.create(dto);
+    },
+    onSuccess: () => { setDialogOpen(false); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al guardar'),
+  });
+  const handleSave = () => {
     if (!form.nombre.trim()) { setError('Nombre requerido'); return; }
-    const dto = {
-      codigo: form.codigo?.trim() || null,
-      nombre: form.nombre.trim(),
-      activo: form.activo ?? true,
-    };
-    try {
-      if (editing) await api.update(editing.id, dto);
-      else await api.create(dto);
-      setDialogOpen(false);
-      await load();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error al guardar');
-    }
+    saveMutation.mutate();
   };
 
-  const handleConfirmDelete = async () => {
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(id),
+    onSuccess: () => { setToDelete(null); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al eliminar'),
+  });
+  const handleConfirmDelete = () => {
     if (!toDelete) return;
-    try {
-      await api.delete(toDelete.id);
-      setToDelete(null);
-      await load();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error al eliminar');
-    }
+    deleteMutation.mutate(toDelete.id);
   };
 
   const filtered = rows.filter(r => !search ||
@@ -117,7 +113,7 @@ function CatalogoFlatCRUD<T extends CatalogoFlat>({ titulo, api, hideCodigo, cod
         </Button>
       </Stack>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error || loadError}</Alert>}
 
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
@@ -194,7 +190,6 @@ function CatalogoFlatCRUD<T extends CatalogoFlat>({ titulo, api, hideCodigo, cod
 
 // ── Tab Países: tiene codigoIso + codigoTelefonico (campos propios) ──────────
 function PaisesTab() {
-  const [rows, setRows] = useState<Pais[]>([]);
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Pais | null>(null);
@@ -202,29 +197,37 @@ function PaisesTab() {
   const [error, setError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Pais | null>(null);
 
-  const load = async () => {
-    try { setRows(await paisesApi.list()); setError(null); }
-    catch (e: any) { setError(e?.response?.data?.message || 'Error cargando países'); }
-  };
-  useEffect(() => { load(); }, []);
+  const queryClient = useQueryClient();
+  const paisesQuery = useQuery({ queryKey: ['paises'], queryFn: () => paisesApi.list() });
+  const rows = paisesQuery.data ?? [];
+  const loadError = paisesQuery.error ? ((paisesQuery.error as any)?.response?.data?.message || 'Error cargando países') : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['paises'] });
 
   const filtered = rows.filter(r => !search || r.nombre.toLowerCase().includes(search.toLowerCase()));
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const dto = {
+        codigoIso: form.codigoIso.trim().toUpperCase() || null,
+        nombre: form.nombre.trim(),
+        codigoTelefonico: form.codigoTelefonico.trim() || null,
+        activo: form.activo,
+      };
+      return editing ? paisesApi.update(editing.id, dto) : paisesApi.create(dto);
+    },
+    onSuccess: () => { setDialogOpen(false); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al guardar'),
+  });
+  const handleSave = () => {
     if (!form.nombre.trim()) { setError('Nombre requerido'); return; }
-    const dto = {
-      codigoIso: form.codigoIso.trim().toUpperCase() || null,
-      nombre: form.nombre.trim(),
-      codigoTelefonico: form.codigoTelefonico.trim() || null,
-      activo: form.activo,
-    };
-    try {
-      if (editing) await paisesApi.update(editing.id, dto);
-      else await paisesApi.create(dto);
-      setDialogOpen(false);
-      await load();
-    } catch (e: any) { setError(e?.response?.data?.message || 'Error al guardar'); }
+    saveMutation.mutate();
   };
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => paisesApi.delete(id),
+    onSuccess: () => { setToDelete(null); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al eliminar'),
+  });
 
   return (
     <Box>
@@ -237,7 +240,7 @@ function PaisesTab() {
         </Button>
       </Stack>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error || loadError}</Alert>}
 
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
@@ -294,7 +297,7 @@ function PaisesTab() {
       </Dialog>
 
       <ConfirmDialog open={!!toDelete} onClose={() => setToDelete(null)}
-        onConfirm={async () => { if (toDelete) { await paisesApi.delete(toDelete.id); setToDelete(null); await load(); } }}
+        onConfirm={() => { if (toDelete) deleteMutation.mutate(toDelete.id); }}
         title="¿Dar de baja país?" severity="warning"
         description={toDelete ? `Se desactivará "${toDelete.nombre}".` : ''} confirmLabel="Dar de baja" />
     </Box>
@@ -303,9 +306,7 @@ function PaisesTab() {
 
 // ── Tab Provincias: dependiente de país (FK) ─────────────────────────────────
 function ProvinciasTab() {
-  const [paises, setPaises] = useState<Pais[]>([]);
   const [filtroPais, setFiltroPais] = useState<number | ''>('');
-  const [rows, setRows] = useState<Provincia[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Provincia | null>(null);
   const [form, setForm] = useState<{ paisId: number | ''; nombre: string; codigo: string; activo: boolean }>({
@@ -314,25 +315,35 @@ function ProvinciasTab() {
   const [error, setError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Provincia | null>(null);
 
-  const load = async () => {
-    try {
-      setRows(await provinciasApi.list(filtroPais || undefined));
-      setError(null);
-    } catch (e: any) { setError(e?.response?.data?.message || 'Error cargando provincias'); }
-  };
-  useEffect(() => { paisesApi.list().then(setPaises).catch(() => setPaises([])); }, []);
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filtroPais]);
+  const queryClient = useQueryClient();
+  const paisesQuery = useQuery({ queryKey: ['paises'], queryFn: () => paisesApi.list() });
+  const paises = paisesQuery.data ?? [];
+  const provinciasQuery = useQuery({
+    queryKey: ['provincias', filtroPais || null],
+    queryFn: () => provinciasApi.list(filtroPais || undefined),
+  });
+  const rows = provinciasQuery.data ?? [];
+  const loadError = provinciasQuery.error ? ((provinciasQuery.error as any)?.response?.data?.message || 'Error cargando provincias') : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['provincias', filtroPais || null] });
 
-  const handleSave = async () => {
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const dto = { paisId: Number(form.paisId), nombre: form.nombre.trim(), codigo: form.codigo.trim() || null, activo: form.activo };
+      return editing ? provinciasApi.update(editing.id, dto) : provinciasApi.create(dto);
+    },
+    onSuccess: () => { setDialogOpen(false); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al guardar'),
+  });
+  const handleSave = () => {
     if (!form.nombre.trim() || !form.paisId) { setError('País y nombre son requeridos'); return; }
-    const dto = { paisId: Number(form.paisId), nombre: form.nombre.trim(), codigo: form.codigo.trim() || null, activo: form.activo };
-    try {
-      if (editing) await provinciasApi.update(editing.id, dto);
-      else await provinciasApi.create(dto);
-      setDialogOpen(false);
-      await load();
-    } catch (e: any) { setError(e?.response?.data?.message || 'Error al guardar'); }
+    saveMutation.mutate();
   };
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => provinciasApi.delete(id),
+    onSuccess: () => { setToDelete(null); load(); },
+    onError: (e: any) => setError(e?.response?.data?.message || 'Error al eliminar'),
+  });
 
   return (
     <Box>
@@ -348,7 +359,7 @@ function ProvinciasTab() {
         </Button>
       </Stack>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {(error || loadError) && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error || loadError}</Alert>}
 
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
@@ -406,7 +417,7 @@ function ProvinciasTab() {
       </Dialog>
 
       <ConfirmDialog open={!!toDelete} onClose={() => setToDelete(null)}
-        onConfirm={async () => { if (toDelete) { await provinciasApi.delete(toDelete.id); setToDelete(null); await load(); } }}
+        onConfirm={() => { if (toDelete) deleteMutation.mutate(toDelete.id); }}
         title="¿Dar de baja provincia?" severity="warning"
         description={toDelete ? `Se desactivará "${toDelete.nombre}".` : ''} confirmLabel="Dar de baja" />
     </Box>
