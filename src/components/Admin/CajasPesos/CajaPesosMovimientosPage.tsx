@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -35,7 +36,6 @@ import { useArqueoChecks } from '../../../hooks/useArqueoChecks';
 import { usePermisos } from '../../../hooks/usePermisos';
 import { cajasPesosApi } from '../../../api/services/cajasPesosApi';
 import type {
-  CajaPesos,
   MovimientoCajaPesos,
   TipoMovimientoCajaPesos,
 } from '../../../types';
@@ -74,34 +74,24 @@ const CajaPesosMovimientosPage: React.FC = () => {
   const cajaId = Number(id);
   const navigate = useNavigate();
 
-  const [caja, setCaja] = useState<CajaPesos | null>(null);
-  const [cajaLoading, setCajaLoading] = useState(false);
-  const [cajaError, setCajaError] = useState<string | null>(null);
-
+  // caja se deriva del query ['caja-pesos-detalle', cajaId] (ver abajo).
   const [formOpen, setFormOpen] = useState(false);
   const [depositarOpen, setDepositarOpen] = useState(false);
   const [extraerOpen, setExtraerOpen] = useState(false);
   const [correccionOpen, setCorreccionOpen] = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
-  const [deactivating, setDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
 
-  const loadCaja = useCallback(async () => {
-    setCajaLoading(true);
-    setCajaError(null);
-    try {
-      const data = await cajasPesosApi.getById(cajaId);
-      setCaja(data);
-    } catch (err) {
-      setCajaError(extractError(err));
-    } finally {
-      setCajaLoading(false);
-    }
-  }, [cajaId]);
-
-  useEffect(() => {
-    loadCaja();
-  }, [loadCaja]);
+  const queryClient = useQueryClient();
+  const cajaQuery = useQuery({
+    queryKey: ['caja-pesos-detalle', cajaId],
+    queryFn: () => cajasPesosApi.getById(cajaId),
+    enabled: !!cajaId,
+  });
+  const caja = cajaQuery.data ?? null;
+  const cajaLoading = cajaQuery.isPending && !!cajaId;
+  const cajaError = cajaQuery.error ? extractError(cajaQuery.error) : null;
+  const loadCaja = () => queryClient.invalidateQueries({ queryKey: ['caja-pesos-detalle', cajaId] });
 
   const fetchMovimientos = useCallback(
     (page: number, size: number, sort: string, _filters: Record<string, unknown>) =>
@@ -131,18 +121,15 @@ const CajaPesosMovimientosPage: React.FC = () => {
     refreshMovimientos();
   };
 
-  const handleConfirmDeactivate = async () => {
-    setDeactivating(true);
+  const deactivateMutation = useMutation({
+    mutationFn: () => cajasPesosApi.deactivate(cajaId),
+    onSuccess: () => { setDeactivateOpen(false); loadCaja(); },
+    onError: (err) => setDeactivateError(extractError(err)),
+  });
+  const deactivating = deactivateMutation.isPending;
+  const handleConfirmDeactivate = () => {
     setDeactivateError(null);
-    try {
-      await cajasPesosApi.deactivate(cajaId);
-      setDeactivateOpen(false);
-      loadCaja();
-    } catch (err) {
-      setDeactivateError(extractError(err));
-    } finally {
-      setDeactivating(false);
-    }
+    deactivateMutation.mutate();
   };
 
   const activa = caja?.estado === 'ACTIVA';
