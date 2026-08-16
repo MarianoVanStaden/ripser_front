@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -36,7 +37,7 @@ import {
 } from 'recharts';
 import { provisionApi } from '../../../api/services/provisionApi';
 import { tipoProvisionApi } from '../../../api/services/tipoProvisionApi';
-import type { ResumenProvisionAnualDTO, ProvisionMensualDTO, TipoProvisionDTO } from '../../../types';
+import type { ProvisionMensualDTO, TipoProvisionDTO } from '../../../types';
 
 const MONTH_NAMES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -80,9 +81,7 @@ export default function ProvisionResumenAnualPage() {
   const [tipoId, setTipoId] = useState<number | null>(tipoIdParam ? Number(tipoIdParam) : null);
   const [anio, setAnio] = useState(anioParam ? Number(anioParam) : CURRENT_YEAR);
 
-  const [resumen, setResumen] = useState<ResumenProvisionAnualDTO | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // resumen/loading/error se derivan del query ['provision-resumen', tipoId, anio].
 
   useEffect(() => {
     let cancelled = false;
@@ -99,24 +98,17 @@ export default function ProvisionResumenAnualPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const load = useCallback(async () => {
-    if (tipoId == null) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await provisionApi.getResumenAnual(tipoId, anio);
-      setResumen(data);
-    } catch (err) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? 'Error al cargar el resumen anual');
-    } finally {
-      setLoading(false);
-    }
-  }, [tipoId, anio]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const resumenQuery = useQuery({
+    queryKey: ['provision-resumen', tipoId, anio],
+    queryFn: () => provisionApi.getResumenAnual(tipoId!, anio),
+    enabled: tipoId != null,
+  });
+  const resumen = resumenQuery.data ?? null;
+  const loading = resumenQuery.isPending && tipoId != null;
+  const error = resumenQuery.error
+    ? ((resumenQuery.error as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? 'Error al cargar el resumen anual')
+    : null;
 
   useEffect(() => {
     if (tipoId != null) {
@@ -180,7 +172,7 @@ export default function ProvisionResumenAnualPage() {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>
+        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
       )}
 
       {loading ? (

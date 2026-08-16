@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -30,53 +31,41 @@ import { formatPrice } from '../../../utils/priceCalculations';
 import NuevaLiquidacionDialog from './dialogs/NuevaLiquidacionDialog';
 
 const LiquidacionesTarjetaListPage: React.FC = () => {
-  const [items, setItems] = useState<LiquidacionTarjeta[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmar, setConfirmar] = useState<LiquidacionTarjeta | null>(null);
-  const [revirtiendo, setRevirtiendo] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await liquidacionesTarjetaApi.search({
-        page,
-        size,
-        sort: 'fechaLiquidacion,desc',
-      });
-      setItems(res.content);
-      setTotal(res.totalElements);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Error al cargar liquidaciones');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, size]);
+  const queryClient = useQueryClient();
+  const liquidacionesQuery = useQuery({
+    queryKey: ['liquidaciones-tarjeta', page, size],
+    queryFn: () => liquidacionesTarjetaApi.search({ page, size, sort: 'fechaLiquidacion,desc' }),
+  });
+  const items = liquidacionesQuery.data?.content ?? [];
+  const total = liquidacionesQuery.data?.totalElements ?? 0;
+  const loading = liquidacionesQuery.isPending;
+  const loadError = liquidacionesQuery.error
+    ? ((liquidacionesQuery.error as any)?.response?.data?.message ?? 'Error al cargar liquidaciones')
+    : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: ['liquidaciones-tarjeta', page, size] });
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const handleRevertir = async () => {
-    if (!confirmar) return;
-    setRevirtiendo(true);
-    setError(null);
-    try {
-      const reversion = await liquidacionesTarjetaApi.revertir(confirmar.id);
-      setToast(`Liquidación #${confirmar.id} revertida — nueva fila #${reversion.id}`);
+  const revertirMutation = useMutation({
+    mutationFn: (id: number) => liquidacionesTarjetaApi.revertir(id),
+    onSuccess: (reversion, id) => {
+      setToast(`Liquidación #${id} revertida — nueva fila #${reversion.id}`);
       setConfirmar(null);
       load();
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Error al revertir');
-    } finally {
-      setRevirtiendo(false);
-    }
+    },
+    onError: (err: any) => setError(err?.response?.data?.message ?? err?.message ?? 'Error al revertir'),
+  });
+  const revirtiendo = revertirMutation.isPending;
+
+  const handleRevertir = () => {
+    if (!confirmar) return;
+    setError(null);
+    revertirMutation.mutate(confirmar.id);
   };
 
   const renderEstado = (it: LiquidacionTarjeta) => {
@@ -105,9 +94,9 @@ const LiquidacionesTarjetaListPage: React.FC = () => {
         </Button>
       </Box>
 
-      {error && (
+      {(error || loadError) && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+          {error || loadError}
         </Alert>
       )}
 
