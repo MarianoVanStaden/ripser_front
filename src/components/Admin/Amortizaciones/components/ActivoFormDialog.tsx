@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -84,7 +85,6 @@ interface Props {
 
 export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved }: Props) {
   const [apiError, setApiError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [loadingVehiculos, setLoadingVehiculos] = useState(false);
 
@@ -160,10 +160,8 @@ export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved 
       .finally(() => setLoadingVehiculos(false));
   }, [open, tipoVal]);
 
-  const onSubmit = async (data: FormData) => {
-    setSaving(true);
-    setApiError(null);
-    try {
+  const guardarMutation = useMutation({
+    mutationFn: (data: FormData) => {
       const dto: CreateActivoAmortizableDTO = {
         nombre: data.nombre,
         tipo: data.tipo,
@@ -175,18 +173,18 @@ export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved 
         vidaUtilKm: data.metodo === 'POR_KILOMETROS' ? (data.vidaUtilKm ?? null) : null,
         vehiculoId: data.tipo === 'VEHICULO' ? (data.vehiculoId ?? null) : null,
       };
+      return mode === 'edit' && activo
+        ? amortizacionApi.updateActivo(activo.id, dto)
+        : amortizacionApi.createActivo(dto);
+    },
+    onSuccess: () => onSaved(),
+    onError: (err: any) => setApiError(err?.response?.data?.message ?? 'Error al guardar el activo'),
+  });
+  const saving = guardarMutation.isPending;
 
-      if (mode === 'edit' && activo) {
-        await amortizacionApi.updateActivo(activo.id, dto);
-      } else {
-        await amortizacionApi.createActivo(dto);
-      }
-      onSaved();
-    } catch (err: any) {
-      setApiError(err?.response?.data?.message ?? 'Error al guardar el activo');
-    } finally {
-      setSaving(false);
-    }
+  const onSubmit = (data: FormData) => {
+    setApiError(null);
+    guardarMutation.mutate(data);
   };
 
   return (

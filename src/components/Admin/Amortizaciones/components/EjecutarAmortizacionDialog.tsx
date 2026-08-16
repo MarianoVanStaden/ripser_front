@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -79,7 +80,6 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
   const [destinoId, setDestinoId] = useState<string>('');
   const [origenes, setOrigenes] = useState<FilaOrigen[]>([nuevaFila()]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const target = amortizacion.montoAmortizadoDolares;
@@ -190,13 +190,8 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
   const erroresFilas = origenes.map(errorFila);
   const hayErroresFilas = erroresFilas.some((e) => e !== null);
 
-  const canSubmit = !!destinoId && !hayErroresFilas && coincide && !saving;
-
-  const onSubmit = async () => {
-    if (!canSubmit) return;
-    setSaving(true);
-    setApiError(null);
-    try {
+  const ejecutarMutation = useMutation({
+    mutationFn: () => {
       const dto = {
         destinoCajaId: Number(destinoId),
         origenes: origenes.map<OrigenFondoDTO>((f) => {
@@ -208,9 +203,10 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
           };
         }),
       };
-      await amortizacionApi.ejecutarAmortizacion(amortizacion.id, dto);
-      onSuccess();
-    } catch (err: any) {
+      return amortizacionApi.ejecutarAmortizacion(amortizacion.id, dto);
+    },
+    onSuccess: () => onSuccess(),
+    onError: (err: any) => {
       const data = err?.response?.data;
       const msg =
         data?.message ??
@@ -220,9 +216,16 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
       setApiError(
         `${err?.response?.status ? `(${err.response.status}) ` : ''}${msg}`
       );
-    } finally {
-      setSaving(false);
-    }
+    },
+  });
+  const saving = ejecutarMutation.isPending;
+
+  const canSubmit = !!destinoId && !hayErroresFilas && coincide && !saving;
+
+  const onSubmit = () => {
+    if (!canSubmit) return;
+    setApiError(null);
+    ejecutarMutation.mutate();
   };
 
   const renderOpcion = (o: OpcionCaja) => (

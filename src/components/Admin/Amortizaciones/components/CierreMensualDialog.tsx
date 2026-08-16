@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -73,7 +74,6 @@ export default function CierreMensualDialog({ open, anio, mes, onClose, onSucces
   const [flujoCajaMensual, setFlujoCajaMensual] = useState('');
   const [valorDolar, setValorDolar] = useState('');
   const [kmPorActivo, setKmPorActivo] = useState<Record<string, string>>({});
-  const [calculando, setCalculando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoCierreMensualDTO | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmado, setConfirmado] = useState(false);
@@ -156,25 +156,27 @@ export default function CierreMensualDialog({ open, anio, mes, onClose, onSucces
       }
     }
 
-    setCalculando(true);
     setError(null);
-    try {
-      const res = await amortizacionApi.procesarCierreMensual({
+    cierreMutation.mutate({ flujo, dolar, kmMap });
+  };
+
+  const cierreMutation = useMutation({
+    mutationFn: (vars: { flujo: number; dolar: number; kmMap: Record<string, number> }) =>
+      amortizacionApi.procesarCierreMensual({
         anio,
         mes,
-        flujoCajaMensual: flujo,
-        valorDolar: dolar,
-        kmPorActivo: Object.keys(kmMap).length > 0 ? kmMap : undefined,
-      });
-      setResultado(res);
-    } catch (err: any) {
+        flujoCajaMensual: vars.flujo,
+        valorDolar: vars.dolar,
+        kmPorActivo: Object.keys(vars.kmMap).length > 0 ? vars.kmMap : undefined,
+      }),
+    onSuccess: (res) => setResultado(res),
+    onError: (err: any) => {
       const data = err?.response?.data;
       const msg = data?.message ?? data?.error ?? (typeof data === 'string' ? data : null) ?? 'Error al procesar el cierre mensual';
       setError(msg);
-    } finally {
-      setCalculando(false);
-    }
-  };
+    },
+  });
+  const calculando = cierreMutation.isPending;
 
   const handleConfirmar = () => {
     setConfirmado(true);
