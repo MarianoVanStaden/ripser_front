@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -72,10 +73,6 @@ const PuestoDetailPage: React.FC = () => {
   const { tieneRol } = usePermisos();
   const canWrite = tieneRol('ADMIN', 'ADMIN_EMPRESA', 'RECURSOS_HUMANOS');
 
-  const [puesto, setPuesto] = useState<PuestoResponseDTO | null>(null);
-  const [versiones, setVersiones] = useState<PuestoVersionDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
@@ -99,32 +96,27 @@ const PuestoDetailPage: React.FC = () => {
 
   const puestoId = Number(id);
 
-  useEffect(() => {
-    if (id) loadData();
-  }, [id]);
-
+  const queryClient = useQueryClient();
+  const puestoQuery = useQuery({
+    queryKey: ['puestos', puestoId],
+    queryFn: () => puestoApi.getById(puestoId),
+    enabled: !!id,
+  });
+  const puesto: PuestoResponseDTO | null = puestoQuery.data ?? null;
+  const loading = puestoQuery.isPending && !!id;
+  const error = puestoQuery.error ? 'Error al cargar el puesto' : null;
+  // Versiones: lazy — la query se habilita recién al abrir la pestaña.
+  const [versionesTabAbierta, setVersionesTabAbierta] = useState(false);
+  const versionesQuery = useQuery({
+    queryKey: ['puestos', puestoId, 'versiones'],
+    queryFn: () => puestoApi.getVersiones(puestoId).then((d) => (Array.isArray(d) ? d : [])),
+    enabled: !!id && versionesTabAbierta,
+  });
+  const versiones: PuestoVersionDTO[] = versionesQuery.data ?? [];
   const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await puestoApi.getById(puestoId);
-      setPuesto(data);
-    } catch (err) {
-      console.error('Error loading puesto:', err);
-      setError('Error al cargar el puesto');
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['puestos'] });
   };
-
-  const loadVersiones = async () => {
-    try {
-      const data = await puestoApi.getVersiones(puestoId);
-      setVersiones(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Error loading versiones:', err);
-    }
-  };
+  const loadVersiones = () => setVersionesTabAbierta(true);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);

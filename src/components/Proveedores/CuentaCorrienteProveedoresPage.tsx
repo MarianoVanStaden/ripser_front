@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Paper,
@@ -71,11 +72,31 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
   // ADMIN_EMPRESA_LIMITADO por pedido del dueño (control de arqueos). Tope: 1° del mes anterior.
   const puedeBackdatear = esAdmin || esSuperAdmin;
   const minFechaMovimiento = dayjs().startOf('month').subtract(1, 'month');
-  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const queryClient = useQueryClient();
   const [selectedProveedor, setSelectedProveedor] = useState<Proveedor | null>(null);
-  const [movimientos, setMovimientos] = useState<CuentaCorrienteProveedor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const proveedoresQuery = useQuery({
+    queryKey: ['proveedores', 'catalogo-cc'],
+    queryFn: () => proveedorApi.getAll({ size: 1000 }).then((r) => r.content),
+    staleTime: 300_000,
+  });
+  const proveedores: Proveedor[] = proveedoresQuery.data ?? [];
+  const movimientosQuery = useQuery({
+    queryKey: ['cc-proveedor', selectedProveedor?.id],
+    queryFn: () => cuentaCorrienteProveedorApi.getByProveedorId(selectedProveedor!.id),
+    enabled: !!selectedProveedor,
+  });
+  const movimientos: CuentaCorrienteProveedor[] = selectedProveedor
+    ? (movimientosQuery.data ?? [])
+    : [];
+  const loading = proveedoresQuery.isPending || (movimientosQuery.isPending && !!selectedProveedor);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false); // spinner de guardar movimiento/ajuste
+  const error = proveedoresQuery.error
+    ? 'Error al cargar los proveedores.'
+    : movimientosQuery.error
+      ? 'Error al cargar los movimientos del proveedor.'
+      : actionError;
+  const setError = setActionError;
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<TipoMovimiento | ''>('');
   const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(null);
@@ -108,59 +129,13 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  const loadInitialData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const proveedoresData = await proveedorApi.getAll({ size: 1000 });
-      setProveedores(proveedoresData.content);
-    } catch (err) {
-      setError('Error al cargar los proveedores.');
-      console.error('Error loading proveedores:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadData = async () => {
-    if (!selectedProveedor) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const movimientosData = await cuentaCorrienteProveedorApi.getByProveedorId(selectedProveedor.id);
-      setMovimientos(movimientosData);
-    } catch (err) {
-      setError('Error al cargar los movimientos del proveedor.');
-      console.error('Error loading movements:', err);
-      setMovimientos([]);
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['cc-proveedor'] });
   };
 
-  const handleProveedorChange = async (proveedorId: number) => {
-    const proveedor = proveedores.find(p => p.id === proveedorId) || null;
+  const handleProveedorChange = (proveedorId: number) => {
+    const proveedor = proveedores.find((pr) => pr.id === proveedorId) || null;
     setSelectedProveedor(proveedor);
-
-    if (proveedor) {
-      try {
-        setLoading(true);
-        const data = await cuentaCorrienteProveedorApi.getByProveedorId(proveedor.id);
-        setMovimientos(data);
-      } catch (err) {
-        setError('Error al cargar los movimientos del proveedor.');
-        console.error('Error loading movimientos:', err);
-        setMovimientos([]);
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setMovimientos([]);
-    }
   };
 
   const handleSaveMovimiento = async () => {
@@ -174,7 +149,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       // Backdate solo para ADMIN+; el backend revalida rol y tope (1° del mes anterior).
       const localDateTime = puedeBackdatear && fechaMovimiento.isValid()
         ? fechaMovimiento.format('YYYY-MM-DD') + 'T' + dayjs().format('HH:mm:ss')
@@ -205,23 +180,19 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
       setFechaMovimiento(dayjs());
       setOpenMovimientoDialog(false);
 
-      // Refresh data
-      const [movimientosData, proveedorActualizado] = await Promise.all([
-        cuentaCorrienteProveedorApi.getByProveedorId(selectedProveedor.id),
-        proveedorApi.getById(selectedProveedor.id)
-      ]);
-
-      setMovimientos(movimientosData);
+      // Refresh: invalidar movimientos + catálogo (saldo del proveedor) y
+      // actualizar el seleccionado con el dato fresco.
+      const proveedorActualizado = await proveedorApi.getById(selectedProveedor.id);
       setSelectedProveedor(proveedorActualizado);
-
-      setProveedores(prevProveedores =>
-        prevProveedores.map(p => p.id === proveedorActualizado.id ? proveedorActualizado : p)
-      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['cc-proveedor'] }),
+        queryClient.invalidateQueries({ queryKey: ['proveedores'] }),
+      ]);
     } catch (err) {
       setError('Error al guardar el movimiento.');
       console.error('Error saving movement:', err);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -240,7 +211,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       await cuentaCorrienteProveedorApi.crearAjuste({
         proveedorId: selectedProveedor.id,
         fecha: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
@@ -253,21 +224,17 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
       setNewAjuste({ tipo: 'CREDITO', importe: 0, concepto: '', numeroComprobante: '' });
       setOpenAjusteDialog(false);
 
-      // Refresh data
-      const [movimientosData, proveedorActualizado] = await Promise.all([
-        cuentaCorrienteProveedorApi.getByProveedorId(selectedProveedor.id),
-        proveedorApi.getById(selectedProveedor.id)
-      ]);
-      setMovimientos(movimientosData);
+      const proveedorActualizado = await proveedorApi.getById(selectedProveedor.id);
       setSelectedProveedor(proveedorActualizado);
-      setProveedores(prevProveedores =>
-        prevProveedores.map(p => p.id === proveedorActualizado.id ? proveedorActualizado : p)
-      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['cc-proveedor'] }),
+        queryClient.invalidateQueries({ queryKey: ['proveedores'] }),
+      ]);
     } catch (err) {
       setError('Error al guardar la corrección.');
       console.error('Error saving ajuste:', err);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -358,7 +325,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
       <Box p={{ xs: 2, sm: 3 }}>
-        <LoadingOverlay open={loading} message="Cargando cuenta corriente..." />
+        <LoadingOverlay open={loading || saving} message="Cargando cuenta corriente..." />
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
           <Typography variant="h4" component="h1" display="flex" alignItems="center" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
@@ -457,7 +424,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
               options={proveedores}
               getOptionLabel={(p) => p.razonSocial || p.nombre}
               value={selectedProveedor}
-              onChange={(_, value) => value ? handleProveedorChange(value.id) : (setSelectedProveedor(null), setMovimientos([]))}
+              onChange={(_, value) => value ? handleProveedorChange(value.id) : setSelectedProveedor(null)}
               isOptionEqualToValue={(a, b) => a.id === b.id}
               sx={{ minWidth: { xs: '100%', sm: 220 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
               size={isMobile ? 'small' : 'medium'}

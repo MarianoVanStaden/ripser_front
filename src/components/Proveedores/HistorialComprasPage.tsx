@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Paper,
@@ -96,12 +97,6 @@ interface EstadisticasCompra {
 }
 
 const HistorialComprasPage: React.FC = () => {
-  const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
-  const [_productos, setProductos] = useState<Producto[]>([]);
-  const [compras, setCompras] = useState<CompraHistorial[]>([]);
-  const [estadisticas, setEstadisticas] = useState<EstadisticasCompra | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [supplierFilter, setSupplierFilter] = useState<string>('');
   const [estadoFilter, setEstadoFilter] = useState<string>('');
@@ -119,14 +114,9 @@ const HistorialComprasPage: React.FC = () => {
   const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
   const exportMenuOpen = Boolean(exportAnchorEl);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const historialQuery = useQuery({
+    queryKey: ['compras', 'historial'],
+    queryFn: async () => {
       const [suppliersData, productosPage, comprasResponse] = await Promise.all([
         supplierApi.getAll(),
         productApi.getAll({ size: 10000 }),
@@ -134,12 +124,10 @@ const HistorialComprasPage: React.FC = () => {
       ]);
 
       const suppliersList = Array.isArray(suppliersData) ? suppliersData : [];
-      setSuppliers(suppliersList);
 
       const productosList: Producto[] = Array.isArray(productosPage)
         ? productosPage
         : (productosPage?.content ?? []);
-      setProductos(productosList);
 
       const comprasData = (comprasResponse.content ?? []) as unknown as CompraDTO[];
 
@@ -180,19 +168,20 @@ const HistorialComprasPage: React.FC = () => {
           };
         });
 
-      setCompras(comprasWithSuppliers);
+      return {
+        suppliers: suppliersList,
+        compras: comprasWithSuppliers,
+        estadisticas: calculateEstadisticas(comprasWithSuppliers, suppliersList),
+      };
+    },
+  });
+  const suppliers: ProveedorDTO[] = historialQuery.data?.suppliers ?? [];
+  const compras: CompraHistorial[] = historialQuery.data?.compras ?? [];
+  const estadisticas: EstadisticasCompra | null = historialQuery.data?.estadisticas ?? null;
+  const loading = historialQuery.isPending;
+  const error = historialQuery.error ? 'Error al cargar los datos' : null;
 
-      // Calculate statistics
-      calculateEstadisticas(comprasWithSuppliers, suppliersList);
-    } catch (err) {
-      setError('Error al cargar los datos');
-      console.error('Error loading data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const calculateEstadisticas = (comprasData: CompraHistorial[], suppliersData: ProveedorDTO[]) => {
+  const calculateEstadisticas = (comprasData: CompraHistorial[], suppliersData: ProveedorDTO[]): EstadisticasCompra => {
     const totalCompras = comprasData.length;
     const montoTotal = comprasData.reduce((sum, compra) => sum + compra.total, 0);
     const promedioMensual = montoTotal / 6; // Assuming 6 months of data
@@ -209,14 +198,14 @@ const HistorialComprasPage: React.FC = () => {
 
     const proveedorTop = suppliersData.find(s => s.id === parseInt(topSupplierId)) || null;
 
-    setEstadisticas({
+    return {
       totalCompras,
       montoTotal,
       promedioMensual,
       proveedorTop,
       categoriaTop: 'Tecnología',
       tendencia: 'subiendo'
-    });
+    };
   };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -420,7 +409,7 @@ const HistorialComprasPage: React.FC = () => {
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}
-              onClick={loadData}
+              onClick={() => historialQuery.refetch()}
               fullWidth
               sx={{ width: { xs: '100%', sm: 'auto' } }}
             >

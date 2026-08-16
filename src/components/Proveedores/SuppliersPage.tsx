@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -50,9 +51,18 @@ const SuppliersPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const suppliersQuery = useQuery({
+    queryKey: ['proveedores', 'lista'],
+    queryFn: () => supplierApi.getAll().then((data) => (Array.isArray(data) ? data : [])),
+  });
+  const suppliers: ProveedorDTO[] = suppliersQuery.data ?? [];
+  const loading = suppliersQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  void saving; // solo gatilla el flujo de guardado (sin spinner dedicado en el JSX original)
+  const error = suppliersQuery.error ? 'Error al cargar los datos' : actionError;
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<ProveedorDTO | null>(null);
@@ -95,30 +105,8 @@ const SuppliersPage: React.FC = () => {
   const [productosDialogOpen, setProductosDialogOpen] = useState(false);
   const [proveedorParaProductos, setProveedorParaProductos] = useState<ProveedorDTO | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
-    try {
-      setLoading(true);
-      const data = await supplierApi.getAll();
-      // Ensure data is an array
-      if (Array.isArray(data)) {
-        setSuppliers(data);
-        setError(null);
-      } else {
-        console.error('Unexpected data format:', data);
-        setSuppliers([]);
-        setError('Formato de datos inesperado');
-      }
-    } catch (err) {
-      setError('Error al cargar los datos');
-      console.error('Error loading data:', err);
-      setSuppliers([]); // Ensure suppliers is always an array
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['proveedores'] });
   };
 
   const validateForm = (): boolean => {
@@ -191,21 +179,20 @@ const SuppliersPage: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       if (editingSupplier) {
-        const updated = await supplierApi.update(editingSupplier.id, formData);
-        setSuppliers(suppliers.map(s => (s.id === updated.id ? updated : s)));
+        await supplierApi.update(editingSupplier.id, formData);
       } else {
-        const created = await supplierApi.create(formData);
-        setSuppliers([...suppliers, created]);
+        await supplierApi.create(formData);
       }
+      await loadData();
       setDialogOpen(false);
       setError(null);
     } catch (err) {
       setError('Error al guardar el proveedor');
       console.error('Error saving supplier:', err);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -225,7 +212,7 @@ const SuppliersPage: React.FC = () => {
     setDeleting(true);
     try {
       await supplierApi.delete(supplierToDelete.id);
-      setSuppliers(suppliers.filter(supplier => supplier.id !== supplierToDelete.id));
+      await loadData();
       notifySuccess('Proveedor eliminado correctamente');
       setDeleteDialogOpen(false);
       setSupplierToDelete(null);
