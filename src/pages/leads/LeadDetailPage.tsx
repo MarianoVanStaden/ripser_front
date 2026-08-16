@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -40,48 +41,36 @@ export const LeadDetailPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lead, setLead] = useState<LeadDTO | null>(null);
-  const [interacciones, setInteracciones] = useState<InteraccionLeadDTO[]>([]);
-  const [copySuccess, setCopySuccess] = useState(false);
-
-  useEffect(() => {
-    if (id) {
-      loadLead(parseInt(id));
-    }
-  }, [id]);
-
-  const loadLead = async (leadId: number) => {
-    try {
-      setLoading(true);
-      const data = await leadApi.getById(leadId);
-      
-      // Cargar recordatorios del lead
+  const queryClient = useQueryClient();
+  const leadIdNum = id ? parseInt(id) : undefined;
+  const leadQuery = useQuery({
+    queryKey: ['leads', leadIdNum, 'detalle'],
+    queryFn: async () => {
+      const data = await leadApi.getById(leadIdNum!);
+      // Recordatorios e interacciones: fallos parciales no rompen el detalle.
       try {
-        const recordatorios = await leadApi.getRecordatorios(leadId);
-        data.recordatorios = recordatorios;
-      } catch (err) {
-        console.error('Error al cargar recordatorios:', err);
+        data.recordatorios = await leadApi.getRecordatorios(leadIdNum!);
+      } catch {
         data.recordatorios = [];
       }
-
-      // Cargar interacciones del lead
+      let interacciones: InteraccionLeadDTO[] = [];
       try {
-        const interaccionesData = await leadApi.getInteracciones(leadId);
-        setInteracciones(interaccionesData);
-      } catch (err) {
-        console.error('Error al cargar interacciones:', err);
-        setInteracciones([]);
+        interacciones = await leadApi.getInteracciones(leadIdNum!);
+      } catch {
+        interacciones = [];
       }
-      
-      setLead(data);
-    } catch (err) {
-      console.error('Error al cargar lead:', err);
-      setError('Error al cargar el lead');
-    } finally {
-      setLoading(false);
-    }
+      return { lead: data, interacciones };
+    },
+    enabled: leadIdNum != null,
+  });
+  const lead: LeadDTO | null = leadQuery.data?.lead ?? null;
+  const interacciones: InteraccionLeadDTO[] = leadQuery.data?.interacciones ?? [];
+  const loading = leadQuery.isPending && leadIdNum != null;
+  const error = leadQuery.error ? 'Error al cargar el lead' : null;
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  const loadLead = async (_leadId?: number) => {
+    await queryClient.invalidateQueries({ queryKey: ['leads'] });
   };
 
   const handleCopyPhone = () => {
