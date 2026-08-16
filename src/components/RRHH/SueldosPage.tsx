@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -71,13 +72,8 @@ const SueldosPage: React.FC = () => {
     navigate(tabToPath(value));
   };
 
-  const [sueldos, setSueldos] = useState<Sueldo[]>([]);
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaSalarial[]>([]);
-  const [bonosProduccion, setBonosProduccion] = useState<BonoProduccionTabla[]>([]);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -93,10 +89,10 @@ const SueldosPage: React.FC = () => {
   const [selected, setSelected] = useState<Sueldo | null>(null);
   const [editingSueldo, setEditingSueldo] = useState<Sueldo | null>(null);
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const queryClient = useQueryClient();
+  const sueldosQuery = useQuery({
+    queryKey: ['sueldos', 'panel'],
+    queryFn: async () => {
       const [sueldosResp, empleadosData, cats, bonosP] = await Promise.all([
         // size alto: el backend pagina con default 20 y la grilla filtra el
         // período en cliente; sin esto se truncaba a 20 y se "perdían" sueldos.
@@ -105,44 +101,44 @@ const SueldosPage: React.FC = () => {
         categoriaSalarialApi.getAll().catch(() => []),
         bonoProduccionApi.getAll().catch(() => []),
       ]);
-
-      // sueldoApi.getAll devuelve PageResponse<Sueldo> o array según servidor
       const rawSueldos: any[] = Array.isArray(sueldosResp)
         ? sueldosResp
         : (sueldosResp as any)?.content ?? [];
-
       // Enriquecer cada sueldo con el objeto empleado completo (la API devuelve
       // empleadoId + empleadoNombre/Apellido). El form/detalle usa s.empleado.
-      const sueldosEnriquecidos: Sueldo[] = rawSueldos.map((s: any) => {
+      const sueldosEnriquecidos: Sueldo[] = rawSueldos.map((su: any) => {
         const empleado = Array.isArray(empleadosData)
-          ? empleadosData.find((e: any) => e.id === s.empleadoId)
+          ? empleadosData.find((e: any) => e.id === su.empleadoId)
           : undefined;
         return {
-          ...s,
+          ...su,
           empleado: empleado || ({
-            id: s.empleadoId,
-            nombre: s.empleadoNombre || '',
-            apellido: s.empleadoApellido || '',
-            dni: s.empleadoDni || '',
+            id: su.empleadoId,
+            nombre: su.empleadoNombre || '',
+            apellido: su.empleadoApellido || '',
+            dni: su.empleadoDni || '',
           } as Empleado),
         };
       });
-
-      setSueldos(sueldosEnriquecidos);
-      setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
-      setCategorias(Array.isArray(cats) ? cats : []);
-      setBonosProduccion(Array.isArray(bonosP) ? bonosP : []);
-    } catch (err) {
-      console.error('Error loading sueldos:', err);
-      setError('Error al cargar los datos');
-      setSueldos([]);
-      setEmpleados([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
+      return {
+        sueldos: sueldosEnriquecidos,
+        empleados: Array.isArray(empleadosData) ? empleadosData : [],
+        categorias: Array.isArray(cats) ? cats : [],
+        bonos: Array.isArray(bonosP) ? bonosP : [],
+      };
+    },
+  });
+  const sueldos: Sueldo[] = sueldosQuery.error ? [] : (sueldosQuery.data?.sueldos ?? []);
+  const empleados: Empleado[] = sueldosQuery.error ? [] : (sueldosQuery.data?.empleados ?? []);
+  const categorias: CategoriaSalarial[] = sueldosQuery.data?.categorias ?? [];
+  const bonosProduccion: BonoProduccionTabla[] = sueldosQuery.data?.bonos ?? [];
+  const loading = sueldosQuery.isPending;
+  const error = sueldosQuery.error ? 'Error al cargar los datos' : actionError;
+  const setError = setActionError;
+  const loadData = useCallback(
+    async () => { await queryClient.invalidateQueries({ queryKey: ['sueldos'] }); },
+    [queryClient],
+  );
 
   const getEmpleadoNombre = (empleado: Empleado | null | undefined) => {
     if (!empleado) return 'N/A';

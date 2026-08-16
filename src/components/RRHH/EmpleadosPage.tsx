@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -298,12 +299,38 @@ const EmpleadosPage: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { empresaId } = useTenant();
 
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [puestos, setPuestos] = useState<Puesto[]>([]);
-  const [categoriasSalariales, setCategoriasSalariales] = useState<CategoriaSalarial[]>([]);
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const panelQuery = useQuery({
+    queryKey: ['empleados', 'panel'],
+    queryFn: async () => {
+      const [empleadosData, puestosData, categoriasData] = await Promise.all([
+        employeeApi.getAllList(),
+        puestoApi.getActivos(),
+        categoriaSalarialApi.getAll().catch(() => [] as CategoriaSalarial[]),
+      ]);
+      return {
+        empleados: empleadosData,
+        puestos: puestosData,
+        categorias: Array.isArray(categoriasData) ? categoriasData : [],
+      };
+    },
+  });
+  const sucursalesQuery = useQuery({
+    queryKey: ['sucursales', empresaId, 'activas'],
+    queryFn: () => sucursalService.getByEmpresa(empresaId!)
+      .then((data) => data.filter((su) => su.estado === 'ACTIVO')),
+    enabled: !!empresaId,
+    staleTime: 300_000,
+  });
+  const empleados: Empleado[] = panelQuery.data?.empleados ?? [];
+  const puestos: Puesto[] = panelQuery.data?.puestos ?? [];
+  const categoriasSalariales: CategoriaSalarial[] = panelQuery.data?.categorias ?? [];
+  const sucursales: Sucursal[] = sucursalesQuery.data ?? [];
+  const loading = panelQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const qErr = panelQuery.error as any;
+  const error = qErr ? (qErr.response?.data?.message || 'Error al cargar los datos') : actionError;
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
 
   // Dialog states
@@ -366,43 +393,21 @@ const EmpleadosPage: React.FC = () => {
       .map(c => c.label);
   }, [formData, fase1Data, legajoData]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [empleadosData, puestosData, categoriasData] = await Promise.all([
-        employeeApi.getAllList(),
-        puestoApi.getActivos(),
-        categoriaSalarialApi.getAll().catch(() => [] as CategoriaSalarial[]),
-      ]);
-      setEmpleados(empleadosData);
-      setPuestos(puestosData);
-      setCategoriasSalariales(Array.isArray(categoriasData) ? categoriasData : []);
-      setSelectedEmpleado(prev => {
-        if (!prev) return prev;
-        const fresh = empleadosData.find((e: Empleado) => e.id === prev.id);
-        return fresh ?? prev;
-      });
-
-      if (empresaId) {
-        try {
-          const sucursalesData = await sucursalService.getByEmpresa(empresaId);
-          setSucursales(sucursalesData.filter(s => s.estado === 'ACTIVO'));
-        } catch {
-          // sucursales not critical
-        }
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al cargar los datos');
-      console.error('Error loading data:', err);
-    } finally {
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['empleados'] });
   };
+
+  // Mantener el detalle abierto en sync cuando la lista se refetchea.
+  useEffect(() => {
+    const lista = panelQuery.data?.empleados;
+    if (!lista) return;
+    setSelectedEmpleado((prev) => {
+      if (!prev) return prev;
+      const fresh = lista.find((e: Empleado) => e.id === prev.id);
+      return fresh ?? prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelQuery.data]);
 
   const handleOpenDetail = (empleado: Empleado) => {
     setSelectedEmpleado(empleado);

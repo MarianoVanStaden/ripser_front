@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -50,10 +51,20 @@ const AdelantosPage: React.FC = () => {
   const tab: TabKey = pathToTab(location.pathname);
   const handleTabChange = (_: React.SyntheticEvent, value: TabKey) => navigate(tabToPath(value));
 
-  const [adelantos, setAdelantos] = useState<Adelanto[]>([]);
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const adelantosQuery = useQuery({
+    queryKey: ['adelantos', 'panel'],
+    queryFn: async () => {
+      const [a, e] = await Promise.all([adelantoApi.getAll(), employeeApi.getAllList()]);
+      return { adelantos: Array.isArray(a) ? a : [], empleados: Array.isArray(e) ? e : [] };
+    },
+  });
+  const adelantos: Adelanto[] = adelantosQuery.data?.adelantos ?? [];
+  const empleados: Empleado[] = adelantosQuery.data?.empleados ?? [];
+  const loading = adelantosQuery.isPending;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = adelantosQuery.error ? 'Error al cargar los adelantos' : actionError;
+  const setError = setActionError;
 
   const [empleadoFilter, setEmpleadoFilter] = useState<Empleado | null>(null);
   const [periodoFilter, setPeriodoFilter] = useState<string>(dayjs().format('YYYY-MM'));
@@ -68,22 +79,10 @@ const AdelantosPage: React.FC = () => {
   const [openPago, setOpenPago] = useState(false);
   const [pagoTarget, setPagoTarget] = useState<Adelanto | null>(null);
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [a, e] = await Promise.all([adelantoApi.getAll(), employeeApi.getAllList()]);
-      setAdelantos(Array.isArray(a) ? a : []);
-      setEmpleados(Array.isArray(e) ? e : []);
-    } catch (err) {
-      console.error('Error cargando adelantos:', err);
-      setError('Error al cargar los adelantos');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  const loadData = useCallback(
+    async () => { await queryClient.invalidateQueries({ queryKey: ['adelantos'] }); },
+    [queryClient],
+  );
 
   const filtered = useMemo(() => adelantos.filter(a => {
     const okEmp = !empleadoFilter || a.empleadoId === empleadoFilter.id;

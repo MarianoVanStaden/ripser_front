@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -314,31 +315,23 @@ const DashboardRRHH: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [data, setData] = useState<DashboardRRHHDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const dashboardQuery = useQuery({
+    queryKey: ['dashboard-rrhh'],
+    queryFn: () => dashboardRRHHApi.get(),
+  });
+  const data: DashboardRRHHDTO | null = dashboardQuery.data ?? null;
+  const loading = dashboardQuery.isPending;
+  const refreshing = dashboardQuery.isFetching && !dashboardQuery.isPending;
+  const error = dashboardQuery.error
+    ? 'No se pudo cargar el dashboard. Reintentá en unos segundos.'
+    : null;
   const [periodoAsistencia, setPeriodoAsistencia] = useState<Periodo>('semanal');
 
-  const fetchData = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const dto = await dashboardRRHHApi.get();
-      setData(dto);
-    } catch (err) {
-      console.error('Error cargando dashboard RRHH', err);
-      setError('No se pudo cargar el dashboard. Reintentá en unos segundos.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const fetchData = useCallback(
+    async (_isRefresh = false) => { await queryClient.invalidateQueries({ queryKey: ['dashboard-rrhh'] }); },
+    [queryClient],
+  );
 
   const asistenciaData = useMemo(() => {
     if (!data) return [];
