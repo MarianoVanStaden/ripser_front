@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
   DialogTitle,
@@ -47,7 +48,6 @@ const toHHmmss = (hhmm: string): string => {
 
 export const HorarioLaboralDialog: React.FC<Props> = ({ open, onClose }) => {
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [horarioInicio, setHorarioInicio] = useState('08:00');
@@ -78,7 +78,25 @@ export const HorarioLaboralDialog: React.FC<Props> = ({ open, onClose }) => {
 
   const isDiaActivo = (bit: number) => ((diasMask >> bit) & 1) === 1;
 
-  const handleSave = async () => {
+  const guardarMutation = useMutation({
+    mutationFn: () => {
+      const dto: HorarioLaboralDTO = {
+        horarioInicio: toHHmmss(horarioInicio),
+        horarioFin: toHHmmss(horarioFin),
+        diasLaborables: diasMask,
+      };
+      return registroActividadApi.updateHorario(dto);
+    },
+    onSuccess: () => {
+      setSuccess(true);
+      // Dejamos el diálogo abierto unos segundos con el mensaje de éxito.
+      setTimeout(onClose, 1200);
+    },
+    onError: (err: any) => setError(err?.response?.data?.message ?? 'Error al guardar el horario'),
+  });
+  const saving = guardarMutation.isPending;
+
+  const handleSave = () => {
     setError(null);
     setSuccess(false);
 
@@ -91,22 +109,7 @@ export const HorarioLaboralDialog: React.FC<Props> = ({ open, onClose }) => {
       return;
     }
 
-    setSaving(true);
-    try {
-      const dto: HorarioLaboralDTO = {
-        horarioInicio: toHHmmss(horarioInicio),
-        horarioFin: toHHmmss(horarioFin),
-        diasLaborables: diasMask,
-      };
-      await registroActividadApi.updateHorario(dto);
-      setSuccess(true);
-      // Dejamos el diálogo abierto unos segundos con el mensaje de éxito.
-      setTimeout(onClose, 1200);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Error al guardar el horario');
-    } finally {
-      setSaving(false);
-    }
+    guardarMutation.mutate();
   };
 
   return (

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -34,7 +35,6 @@ const NuevaLiquidacionDialog: React.FC<Props> = ({ open, onClose, onSaved }) => 
   const [cajas, setCajas] = useState<CajaPesos[]>([]);
   const [loadingCajas, setLoadingCajas] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   const [cajaOrigenId, setCajaOrigenId] = useState<number | ''>('');
   const [cajaDestinoId, setCajaDestinoId] = useState<number | ''>('');
@@ -95,27 +95,26 @@ const NuevaLiquidacionDialog: React.FC<Props> = ({ open, onClose, onSaved }) => 
   if (comision < 0) errores.push('La comisión no puede ser negativa');
   if (comision > montoBruto) errores.push('La comisión no puede superar al bruto');
 
+  const liquidarMutation = useMutation({
+    mutationFn: () => liquidacionesTarjetaApi.liquidar({
+      cajaOrigenId: cajaOrigenId as number,
+      cajaDestinoId: cajaDestinoId as number,
+      fechaLiquidacion,
+      montoBruto,
+      comision,
+      observaciones: observaciones || undefined,
+    }),
+    onSuccess: () => onSaved(),
+    onError: (err: any) => setApiError(err?.response?.data?.message ?? err?.message ?? 'Error al liquidar'),
+  });
+  const saving = liquidarMutation.isPending;
+
   const puedeGuardar = errores.length === 0 && !saving;
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!puedeGuardar) return;
-    setSaving(true);
     setApiError(null);
-    try {
-      await liquidacionesTarjetaApi.liquidar({
-        cajaOrigenId: cajaOrigenId as number,
-        cajaDestinoId: cajaDestinoId as number,
-        fechaLiquidacion,
-        montoBruto,
-        comision,
-        observaciones: observaciones || undefined,
-      });
-      onSaved();
-    } catch (err: any) {
-      setApiError(err?.response?.data?.message ?? err?.message ?? 'Error al liquidar');
-    } finally {
-      setSaving(false);
-    }
+    liquidarMutation.mutate();
   };
 
   return (
