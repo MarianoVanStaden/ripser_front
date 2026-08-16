@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Button,
@@ -72,7 +73,6 @@ const schema = yup.object({
 });
 
 const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], onClose, onSaved }) => {
-  const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const { control, handleSubmit, formState: { errors }, reset, watch, setValue } =
@@ -129,10 +129,8 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], on
     [metodosWatch],
   );
 
-  const onSubmit = async (data: FormData) => {
-    setSaving(true);
-    setApiError(null);
-    try {
+  const guardarMutation = useMutation({
+    mutationFn: (data: FormData) => {
       const metodosAceptados: CajaMetodoPagoConfig[] = METODOS_ORDEN
         .filter((m) => data.metodos[m]?.acepta)
         .map((m) => ({ metodoPago: m, esDefault: !!data.metodos[m]?.esDefault }));
@@ -143,18 +141,19 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], on
         sucursalId: data.sucursalId ? Number(data.sucursalId) : undefined,
         metodosAceptados,
       };
-      if (mode === 'edit' && caja) {
-        // tipo es inmutable: el back lo ignora en update, no lo enviamos.
-        await cajasPesosApi.update(caja.id, dto);
-      } else {
-        await cajasPesosApi.create({ ...dto, tipo: data.tipo });
-      }
-      onSaved();
-    } catch (err) {
-      setApiError(extractError(err));
-    } finally {
-      setSaving(false);
-    }
+      // tipo es inmutable: el back lo ignora en update, no lo enviamos.
+      return mode === 'edit' && caja
+        ? cajasPesosApi.update(caja.id, dto)
+        : cajasPesosApi.create({ ...dto, tipo: data.tipo });
+    },
+    onSuccess: () => onSaved(),
+    onError: (err) => setApiError(extractError(err)),
+  });
+  const saving = guardarMutation.isPending;
+
+  const onSubmit = (data: FormData) => {
+    setApiError(null);
+    guardarMutation.mutate(data);
   };
 
   const tieneDefault = (m: MetodoPago) => !!metodosWatch?.[m]?.esDefault;

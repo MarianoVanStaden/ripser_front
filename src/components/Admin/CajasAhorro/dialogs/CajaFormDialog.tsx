@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Button,
@@ -58,7 +59,6 @@ const schema = yup.object({
 });
 
 const CajaFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], onClose, onSaved }) => {
-  const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const { control, handleSubmit, formState: { errors }, reset, watch, setValue } =
@@ -111,10 +111,8 @@ const CajaFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], onClose
     [metodosWatch],
   );
 
-  const onSubmit = async (data: FormData) => {
-    setSaving(true);
-    setApiError(null);
-    try {
+  const guardarMutation = useMutation({
+    mutationFn: (data: FormData) => {
       const metodosAceptados: CajaMetodoPagoConfig[] = METODOS_ORDEN_USD
         .filter((m) => data.metodos[m]?.acepta)
         .map((m) => ({ metodoPago: m, esDefault: !!data.metodos[m]?.esDefault }));
@@ -125,17 +123,18 @@ const CajaFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], onClose
         sucursalId: data.sucursalId ? Number(data.sucursalId) : undefined,
         metodosAceptados,
       };
-      if (mode === 'edit' && caja) {
-        await cajasAhorroApi.update(caja.id, dto);
-      } else {
-        await cajasAhorroApi.create(dto);
-      }
-      onSaved();
-    } catch (err) {
-      setApiError(extractError(err));
-    } finally {
-      setSaving(false);
-    }
+      return mode === 'edit' && caja
+        ? cajasAhorroApi.update(caja.id, dto)
+        : cajasAhorroApi.create(dto);
+    },
+    onSuccess: () => onSaved(),
+    onError: (err) => setApiError(extractError(err)),
+  });
+  const saving = guardarMutation.isPending;
+
+  const onSubmit = (data: FormData) => {
+    setApiError(null);
+    guardarMutation.mutate(data);
   };
 
   return (

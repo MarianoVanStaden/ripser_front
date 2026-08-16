@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -84,7 +85,6 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
   const [origenes, setOrigenes] = useState<FilaOrigen[]>([nuevaFila()]);
 
   const [apiError, setApiError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   // Reset al abrir
   useEffect(() => {
@@ -190,6 +190,22 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
   const hayErroresFilas = erroresFilas.some((e) => e !== null);
 
   const tcValido = !isNaN(tc) && tc > 0;
+  const convertirMutation = useMutation({
+    mutationFn: () => amortizacionApi.convertirUsd(selected!.amortizacionMensualId, {
+      montoPesosTotal: round2(totalIngresado),
+      tipoCambio: round2(tc),
+      destinoCajaUsdId: Number(destinoId),
+      origenes: origenes.map<OrigenConversionItemDTO>((f) => ({
+        cajaId: Number(f.cajaId),
+        monto: round2(parseFloat(f.monto)),
+      })),
+      descripcion: descripcion || undefined,
+    }),
+    onSuccess: () => onSuccess(),
+    onError: (err) => setApiError(extractError(err)),
+  });
+  const saving = convertirMutation.isPending;
+
   const canSubmit =
     !!selected &&
     !!destinoId &&
@@ -199,28 +215,10 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
     totalIngresado > 0 &&
     !saving;
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     if (!canSubmit || !selected) return;
-    setSaving(true);
     setApiError(null);
-    try {
-      const montoPesosTotal = round2(totalIngresado);
-      await amortizacionApi.convertirUsd(selected.amortizacionMensualId, {
-        montoPesosTotal,
-        tipoCambio: round2(tc),
-        destinoCajaUsdId: Number(destinoId),
-        origenes: origenes.map<OrigenConversionItemDTO>((f) => ({
-          cajaId: Number(f.cajaId),
-          monto: round2(parseFloat(f.monto)),
-        })),
-        descripcion: descripcion || undefined,
-      });
-      onSuccess();
-    } catch (err) {
-      setApiError(extractError(err));
-    } finally {
-      setSaving(false);
-    }
+    convertirMutation.mutate();
   };
 
   return (

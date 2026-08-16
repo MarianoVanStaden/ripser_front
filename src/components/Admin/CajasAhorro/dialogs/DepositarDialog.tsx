@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Button,
@@ -52,7 +53,6 @@ const schema = yup.object({
 });
 
 const DepositarDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess }) => {
-  const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const {
@@ -79,23 +79,22 @@ const DepositarDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess }) =>
   const tc = parseFloat(valorDolarVal);
   const showPreview = !isNaN(monto) && monto > 0 && !isNaN(tc) && tc > 0;
 
-  const onSubmit = async (data: FormData) => {
+  const depositarMutation = useMutation({
+    mutationFn: (data: FormData) => cajasAhorroApi.depositar(caja!.id, {
+      montoUsd: parseFloat(data.montoUsd),
+      valorDolar: parseFloat(data.valorDolar),
+      fecha: data.fecha,
+      descripcion: data.descripcion || undefined,
+    }),
+    onSuccess: () => onSuccess(),
+    onError: (err) => setApiError(extractError(err)),
+  });
+  const saving = depositarMutation.isPending;
+
+  const onSubmit = (data: FormData) => {
     if (!caja) return;
-    setSaving(true);
     setApiError(null);
-    try {
-      await cajasAhorroApi.depositar(caja.id, {
-        montoUsd: parseFloat(data.montoUsd),
-        valorDolar: parseFloat(data.valorDolar),
-        fecha: data.fecha,
-        descripcion: data.descripcion || undefined,
-      });
-      onSuccess();
-    } catch (err) {
-      setApiError(extractError(err));
-    } finally {
-      setSaving(false);
-    }
+    depositarMutation.mutate(data);
   };
 
   return (

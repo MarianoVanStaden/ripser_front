@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Button,
@@ -45,7 +46,6 @@ const schema = yup.object({
 });
 
 const ExtraerPesosDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess }) => {
-  const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const saldo = caja?.saldoActual ?? 0;
@@ -67,22 +67,21 @@ const ExtraerPesosDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess })
     }
   }, [open, reset]);
 
-  const onSubmit = async (data: FormData) => {
+  const extraerMutation = useMutation({
+    mutationFn: (data: FormData) => cajasPesosApi.extraer(caja!.id, {
+      monto: parseFloat(data.monto),
+      fecha: data.fecha,
+      descripcion: data.descripcion || undefined,
+    }),
+    onSuccess: () => onSuccess(),
+    onError: (err) => setApiError(extractError(err)),
+  });
+  const saving = extraerMutation.isPending;
+
+  const onSubmit = (data: FormData) => {
     if (!caja) return;
-    setSaving(true);
     setApiError(null);
-    try {
-      await cajasPesosApi.extraer(caja.id, {
-        monto: parseFloat(data.monto),
-        fecha: data.fecha,
-        descripcion: data.descripcion || undefined,
-      });
-      onSuccess();
-    } catch (err) {
-      setApiError(extractError(err));
-    } finally {
-      setSaving(false);
-    }
+    extraerMutation.mutate(data);
   };
 
   return (

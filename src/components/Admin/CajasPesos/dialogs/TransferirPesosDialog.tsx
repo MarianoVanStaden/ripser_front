@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -52,7 +53,6 @@ const TransferirPesosDialog: React.FC<Props> = ({
   const [fecha, setFecha] = useState<string>(todayString());
   const [descripcion, setDescripcion] = useState<string>('');
 
-  const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,6 +102,19 @@ const TransferirPesosDialog: React.FC<Props> = ({
   const mismasCajas = origenId !== '' && origenId === destinoId;
   const origenOverdraft = saldoOrigenPost != null && saldoOrigenPost < 0;
 
+  const transferirMutation = useMutation({
+    mutationFn: () => cajasPesosApi.transferir({
+      cajaOrigenId: Number(origenId),
+      cajaDestinoId: Number(destinoId),
+      monto: round2(montoNum),
+      descripcion: descripcion || undefined,
+      fecha: fecha || undefined,
+    }),
+    onSuccess: () => onSuccess(),
+    onError: (err) => setApiError(extractError(err)),
+  });
+  const saving = transferirMutation.isPending;
+
   const canSubmit =
     !!origenId &&
     !!destinoId &&
@@ -109,24 +122,10 @@ const TransferirPesosDialog: React.FC<Props> = ({
     montoValido &&
     !saving;
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     if (!canSubmit) return;
-    setSaving(true);
     setApiError(null);
-    try {
-      await cajasPesosApi.transferir({
-        cajaOrigenId: Number(origenId),
-        cajaDestinoId: Number(destinoId),
-        monto: round2(montoNum),
-        descripcion: descripcion || undefined,
-        fecha: fecha || undefined,
-      });
-      onSuccess();
-    } catch (err) {
-      setApiError(extractError(err));
-    } finally {
-      setSaving(false);
-    }
+    transferirMutation.mutate();
   };
 
   return (

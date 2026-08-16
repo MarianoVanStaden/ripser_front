@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
   Button,
@@ -44,7 +45,6 @@ const schema = yup.object({
 });
 
 const CorreccionPesosDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess }) => {
-  const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const saldo = caja?.saldoActual ?? 0;
@@ -70,21 +70,20 @@ const CorreccionPesosDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess
   const objetivoNum = parseFloat(saldoObjetivoRaw ?? '');
   const delta = !isNaN(objetivoNum) ? objetivoNum - saldo : null;
 
-  const onSubmit = async (data: FormData) => {
+  const corregirMutation = useMutation({
+    mutationFn: (data: FormData) => cajasPesosApi.corregir(caja!.id, {
+      saldoObjetivo: parseFloat(data.saldoObjetivo),
+      motivo: data.motivo.trim(),
+    }),
+    onSuccess: () => onSuccess(),
+    onError: (err) => setApiError(extractError(err)),
+  });
+  const saving = corregirMutation.isPending;
+
+  const onSubmit = (data: FormData) => {
     if (!caja) return;
-    setSaving(true);
     setApiError(null);
-    try {
-      await cajasPesosApi.corregir(caja.id, {
-        saldoObjetivo: parseFloat(data.saldoObjetivo),
-        motivo: data.motivo.trim(),
-      });
-      onSuccess();
-    } catch (err) {
-      setApiError(extractError(err));
-    } finally {
-      setSaving(false);
-    }
+    corregirMutation.mutate(data);
   };
 
   return (
