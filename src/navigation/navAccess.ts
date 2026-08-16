@@ -307,7 +307,6 @@ export const supervisorAllowedPaths = [
   // CLIENTES
   '/clientes/gestion',
   '/clientes/carpeta',
-  '/clientes/agenda',
   '/clientes/cuenta-corriente',
   // LEADS — VENDEDOR los ve; SUPERVISOR además ve Métricas
   '/leads',

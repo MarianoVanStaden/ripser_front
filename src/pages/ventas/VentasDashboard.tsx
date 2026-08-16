@@ -1061,15 +1061,6 @@ export const VentasDashboard = () => {
             </Button>
             <Button
               variant="outlined"
-              startIcon={<PhoneIcon />}
-              onClick={() => navigate('/clientes/agenda')}
-              sx={{ py: 1.5, textTransform: 'none' }}
-              fullWidth
-            >
-              Agenda Visitas
-            </Button>
-            <Button
-              variant="outlined"
               startIcon={<TrendingUpIcon />}
               onClick={() => navigate('/leads')}
               sx={{ py: 1.5, textTransform: 'none' }}

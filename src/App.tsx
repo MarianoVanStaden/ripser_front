@@ -136,7 +136,6 @@ const TenantSelector = lazyNamed(() => import('./components/Tenant/TenantSelecto
 const ClientesPage = lazy(() => import('./components/Clientes/ClientesPage'));
 const ClienteFormPage = lazy(() => import('./components/Clientes/ClienteFormPage'));
 const ClienteDetailPage = lazy(() => import('./components/Clientes/ClienteDetailPage'));
-const AgendaVisitasPage = lazy(() => import('./components/Clientes/AgendaVisitasPage'));
 const CarpetaClientePage = lazy(() => import('./components/Clientes/CarpetaClientePage'));
 const CarpetaClienteSelector = lazy(() => import('./components/Clientes/CarpetaClienteSelector'));
 const CuentaCorrientePage = lazy(() => import('./components/Clientes/CuentaCorrientePage'));
@@ -393,7 +392,6 @@ function App() {
                   <Route path="clientes/detalle/:id" element={priv(<ClienteDetailPage />)} />
                   <Route path="clientes/carpeta" element={priv(<CarpetaClienteSelector />)} />
                   <Route path="clientes/carpeta/:id" element={priv(<CarpetaClientePage />)} />
-                  <Route path="clientes/agenda" element={priv(<AgendaVisitasPage />)} />
                   <Route path="clientes/cuenta-corriente" element={priv(<CuentaCorrientePage />)} />
                   {/* PRÉSTAMOS */}
                   <Route path="prestamos/resumen" element={priv(<PrestamosResumenPage />)} />

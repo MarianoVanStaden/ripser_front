@@ -31,7 +31,6 @@ import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import InsightsIcon from '@mui/icons-material/Insights';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
-import EventIcon from '@mui/icons-material/Event';
 import CreditScoreIcon from '@mui/icons-material/CreditScore';
 import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
@@ -118,7 +117,6 @@ export const navigation: NavModule[] = [
       { text: 'Métricas de Leads', icon: <InsightsIcon />, path: '/leads/metricas' },
       { text: 'Gestión Clientes', icon: <PeopleIcon />, path: '/clientes/gestion' },
       { text: 'Carpeta Cliente', icon: <FolderSharedIcon />, path: '/clientes/carpeta' },
-      { text: 'Agenda Visitas', icon: <EventIcon />, path: '/clientes/agenda' },
       { text: 'Cuenta Corriente', icon: <AccountBalanceWalletIcon />, path: '/clientes/cuenta-corriente' },
     ],
   },
