@@ -53,6 +53,7 @@ export default function EnvioDialog({ open, onClose, cantidadInicial, onConfirm 
       cantidad: cant,
       precioUnitario: precioUnit,
       subtotal: precioUnit * cant,
+      especial: false,
     });
     onClose();
   };

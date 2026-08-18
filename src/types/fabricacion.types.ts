@@ -186,6 +186,8 @@ export interface EquipoFabricadoListDTO {
   observaciones?: string;    // e.g. "Color previsto: PLATA (detalle #354)" for PENDIENTE_TERMINACION bases
   /** Color previsto de una base reservada sin pintar (color = null). Derivado server-side de observaciones. Solo display. */
   colorPrevisto?: string | null;
+  /** Marca "Especial" heredada de la línea de venta (particularidades de fabricación). */
+  especial?: boolean;
   cantidad: number;
   asignado: boolean;
   estadoAsignacion?: EstadoAsignacionEquipo;
@@ -215,6 +217,7 @@ export interface EquipoFabricadoFilterParams {
   colorId?: number;
   medidaId?: number;
   asignado?: boolean;
+  especial?: boolean;
   search?: string;
 }
 

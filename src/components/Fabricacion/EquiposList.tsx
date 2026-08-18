@@ -539,16 +539,6 @@ const EquiposList: React.FC = () => {
       ),
     },
     {
-      field: 'codigoVenta',
-      headerName: 'Cód. Venta',
-      width: 130,
-      renderCell: (params: GridRenderCellParams) => (
-        params.value
-          ? <Typography variant="body2" fontFamily="monospace">{params.value}</Typography>
-          : <Typography variant="body2" color="text.disabled">—</Typography>
-      ),
-    },
-    {
       field: 'modelo',
       headerName: 'Modelo',
       flex: 1,
@@ -588,6 +578,19 @@ const EquiposList: React.FC = () => {
         }
         return <Typography variant="body2">-</Typography>;
       },
+    },
+    {
+      field: 'especial',
+      headerName: 'Especial',
+      width: 100,
+      align: 'center',
+      headerAlign: 'center',
+      sortable: false,
+      renderCell: (params: GridRenderCellParams) => (
+        params.value
+          ? <Chip size="small" color="warning" label="Especial" sx={{ fontWeight: 700 }} />
+          : <Typography variant="body2" color="text.disabled">—</Typography>
+      ),
     },
     {
       field: 'estado',

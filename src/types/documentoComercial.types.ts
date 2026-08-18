@@ -196,6 +196,7 @@ export interface DetalleDocumento {
   descuento?: number;
   subtotal: number;
   descripcion?: string; // Optional description for the item
+  especial?: boolean; // Marca "Especial" para líneas EQUIPO
 
   // For EQUIPO items in Factura - list of assigned equipos
   equiposFabricadosIds?: number[];
@@ -223,6 +224,7 @@ export interface DetalleDocumentoDTO {
   descuento?: number;
   subtotal?: number;
   descripcion?: string;
+  especial?: boolean; // Marca "Especial" para líneas EQUIPO
 
   // For EQUIPO items in Factura - list of assigned equipos
   equiposFabricadosIds?: number[];

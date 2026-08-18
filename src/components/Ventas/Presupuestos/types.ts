@@ -49,6 +49,8 @@ export interface DetalleForm {
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
+  /** Marca "Especial": la línea EQUIPO tiene particularidades de fabricación. */
+  especial: boolean;
 }
 
 export type DestinatarioMode = 'CLIENTE' | 'LEAD';

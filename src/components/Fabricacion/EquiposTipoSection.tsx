@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Box, Button, TextField, MenuItem, Chip, Typography, Stack,
-  Accordion, AccordionSummary, AccordionDetails, Checkbox,
+  Accordion, AccordionSummary, AccordionDetails, Checkbox, FormControlLabel,
   FormControl, InputLabel, Select, OutlinedInput, ListItemText, InputAdornment,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
@@ -76,6 +76,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
   const [estadosAsignacionFilter, setEstadosAsignacionFilter] = useState<EstadoAsignacionEquipo[]>([]);
   const [colorFilter, setColorFilter] = useState<number | ''>('');
   const [medidaFilter, setMedidaFilter] = useState<number | ''>('');
+  const [especialFilter, setEspecialFilter] = useState(false);
   const [modeloInput, setModeloInput] = useState('');
   const [modeloFilter, setModeloFilter] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -93,7 +94,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
   // Al cambiar cualquier filtro, volver a la página 0.
   useEffect(() => {
     setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
-  }, [estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter, modeloFilter, searchFilter]);
+  }, [estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter, especialFilter, modeloFilter, searchFilter]);
 
   // Lista paginada server-side de la sección. El padre refresca tras cada
   // mutación invalidando ['equipos'].
@@ -105,6 +106,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
       estadosAsignacion: estadosAsignacionFilter,
       colorId: colorFilter === '' ? undefined : colorFilter,
       medidaId: medidaFilter === '' ? undefined : medidaFilter,
+      especial: especialFilter ? true : undefined,
       modelo: modeloFilter || undefined,
       search: searchFilter || undefined,
     }],
@@ -118,6 +120,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
       estadosAsignacion: estadosAsignacionFilter.length ? estadosAsignacionFilter : undefined,
       colorId: colorFilter === '' ? undefined : colorFilter,
       medidaId: medidaFilter === '' ? undefined : medidaFilter,
+      especial: especialFilter ? true : undefined,
       search: searchFilter || undefined,
     }),
     placeholderData: keepPreviousData,
@@ -128,13 +131,14 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
 
   const hayFiltrosActivos =
     estadosFilter.length > 0 || estadosAsignacionFilter.length > 0 ||
-    colorFilter !== '' || medidaFilter !== '' || !!modeloInput || !!searchInput;
+    colorFilter !== '' || medidaFilter !== '' || especialFilter || !!modeloInput || !!searchInput;
 
   const limpiarFiltros = () => {
     setEstadosFilter([]);
     setEstadosAsignacionFilter([]);
     setColorFilter('');
     setMedidaFilter('');
+    setEspecialFilter(false);
     setModeloInput('');
     setSearchInput('');
     setModeloFilter('');
@@ -245,6 +249,17 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
               <MenuItem key={m.id} value={m.id}>{m.nombre}</MenuItem>
             ))}
           </TextField>
+          <FormControlLabel
+            sx={{ alignSelf: 'center', ml: 0 }}
+            control={
+              <Checkbox
+                size="small"
+                checked={especialFilter}
+                onChange={(e) => setEspecialFilter(e.target.checked)}
+              />
+            }
+            label="Solo especiales"
+          />
           {hayFiltrosActivos && (
             <Button
               variant="text"

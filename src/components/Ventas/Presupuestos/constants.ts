@@ -29,4 +29,5 @@ export const initialDetalle: DetalleForm = {
   cantidad: 1,
   precioUnitario: 0,
   subtotal: 0,
+  especial: false,
 };

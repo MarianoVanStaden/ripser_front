@@ -38,6 +38,7 @@ export default function RevestimientoDialog({ open, onClose, cantidadInicial, on
       cantidad: cant,
       precioUnitario: precio,
       subtotal: precio * cant,
+      especial: false,
     });
     onClose();
   };

@@ -14,6 +14,7 @@ import {
   DialogActions,
   TextField,
   MenuItem,
+  Checkbox,
   Chip,
   Tooltip,
   Paper,
@@ -201,6 +202,7 @@ export default function PresupuestoFormDialog({
               cantidad: detalle.cantidad,
               precioUnitario: detalle.precioUnitario,
               subtotal: detalle.subtotal,
+              especial: detalle.especial ?? false,
             }))
           : []
       );
@@ -375,7 +377,7 @@ export default function PresupuestoFormDialog({
     setHasUnsavedChanges(true);
   }, []);
 
-  const updateDetalle = useCallback((index: number, field: keyof DetalleForm, value: string | number) => {
+  const updateDetalle = useCallback((index: number, field: keyof DetalleForm, value: string | number | boolean) => {
     if (readOnly) return;
     setDetalles((prev) => {
       const newDetalles = [...prev];
@@ -403,6 +405,8 @@ export default function PresupuestoFormDialog({
         detalle.colorNombre = undefined; // re-derived below from cache when needed
       } else if (field === "descripcion") {
         detalle.descripcion = value as string;
+      } else if (field === "especial") {
+        detalle.especial = Boolean(value);
       } else if (field === "cantidad") {
         detalle.cantidad = Number(value) || 0;
       } else if (field === "precioUnitario") {
@@ -517,6 +521,7 @@ export default function PresupuestoFormDialog({
         } else if (d.tipoItem === 'EQUIPO') {
           baseDetalle.recetaId = Number(d.recetaId);
           baseDetalle.colorId = d.colorId ?? undefined;
+          baseDetalle.especial = d.especial ?? false;
           // medida no se envía: el backend la deriva de la receta.
         }
         // ENVIO/REVESTIMIENTO: no productoId/recetaId — descripcion ya está en baseDetalle.
@@ -1178,6 +1183,7 @@ export default function PresupuestoFormDialog({
                     {!readOnly && !editingPresupuesto && <TableCell sx={{ minWidth: 80 }}>Tipo</TableCell>}
                     <TableCell sx={{ minWidth: 220 }}>Producto/Equipo</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Color</TableCell>
+                    <TableCell sx={{ minWidth: 70 }} align="center">Especial</TableCell>
                     <TableCell sx={{ minWidth: 60 }}>Medida</TableCell>
                     <TableCell sx={{ minWidth: 100 }}>Cantidad</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Precio Unit.</TableCell>
@@ -1297,6 +1303,19 @@ export default function PresupuestoFormDialog({
                             />
                           )}
                         </TableCell>
+                        <TableCell align="center">
+                          {detalle.tipoItem === 'EQUIPO' ? (
+                            <Checkbox
+                              size="small"
+                              checked={detalle.especial ?? false}
+                              onChange={(e) => updateDetalle(index, "especial", e.target.checked)}
+                              disabled={readOnly || !!editingPresupuesto}
+                              inputProps={{ 'aria-label': 'Marcar equipo como especial' }}
+                            />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">—</Typography>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Typography variant="body2">
                             {isSpecialItem ? '—' : (detalle.medidaNombre || '-')}
@@ -1363,7 +1382,7 @@ export default function PresupuestoFormDialog({
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={readOnly || editingPresupuesto ? 7 : 9} align="center">
+                      <TableCell colSpan={readOnly || editingPresupuesto ? 8 : 10} align="center">
                         No hay detalles para este presupuesto.
                       </TableCell>
                     </TableRow>

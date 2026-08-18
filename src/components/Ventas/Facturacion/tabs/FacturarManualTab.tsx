@@ -362,6 +362,7 @@ const FacturarManualTab: React.FC<Props> = ({
                 onRemove={onRemoveCartItem}
                 products={products}
                 recetas={recetas}
+                showEspecial
               />
             ) : (
               <Paper sx={{ p: 3, textAlign: 'center', width: '100%' }}>

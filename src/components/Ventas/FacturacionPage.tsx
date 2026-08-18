@@ -666,7 +666,7 @@ const FacturacionPage = () => {
     }
   }, []);
 
-  const updateCartItem = async (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento'|'colorId', value: any) => {
+  const updateCartItem = async (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento'|'colorId'|'especial', value: any) => {
     const newCart = [...cart];
     const item = { ...newCart[index] };
 
@@ -764,6 +764,8 @@ const FacturacionPage = () => {
       item.precioManualmenteModificado = true;
     } else if (field === 'descuento') {
       item.descuento = Math.min(100, Math.max(0, Number(value) || 0));
+    } else if (field === 'especial') {
+      item.especial = Boolean(value);
     }
 
     newCart[index] = item;
@@ -902,6 +904,7 @@ const FacturacionPage = () => {
         detalle.descripcionEquipo = equipoDesc;
         detalle.descripcion = equipoDesc;
         if (item.colorId != null) detalle.colorId = item.colorId;
+        detalle.especial = item.especial ?? false;
       } else if (item.tipoItem === 'ENVIO') {
         detalle.descripcion = item.descripcion || 'Envío';
       } else if (item.tipoItem === 'REVESTIMIENTO') {
@@ -954,6 +957,7 @@ const FacturacionPage = () => {
         precioUnitario: item.precioUnitario,
         descuento: item.descuento || 0,
         subtotal: 0,
+        especial: item.especial ?? false,
         ...(item.colorId != null && {
           color: { id: item.colorId, nombre: item.colorNombre || '' } as any,
         }),

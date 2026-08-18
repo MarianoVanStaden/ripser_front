@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
   IconButton,
   MenuItem,
@@ -33,6 +34,7 @@ export const ProductsTable = React.memo(
     editable = true,
     products,
     recetas,
+    showEspecial = false,
   }: {
     items: CartItem[] | NotaCartItem[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,6 +43,8 @@ export const ProductsTable = React.memo(
     editable?: boolean;
     products: Producto[];
     recetas: RecetaFabricacionDTO[];
+    /** Muestra la columna "Especial" (checkbox por línea EQUIPO). Solo en factura directa. */
+    showEspecial?: boolean;
   }) => {
     type TipoEquipoFiltro = '' | 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO';
     const [tipoEquipoFiltro, setTipoEquipoFiltro] = React.useState<TipoEquipoFiltro>('');
@@ -106,6 +110,9 @@ export const ProductsTable = React.memo(
                 {editable && <TableCell sx={{ minWidth: { xs: 100, md: 120 } }}>Tipo</TableCell>}
                 <TableCell sx={{ minWidth: { xs: 180, md: 220 } }}>Producto/Equipo</TableCell>
                 <TableCell sx={{ minWidth: { xs: 90, md: 100 } }}>Color</TableCell>
+                {showEspecial && (
+                  <TableCell align="center" sx={{ minWidth: { xs: 70, md: 80 } }}>Especial</TableCell>
+                )}
                 <TableCell sx={{ minWidth: { xs: 90, md: 100 } }}>Medida</TableCell>
                 <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Cantidad</TableCell>
                 <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Precio Unit.</TableCell>
@@ -233,6 +240,21 @@ export const ProductsTable = React.memo(
                         <Typography>{itemAny.colorNombre || '-'}</Typography>
                       )}
                     </TableCell>
+                    {showEspecial && (
+                      <TableCell align="center">
+                        {itemAny.tipoItem === 'EQUIPO' ? (
+                          <Checkbox
+                            size="small"
+                            checked={itemAny.especial ?? false}
+                            onChange={(e) => onUpdate(index, 'especial', e.target.checked)}
+                            disabled={!editable}
+                            inputProps={{ 'aria-label': 'Marcar equipo como especial' }}
+                          />
+                        ) : (
+                          <Typography color="text.secondary">—</Typography>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Typography>{isSpecialItem ? '—' : (itemAny.medidaNombre || '-')}</Typography>
                     </TableCell>
