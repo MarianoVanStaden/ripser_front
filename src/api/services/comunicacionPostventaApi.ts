@@ -19,8 +19,11 @@ export interface ComunicacionInicialPostventaDTO {
   clienteWhatsapp?: string;
   clienteTelefono?: string;
   canal: CanalComunicacionPostventa;
+  /** Si la factura también es tarea de COBRANZAS (financiación propia sin cheques). */
+  aplicaCobranzas: boolean;
   fechaEntrega?: string; // LocalDate
   equipos: EquipoResumen[];
+  /** Check de la perspectiva del rol que consulta (post-venta o cobranzas). */
   realizada: boolean;
   fechaContacto?: string; // LocalDateTime
   usuarioContactoId?: number;
@@ -46,13 +49,17 @@ export const comunicacionPostventaApi = {
   },
 
   // PATCH /api/comunicaciones-postventa/{id}/marcar
+  // `canal` fija la perspectiva a marcar (post-venta vs cobranzas); los roles
+  // operativos la ignoran (el backend la deriva del rol), los admins la envían.
   marcarContacto: async (
     id: number,
-    body: { realizada: boolean; observaciones?: string }
+    body: { realizada: boolean; observaciones?: string },
+    canal?: CanalComunicacionPostventa
   ): Promise<ComunicacionInicialPostventaDTO> => {
     const response = await api.patch<ComunicacionInicialPostventaDTO>(
       `/api/comunicaciones-postventa/${id}/marcar`,
-      body
+      body,
+      { params: canal ? { canal } : {} }
     );
     return response.data;
   },

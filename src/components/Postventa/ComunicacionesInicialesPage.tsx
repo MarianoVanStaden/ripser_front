@@ -51,16 +51,6 @@ type CanalFilter = '' | CanalComunicacionPostventa;
 
 const WHATSAPP_GREEN = '#25D366';
 
-const canalLabel: Record<CanalComunicacionPostventa, string> = {
-  POST_VENTA: 'Post-venta',
-  COBRANZAS: 'Cobranzas',
-};
-
-const canalColor: Record<CanalComunicacionPostventa, 'info' | 'warning'> = {
-  POST_VENTA: 'info',
-  COBRANZAS: 'warning',
-};
-
 const formatFecha = (iso?: string): string =>
   iso ? new Date(iso).toLocaleDateString('es-AR') : '—';
 
@@ -123,9 +113,14 @@ const ComunicacionesInicialesPage = () => {
 
   const pageData = data ?? EMPTY_PAGE;
 
+  // Los admins marcan la perspectiva que están viendo (canal); los operativos la derivan del rol.
+  const perspectivaMarcar: CanalComunicacionPostventa | undefined = puedeVerCanal
+    ? canal || 'POST_VENTA'
+    : undefined;
+
   const marcarMutation = useMutation({
     mutationFn: ({ id, realizada }: { id: number; realizada: boolean }) =>
-      comunicacionPostventaApi.marcarContacto(id, { realizada }),
+      comunicacionPostventaApi.marcarContacto(id, { realizada }, perspectivaMarcar),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comunicacionesPostventa'] });
     },
@@ -180,8 +175,13 @@ const ComunicacionesInicialesPage = () => {
       <Chip size="small" variant="outlined" color="default" label="Pendiente" />
     );
 
+  // El chip refleja si la factura también es tarea de cobranzas (financiación propia sin cheques).
   const CanalChip = ({ row }: { row: ComunicacionInicialPostventaDTO }) => (
-    <Chip size="small" color={canalColor[row.canal]} label={canalLabel[row.canal]} />
+    <Chip
+      size="small"
+      color={row.aplicaCobranzas ? 'warning' : 'info'}
+      label={row.aplicaCobranzas ? 'Post-venta + Cobranzas' : 'Post-venta'}
+    />
   );
 
   // ---------- filtros ----------
