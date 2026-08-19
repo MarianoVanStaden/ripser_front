@@ -355,11 +355,12 @@ export default function PresupuestoFormDialog({
 
   // Si hay al menos una línea de equipo marcada "Especial", las observaciones son obligatorias:
   // ahí se detallan las particularidades de fabricación (puertas/enchufes/medidas). Gatea el submit.
+  // Solo al CREAR: en edición el checkbox Especial está deshabilitado, así que no re-gateamos.
   const hayEquipoEspecial = useMemo(
     () => detalles.some((d) => d.tipoItem === 'EQUIPO' && d.especial),
     [detalles]
   );
-  const faltaObsEspecial = hayEquipoEspecial && !(formData.observaciones || '').trim();
+  const faltaObsEspecial = !editingPresupuesto && hayEquipoEspecial && !(formData.observaciones || '').trim();
 
   // Re-export desde utils compartido para consumidores que solo necesitan el label
   const getMetodoPagoLabel = getMetodoPagoLabelShared;
