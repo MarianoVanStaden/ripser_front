@@ -14,8 +14,11 @@ export interface RemuneracionInput {
   categoria: CategoriaSalarial;
 
   // Prorrateo por ingreso/egreso a mitad de mes: días corridos computados
-  // del período, base 30 (30 = mes completo). Afecta básico y presentismo.
-  diasComputados?: number;      // 1-30, default 30
+  // del período. Afecta básico y presentismo.
+  diasComputados?: number;      // 1..diasBase, default = diasBase
+  // Divisor del prorrateo = días del mes del período (28..31); AGUINALDO usa 30.
+  // Default 30 por compatibilidad; el form pasa diasDelMes(periodo).
+  diasBase?: number;            // 28-31 (o 30 para aguinaldo), default 30
 
   // Asistencia
   presentismoPct: number;       // 0-100, % de asistencia del mes
@@ -66,11 +69,22 @@ export interface RemuneracionOutput {
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /**
- * Días corridos computados del período (base 30) según ingreso/egreso del
- * empleado. Regla de negocio: el básico mensual se prorratea por días
- * corridos sobre 30 (estándar AR), así que cubrir el mes completo devuelve
- * 30 aunque el mes tenga 28 o 31 días. Devuelve 0 si el empleado no se
- * solapa con el período (ingreso posterior o egreso anterior).
+ * Cantidad de días del mes del período (28..31). El prorrateo del básico usa
+ * este valor como divisor, así que "mes completo" vale los días reales del mes
+ * (agosto 31, febrero 28). Devuelve 30 si el período es inválido.
+ */
+export function diasDelMes(periodo: string): number {
+  const [anio, mes] = periodo.split('-').map(Number);
+  if (!anio || !mes) return 30;
+  return new Date(anio, mes, 0).getDate(); // día 0 del mes siguiente = último del mes
+}
+
+/**
+ * Días corridos computados del período según ingreso/egreso del empleado.
+ * Regla de negocio: el básico mensual se prorratea por días corridos sobre los
+ * días reales del mes, así que cubrir el mes completo devuelve los días del mes
+ * (agosto 31, febrero 28). Devuelve 0 si el empleado no se solapa con el
+ * período (ingreso posterior o egreso anterior).
  */
 export function calcularDiasComputados(
   periodo: string,               // 'YYYY-MM'
@@ -81,6 +95,7 @@ export function calcularDiasComputados(
   if (!anio || !mes) return 30;
   const ini = new Date(anio, mes - 1, 1);
   const fin = new Date(anio, mes, 0); // último día del mes
+  const diasMes = fin.getDate();
 
   // Las fechas vienen como 'YYYY-MM-DD'; parseamos manual para evitar UTC.
   const parse = (s?: string | null): Date | null => {
@@ -94,10 +109,10 @@ export function calcularDiasComputados(
   const effIni = ingreso && ingreso > ini ? ingreso : ini;
   const effFin = egreso && egreso < fin ? egreso : fin;
   if (effIni > effFin) return 0;
-  if (effIni.getTime() === ini.getTime() && effFin.getTime() === fin.getTime()) return 30;
+  if (effIni.getTime() === ini.getTime() && effFin.getTime() === fin.getTime()) return diasMes;
 
   const dias = Math.round((effFin.getTime() - effIni.getTime()) / 86_400_000) + 1;
-  return Math.min(dias, 30);
+  return Math.min(dias, diasMes);
 }
 
 /**
@@ -132,8 +147,9 @@ function pickBonoPorUmbral(
  */
 export function calcularRemuneracion(input: RemuneracionInput): RemuneracionOutput {
   const cat = input.categoria;
-  const diasComputados = Math.max(0, Math.min(30, Number(input.diasComputados ?? 30)));
-  const sueldoBasico = round2((Number(cat.sueldoFijo) || 0) * (diasComputados / 30));
+  const diasBase = Math.max(1, Number(input.diasBase ?? 30));
+  const diasComputados = Math.max(0, Math.min(diasBase, Number(input.diasComputados ?? diasBase)));
+  const sueldoBasico = round2((Number(cat.sueldoFijo) || 0) * (diasComputados / diasBase));
 
   const presentismoPct = Math.max(0, Math.min(100, Number(input.presentismoPct) || 0));
   const presentismoMonto = round2(sueldoBasico * 0.08 * (presentismoPct / 100));

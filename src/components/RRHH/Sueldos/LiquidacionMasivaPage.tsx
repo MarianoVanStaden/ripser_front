@@ -37,7 +37,7 @@ import type {
   CategoriaSalarial, ConceptoSueldo, Sueldo,
 } from '../../../types';
 import { CONCEPTO_SUELDO_LABELS, CONCEPTOS_SUELDO } from '../../../types/remuneraciones.types';
-import { calcularDiasComputados, calcularRemuneracion } from '../../../utils/remuneracionesCalc';
+import { calcularDiasComputados, calcularRemuneracion, diasDelMes } from '../../../utils/remuneracionesCalc';
 import LoadingOverlay from '../../common/LoadingOverlay';
 
 /** Estado editable por fila (un empleado). */
@@ -335,9 +335,12 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     const categoria = getCategoria(row.categoriaSalarialId);
     if (!categoria) return null;
     const bonosProdCat = bonosProduccion.filter(b => b.categoriaSalarialId === categoria.id);
+    // Divisor del prorrateo: días reales del mes; el aguinaldo usa base 30.
+    const diasBase = row.concepto === 'AGUINALDO' ? 30 : diasDelMes(periodo);
     return calcularRemuneracion({
       categoria,
       diasComputados: getDiasRow(row),
+      diasBase,
       presentismoPct: row.presentismoPct,
       horasExtraCant: row.horasExtraCant,
       horasAusenteCant: row.horasAusenteCant,
@@ -352,7 +355,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       descuentosOtros: row.descuentosOtros,
       adelantos: row.adelantos,
     });
-  }, [getCategoria, bonosProduccion, unidadesProducidas, getBonoVentasRow, getDiasRow]);
+  }, [getCategoria, bonosProduccion, unidadesProducidas, getBonoVentasRow, getDiasRow, periodo]);
 
   // Filas filtradas para mostrar
   const filteredRows = useMemo(() => {
@@ -433,10 +436,12 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     }
     const diasInvalidos = aLiquidar.filter(r => {
       const d = getDiasRow(r);
-      return !Number.isFinite(d) || d < 1 || d > 30;
+      const maxDias = r.concepto === 'AGUINALDO' ? 30 : diasDelMes(periodo);
+      return !Number.isFinite(d) || d < 1 || d > maxDias;
     });
     if (diasInvalidos.length > 0) {
-      setError(`Hay ${diasInvalidos.length} empleado(s) con días computados fuera de rango (1-30). Corregí la columna "Días" o quitalos del lote.`);
+      const maxMes = diasDelMes(periodo);
+      setError(`Hay ${diasInvalidos.length} empleado(s) con días computados fuera de rango (1-${maxMes}). Corregí la columna "Días" o quitalos del lote.`);
       return;
     }
 
@@ -846,14 +851,14 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                         ) : (
                           <Box>
                             {renderNumCell(idx, 'diasComputados', 70)}
-                            {row.diasComputados < 30 && (
+                            {row.diasComputados < diasDelMes(periodo) && (
                               <Tooltip title={
                                 row.diasComputados === 0
                                   ? 'Fuera del período: no se solapa con el mes (revisá fecha de ingreso/egreso).'
                                   : `Prorrateado — ${row.fechaIngreso ? `ingresó el ${dayjs(row.fechaIngreso).format('DD/MM/YYYY')}` : ''}${row.fechaIngreso && row.fechaEgreso ? ' · ' : ''}${row.fechaEgreso ? `egresa el ${dayjs(row.fechaEgreso).format('DD/MM/YYYY')}` : ''}`
                               }>
                                 <Chip
-                                  label={row.diasComputados === 0 ? 'Fuera del período' : `${row.diasComputados}/30`}
+                                  label={row.diasComputados === 0 ? 'Fuera del período' : `${row.diasComputados}/${diasDelMes(periodo)}`}
                                   size="small"
                                   color={row.diasComputados === 0 ? 'error' : 'info'}
                                   sx={{ mt: 0.5, height: 18, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }}

@@ -20,6 +20,7 @@ import {
   TIPO_FINANCIACION_LABELS,
 } from '../types/prestamo.types';
 import { addCorporateHeader, addCorporateFooter } from '../utils/pdfExportUtils';
+import { diasDelMes } from '../utils/remuneracionesCalc';
 import { RIPSER_LOGO_DATA_URL, RIPSER_LOGO_ASPECT } from './ripserLogo';
 import {
   PORCENTAJE_ENTREGA_PROPIO,
@@ -1990,10 +1991,12 @@ export const generarReciboHaberesPDF = ({ sueldo, empleado, categoria }: ReciboH
 
   const cat = categoria; // alias
 
-  // Prorrateo por ingreso/egreso: si se liquidaron menos de 30 días (base 30),
-  // el recibo lo deja asentado en la línea del básico.
-  const diasComputados = Number(sueldo.diasComputados ?? 30);
-  const diasLabel = diasComputados < 30 ? `${diasComputados}/30 días` : '-';
+  // Prorrateo por ingreso/egreso: si se liquidaron menos días que el mes (base
+  // = días reales del mes; aguinaldo base 30), el recibo lo deja asentado en la
+  // línea del básico.
+  const diasMes = sueldo.concepto === 'AGUINALDO' ? 30 : diasDelMes(sueldo.periodo || '');
+  const diasComputados = Number(sueldo.diasComputados ?? diasMes);
+  const diasLabel = diasComputados < diasMes ? `${diasComputados}/${diasMes} días` : '-';
 
   // SUMAS
   if (Number(sueldo.sueldoBasico) > 0) {

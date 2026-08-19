@@ -15,7 +15,7 @@ import type {
   ConceptoSueldo, Empleado, Sueldo,
 } from '../../../types';
 import { CONCEPTO_SUELDO_LABELS, CONCEPTOS_SUELDO } from '../../../types/remuneraciones.types';
-import { calcularDiasComputados, calcularRemuneracion } from '../../../utils/remuneracionesCalc';
+import { calcularDiasComputados, calcularRemuneracion, diasDelMes } from '../../../utils/remuneracionesCalc';
 import { getNombreCompleto } from '../../../utils/userDisplay';
 import { adelantoApi } from '../../../api/services/adelantoApi';
 import { sueldoApi } from '../../../api/services/sueldoApi';
@@ -182,7 +182,10 @@ const SueldoFormDialog: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.empleadoId, form.periodo]);
 
-  // El aguinaldo no se prorratea por ingreso/egreso (regla semestral propia).
+  // Divisor del prorrateo: días reales del mes del período (agosto 31, febrero
+  // 28). El aguinaldo no se prorratea por ingreso/egreso (regla semestral) y
+  // usa base 30 fija.
+  const diasMes = form.concepto === 'AGUINALDO' ? 30 : diasDelMes(form.periodo);
   const diasEfectivos = form.concepto === 'AGUINALDO' ? 30 : form.diasComputados;
 
   const categoria = useMemo(
@@ -199,6 +202,7 @@ const SueldoFormDialog: React.FC<Props> = ({
     return calcularRemuneracion({
       categoria,
       diasComputados: diasEfectivos,
+      diasBase: diasMes,
       presentismoPct: form.presentismoPct,
       horasExtraCant: form.horasExtraCant,
       horasAusenteCant: form.horasAusenteCant,
@@ -232,8 +236,8 @@ const SueldoFormDialog: React.FC<Props> = ({
     if (!form.empleadoId) { setError('Seleccione un empleado'); return; }
     if (!form.categoriaSalarialId) { setError('Seleccione una categoría salarial'); return; }
     if (!form.periodo) { setError('Indique un período'); return; }
-    if (!Number.isFinite(diasEfectivos) || diasEfectivos < 1 || diasEfectivos > 30) {
-      setError('Los días computados deben estar entre 1 y 30. Si el empleado no trabaja este período, no corresponde liquidarlo.');
+    if (!Number.isFinite(diasEfectivos) || diasEfectivos < 1 || diasEfectivos > diasMes) {
+      setError(`Los días computados deben estar entre 1 y ${diasMes}. Si el empleado no trabaja este período, no corresponde liquidarlo.`);
       return;
     }
     if (!calc) { setError('Calculadora no disponible'); return; }
@@ -372,12 +376,12 @@ const SueldoFormDialog: React.FC<Props> = ({
               value={form.concepto === 'AGUINALDO' ? 30 : form.diasComputados}
               onChange={setNumberField('diasComputados')}
               disabled={form.concepto === 'AGUINALDO'}
-              InputProps={{ endAdornment: <InputAdornment position="end">/30</InputAdornment> }}
+              InputProps={{ endAdornment: <InputAdornment position="end">/{diasMes}</InputAdornment> }}
               helperText={
                 form.concepto === 'AGUINALDO'
                   ? 'El aguinaldo no se prorratea'
-                  : form.diasComputados >= 30
-                    ? '30 = mes completo'
+                  : form.diasComputados >= diasMes
+                    ? `${diasMes} = mes completo`
                     : form.diasComputados === 0
                       ? 'No se solapa con el período — revisá ingreso/egreso'
                       : `Prorrateado${empleadoSel?.fechaIngreso ? ` — ingresó el ${dayjs(empleadoSel.fechaIngreso).format('DD/MM/YYYY')}` : ''}. Editable.`
@@ -523,7 +527,7 @@ const SueldoFormDialog: React.FC<Props> = ({
                 <Grid container spacing={1.5}>
                   <Grid item xs={6} sm={3}>
                     <Typography variant="caption" color="textSecondary">
-                      Sueldo Básico{diasEfectivos < 30 ? ` (${diasEfectivos}/30 días)` : ''}
+                      Sueldo Básico{diasEfectivos < diasMes ? ` (${diasEfectivos}/${diasMes} días)` : ''}
                     </Typography>
                     <Typography variant="body2" fontWeight={600}>${calc.sueldoBasico.toLocaleString('es-AR')}</Typography>
                   </Grid>
