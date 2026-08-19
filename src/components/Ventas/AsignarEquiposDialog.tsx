@@ -106,6 +106,8 @@ interface DetalleAsignacion {
   equiposSeleccionados: number[];
   equiposDisponibles: EquipoFabricadoDTO[];
   loading: boolean;
+  /** Línea "Especial": estructuralmente única → el backend fabrica uno nuevo, no se elige stock. */
+  especial: boolean;
 }
 
 const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
@@ -148,7 +150,9 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
           cantidadRequerida: detalle.cantidad,
           equiposSeleccionados: [],
           equiposDisponibles: [],
-          loading: true,
+          // Especial: no se busca ni se elige stock (el backend fabrica uno nuevo por unidad).
+          loading: !detalle.especial,
+          especial: Boolean(detalle.especial),
         };
 
         newAsignaciones.push(asignacion);
@@ -191,6 +195,8 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
     // Fetch available equipos for each receta
     for (let i = 0; i < newAsignaciones.length; i++) {
       const asignacion = newAsignaciones[i];
+      // Especial: se fabrica nuevo, no hay stock que buscar/elegir.
+      if (asignacion.especial) continue;
       try {
         // Cuando hay notaPedidoId, el endpoint seleccionables-para-factura es la única
         // fuente de verdad: ya devuelve nota-scopeado el stock libre (cualquier estado
@@ -364,6 +370,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
   const handleConfirm = () => {
     // Validate that all detalles have the correct number of equipos assigned
     for (const asignacion of asignaciones) {
+      if (asignacion.especial) continue; // Especial: el backend fabrica, no requiere selección
       if (asignacion.equiposSeleccionados.length !== asignacion.cantidadRequerida) {
         setError(
           `Debe asignar exactamente ${asignacion.cantidadRequerida} equipo(s) para "${asignacion.recetaNombre}". ` +
@@ -394,7 +401,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
   };
 
   const isValid = asignaciones.every(
-    (a) => a.equiposSeleccionados.length === a.cantidadRequerida
+    (a) => a.especial || a.equiposSeleccionados.length === a.cantidadRequerida
   );
 
   const allLoaded = asignaciones.every((a) => !a.loading);
@@ -489,7 +496,14 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                         </Box>
                       )}
                     </Box>
-                    {asignacion.equiposSeleccionados.length === asignacion.cantidadRequerida ? (
+                    {asignacion.especial ? (
+                      <Chip
+                        icon={<Build />}
+                        label="Se fabricará"
+                        color="info"
+                        size="small"
+                      />
+                    ) : asignacion.equiposSeleccionados.length === asignacion.cantidadRequerida ? (
                       <Chip
                         icon={<CheckCircle />}
                         label="Completo"
@@ -508,7 +522,15 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
 
                   <Divider sx={{ mb: 2 }} />
 
-                  {asignacion.loading ? (
+                  {asignacion.especial ? (
+                    <Alert severity="info" icon={<Build fontSize="inherit" />}>
+                      Equipo <strong>Especial</strong>: se fabricará{' '}
+                      {asignacion.cantidadRequerida > 1
+                        ? `${asignacion.cantidadRequerida} equipos nuevos`
+                        : 'uno nuevo'}{' '}
+                      para esta línea. No se reserva stock existente.
+                    </Alert>
+                  ) : asignacion.loading ? (
                     <Box display="flex" justifyContent="center" py={2}>
                       <CircularProgress size={24} />
                     </Box>

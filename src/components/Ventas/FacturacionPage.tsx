@@ -1117,6 +1117,10 @@ const FacturacionPage = () => {
     const equiposEnCarrito = cart.filter(item => item.tipoItem === 'EQUIPO' && item.recetaId);
 
     for (const item of equiposEnCarrito) {
+      // Especial: estructuralmente único → siempre se fabrica, sin importar el stock.
+      // Se salta el gate de stock (el backend fabrica y el AsignarEquiposDialog no pide selección).
+      if ((item as any).especial) continue;
+
       const stockDisponible = await verificarStockEquipo(item.recetaId!, item.colorId, item.medidaId);
 
       if (stockDisponible < item.cantidad) {

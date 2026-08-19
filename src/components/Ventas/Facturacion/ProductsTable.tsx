@@ -274,7 +274,16 @@ export const ProductsTable = React.memo(
                         ) : (
                           <Typography align="center">{item.cantidad}</Typography>
                         )}
-                        {itemAny.tipoItem === 'EQUIPO' && itemAny.stockVerificado && (
+                        {itemAny.tipoItem === 'EQUIPO' && itemAny.especial ? (
+                          <Tooltip title="Equipo Especial: se fabrica uno nuevo, no se reserva stock" arrow>
+                            <Chip
+                              size="small"
+                              label="🏭 Se fabricará"
+                              color="info"
+                              sx={{ fontSize: '0.7rem', height: 20 }}
+                            />
+                          </Tooltip>
+                        ) : itemAny.tipoItem === 'EQUIPO' && itemAny.stockVerificado ? (
                           <Tooltip
                             title={`Stock disponible: ${itemAny.stockDisponible || 0} unidades`}
                             arrow
@@ -290,7 +299,7 @@ export const ProductsTable = React.memo(
                               sx={{ fontSize: '0.7rem', height: 20 }}
                             />
                           </Tooltip>
-                        )}
+                        ) : null}
                       </Box>
                     </TableCell>
                     <TableCell align="right">
