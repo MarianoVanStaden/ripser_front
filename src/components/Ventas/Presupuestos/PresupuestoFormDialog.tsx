@@ -353,6 +353,14 @@ export default function PresupuestoFormDialog({
   const ivaAmount = useMemo(() => subtotalNeto * getIvaPercentage(formData.tipoIva), [subtotalNeto, formData.tipoIva, getIvaPercentage]);
   const total = useMemo(() => subtotalNeto + ivaAmount, [subtotalNeto, ivaAmount]);
 
+  // Si hay al menos una línea de equipo marcada "Especial", las observaciones son obligatorias:
+  // ahí se detallan las particularidades de fabricación (puertas/enchufes/medidas). Gatea el submit.
+  const hayEquipoEspecial = useMemo(
+    () => detalles.some((d) => d.tipoItem === 'EQUIPO' && d.especial),
+    [detalles]
+  );
+  const faltaObsEspecial = hayEquipoEspecial && !(formData.observaciones || '').trim();
+
   // Re-export desde utils compartido para consumidores que solo necesitan el label
   const getMetodoPagoLabel = getMetodoPagoLabelShared;
 
@@ -533,6 +541,10 @@ export default function PresupuestoFormDialog({
     try {
       if (!formData.clienteId && !formData.leadId) {
         setError("Debe seleccionar un cliente o lead");
+        return;
+      }
+      if (faltaObsEspecial) {
+        setError("Agregá especificaciones de equipo/s especiales en Observaciones");
         return;
       }
       if (detalles.length === 0) {
@@ -1120,6 +1132,8 @@ export default function PresupuestoFormDialog({
               multiline
               rows={3}
               disabled={readOnly}
+              error={faltaObsEspecial}
+              helperText={faltaObsEspecial ? 'Agregá especificaciones de equipo/s especiales' : ' '}
             />
 
             <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
@@ -1522,7 +1536,7 @@ export default function PresupuestoFormDialog({
             <Button
               variant="contained"
               onClick={handleSavePresupuesto}
-              disabled={formLoading || (!formData.clienteId && !formData.leadId) || detalles.length === 0}
+              disabled={formLoading || (!formData.clienteId && !formData.leadId) || detalles.length === 0 || faltaObsEspecial}
               aria-label={editingPresupuesto ? "Actualizar presupuesto" : "Crear presupuesto"}
             >
               {formLoading ? <CircularProgress size={24} /> : editingPresupuesto ? "Actualizar" : "Crear"}

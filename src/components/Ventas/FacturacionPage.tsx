@@ -1060,6 +1060,10 @@ const FacturacionPage = () => {
     if (!selectedClientId) return setError('Debe seleccionar un cliente.');
     if (!selectedUsuarioId) return setError('Debe seleccionar un vendedor.');
     if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
+    // Equipos "Especial": las particularidades se detallan en Observaciones → obligatorias.
+    if (cart.some((i) => i.tipoItem === 'EQUIPO' && (i as any).especial) && !(notes || '').trim()) {
+      return setError('Agregá especificaciones de equipo/s especiales en Observaciones.');
+    }
 
     // La caja al contado es OPCIONAL: se elige solo si la plata entra en el acto.
     // Sin caja, el backend no genera depósito y el ingreso físico llega con la

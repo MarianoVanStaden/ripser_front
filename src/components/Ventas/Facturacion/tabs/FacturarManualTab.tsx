@@ -111,6 +111,9 @@ const FacturarManualTab: React.FC<Props> = ({
   selectedOpcionFinanciamiento,
 }) => {
   const showDescuentoCol = descuentoTipo !== 'NONE' && totals.descuento > 0;
+  // Equipos "Especial": las particularidades se detallan en Observaciones → obligatorias.
+  const faltaObsEspecial =
+    cart.some((i) => i.tipoItem === 'EQUIPO' && i.especial) && !(notes || '').trim();
   return (
     <Box sx={{ width: '100%', maxWidth: '100%' }}>
       <Card sx={{ width: '100%' }}>
@@ -320,6 +323,8 @@ const FacturarManualTab: React.FC<Props> = ({
                 value={notes}
                 onChange={(e) => onChangeNotes(e.target.value)}
                 placeholder="Notas adicionales para la factura..."
+                error={faltaObsEspecial}
+                helperText={faltaObsEspecial ? 'Agregá especificaciones de equipo/s especiales' : undefined}
               />
             </Grid>
           </Grid>
@@ -437,7 +442,7 @@ const FacturarManualTab: React.FC<Props> = ({
               variant="contained"
               startIcon={<SaveIcon />}
               onClick={onSubmit}
-              disabled={loading || !selectedClientId || !selectedUsuarioId || cart.length === 0}
+              disabled={loading || !selectedClientId || !selectedUsuarioId || cart.length === 0 || faltaObsEspecial}
             >
               Crear Factura
             </Button>
