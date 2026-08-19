@@ -118,6 +118,15 @@ export const gestionCobranzaApi = {
     return res.data;
   },
 
+  /**
+   * Marca la bienvenida (primer contacto) de una gestión PRIMER_CONTACTO como realizada:
+   * completa la gestión y tilda el check de COBRANZAS en Control de Calidad Postventa.
+   */
+  marcarBienvenida: async (id: number): Promise<GestionCobranzaDTO> => {
+    const res = await api.patch<GestionCobranzaDTO>(`/api/gestiones-cobranza/${id}/marcar-bienvenida`);
+    return res.data;
+  },
+
   // ── Bulk ───────────────────────────────────────────────────────────────────
 
   /** Cambia la prioridad de varias gestiones en una sola request. */
