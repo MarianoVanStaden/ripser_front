@@ -8,6 +8,7 @@ import type {
   EstadoPrestamo,
   CategoriaPrestamo,
   UpdateFechaEntregaDTO,
+  DesanclarCronogramaDTO,
   UpdateFechaVencimientoCuotaDTO,
   UpdateMontoCuotaDTO,
 } from '../../types/prestamo.types';
@@ -122,6 +123,23 @@ export const prestamoPersonalApi = {
   ): Promise<PrestamoPersonalDTO> => {
     const response = await api.patch<PrestamoPersonalDTO>(
       `${BASE_PATH}/${id}/fecha-entrega`,
+      dto,
+    );
+    return response.data;
+  },
+
+  /**
+   * Desancla el cronograma: revierte la fecha de entrega a null y deja las cuotas no
+   * pagadas "sin anclar" (sin vencimiento, PENDIENTE). Corrige una fecha de entrega
+   * cargada por error. Solo ADMIN/SUPER_ADMIN (el backend responde 403 si no).
+   * Devuelve 409 si la version no coincide.
+   */
+  desanclarCronograma: async (
+    id: number,
+    dto: DesanclarCronogramaDTO,
+  ): Promise<PrestamoPersonalDTO> => {
+    const response = await api.post<PrestamoPersonalDTO>(
+      `${BASE_PATH}/${id}/desanclar-cronograma`,
       dto,
     );
     return response.data;

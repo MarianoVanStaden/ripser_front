@@ -195,6 +195,13 @@ export interface UpdateFechaEntregaDTO {
   version: number;
 }
 
+export interface DesanclarCronogramaDTO {
+  /** Motivo de la corrección — obligatorio, queda en el historial. */
+  motivo: string;
+  /** Versión actual conocida por el cliente (optimistic locking). */
+  version: number;
+}
+
 export interface UpdateFechaVencimientoCuotaDTO {
   /** Nueva fechaVencimiento en formato ISO yyyy-MM-dd. */
   nuevaFecha: string;

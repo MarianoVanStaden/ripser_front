@@ -10,7 +10,7 @@ import {
   ArrowBack, Edit, Payment, Add, Send, CheckCircle,
   Phone, Email, WhatsApp, Videocam, PersonPin, Groups,
   Delete, Notifications, Receipt, Undo, Autorenew,
-  EditCalendar, PictureAsPdf, PriceChange,
+  EditCalendar, PictureAsPdf, PriceChange, LinkOff,
 } from '@mui/icons-material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -44,6 +44,7 @@ import { RevertirPagoDialog } from './RevertirPagoDialog';
 import { SeguimientoFormDialog } from './SeguimientoFormDialog';
 import { RecordatorioFormDialog } from './RecordatorioFormDialog';
 import { EditarFechaEntregaDialog } from './EditarFechaEntregaDialog';
+import { DesanclarCronogramaDialog } from './DesanclarCronogramaDialog';
 import { EditarFechaCuotaDialog } from './EditarFechaCuotaDialog';
 import { EditarMontoCuotaDialog } from './EditarMontoCuotaDialog';
 import { EditarFechaPagoDialog } from './EditarFechaPagoDialog';
@@ -103,6 +104,7 @@ export const PrestamoDetailPage: React.FC = () => {
 
   // Edición de fechas (entrega + cuota individual)
   const [editFechaEntregaOpen, setEditFechaEntregaOpen] = useState(false);
+  const [desanclarOpen, setDesanclarOpen] = useState(false);
   const [editFechaCuotaOpen, setEditFechaCuotaOpen] = useState(false);
   const [cuotaParaEditarFecha, setCuotaParaEditarFecha] = useState<CuotaPrestamoDTO | null>(null);
   const [editFechaPagoOpen, setEditFechaPagoOpen] = useState(false);
@@ -111,8 +113,10 @@ export const PrestamoDetailPage: React.FC = () => {
   const [cuotaParaEditarMonto, setCuotaParaEditarMonto] = useState<CuotaPrestamoDTO | null>(null);
 
   // Permisos
-  const { tieneRol, esAdmin } = usePermisos();
+  const { tieneRol, esAdmin, esSuperAdmin } = usePermisos();
   const puedeEditarFechas = esAdmin || tieneRol('ADMIN_EMPRESA', 'GERENTE_SUCURSAL', 'COBRANZAS');
+  // Desanclar cronograma (corrección destructiva): solo ADMIN/SUPER_ADMIN, igual que el backend.
+  const puedeDesanclar = esAdmin || esSuperAdmin;
   // Edición manual del monto de una cuota: COBRANZAS o cualquier tipo de admin/gerencia.
   const puedeEditarMonto = esAdmin || tieneRol('ADMIN_EMPRESA', 'ADMIN_EMPRESA_LIMITADO', 'GERENTE_SUCURSAL', 'COBRANZAS');
 
@@ -460,6 +464,13 @@ export const PrestamoDetailPage: React.FC = () => {
                   <Tooltip title="Editar fecha de entrega">
                     <IconButton size="small" onClick={() => setEditFechaEntregaOpen(true)}>
                       <EditCalendar fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {puedeDesanclar && prestamo.fechaEntrega && (
+                  <Tooltip title="Desanclar cronograma (corregir entrega cargada por error)">
+                    <IconButton size="small" color="warning" onClick={() => setDesanclarOpen(true)}>
+                      <LinkOff fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 )}
@@ -933,6 +944,19 @@ export const PrestamoDetailPage: React.FC = () => {
           prestamo={prestamo}
           cuotas={cuotas}
           onClose={() => setEditFechaEntregaOpen(false)}
+          onSaved={async (msg) => {
+            await loadData();
+            setSnackbar({ open: true, message: msg, severity: 'success' });
+          }}
+          onConflict={loadData}
+        />
+      )}
+      {desanclarOpen && (
+        <DesanclarCronogramaDialog
+          open={desanclarOpen}
+          prestamo={prestamo}
+          cuotas={cuotas}
+          onClose={() => setDesanclarOpen(false)}
           onSaved={async (msg) => {
             await loadData();
             setSnackbar({ open: true, message: msg, severity: 'success' });

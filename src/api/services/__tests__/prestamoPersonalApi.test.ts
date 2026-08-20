@@ -18,6 +18,7 @@ import type {
   CuotaPrestamoDTO,
   UpdateFechaEntregaDTO,
   UpdateFechaVencimientoCuotaDTO,
+  DesanclarCronogramaDTO,
 } from '../../../types/prestamo.types';
 
 const mockedApi = vi.mocked(api, true);
@@ -98,6 +99,24 @@ describe('prestamoPersonalApi — fecha edits', () => {
       dto,
     );
     expect(result.fechaVencimiento).toBe('2026-06-04');
+  });
+
+  it('desanclarCronograma: hits POST .../{id}/desanclar-cronograma with the body', async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: { ...samplePrestamo, fechaEntrega: null } });
+
+    const dto: DesanclarCronogramaDTO = {
+      motivo: 'Fecha de entrega cargada por error',
+      version: 0,
+    };
+
+    const result = await prestamoPersonalApi.desanclarCronograma(100, dto);
+
+    expect(mockedApi.post).toHaveBeenCalledTimes(1);
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      '/api/prestamos-personales/100/desanclar-cronograma',
+      dto,
+    );
+    expect(result.fechaEntrega).toBeNull();
   });
 
   it('propaga errores 409 al caller (version conflict)', async () => {
