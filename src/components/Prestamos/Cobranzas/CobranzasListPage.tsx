@@ -17,7 +17,7 @@ import {
 import {
   Visibility, Add, Search, Phone,
   PhoneInTalk, Alarm, CheckCircleOutline, Clear,
-  Lock, FlagOutlined, WhatsApp as WhatsAppIcon, AttachMoney, HowToReg,
+  Lock, FlagOutlined, WhatsApp as WhatsAppIcon, AttachMoney,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -383,17 +383,6 @@ export const CobranzasListPage: React.FC = () => {
     cerrarSingleMutation.mutate({ id, estado });
   };
 
-  // "Marcar bienvenida": completa la gestión PRIMER_CONTACTO y tilda el check de
-  // COBRANZAS en Control de Calidad Postventa (sincronización backend).
-  const marcarBienvenidaMutation = useMutation({
-    mutationFn: (id: number) => gestionCobranzaApi.marcarBienvenida(id),
-    onSuccess: () => {
-      showSnack('Bienvenida marcada como realizada', 'success');
-      refresh();
-      invalidateMoraCount();
-    },
-    onError: (e) => { showSnack('No se pudo marcar la bienvenida', 'error'); console.error(e); },
-  });
 
   const getProximaGestionLabel = (fecha: string | null) => {
     if (!fecha) return '-';
@@ -921,20 +910,6 @@ export const CobranzasListPage: React.FC = () => {
                       </TableCell>
                       <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.25} justifyContent="center">
-                          {g.estado === 'PRIMER_CONTACTO' && g.activa && (
-                            <Tooltip title="Marcar bienvenida realizada (sincroniza con Control de Calidad Postventa)">
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  color="info"
-                                  onClick={() => marcarBienvenidaMutation.mutate(g.id)}
-                                  disabled={marcarBienvenidaMutation.isPending}
-                                >
-                                  <HowToReg fontSize="small" />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                          )}
                           <Tooltip title={g.prestamoId != null ? 'Registrar cobro' : 'Cobro libre: informar desde el detalle de la gestión'}>
                             <span>
                               <IconButton

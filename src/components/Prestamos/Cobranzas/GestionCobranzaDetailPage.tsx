@@ -10,7 +10,7 @@ import {
   ArrowBack, Add, CheckCircle, Delete,
   Phone, Email, Sms, Task, Notifications,
   PhoneCallback, DirectionsWalk, Gavel, Handshake, SupportAgent,
-  OpenInNew,
+  OpenInNew, HowToReg,
 } from '@mui/icons-material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -155,6 +155,19 @@ export const GestionCobranzaDetailPage: React.FC = () => {
     cerrarMutation.mutate(estado);
   };
 
+  // "Marcar bienvenida": completa la gestión PRIMER_CONTACTO y tilda el check de
+  // COBRANZAS en Control de Calidad Postventa (sincronización backend).
+  const marcarBienvenidaMutation = useMutation({
+    mutationFn: () => gestionCobranzaApi.marcarBienvenida(gestionId),
+    onSuccess: () => {
+      showSnack('Bienvenida marcada como realizada');
+      loadData();
+      queryClient.invalidateQueries({ queryKey: ['gestiones-cobranza'] });
+      queryClient.invalidateQueries({ queryKey: ['comunicacionesPostventa'] });
+    },
+    onError: () => showSnack('No se pudo marcar la bienvenida.', 'error'),
+  });
+
   const deleteAccionMutation = useMutation({
     mutationFn: (accionId: number) => gestionCobranzaApi.deleteAccion(accionId),
     onSuccess: () => { showSnack('Acción eliminada.'); loadData(); },
@@ -245,6 +258,21 @@ export const GestionCobranzaDetailPage: React.FC = () => {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          {gestion.activa && gestion.estado === 'PRIMER_CONTACTO' && (
+            <Tooltip title="Completa la bienvenida y tilda el check de COBRANZAS en Control de Calidad Postventa">
+              <span>
+                <Button
+                  variant="contained"
+                  color="info"
+                  startIcon={<HowToReg />}
+                  onClick={() => marcarBienvenidaMutation.mutate()}
+                  disabled={marcarBienvenidaMutation.isPending}
+                >
+                  Marcar bienvenida
+                </Button>
+              </span>
+            </Tooltip>
+          )}
           {gestion.activa && gestion.prestamoId == null && (
             <Button
               variant="contained"

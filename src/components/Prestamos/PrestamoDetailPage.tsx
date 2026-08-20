@@ -10,12 +10,11 @@ import {
   ArrowBack, Edit, Payment, Add, Send, CheckCircle,
   Phone, Email, WhatsApp, Videocam, PersonPin, Groups,
   Delete, Notifications, Receipt, Undo, Autorenew,
-  EditCalendar, PictureAsPdf, PriceChange, HowToReg,
+  EditCalendar, PictureAsPdf, PriceChange,
 } from '@mui/icons-material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
-import { gestionCobranzaApi } from '../../api/services/gestionCobranzaApi';
 import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
 import { seguimientoPrestamoApi } from '../../api/services/seguimientoPrestamoApi';
 import { recordatorioCuotaApi } from '../../api/services/recordatorioCuotaApi';
@@ -174,30 +173,6 @@ export const PrestamoDetailPage: React.FC = () => {
   const loadData = async () => {
     await queryClient.invalidateQueries({ queryKey: ['prestamo', prestamoId] });
   };
-
-  // Gestión de cobranza activa del préstamo (para el botón "Marcar bienvenida" cuando
-  // está en PRIMER_CONTACTO). Best-effort: si no hay gestión activa el backend responde
-  // 404 → lo tratamos como null.
-  const gestionActivaQuery = useQuery({
-    queryKey: ['gestion-cobranza', 'activa-por-prestamo', prestamoId],
-    enabled: !!prestamoId,
-    queryFn: () => gestionCobranzaApi.getActivaByPrestamo(prestamoId).catch(() => null),
-  });
-  const gestionBienvenida =
-    gestionActivaQuery.data && gestionActivaQuery.data.estado === 'PRIMER_CONTACTO' && gestionActivaQuery.data.activa
-      ? gestionActivaQuery.data
-      : null;
-
-  const marcarBienvenidaMutation = useMutation({
-    mutationFn: (gestionId: number) => gestionCobranzaApi.marcarBienvenida(gestionId),
-    onSuccess: () => {
-      setSnackbar({ open: true, message: 'Bienvenida marcada como realizada', severity: 'success' });
-      queryClient.invalidateQueries({ queryKey: ['gestion-cobranza', 'activa-por-prestamo', prestamoId] });
-      queryClient.invalidateQueries({ queryKey: ['gestiones-cobranza'] });
-      queryClient.invalidateQueries({ queryKey: ['comunicacionesPostventa'] });
-    },
-    onError: () => setSnackbar({ open: true, message: 'No se pudo marcar la bienvenida', severity: 'error' }),
-  });
 
   const [exportandoPdf, setExportandoPdf] = useState(false);
 
@@ -387,21 +362,6 @@ export const PrestamoDetailPage: React.FC = () => {
           {exportandoPdf ? 'Generando…' : 'Exportar PDF'}
         </Button>
         <Button variant="outlined" startIcon={<Edit />} onClick={() => setEditOpen(true)}>Editar</Button>
-        {gestionBienvenida && (
-          <Tooltip title="Completa la gestión de bienvenida y tilda el check de COBRANZAS en Control de Calidad Postventa">
-            <span>
-              <Button
-                variant="contained"
-                color="info"
-                startIcon={<HowToReg />}
-                onClick={() => marcarBienvenidaMutation.mutate(gestionBienvenida.id)}
-                disabled={marcarBienvenidaMutation.isPending}
-              >
-                Marcar bienvenida
-              </Button>
-            </span>
-          </Tooltip>
-        )}
       </Box>
 
       {/* Summary Card */}
