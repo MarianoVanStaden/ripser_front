@@ -7,9 +7,20 @@ import {
   aggregateChequeStatus,
   prepareTimeSeriesData,
   calculateWeeklyTrend,
+  calculateKPIs,
+  calculateKPIsFromBackend,
   getOptimalGranularity,
 } from '../flujoCajaUtils';
 import { makeMovimiento, makeMovimientoCheque } from '../../test/factories';
+import type {
+  ChequeEstadoResumenDTO,
+  ChequeStatusAggregation,
+  FlujoCajaMovimientoEnhanced,
+  FlujoCajaResponseEnhanced,
+  PaymentMethodAggregation,
+  ResumenChequesDTO,
+  SaldoPorMetodoPagoDTO,
+} from '../../types';
 
 describe('flujoCajaUtils', () => {
   describe('formatCurrency / formatPercentage', () => {
@@ -118,6 +129,132 @@ describe('flujoCajaUtils', () => {
     it('devuelve 0 cuando la semana previa no tuvo movimientos', () => {
       const movs = [makeMovimiento({ fecha: '2026-07-18T12:00:00', tipo: 'INGRESO', importe: 200 })];
       expect(calculateWeeklyTrend(movs)).toBe(0);
+    });
+  });
+
+  describe('calculateKPIs', () => {
+    const movs: FlujoCajaMovimientoEnhanced[] = [
+      makeMovimiento({ tipo: 'INGRESO', importe: 100_000, metodoPago: 'EFECTIVO', entidad: 'Cliente A', fecha: '2026-07-15' }),
+      makeMovimiento({ tipo: 'INGRESO', importe: 300_000, metodoPago: 'CHEQUE', entidad: 'Cliente B', fecha: '2026-07-16' }),
+      makeMovimiento({ tipo: 'EGRESO', importe: 50_000, metodoPago: 'EFECTIVO', entidad: 'Prov X', fecha: '2026-07-15' }),
+      makeMovimiento({ tipo: 'EGRESO', importe: 200_000, metodoPago: 'TRANSFERENCIA_BANCARIA', entidad: 'Prov Y', fecha: '2026-07-17' }),
+    ];
+    const response: FlujoCajaResponseEnhanced = {
+      totalIngresos: 400_000,
+      totalEgresos: 250_000,
+      flujoNeto: 150_000,
+      totalMovimientos: 4,
+      movimientos: movs,
+    };
+
+    it('pasa básicos y calcula ticket promedio, mediana, mayor ingreso/egreso y promedios diarios', () => {
+      const kpi = calculateKPIs(response);
+      expect(kpi.totalIngresos).toBe(400_000);
+      expect(kpi.flujoNeto).toBe(150_000);
+      expect(kpi.totalMovimientos).toBe(4);
+      expect(kpi.ticketPromedio).toBe(162_500); // (400000 + 250000) / 4
+      // Mediana = elemento en floor(n/2) del array ordenado (upper-middle en n par, NO el promedio de los dos centrales)
+      expect(kpi.medianaTransaccion).toBe(200_000); // [50k,100k,200k,300k][2]
+      expect(kpi.mayorIngreso.importe).toBe(300_000);
+      expect(kpi.mayorIngreso.entidad).toBe('Cliente B');
+      expect(kpi.mayorEgreso.importe).toBe(200_000);
+      expect(kpi.mayorEgreso.entidad).toBe('Prov Y');
+      // 3 fechas únicas (15/16/17) como divisor
+      expect(kpi.promedioIngresoDiario).toBeCloseTo(133_333.33, 2); // 400000/3
+      expect(kpi.promedioEgresoDiario).toBeCloseTo(83_333.33, 2);   // 250000/3
+    });
+
+    it('mediana en cantidad impar = elemento central', () => {
+      const impar: FlujoCajaResponseEnhanced = { ...response, movimientos: movs.slice(0, 3), totalMovimientos: 3 };
+      // importes [50k,100k,300k] → índice floor(3/2)=1 → 100k
+      expect(calculateKPIs(impar).medianaTransaccion).toBe(100_000);
+    });
+
+    it('método de pago más usado = el de mayor cantidad del agregado por método', () => {
+      const porMetodo: PaymentMethodAggregation[] = [
+        { metodoPago: 'EFECTIVO', totalIngresos: 100_000, totalEgresos: 50_000, flujoNeto: 50_000, cantidadMovimientos: 2, porcentajeDelTotal: 50 },
+        { metodoPago: 'CHEQUE', totalIngresos: 300_000, totalEgresos: 0, flujoNeto: 300_000, cantidadMovimientos: 1, porcentajeDelTotal: 25 },
+      ];
+      const kpi = calculateKPIs(response, porMetodo);
+      expect(kpi.metodoPagoMasUsado.metodo).toBe('EFECTIVO');
+      expect(kpi.metodoPagoMasUsado.cantidad).toBe(2);
+      expect(kpi.metodoPagoMasUsado.porcentaje).toBe(50);
+    });
+
+    it('sin agregado por método, el más usado cae a EFECTIVO/0/0', () => {
+      expect(calculateKPIs(response).metodoPagoMasUsado).toEqual({ metodo: 'EFECTIVO', cantidad: 0, porcentaje: 0 });
+    });
+
+    it('cheques en cartera salen del agregado de cheques (o undefined si no viene)', () => {
+      const chequeData: ChequeStatusAggregation[] = [
+        { estado: 'EN_CARTERA', cantidad: 2, montoTotal: 300_000 },
+        { estado: 'DEPOSITADO', cantidad: 1, montoTotal: 50_000 },
+      ];
+      expect(calculateKPIs(response, undefined, chequeData).chequesEnCartera).toEqual({ cantidad: 2, monto: 300_000 });
+      expect(calculateKPIs(response).chequesEnCartera).toBeUndefined();
+    });
+
+    it('respuesta vacía: ticket/mediana 0, mayor ingreso en 0 y promedios sin dividir por cero', () => {
+      const vacia: FlujoCajaResponseEnhanced = {
+        totalIngresos: 0, totalEgresos: 0, flujoNeto: 0, totalMovimientos: 0, movimientos: [],
+      };
+      const kpi = calculateKPIs(vacia);
+      expect(kpi.ticketPromedio).toBe(0);
+      expect(kpi.medianaTransaccion).toBe(0);
+      expect(kpi.mayorIngreso.importe).toBe(0);
+      expect(kpi.promedioIngresoDiario).toBe(0); // 0 / (0 || 1)
+    });
+  });
+
+  describe('calculateKPIsFromBackend', () => {
+    const cheq = (cantidad: number, monto: number): ChequeEstadoResumenDTO => ({ cantidad, monto });
+    const makeResumen = (over: Partial<ResumenChequesDTO> = {}): ResumenChequesDTO => ({
+      enCartera: cheq(0, 0), depositados: cheq(0, 0), cobrados: cheq(0, 0), rechazados: cheq(0, 0),
+      porVencer7Dias: cheq(0, 0), emitidos: cheq(0, 0), anulados: cheq(0, 0),
+      totalEnCartera: 0, totalPorCobrar: 0, chequesVencidos: 0, ...over,
+    });
+    const movs: FlujoCajaMovimientoEnhanced[] = [
+      makeMovimiento({ tipo: 'INGRESO', importe: 100_000, entidad: 'Cliente A', fecha: '2026-07-15' }),
+      makeMovimiento({ tipo: 'INGRESO', importe: 300_000, entidad: 'Cliente B', fecha: '2026-07-16' }),
+      makeMovimiento({ tipo: 'EGRESO', importe: 250_000, entidad: 'Prov Y', fecha: '2026-07-17' }),
+    ];
+    const base: FlujoCajaResponseEnhanced = {
+      totalIngresos: 400_000, totalEgresos: 250_000, flujoNeto: 150_000, totalMovimientos: 3, movimientos: movs,
+    };
+
+    it('método más usado sale de saldosPorMetodoPago del backend (usa .porcentaje, no .porcentajeDelTotal)', () => {
+      const saldos: SaldoPorMetodoPagoDTO[] = [
+        { metodoPago: 'EFECTIVO', ingresos: 100_000, egresos: 250_000, saldo: -150_000, porcentaje: 60, cantidadMovimientos: 3 },
+        { metodoPago: 'CHEQUE', ingresos: 300_000, egresos: 0, saldo: 300_000, porcentaje: 40, cantidadMovimientos: 1 },
+      ];
+      const kpi = calculateKPIsFromBackend({ ...base, saldosPorMetodoPago: saldos });
+      expect(kpi.metodoPagoMasUsado).toEqual({ metodo: 'EFECTIVO', cantidad: 3, porcentaje: 60 });
+      expect(kpi.ticketPromedio).toBeCloseTo(216_666.67, 2); // 650000/3
+      expect(kpi.mayorIngreso.importe).toBe(300_000);
+      expect(kpi.mayorEgreso.importe).toBe(250_000);
+    });
+
+    it('cheques salen del resumen del backend (enCartera, vencidos con cantidad 0, por vencer 7 días)', () => {
+      const resumen = makeResumen({
+        enCartera: cheq(2, 300_000),
+        porVencer7Dias: cheq(1, 100_000),
+        chequesVencidos: 5_000,
+      });
+      const kpi = calculateKPIsFromBackend({ ...base, resumenCheques: resumen });
+      expect(kpi.chequesEnCartera).toEqual({ cantidad: 2, monto: 300_000 });
+      expect(kpi.chequesPorVencer7Dias).toEqual({ cantidad: 1, monto: 100_000 });
+      // Quirk: chequesVencidos es un monto suelto → cantidad se reporta como 0.
+      expect(kpi.chequesVencidos).toEqual({ cantidad: 0, monto: 5_000 });
+    });
+
+    it('sin vencidos (0) → chequesVencidos undefined; sin resumen/saldos → cheques undefined y EFECTIVO/0/0', () => {
+      const conResumenSinVencidos = calculateKPIsFromBackend({ ...base, resumenCheques: makeResumen({ enCartera: cheq(1, 10) }) });
+      expect(conResumenSinVencidos.chequesVencidos).toBeUndefined(); // chequesVencidos = 0
+
+      const pelado = calculateKPIsFromBackend(base);
+      expect(pelado.chequesEnCartera).toBeUndefined();
+      expect(pelado.chequesVencidos).toBeUndefined();
+      expect(pelado.metodoPagoMasUsado).toEqual({ metodo: 'EFECTIVO', cantidad: 0, porcentaje: 0 });
     });
   });
 });
