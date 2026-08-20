@@ -775,7 +775,13 @@ export const CobranzasListPage: React.FC = () => {
                       hover
                       selected={isSelected}
                       sx={{ cursor: 'pointer' }}
-                      onClick={() => (g.prestamoId != null ? openCredito(g.prestamoId) : openDetalle(g.id))}
+                      onClick={() => {
+                        // PRIMER_CONTACTO: ir directo al detalle de la gestión (ahí está
+                        // "Marcar bienvenida"); el resto mantiene el salto al crédito.
+                        if (g.estado === 'PRIMER_CONTACTO') openDetalle(g.id);
+                        else if (g.prestamoId != null) openCredito(g.prestamoId);
+                        else openDetalle(g.id);
+                      }}
                     >
                       <TableCell padding="checkbox" sx={sxStickyCheckboxBody} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
