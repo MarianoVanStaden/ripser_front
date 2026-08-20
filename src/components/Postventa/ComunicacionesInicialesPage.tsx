@@ -59,8 +59,14 @@ type CanalFilter = '' | CanalComunicacionPostventa;
 
 const WHATSAPP_GREEN = '#25D366';
 
-const formatFecha = (iso?: string): string =>
-  iso ? new Date(iso).toLocaleDateString('es-AR') : '—';
+const formatFecha = (iso?: string): string => {
+  if (!iso) return '—';
+  // Fecha date-only (YYYY-MM-DD, ej. fechaEntrega): parsear como LOCAL para evitar
+  // el corrimiento de un día que produce `new Date('2026-08-10')` (lo interpreta UTC).
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(iso);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-AR');
+};
 
 const equiposResumen = (equipos: ComunicacionInicialPostventaDTO['equipos']): string => {
   if (!equipos || equipos.length === 0) return '—';
