@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Checkbox,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
+  Grid,
   IconButton,
   InputAdornment,
   Paper,
@@ -39,12 +45,14 @@ import {
   type CanalComunicacionPostventa,
   type ComunicacionInicialPostventaDTO,
 } from '../../api/services/comunicacionPostventaApi';
-import { documentoApi, clienteApi } from '../../api/services';
-import { generarVentaPDF } from '../../services/pdfService';
+import { documentoApi } from '../../api/services';
 import { openWhatsAppWeb } from '../../utils/whatsapp';
 import { usePermisos } from '../../hooks/usePermisos';
 import { QUERY_KEYS } from '../../utils/queryKeys';
 import { EMPTY_PAGE } from '../../types/pagination.types';
+import { formatPrice } from '../../utils/priceCalculations';
+import { getMetodoPagoLabel } from '../../utils/financiamiento';
+import type { DocumentoComercial } from '../../types/documentoComercial.types';
 
 type EstadoFilter = 'PENDIENTES' | 'REALIZADAS' | 'TODAS';
 type CanalFilter = '' | CanalComunicacionPostventa;
@@ -126,24 +134,27 @@ const ComunicacionesInicialesPage = () => {
     },
   });
 
+  // Modal de detalle de la factura (read-only). Muestra el detalle en pantalla en vez
+  // de descargar el PDF (más práctico para el control de calidad).
+  const [facturaDialog, setFacturaDialog] = useState<{
+    open: boolean;
+    loading: boolean;
+    row: ComunicacionInicialPostventaDTO | null;
+    documento: DocumentoComercial | null;
+  }>({ open: false, loading: false, row: null, documento: null });
+
   const handleVerFactura = async (row: ComunicacionInicialPostventaDTO) => {
+    setFacturaDialog({ open: true, loading: true, row, documento: null });
     try {
       const documento = await documentoApi.getById(row.documentoComercialId);
-      let cliente = null;
-      if (row.clienteId) {
-        try {
-          cliente = await clienteApi.getById(row.clienteId);
-        } catch {
-          /* fallback abajo */
-        }
-      }
-      if (!cliente) cliente = (documento as { cliente?: unknown }).cliente ?? null;
-      if (!cliente) return;
-      generarVentaPDF({ documento, cliente } as Parameters<typeof generarVentaPDF>[0]);
+      setFacturaDialog({ open: true, loading: false, row, documento });
     } catch (e) {
       console.error('No se pudo abrir la factura', e);
+      setFacturaDialog({ open: true, loading: false, row, documento: null });
     }
   };
+
+  const cerrarFactura = () => setFacturaDialog((prev) => ({ ...prev, open: false }));
 
   const handleToggle = (row: ComunicacionInicialPostventaDTO) => {
     marcarMutation.mutate({ id: row.id, realizada: !row.realizada });
@@ -410,6 +421,112 @@ const ComunicacionesInicialesPage = () => {
         rowsPerPageOptions={[10, 25, 50, 100]}
         labelRowsPerPage="Filas"
       />
+
+      {/* Modal de detalle de la factura (read-only) */}
+      <Dialog open={facturaDialog.open} onClose={cerrarFactura} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Factura {facturaDialog.documento?.numeroDocumento
+            || facturaDialog.row?.facturaNumero
+            || `#${facturaDialog.row?.documentoComercialId ?? ''}`}
+        </DialogTitle>
+        <DialogContent dividers>
+          {facturaDialog.loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : !facturaDialog.documento ? (
+            <Typography color="error">No se pudo cargar la factura.</Typography>
+          ) : (
+            <Box>
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Información general
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Número:</strong> {facturaDialog.documento.numeroDocumento || '—'}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Fecha:</strong> {formatFecha(facturaDialog.documento.fechaEmision)}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Entrega:</strong> {formatFecha(facturaDialog.row?.fechaEntrega)}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Método de pago:</strong> {getMetodoPagoLabel(facturaDialog.documento.metodoPago)}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Cliente
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>{facturaDialog.row?.clienteNombreCompleto || '—'}</strong>
+                  </Typography>
+                  {(facturaDialog.row?.clienteWhatsapp || facturaDialog.row?.clienteTelefono) && (
+                    <Typography variant="body2" color="text.secondary">
+                      Tel: {facturaDialog.row?.clienteWhatsapp || facturaDialog.row?.clienteTelefono}
+                    </Typography>
+                  )}
+                </Grid>
+              </Grid>
+
+              <Divider sx={{ my: 1.5 }} />
+
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Items ({facturaDialog.documento.detalles?.length ?? 0})
+              </Typography>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Item</TableCell>
+                      <TableCell align="center">Cant.</TableCell>
+                      <TableCell align="right">Precio Unit.</TableCell>
+                      <TableCell align="right">Subtotal</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(facturaDialog.documento.detalles ?? []).map((item, index) => {
+                      const nombre = item.tipoItem === 'EQUIPO'
+                        ? (item.recetaNombre || item.descripcionEquipo || 'Equipo')
+                        : (item.productoNombre || item.descripcion || 'Producto');
+                      return (
+                        <TableRow key={item.id ?? index}>
+                          <TableCell>{nombre}</TableCell>
+                          <TableCell align="center">{item.cantidad}</TableCell>
+                          <TableCell align="right">{formatPrice(item.precioUnitario)}</TableCell>
+                          <TableCell align="right">{formatPrice(item.subtotal)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <Stack spacing={0.5} sx={{ mt: 2, ml: 'auto', maxWidth: 260 }}>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography variant="body2" color="text.secondary">Subtotal</Typography>
+                  <Typography variant="body2">{formatPrice(facturaDialog.documento.subtotal)}</Typography>
+                </Stack>
+                {facturaDialog.documento.iva > 0 && (
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">IVA</Typography>
+                    <Typography variant="body2">{formatPrice(facturaDialog.documento.iva)}</Typography>
+                  </Stack>
+                )}
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography variant="subtitle2">Total</Typography>
+                  <Typography variant="subtitle2">{formatPrice(facturaDialog.documento.total)}</Typography>
+                </Stack>
+              </Stack>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cerrarFactura}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
