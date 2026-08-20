@@ -82,6 +82,12 @@ import TripWizardDialog from './tripWizard/TripWizardDialog';
 import TripDetailsPanel from './Trips/TripDetailsPanel';
 
 
+// Fallback estable para los `?? []` de las queries: cuando `data` es undefined
+// (loading/error/vacío), reusar SIEMPRE la misma referencia evita que arrays
+// nuevos en cada render invaliden las deps de useEffect/useMemo y disparen un
+// loop de re-render (Maximum update depth exceeded).
+const EMPTY_ARRAY: never[] = [];
+
 const TripsPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
   const { tieneRol } = usePermisos();
@@ -149,13 +155,13 @@ const TripsPage2: React.FC = () => {
     staleTime: 300_000,
   });
 
-  const trips: Viaje[] = viajesQuery.data ?? [];
-  const vehicles: Vehiculo[] = vehiculosQuery.data ?? [];
-  const drivers: Empleado[] = empleadosQuery.data ?? [];
-  const deliveries: EntregaViaje[] = entregasQuery.data ?? [];
-  const facturas: DocumentoComercial[] = facturasQuery.data ?? [];
-  const ordenes: OrdenServicio[] = ordenesQuery.data ?? [];
-  const clientes: Cliente[] = clientesQuery.data ?? [];
+  const trips: Viaje[] = viajesQuery.data ?? EMPTY_ARRAY;
+  const vehicles: Vehiculo[] = vehiculosQuery.data ?? EMPTY_ARRAY;
+  const drivers: Empleado[] = empleadosQuery.data ?? EMPTY_ARRAY;
+  const deliveries: EntregaViaje[] = entregasQuery.data ?? EMPTY_ARRAY;
+  const facturas: DocumentoComercial[] = facturasQuery.data ?? EMPTY_ARRAY;
+  const ordenes: OrdenServicio[] = ordenesQuery.data ?? EMPTY_ARRAY;
+  const clientes: Cliente[] = clientesQuery.data ?? EMPTY_ARRAY;
   const loading = viajesQuery.isPending;
   const [actionError, setActionError] = useState<string | null>(null);
   const error = useMemo(() => {
