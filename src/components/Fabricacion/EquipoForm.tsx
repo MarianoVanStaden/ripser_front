@@ -4,6 +4,7 @@ import {
   Box, Paper, Typography, Button, TextField, MenuItem, Stack, Alert,
   Snackbar, CircularProgress, IconButton, Autocomplete, Dialog, DialogTitle,
   DialogContent, DialogActions, ToggleButtonGroup, ToggleButton,
+  Checkbox, FormControlLabel,
 } from '@mui/material';
 import { ArrowBack, Save, CheckCircle, Build, Brush } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -41,6 +42,7 @@ const schema = yup.object().shape({
   equipo: yup.string(),
   medidaId: yup.number().nullable().transform((v) => (v === '' || v == null ? null : v)),
   colorId: yup.number().nullable().transform((v) => (v === '' || v == null ? null : v)),
+  especial: yup.boolean(),
   observaciones: yup.string(),
 });
 
@@ -94,7 +96,7 @@ const EquipoForm: React.FC = () => {
     modelo: string;
   } | null>(null);
 
-  const { control, handleSubmit, formState: { errors }, reset, setValue } = useForm({
+  const { control, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
       tipo: '' as TipoEquipo,
@@ -104,10 +106,17 @@ const EquipoForm: React.FC = () => {
       colorId: null as number | null,
       numeroHeladera: '',
       cantidad: 1,
+      especial: false,
       observaciones: '',
     },
     context: { isEdit },
   });
+
+  // Especial → observaciones obligatorias (mismo criterio que un presupuesto especial):
+  // ahí se detallan las particularidades de fabricación. Solo gatea al CREAR.
+  const especialValue = watch('especial');
+  const observacionesValue = watch('observaciones');
+  const faltaObsEspecial = !isEdit && !!especialValue && !((observacionesValue as string) || '').trim();
 
   // Equipo a editar: query bajo el namespace ['equipos']; la hidratación del
   // form espera a los catálogos (para resolver receta/responsable) y corre
@@ -133,6 +142,7 @@ const EquipoForm: React.FC = () => {
       colorId: data.color?.id ?? null,
       numeroHeladera: data.numeroHeladera,
       cantidad: data.cantidad,
+      especial: (data as any).especial ?? false,
       observaciones: data.observaciones || '',
     });
     setEstado(data.estado);
@@ -175,6 +185,25 @@ const EquipoForm: React.FC = () => {
   const onSubmit = async (data: any) => {
     try {
       setLoading(true);
+
+      // Al crear, la Receta Base es obligatoria: de ella se derivan tipo/modelo/equipo/medida
+      // (esos campos no se editan en el form). Sin receta no hay datos de fabricación.
+      if (!isEdit && !selectedReceta?.id) {
+        setSnackbar({ open: true, message: 'Seleccioná una Receta Base', severity: 'error' });
+        setLoading(false);
+        return;
+      }
+
+      // Especial exige observaciones (particularidades de fabricación).
+      if (faltaObsEspecial) {
+        setSnackbar({
+          open: true,
+          message: 'Las observaciones son obligatorias para equipos especiales',
+          severity: 'error',
+        });
+        setLoading(false);
+        return;
+      }
 
       // Validación proactiva de stock (solo al crear con receta): muestra el modal
       // con los faltantes estructurados ANTES de intentar fabricar.
@@ -274,6 +303,7 @@ const EquipoForm: React.FC = () => {
           medidaId: data.medidaId ?? null,
           colorId: null, // Sin color — el backend lo completa a FABRICADO_SIN_TERMINACION
           cantidad: data.cantidad,
+          especial: data.especial ?? false,
           observaciones: data.observaciones,
           numeroHeladera: 'AUTO',
           recetaId: selectedReceta?.id,
@@ -301,6 +331,7 @@ const EquipoForm: React.FC = () => {
           medidaId: data.medidaId ?? null,
           colorId: data.colorId ?? null,
           cantidad: data.cantidad,
+          especial: data.especial ?? false,
           observaciones: data.observaciones,
           estado: 'PENDIENTE', // Always start in PENDIENTE for new equipos
           numeroHeladera: 'AUTO', // Placeholder - backend debe reemplazarlo
@@ -458,44 +489,56 @@ const EquipoForm: React.FC = () => {
               value={selectedReceta}
               onChange={(_, newValue) => setSelectedReceta(newValue)}
               disabled={isEdit && estado !== 'PENDIENTE'}
-              renderInput={(params) => <TextField {...params} label="Receta Base (opcional)" />}
-            />
-
-            <Controller
-              name="tipo"
-              control={control}
-              render={({ field }) => (
+              renderInput={(params) => (
                 <TextField
-                  {...field}
-                  select
-                  label="Tipo *"
-                  error={!!errors.tipo}
-                  helperText={errors.tipo?.message}
-                  fullWidth
-                  disabled={isEdit && estado !== 'PENDIENTE'}
-                >
-                  <MenuItem value="HELADERA">Heladera</MenuItem>
-                  <MenuItem value="COOLBOX">Coolbox</MenuItem>
-                  <MenuItem value="EXHIBIDOR">Exhibidor</MenuItem>
-                  <MenuItem value="OTRO">Otro</MenuItem>
-                </TextField>
-              )}
-            />
-
-            <Controller
-              name="modelo"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Modelo *"
-                  error={!!errors.modelo}
-                  helperText={errors.modelo?.message}
-                  fullWidth
-                  disabled={isEdit && estado !== 'PENDIENTE'}
+                  {...params}
+                  label={isEdit ? 'Receta Base (opcional)' : 'Receta Base *'}
+                  helperText={!isEdit ? 'Define tipo, modelo, equipo y medida del equipo' : undefined}
                 />
               )}
             />
+
+            {/* Tipo/Modelo/Equipo/Medida se derivan de la Receta Base: no se editan al crear.
+                En edición se muestran para poder corregirlos (según estado). */}
+            {isEdit && (
+              <Controller
+                name="tipo"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    select
+                    label="Tipo *"
+                    error={!!errors.tipo}
+                    helperText={errors.tipo?.message}
+                    fullWidth
+                    disabled={isEdit && estado !== 'PENDIENTE'}
+                  >
+                    <MenuItem value="HELADERA">Heladera</MenuItem>
+                    <MenuItem value="COOLBOX">Coolbox</MenuItem>
+                    <MenuItem value="EXHIBIDOR">Exhibidor</MenuItem>
+                    <MenuItem value="OTRO">Otro</MenuItem>
+                  </TextField>
+                )}
+              />
+            )}
+
+            {isEdit && (
+              <Controller
+                name="modelo"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Modelo *"
+                    error={!!errors.modelo}
+                    helperText={errors.modelo?.message}
+                    fullWidth
+                    disabled={isEdit && estado !== 'PENDIENTE'}
+                  />
+                )}
+              />
+            )}
 
             {isEdit && (
               <Controller
@@ -514,27 +557,31 @@ const EquipoForm: React.FC = () => {
               />
             )}
 
-            <Controller
-              name="equipo"
-              control={control}
-              render={({ field }) => (
-                <TextField {...field} label="Equipo" fullWidth />
-              )}
-            />
-
-            <Stack direction="row" spacing={2}>
+            {isEdit && (
               <Controller
-                name="medidaId"
+                name="equipo"
                 control={control}
                 render={({ field }) => (
-                  <MedidaPicker
-                    value={field.value ?? undefined}
-                    onChange={(id) => field.onChange(id ?? null)}
-                    label="Medida"
-                    disabled={isEdit}
-                  />
+                  <TextField {...field} label="Equipo" fullWidth />
                 )}
               />
+            )}
+
+            <Stack direction="row" spacing={2}>
+              {isEdit && (
+                <Controller
+                  name="medidaId"
+                  control={control}
+                  render={({ field }) => (
+                    <MedidaPicker
+                      value={field.value ?? undefined}
+                      onChange={(id) => field.onChange(id ?? null)}
+                      label="Medida"
+                      disabled={isEdit}
+                    />
+                  )}
+                />
+              )}
               {(isEdit || modoFabricacion === 'COMPLETO') && (
                 <Controller
                   name="colorId"
@@ -604,11 +651,37 @@ const EquipoForm: React.FC = () => {
               </TextField>
             )}
 
+            {!isEdit && (
+              <Controller
+                name="especial"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={!!field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                    }
+                    label="Especial (fabricación con particularidades: puertas / enchufes / medidas)"
+                  />
+                )}
+              />
+            )}
+
             <Controller
               name="observaciones"
               control={control}
               render={({ field }) => (
-                <TextField {...field} label="Observaciones" multiline rows={3} fullWidth />
+                <TextField
+                  {...field}
+                  label={!isEdit && especialValue ? 'Observaciones *' : 'Observaciones'}
+                  multiline
+                  rows={3}
+                  fullWidth
+                  error={faltaObsEspecial}
+                  helperText={faltaObsEspecial ? 'Obligatorias para equipos especiales' : undefined}
+                />
               )}
             />
           </Stack>
@@ -622,7 +695,7 @@ const EquipoForm: React.FC = () => {
             type="submit"
             variant="contained"
             startIcon={loading ? <CircularProgress size={20} /> : <Save />}
-            disabled={loading}
+            disabled={loading || faltaObsEspecial}
           >
             {loading ? 'Guardando...' : 'Guardar'}
           </Button>

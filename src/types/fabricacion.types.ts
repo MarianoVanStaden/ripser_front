@@ -275,6 +275,8 @@ export interface EquipoFabricadoCreateDTO {
   estado?: EstadoFabricacion;
   responsableId?: number;
   clienteId?: number;
+  /** Marca de fabricación especial; si es true, observaciones es obligatorio. */
+  especial?: boolean;
 }
 
 export interface EquipoFabricadoUpdateDTO {
