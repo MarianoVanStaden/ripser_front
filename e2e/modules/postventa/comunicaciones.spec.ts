@@ -81,4 +81,57 @@ test.describe('Postventa - Control de Calidad', () => {
     await dialog.getByRole('button', { name: 'Cerrar' }).click();
     await expect(dialog).not.toBeVisible();
   });
+
+  test('el tablero se actualiza en vivo por SSE cuando llega comunicacion.creada (sin recargar)', async ({ page }) => {
+    // La lista devuelve 1 fila al inicio; cuando llega el evento SSE, 2 filas.
+    let nuevaVisible = false;
+    const row = (id: number, doc: number, nro: string, nombre: string) => ({
+      id, documentoComercialId: doc, facturaNumero: nro, clienteId: id,
+      clienteNombreCompleto: nombre, clienteWhatsapp: '2984000000', clienteTelefono: '2984000001',
+      canal: 'POST_VENTA', aplicaCobranzas: false, fechaEntrega: '2026-08-20',
+      equipos: [], realizada: false,
+    });
+    const pageBody = (rows: unknown[]) => JSON.stringify({
+      content: rows, totalElements: rows.length, totalPages: 1, size: 25, number: 0,
+      first: true, last: true, numberOfElements: rows.length, empty: rows.length === 0,
+    });
+
+    await page.route('**/api/comunicaciones-postventa**', (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      const rows = nuevaVisible
+        ? [row(1, 500, 'FAC-108', 'León Antonio Mellado'), row(2, 999, 'FAC-999', 'Recién Entregado')]
+        : [row(1, 500, 'FAC-108', 'León Antonio Mellado')];
+      return route.fulfill({ status: 200, contentType: 'application/json', body: pageBody(rows) });
+    });
+
+    // Stream SSE mockeado: cada conexión, tras 1.2s (para que la lista inicial ya renderizó
+    // con 1 fila), revela la 2da fila y emite el evento. Se entrega en TODA conexión (no un
+    // one-shot) porque React StrictMode monta el efecto dos veces (aborta la 1ª); así la
+    // conexión viva recibe el evento. Tras un close limpio fetch-event-source no reintenta.
+    await page.route('**/api/eventos/stream**', async (route) => {
+      await new Promise((r) => setTimeout(r, 1200));
+      nuevaVisible = true;
+      return route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: 'event: postventa.comunicacion.creada\n'
+            + 'data: {"type":"postventa.comunicacion.creada","empresaId":1,"timestamp":"2026-08-20T10:00:00Z"}\n\n',
+      });
+    });
+
+    await page.goto('/postventa/comunicaciones-iniciales');
+
+    // Estado inicial: 1 fila; la nueva todavía NO está.
+    await expect(page.getByText('León Antonio Mellado')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText('Recién Entregado')).toHaveCount(0);
+
+    // Marcador para probar que NO hubo recarga de página.
+    await page.evaluate(() => { (window as unknown as { __sse: string }).__sse = 'alive'; });
+
+    // Al llegar el evento SSE, React Query re-fetchea y aparece la nueva fila.
+    await expect(page.getByText('Recién Entregado')).toBeVisible({ timeout: 15_000 });
+
+    // El marcador sigue vivo → fue una actualización en vivo, no un reload.
+    expect(await page.evaluate(() => (window as unknown as { __sse?: string }).__sse)).toBe('alive');
+  });
 });
