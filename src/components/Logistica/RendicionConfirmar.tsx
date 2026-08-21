@@ -69,23 +69,25 @@ interface ChequeForm {
   prestamoId: number | '';
 }
 
-// Reparto de una Transferencia Bancaria en varias cajas/cuentas (los clientes
-// a veces transfieren a cuentas distintas). Cada línea → un DetalleRendicion.
-interface TransferAlloc {
+// Métodos cuyo total puede desdoblarse en varias cajas: los clientes a veces
+// transfieren a cuentas distintas, y el efectivo puede repartirse entre cajas.
+// Cada línea del reparto → un DetalleRendicion.
+const METODOS_DESDOBLABLES = ['TRANSFERENCIA_BANCARIA', 'EFECTIVO'] as const;
+const esDesdoblable = (m: string): boolean => (METODOS_DESDOBLABLES as readonly string[]).includes(m);
+
+interface Alloc {
   localId: string;
   cajaId: number | '';
   monto: number;
 }
 
-let nextTransferId = 0;
-const newTransferAlloc = (overrides?: Partial<TransferAlloc>): TransferAlloc => ({
-  localId: `tr-${Date.now()}-${nextTransferId++}`,
+let nextAllocId = 0;
+const newAlloc = (overrides?: Partial<Alloc>): Alloc => ({
+  localId: `al-${Date.now()}-${nextAllocId++}`,
   cajaId: '',
   monto: 0,
   ...overrides,
 });
-
-const TRANSFER = 'TRANSFERENCIA_BANCARIA';
 
 // clienteId obligatorio: sin él, el cheque queda huérfano en cartera (invisible
 // para el picker de imputación a créditos) y el backend rechaza la rendición.
@@ -112,12 +114,12 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
   const [cajaSel, setCajaSel] = useState<Record<string, number | ''>>({});
   const [cajasPorMetodo, setCajasPorMetodo] = useState<Record<string, CajaUnificada[]>>({});
   const [bancos, setBancos] = useState<Banco[]>([]);
-  // Reparto de la Transferencia Bancaria en varias cajas.
-  const [transferAllocs, setTransferAllocs] = useState<TransferAlloc[]>([]);
+  // Reparto en varias cajas, por método desdoblable (transferencia, efectivo).
+  const [allocs, setAllocs] = useState<Record<string, Alloc[]>>({});
   // Créditos activos por cliente, para el selector opcional de imputación de cheque.
   const [prestamosPorCliente, setPrestamosPorCliente] = useState<Record<number, PrestamoPersonalDTO[]>>({});
 
-  const totalTransfer = arsGrupos.find((g) => g.metodo === TRANSFER)?.total ?? 0;
+  const totalDe = (metodo: string) => arsGrupos.find((g) => g.metodo === metodo)?.total ?? 0;
 
   // ── Cargar resumen y armar el desglose ──
   useEffect(() => {
@@ -226,35 +228,50 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
     });
   }, [cajasPorMetodo]);
 
-  // ── Inicializar el reparto de transferencia con una línea (caja default) ──
+  // ── Inicializar cada reparto desdoblable con una línea (caja default, monto total) ──
   useEffect(() => {
-    if (totalTransfer <= 0 || transferAllocs.length > 0) return;
-    const lista = cajasPorMetodo[TRANSFER];
-    if (!lista || lista.length === 0) return;
-    const def = lista.find((c) => cajaEsDefaultPara(c, TRANSFER as MetodoPago)) ?? lista[0];
-    setTransferAllocs([newTransferAlloc({ cajaId: def.id, monto: totalTransfer })]);
+    METODOS_DESDOBLABLES.forEach((metodo) => {
+      const total = totalDe(metodo);
+      if (total <= 0 || (allocs[metodo]?.length ?? 0) > 0) return;
+      const lista = cajasPorMetodo[metodo];
+      if (!lista || lista.length === 0) return;
+      const def = lista.find((c) => cajaEsDefaultPara(c, metodo as MetodoPago)) ?? lista[0];
+      setAllocs((prev) => ({ ...prev, [metodo]: [newAlloc({ cajaId: def.id, monto: total })] }));
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalTransfer, cajasPorMetodo]);
+  }, [arsGrupos, cajasPorMetodo]);
 
   const cajasDe = (m: string): CajaUnificada[] => cajasPorMetodo[m] ?? [];
 
-  const addTransferAlloc = () =>
-    setTransferAllocs((prev) => {
-      const restante = totalTransfer - prev.reduce((s, a) => s + (Number(a.monto) || 0), 0);
-      return [...prev, newTransferAlloc({ monto: restante > 0 ? restante : 0 })];
+  const addAlloc = (metodo: string) =>
+    setAllocs((prev) => {
+      const lineas = prev[metodo] ?? [];
+      const restante = totalDe(metodo) - lineas.reduce((s, a) => s + (Number(a.monto) || 0), 0);
+      return { ...prev, [metodo]: [...lineas, newAlloc({ monto: restante > 0 ? restante : 0 })] };
     });
-  const removeTransferAlloc = (localId: string) =>
-    setTransferAllocs((prev) => (prev.length <= 1 ? prev : prev.filter((a) => a.localId !== localId)));
-  const updateTransferAlloc = (localId: string, changes: Partial<TransferAlloc>) =>
-    setTransferAllocs((prev) => prev.map((a) => (a.localId === localId ? { ...a, ...changes } : a)));
+  const removeAlloc = (metodo: string, localId: string) =>
+    setAllocs((prev) => {
+      const lineas = prev[metodo] ?? [];
+      if (lineas.length <= 1) return prev;
+      return { ...prev, [metodo]: lineas.filter((a) => a.localId !== localId) };
+    });
+  const updateAlloc = (metodo: string, localId: string, changes: Partial<Alloc>) =>
+    setAllocs((prev) => ({
+      ...prev,
+      [metodo]: (prev[metodo] ?? []).map((a) => (a.localId === localId ? { ...a, ...changes } : a)),
+    }));
 
-  const transferSum = transferAllocs.reduce((s, a) => s + (Number(a.monto) || 0), 0);
-  const transferDiff = totalTransfer - transferSum;
-  const transferOk =
-    totalTransfer <= 0 ||
-    (transferAllocs.length > 0 &&
-      transferAllocs.every((a) => a.cajaId !== '' && Number(a.monto) > 0) &&
-      Math.abs(transferDiff) < 0.005);
+  const allocDiff = (metodo: string) =>
+    totalDe(metodo) - (allocs[metodo] ?? []).reduce((s, a) => s + (Number(a.monto) || 0), 0);
+  const allocOk = (metodo: string) => {
+    const lineas = allocs[metodo] ?? [];
+    return (
+      totalDe(metodo) <= 0 ||
+      (lineas.length > 0 &&
+        lineas.every((a) => a.cajaId !== '' && Number(a.monto) > 0) &&
+        Math.abs(allocDiff(metodo)) < 0.005)
+    );
+  };
 
   const updateCheque = (id: string, changes: Partial<ChequeForm>) =>
     setCheques((prev) => prev.map((c) => (c.id === id ? { ...c, ...changes } : c)));
@@ -264,11 +281,11 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
     const detalles: DetalleRendicion[] = [];
 
     for (const g of arsGrupos) {
-      if (g.metodo === TRANSFER) {
-        // Una línea por cuenta cargada (reparto del total de transferencia).
-        for (const a of transferAllocs) {
+      if (esDesdoblable(g.metodo)) {
+        // Una línea por caja cargada (reparto del total del método).
+        for (const a of allocs[g.metodo] ?? []) {
           if (a.cajaId === '' || Number(a.monto) <= 0) continue;
-          const caja = cajasDe(TRANSFER).find((c) => c.id === a.cajaId);
+          const caja = cajasDe(g.metodo).find((c) => c.id === a.cajaId);
           detalles.push({
             metodoPago: g.metodo,
             monto: Number(a.monto),
@@ -314,14 +331,14 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
 
     const totalArs = arsGrupos.reduce((s, g) => s + g.total, 0) + cheques.reduce((s, c) => s + c.monto, 0);
     const cajasOk =
-      arsGrupos.every((g) => (g.metodo === TRANSFER ? transferOk : !!cajaSel[g.metodo])) &&
+      arsGrupos.every((g) => (esDesdoblable(g.metodo) ? allocOk(g.metodo) : !!cajaSel[g.metodo])) &&
       (usdTotal <= 0 || !!cajaSel['DOLARES']);
     const chequesOk = cheques.every(chequeValido);
     const valid = !loading && detalles.length > 0 && cajasOk && chequesOk;
 
     return { detalles, totalArs, totalUsd: usdTotal, valid, loading };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arsGrupos, usdTotal, cheques, cajaSel, cajasPorMetodo, transferAllocs, transferOk, loading]);
+  }, [arsGrupos, usdTotal, cheques, cajaSel, cajasPorMetodo, allocs, loading]);
 
   useEffect(() => {
     onChange(payload);
@@ -358,8 +375,10 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
       {arsGrupos.map((g) => {
         const cajas = cajasDe(g.metodo);
 
-        // Transferencia Bancaria: reparto en varias cajas/cuentas.
-        if (g.metodo === TRANSFER) {
+        // Métodos desdoblables (transferencia, efectivo): reparto en varias cajas.
+        if (esDesdoblable(g.metodo)) {
+          const lineas = allocs[g.metodo] ?? [];
+          const diff = allocDiff(g.metodo);
           return (
             <Card key={g.metodo} variant="outlined">
               <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -368,14 +387,14 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
                   <Typography variant="h6" fontWeight={700}>{fmt(g.total)}</Typography>
                 </Box>
                 <Stack spacing={1}>
-                  {transferAllocs.map((a) => (
+                  {lineas.map((a) => (
                     <Stack key={a.localId} direction="row" spacing={1} alignItems="center">
                       <FormControl fullWidth size="small" disabled={cajas.length === 0}>
                         <InputLabel>Caja destino</InputLabel>
                         <Select
                           value={a.cajaId}
                           label="Caja destino"
-                          onChange={(e) => updateTransferAlloc(a.localId, { cajaId: Number(e.target.value) })}
+                          onChange={(e) => updateAlloc(g.metodo, a.localId, { cajaId: Number(e.target.value) })}
                         >
                           {cajas.map((c) => (
                             <MenuItem key={c.id} value={c.id}>
@@ -395,28 +414,28 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
                         size="small"
                         sx={{ width: 160 }}
                         value={a.monto === 0 ? '' : a.monto}
-                        onChange={(e) => updateTransferAlloc(a.localId, { monto: Number(e.target.value) || 0 })}
+                        onChange={(e) => updateAlloc(g.metodo, a.localId, { monto: Number(e.target.value) || 0 })}
                         InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
                       />
                       <IconButton
                         size="small"
-                        onClick={() => removeTransferAlloc(a.localId)}
-                        disabled={transferAllocs.length <= 1}
-                        aria-label="Quitar cuenta"
+                        onClick={() => removeAlloc(g.metodo, a.localId)}
+                        disabled={lineas.length <= 1}
+                        aria-label="Quitar caja"
                       >
                         <CloseIcon fontSize="small" />
                       </IconButton>
                     </Stack>
                   ))}
                   <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Button size="small" startIcon={<AddIcon />} onClick={addTransferAlloc}>
-                      Agregar cuenta
+                    <Button size="small" startIcon={<AddIcon />} onClick={() => addAlloc(g.metodo)}>
+                      {g.metodo === 'EFECTIVO' ? 'Agregar caja' : 'Agregar cuenta'}
                     </Button>
-                    {Math.abs(transferDiff) < 0.005 ? (
+                    {Math.abs(diff) < 0.005 ? (
                       <Typography variant="caption" color="success.main">Reparto exacto ✓</Typography>
                     ) : (
                       <Typography variant="caption" color="error">
-                        {transferDiff > 0 ? `Faltan ${fmt(transferDiff)}` : `Sobran ${fmt(-transferDiff)}`}
+                        {diff > 0 ? `Faltan ${fmt(diff)}` : `Sobran ${fmt(-diff)}`}
                       </Typography>
                     )}
                   </Box>
