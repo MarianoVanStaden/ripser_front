@@ -51,6 +51,10 @@ export interface DetalleForm {
   subtotal: number;
   /** Marca "Especial": la línea EQUIPO tiene particularidades de fabricación. */
   especial: boolean;
+  /** Características estructuradas del Especial (especial=true exige al menos una). */
+  espPuertasFrontales: boolean;
+  espLuzFria: boolean;
+  espMedida: string;
 }
 
 export type DestinatarioMode = 'CLIENTE' | 'LEAD';

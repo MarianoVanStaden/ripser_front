@@ -197,6 +197,10 @@ export interface DetalleDocumento {
   subtotal: number;
   descripcion?: string; // Optional description for the item
   especial?: boolean; // Marca "Especial" para líneas EQUIPO
+  // Características estructuradas del Especial (especial=true exige al menos una)
+  espPuertasFrontales?: boolean;
+  espLuzFria?: boolean;
+  espMedida?: string | null;
 
   // For EQUIPO items in Factura - list of assigned equipos
   equiposFabricadosIds?: number[];
@@ -225,6 +229,10 @@ export interface DetalleDocumentoDTO {
   subtotal?: number;
   descripcion?: string;
   especial?: boolean; // Marca "Especial" para líneas EQUIPO
+  // Características estructuradas del Especial (especial=true exige al menos una)
+  espPuertasFrontales?: boolean;
+  espLuzFria?: boolean;
+  espMedida?: string | null;
 
   // For EQUIPO items in Factura - list of assigned equipos
   equiposFabricadosIds?: number[];

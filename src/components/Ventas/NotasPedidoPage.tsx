@@ -67,6 +67,8 @@ import { initialConvertForm } from './NotasPedido/constants';
 import { parseDeudaError } from './NotasPedido/utils';
 import { getMetodoPagoLabel } from './NotasPedido/paymentMethodIcons';
 import ConvertirPresupuestoDialog from './NotasPedido/dialogs/ConvertirPresupuestoDialog';
+import type { LineaEspecialConvert } from './NotasPedido/dialogs/ConvertirPresupuestoDialog';
+import type { EquipoFabricadoListDTO } from '../../types';
 import VerNotaPedidoDialog from './NotasPedido/dialogs/VerNotaPedidoDialog';
 import EditarNotaPedidoDialog from './NotasPedido/dialogs/EditarNotaPedidoDialog';
 import CorregirPreciosDialog from './NotasPedido/dialogs/CorregirPreciosDialog';
@@ -233,6 +235,10 @@ const NotasPedidoPage: React.FC = () => {
   const [editingVendedorNota, setEditingVendedorNota] = useState(false);
   const [vendedorNotaValue, setVendedorNotaValue] = useState<number | ''>('');
   const [convertForm, setConvertForm] = useState<ConvertFormData>(initialConvertForm);
+  // Reuso de Especiales: líneas Especiales del presupuesto con candidatos equivalentes en
+  // stock, y la selección del vendedor (detallePresupuestoId → equipoId). Sin selección se fabrica.
+  const [lineasEspecialesConvert, setLineasEspecialesConvert] = useState<LineaEspecialConvert[]>([]);
+  const [asignacionesEspeciales, setAsignacionesEspeciales] = useState<Record<number, number>>({});
   const [asignarEquiposDialogOpen, setAsignarEquiposDialogOpen] = useState(false);
   const [notaForAsignacion, setNotaForAsignacion] = useState<DocumentoComercial | null>(null);
   const pendingBillingDataRef = useRef<any>(null);
@@ -536,6 +542,8 @@ const NotasPedidoPage: React.FC = () => {
     setConvertForm(initialConvertForm);
     setSelectedPresupuesto(null);
     setNcRecienteWarning(null);
+    setLineasEspecialesConvert([]);
+    setAsignacionesEspeciales({});
     setConvertDialogOpen(true);
   }, []);
 
@@ -546,6 +554,8 @@ const NotasPedidoPage: React.FC = () => {
     setNcRecienteWarning(null);
     setOpcionesConvertDialog([]);
     setSelectedOpcionConvertId(null);
+    setLineasEspecialesConvert([]);
+    setAsignacionesEspeciales({});
     setError(null);
     deudaYaConfirmadaRef.current = false;
   }, []);
@@ -578,6 +588,54 @@ const NotasPedidoPage: React.FC = () => {
         descuentoTipo: inheritedDescuentoTipo,
         descuentoValor: inheritedDescuentoValor,
       }));
+    }
+
+    // Reuso de Especiales: buscar candidatos equivalentes en stock para cada línea Especial
+    // del presupuesto (best-effort; sin candidatos la línea se fabrica como siempre).
+    setLineasEspecialesConvert([]);
+    setAsignacionesEspeciales({});
+    if (presupuesto) {
+      (async () => {
+        try {
+          const full = await documentoApi.getById(presupuesto.id);
+          const especiales = (full.detalles || []).filter(
+            (d) => d.tipoItem === 'EQUIPO' && d.especial && d.id != null
+          );
+          if (especiales.length === 0) return;
+          const lineas = await Promise.all(especiales.map(async (d) => {
+            let candidatos: EquipoFabricadoListDTO[] = [];
+            if (d.recetaTipo && d.medida?.id) {
+              try {
+                candidatos = await equipoFabricadoApi.candidatosEspeciales({
+                  tipo: d.recetaTipo as any,
+                  modelo: d.recetaModelo || '',
+                  medidaId: d.medida.id,
+                  colorId: d.color?.id,
+                  espPuertasFrontales: d.espPuertasFrontales ?? false,
+                  espLuzFria: d.espLuzFria ?? false,
+                  espMedida: d.espMedida || undefined,
+                });
+              } catch {
+                // Best-effort: sin sugerencia la línea se fabrica igual que siempre.
+              }
+            }
+            const caracteristicas = [
+              d.espPuertasFrontales ? 'Puertas frontales' : null,
+              d.espLuzFria ? 'Luz fría' : null,
+              d.espMedida ? `Medida: ${d.espMedida}` : null,
+            ].filter(Boolean).join(' · ');
+            return {
+              detalleId: d.id!,
+              descripcion: `${d.recetaNombre || 'Equipo'}${d.color?.nombre ? ` — ${d.color.nombre}` : ''}`,
+              caracteristicas,
+              candidatos,
+            } as LineaEspecialConvert;
+          }));
+          setLineasEspecialesConvert(lineas.filter((l) => l.candidatos.length > 0));
+        } catch {
+          // Best-effort: el bloque de reuso simplemente no se muestra.
+        }
+      })();
     }
 
     // Fetch financing options for this presupuesto and pre-select the active one
@@ -785,6 +843,7 @@ const NotasPedidoPage: React.FC = () => {
         descuentoValor: convertForm.descuentoTipo === 'NONE' ? 0 : convertForm.descuentoValor,
         ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
         ...(convertForm.excluirDeBono && { excluirDeBono: true }),
+        ...(Object.keys(asignacionesEspeciales).length > 0 && { asignacionesEspeciales }),
       };
 
       // Backend now returns { documento, resolucionesEquipo } and resolves stock
@@ -1784,6 +1843,16 @@ const NotasPedidoPage: React.FC = () => {
         onSelectOpcion={setSelectedOpcionConvertId}
         showExcluirBono={isAdmin}
         ncRecienteWarning={ncRecienteWarning}
+        lineasEspeciales={lineasEspecialesConvert}
+        asignacionesEspeciales={asignacionesEspeciales}
+        onSelectEquipoEspecial={(detalleId, equipoId) =>
+          setAsignacionesEspeciales((prev) => {
+            const next = { ...prev };
+            if (equipoId == null) delete next[detalleId];
+            else next[detalleId] = equipoId;
+            return next;
+          })
+        }
       />
 
       <VerNotaPedidoDialog

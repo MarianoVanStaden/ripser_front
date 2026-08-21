@@ -54,6 +54,9 @@ export default function EnvioDialog({ open, onClose, cantidadInicial, onConfirm 
       precioUnitario: precioUnit,
       subtotal: precioUnit * cant,
       especial: false,
+      espPuertasFrontales: false,
+      espLuzFria: false,
+      espMedida: '',
     });
     onClose();
   };

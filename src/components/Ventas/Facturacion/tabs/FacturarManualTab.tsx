@@ -114,6 +114,11 @@ const FacturarManualTab: React.FC<Props> = ({
   // Equipos "Especial": las particularidades se detallan en Observaciones → obligatorias.
   const faltaObsEspecial =
     cart.some((i) => i.tipoItem === 'EQUIPO' && i.especial) && !(notes || '').trim();
+  // Cada línea Especial debe tener al menos una característica estructurada (invariante del backend).
+  const faltaCaracteristicasEspecial = cart.some(
+    (i) => i.tipoItem === 'EQUIPO' && i.especial
+      && !i.espPuertasFrontales && !i.espLuzFria && !(i.espMedida || '').trim()
+  );
   return (
     <Box sx={{ width: '100%', maxWidth: '100%' }}>
       <Card sx={{ width: '100%' }}>
@@ -442,7 +447,7 @@ const FacturarManualTab: React.FC<Props> = ({
               variant="contained"
               startIcon={<SaveIcon />}
               onClick={onSubmit}
-              disabled={loading || !selectedClientId || !selectedUsuarioId || cart.length === 0 || faltaObsEspecial}
+              disabled={loading || !selectedClientId || !selectedUsuarioId || cart.length === 0 || faltaObsEspecial || faltaCaracteristicasEspecial}
             >
               Crear Factura
             </Button>

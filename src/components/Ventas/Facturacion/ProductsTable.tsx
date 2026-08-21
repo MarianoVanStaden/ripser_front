@@ -4,6 +4,7 @@ import {
   Button,
   Checkbox,
   Chip,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Paper,
@@ -243,13 +244,54 @@ export const ProductsTable = React.memo(
                     {showEspecial && (
                       <TableCell align="center">
                         {itemAny.tipoItem === 'EQUIPO' ? (
-                          <Checkbox
-                            size="small"
-                            checked={itemAny.especial ?? false}
-                            onChange={(e) => onUpdate(index, 'especial', e.target.checked)}
-                            disabled={!editable}
-                            inputProps={{ 'aria-label': 'Marcar equipo como especial' }}
-                          />
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <Checkbox
+                              size="small"
+                              checked={itemAny.especial ?? false}
+                              onChange={(e) => onUpdate(index, 'especial', e.target.checked)}
+                              disabled={!editable}
+                              inputProps={{ 'aria-label': 'Marcar equipo como especial' }}
+                            />
+                            {itemAny.especial && (
+                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.25 }}>
+                                <FormControlLabel
+                                  sx={{ m: 0 }}
+                                  control={
+                                    <Checkbox
+                                      size="small"
+                                      sx={{ p: 0.25 }}
+                                      checked={itemAny.espPuertasFrontales ?? false}
+                                      onChange={(e) => onUpdate(index, 'espPuertasFrontales', e.target.checked)}
+                                      disabled={!editable}
+                                    />
+                                  }
+                                  label={<Typography variant="caption">Puertas front.</Typography>}
+                                />
+                                <FormControlLabel
+                                  sx={{ m: 0 }}
+                                  control={
+                                    <Checkbox
+                                      size="small"
+                                      sx={{ p: 0.25 }}
+                                      checked={itemAny.espLuzFria ?? false}
+                                      onChange={(e) => onUpdate(index, 'espLuzFria', e.target.checked)}
+                                      disabled={!editable}
+                                    />
+                                  }
+                                  label={<Typography variant="caption">Luz fría</Typography>}
+                                />
+                                <TextField
+                                  size="small"
+                                  placeholder="Medida esp."
+                                  value={itemAny.espMedida ?? ''}
+                                  onChange={(e) => onUpdate(index, 'espMedida', e.target.value)}
+                                  disabled={!editable}
+                                  inputProps={{ maxLength: 50, 'aria-label': 'Medida especial' }}
+                                  sx={{ width: 110 }}
+                                />
+                              </Box>
+                            )}
+                          </Box>
                         ) : (
                           <Typography color="text.secondary">—</Typography>
                         )}

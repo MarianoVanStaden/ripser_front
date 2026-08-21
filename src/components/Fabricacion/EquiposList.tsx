@@ -586,11 +586,29 @@ const EquiposList: React.FC = () => {
       align: 'center',
       headerAlign: 'center',
       sortable: false,
-      renderCell: (params: GridRenderCellParams) => (
-        params.value
-          ? <Chip size="small" color="warning" label="Especial" sx={{ fontWeight: 700 }} />
-          : <Typography variant="body2" color="text.disabled">—</Typography>
-      ),
+      renderCell: (params: GridRenderCellParams) => {
+        if (!params.value) return <Typography variant="body2" color="text.disabled">—</Typography>;
+        const row = params.row as { espPuertasFrontales?: boolean; espLuzFria?: boolean; espMedida?: string | null };
+        const caracteristicas = [
+          row.espPuertasFrontales ? 'Puertas frontales' : null,
+          row.espLuzFria ? 'Luz fría' : null,
+          row.espMedida ? `Medida: ${row.espMedida}` : null,
+        ].filter(Boolean);
+        return (
+          <Tooltip
+            arrow
+            title={caracteristicas.length ? caracteristicas.join(' · ') : 'Sin clasificar (características pendientes)'}
+          >
+            <Chip
+              size="small"
+              color="warning"
+              variant={caracteristicas.length ? 'filled' : 'outlined'}
+              label={caracteristicas.length ? 'Especial' : 'Especial ⚠'}
+              sx={{ fontWeight: 700 }}
+            />
+          </Tooltip>
+        );
+      },
     },
     {
       field: 'estado',

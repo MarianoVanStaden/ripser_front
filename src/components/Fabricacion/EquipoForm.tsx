@@ -43,6 +43,9 @@ const schema = yup.object().shape({
   medidaId: yup.number().nullable().transform((v) => (v === '' || v == null ? null : v)),
   colorId: yup.number().nullable().transform((v) => (v === '' || v == null ? null : v)),
   especial: yup.boolean(),
+  espPuertasFrontales: yup.boolean(),
+  espLuzFria: yup.boolean(),
+  espMedida: yup.string().max(50, 'La medida especial no puede exceder los 50 caracteres'),
   observaciones: yup.string(),
 });
 
@@ -107,6 +110,9 @@ const EquipoForm: React.FC = () => {
       numeroHeladera: '',
       cantidad: 1,
       especial: false,
+      espPuertasFrontales: false,
+      espLuzFria: false,
+      espMedida: '',
       observaciones: '',
     },
     context: { isEdit },
@@ -117,6 +123,13 @@ const EquipoForm: React.FC = () => {
   const especialValue = watch('especial');
   const observacionesValue = watch('observaciones');
   const faltaObsEspecial = !isEdit && !!especialValue && !((observacionesValue as string) || '').trim();
+
+  // Cada equipo Especial debe tener al menos una característica estructurada (invariante del backend).
+  const espPuertasValue = watch('espPuertasFrontales');
+  const espLuzValue = watch('espLuzFria');
+  const espMedidaValue = watch('espMedida');
+  const faltaCaracteristicasEspecial =
+    !!especialValue && !espPuertasValue && !espLuzValue && !((espMedidaValue as string) || '').trim();
 
   // Equipo a editar: query bajo el namespace ['equipos']; la hidratación del
   // form espera a los catálogos (para resolver receta/responsable) y corre
@@ -143,6 +156,9 @@ const EquipoForm: React.FC = () => {
       numeroHeladera: data.numeroHeladera,
       cantidad: data.cantidad,
       especial: (data as any).especial ?? false,
+      espPuertasFrontales: (data as any).espPuertasFrontales ?? false,
+      espLuzFria: (data as any).espLuzFria ?? false,
+      espMedida: (data as any).espMedida ?? '',
       observaciones: data.observaciones || '',
     });
     setEstado(data.estado);
@@ -199,6 +215,17 @@ const EquipoForm: React.FC = () => {
         setSnackbar({
           open: true,
           message: 'Las observaciones son obligatorias para equipos especiales',
+          severity: 'error',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Especial exige al menos una característica estructurada.
+      if (faltaCaracteristicasEspecial) {
+        setSnackbar({
+          open: true,
+          message: 'Un equipo Especial debe indicar al menos una característica (puertas frontales, luz fría o medida especial)',
           severity: 'error',
         });
         setLoading(false);
@@ -280,6 +307,12 @@ const EquipoForm: React.FC = () => {
           recetaId: selectedReceta?.id,
           responsableId: selectedResponsable?.id,
           clienteId: selectedCliente?.id,
+          // Bloque Especial: se envía siempre (no undefined) para que el backend lo aplique
+          // (contrato PATCH-like: especial=null significa "no tocar").
+          especial: data.especial ?? false,
+          espPuertasFrontales: data.espPuertasFrontales ?? false,
+          espLuzFria: data.espLuzFria ?? false,
+          espMedida: (data.espMedida || '').trim() || null,
         };
         
         const response = await equipoFabricadoApi.update(equipoId, updateData);
@@ -304,6 +337,9 @@ const EquipoForm: React.FC = () => {
           colorId: null, // Sin color — el backend lo completa a FABRICADO_SIN_TERMINACION
           cantidad: data.cantidad,
           especial: data.especial ?? false,
+          espPuertasFrontales: data.espPuertasFrontales ?? false,
+          espLuzFria: data.espLuzFria ?? false,
+          espMedida: (data.espMedida || '').trim() || null,
           observaciones: data.observaciones,
           numeroHeladera: 'AUTO',
           recetaId: selectedReceta?.id,
@@ -332,6 +368,9 @@ const EquipoForm: React.FC = () => {
           colorId: data.colorId ?? null,
           cantidad: data.cantidad,
           especial: data.especial ?? false,
+          espPuertasFrontales: data.espPuertasFrontales ?? false,
+          espLuzFria: data.espLuzFria ?? false,
+          espMedida: (data.espMedida || '').trim() || null,
           observaciones: data.observaciones,
           estado: 'PENDIENTE', // Always start in PENDIENTE for new equipos
           numeroHeladera: 'AUTO', // Placeholder - backend debe reemplazarlo
@@ -651,22 +690,80 @@ const EquipoForm: React.FC = () => {
               </TextField>
             )}
 
-            {!isEdit && (
-              <Controller
-                name="especial"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={!!field.value}
-                        onChange={(e) => field.onChange(e.target.checked)}
-                      />
-                    }
-                    label="Especial (fabricación con particularidades: puertas / enchufes / medidas)"
-                  />
-                )}
-              />
+            <Controller
+              name="especial"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={!!field.value}
+                      onChange={(e) => {
+                        field.onChange(e.target.checked);
+                        if (!e.target.checked) {
+                          // Sin marca Especial no puede haber características (invariante del backend).
+                          setValue('espPuertasFrontales', false);
+                          setValue('espLuzFria', false);
+                          setValue('espMedida', '');
+                        }
+                      }}
+                    />
+                  }
+                  label="Especial (fabricación con particularidades: puertas / enchufes / medidas)"
+                />
+              )}
+            />
+
+            {!!especialValue && (
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ pl: 4 }} alignItems={{ sm: 'center' }}>
+                <Controller
+                  name="espPuertasFrontales"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={!!field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                        />
+                      }
+                      label="Puertas frontales"
+                    />
+                  )}
+                />
+                <Controller
+                  name="espLuzFria"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={!!field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                        />
+                      }
+                      label="Luz fría"
+                    />
+                  )}
+                />
+                <Controller
+                  name="espMedida"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      size="small"
+                      label="Medida especial"
+                      placeholder='Ej: 1,73 x 0,80'
+                      inputProps={{ maxLength: 50 }}
+                      error={faltaCaracteristicasEspecial}
+                      helperText={faltaCaracteristicasEspecial ? 'Indicá al menos una característica' : undefined}
+                    />
+                  )}
+                />
+              </Stack>
             )}
 
             <Controller
@@ -695,7 +792,7 @@ const EquipoForm: React.FC = () => {
             type="submit"
             variant="contained"
             startIcon={loading ? <CircularProgress size={20} /> : <Save />}
-            disabled={loading || faltaObsEspecial}
+            disabled={loading || faltaObsEspecial || faltaCaracteristicasEspecial}
           >
             {loading ? 'Guardando...' : 'Guardar'}
           </Button>

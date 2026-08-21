@@ -66,6 +66,17 @@ export interface SaneoReservasResult {
 }
 
 
+/** Parámetros de búsqueda de candidatos Especiales equivalentes (match exacto server-side). */
+export interface CandidatosEspecialesParams {
+  tipo: TipoEquipo;
+  modelo: string;
+  medidaId: number;
+  colorId?: number;
+  espPuertasFrontales?: boolean;
+  espLuzFria?: boolean;
+  espMedida?: string;
+}
+
 export const equipoFabricadoApi = {
   // CRUD básico + filtros server-side combinables (paginated).
   // Los arrays (estados, estadosAsignacion) se serializan como parámetros repetidos
@@ -77,6 +88,18 @@ export const equipoFabricadoApi = {
       params,
       paramsSerializer: { indexes: null },
     });
+    return response.data;
+  },
+
+  // Candidatos Especiales equivalentes en stock para una línea de venta Especial.
+  // Solo lectura: el claim real lo hace el backend al convertir/facturar (lock + re-validación).
+  candidatosEspeciales: async (
+    params: CandidatosEspecialesParams,
+  ): Promise<EquipoFabricadoListDTO[]> => {
+    const response = await api.get<EquipoFabricadoListDTO[]>(
+      '/api/equipos-fabricados/candidatos-especiales',
+      { params },
+    );
     return response.data;
   },
 

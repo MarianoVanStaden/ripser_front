@@ -128,6 +128,11 @@ export interface EquipoFabricadoDTO {
   /** Color previsto de una base reservada sin pintar (color = null). Derivado server-side de observaciones. Solo display. */
   colorPrevisto?: string | null;
   observaciones?: string;
+  /** Marca "Especial" + características estructuradas. */
+  especial?: boolean;
+  espPuertasFrontales?: boolean;
+  espLuzFria?: boolean;
+  espMedida?: string | null;
   fechaCreacion: string;
   numeroHeladera: string;
   codigoVenta?: string | null;   // código de venta/despacho (se asigna al vender)
@@ -188,6 +193,9 @@ export interface EquipoFabricadoListDTO {
   colorPrevisto?: string | null;
   /** Marca "Especial" heredada de la línea de venta (particularidades de fabricación). */
   especial?: boolean;
+  espPuertasFrontales?: boolean;
+  espLuzFria?: boolean;
+  espMedida?: string | null;
   cantidad: number;
   asignado: boolean;
   estadoAsignacion?: EstadoAsignacionEquipo;
@@ -218,6 +226,8 @@ export interface EquipoFabricadoFilterParams {
   medidaId?: number;
   asignado?: boolean;
   especial?: boolean;
+  /** true → solo Especiales sin características estructuradas (bandeja de normalización). */
+  sinCaracteristicas?: boolean;
   search?: string;
 }
 
@@ -277,6 +287,10 @@ export interface EquipoFabricadoCreateDTO {
   clienteId?: number;
   /** Marca de fabricación especial; si es true, observaciones es obligatorio. */
   especial?: boolean;
+  /** Características estructuradas: especial=true exige al menos una. */
+  espPuertasFrontales?: boolean;
+  espLuzFria?: boolean;
+  espMedida?: string | null;
 }
 
 export interface EquipoFabricadoUpdateDTO {
@@ -292,6 +306,11 @@ export interface EquipoFabricadoUpdateDTO {
   estado?: EstadoFabricacion;
   responsableId?: number;
   clienteId?: number;
+  /** Bloque Especial: enviar especial (no undefined) para modificarlo; el backend valida el invariante. */
+  especial?: boolean;
+  espPuertasFrontales?: boolean;
+  espLuzFria?: boolean;
+  espMedida?: string | null;
 }
 export type EstadoFabricacion = 'PENDIENTE' | 'EN_PROCESO' | 'PENDIENTE_CONTROL_CALIDAD' | 'COMPLETADO' | 'CANCELADO' | 'FABRICADO_SIN_TERMINACION';
 

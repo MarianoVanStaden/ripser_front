@@ -26,6 +26,7 @@ import {
   TableRow,
   Divider,
   FormControl,
+  FormControlLabel,
   InputLabel,
   Select,
   Autocomplete,
@@ -203,6 +204,9 @@ export default function PresupuestoFormDialog({
               precioUnitario: detalle.precioUnitario,
               subtotal: detalle.subtotal,
               especial: detalle.especial ?? false,
+              espPuertasFrontales: detalle.espPuertasFrontales ?? false,
+              espLuzFria: detalle.espLuzFria ?? false,
+              espMedida: detalle.espMedida ?? '',
             }))
           : []
       );
@@ -362,6 +366,12 @@ export default function PresupuestoFormDialog({
   );
   const faltaObsEspecial = !editingPresupuesto && hayEquipoEspecial && !(formData.observaciones || '').trim();
 
+  // Cada línea Especial debe tener al menos una característica estructurada (invariante del backend).
+  const faltaCaracteristicasEspecial = !editingPresupuesto && detalles.some(
+    (d) => d.tipoItem === 'EQUIPO' && d.especial
+      && !d.espPuertasFrontales && !d.espLuzFria && !(d.espMedida || '').trim()
+  );
+
   // Re-export desde utils compartido para consumidores que solo necesitan el label
   const getMetodoPagoLabel = getMetodoPagoLabelShared;
 
@@ -416,6 +426,18 @@ export default function PresupuestoFormDialog({
         detalle.descripcion = value as string;
       } else if (field === "especial") {
         detalle.especial = Boolean(value);
+        if (!detalle.especial) {
+          // Sin marca Especial no puede haber características (invariante del backend).
+          detalle.espPuertasFrontales = false;
+          detalle.espLuzFria = false;
+          detalle.espMedida = '';
+        }
+      } else if (field === "espPuertasFrontales") {
+        detalle.espPuertasFrontales = Boolean(value);
+      } else if (field === "espLuzFria") {
+        detalle.espLuzFria = Boolean(value);
+      } else if (field === "espMedida") {
+        detalle.espMedida = String(value);
       } else if (field === "cantidad") {
         detalle.cantidad = Number(value) || 0;
       } else if (field === "precioUnitario") {
@@ -531,6 +553,9 @@ export default function PresupuestoFormDialog({
           baseDetalle.recetaId = Number(d.recetaId);
           baseDetalle.colorId = d.colorId ?? undefined;
           baseDetalle.especial = d.especial ?? false;
+          baseDetalle.espPuertasFrontales = d.espPuertasFrontales ?? false;
+          baseDetalle.espLuzFria = d.espLuzFria ?? false;
+          baseDetalle.espMedida = (d.espMedida || '').trim() || undefined;
           // medida no se envía: el backend la deriva de la receta.
         }
         // ENVIO/REVESTIMIENTO: no productoId/recetaId — descripcion ya está en baseDetalle.
@@ -546,6 +571,10 @@ export default function PresupuestoFormDialog({
       }
       if (faltaObsEspecial) {
         setError("Agregá especificaciones de equipo/s especiales en Observaciones");
+        return;
+      }
+      if (faltaCaracteristicasEspecial) {
+        setError("Cada equipo Especial debe indicar al menos una característica (puertas frontales, luz fría o medida especial)");
         return;
       }
       if (detalles.length === 0) {
@@ -1320,13 +1349,54 @@ export default function PresupuestoFormDialog({
                         </TableCell>
                         <TableCell align="center">
                           {detalle.tipoItem === 'EQUIPO' ? (
-                            <Checkbox
-                              size="small"
-                              checked={detalle.especial ?? false}
-                              onChange={(e) => updateDetalle(index, "especial", e.target.checked)}
-                              disabled={readOnly || !!editingPresupuesto}
-                              inputProps={{ 'aria-label': 'Marcar equipo como especial' }}
-                            />
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <Checkbox
+                                size="small"
+                                checked={detalle.especial ?? false}
+                                onChange={(e) => updateDetalle(index, "especial", e.target.checked)}
+                                disabled={readOnly || !!editingPresupuesto}
+                                inputProps={{ 'aria-label': 'Marcar equipo como especial' }}
+                              />
+                              {detalle.especial && (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.25 }}>
+                                  <FormControlLabel
+                                    sx={{ m: 0 }}
+                                    control={
+                                      <Checkbox
+                                        size="small"
+                                        sx={{ p: 0.25 }}
+                                        checked={detalle.espPuertasFrontales ?? false}
+                                        onChange={(e) => updateDetalle(index, "espPuertasFrontales", e.target.checked)}
+                                        disabled={readOnly || !!editingPresupuesto}
+                                      />
+                                    }
+                                    label={<Typography variant="caption">Puertas front.</Typography>}
+                                  />
+                                  <FormControlLabel
+                                    sx={{ m: 0 }}
+                                    control={
+                                      <Checkbox
+                                        size="small"
+                                        sx={{ p: 0.25 }}
+                                        checked={detalle.espLuzFria ?? false}
+                                        onChange={(e) => updateDetalle(index, "espLuzFria", e.target.checked)}
+                                        disabled={readOnly || !!editingPresupuesto}
+                                      />
+                                    }
+                                    label={<Typography variant="caption">Luz fría</Typography>}
+                                  />
+                                  <TextField
+                                    size="small"
+                                    placeholder="Medida esp."
+                                    value={detalle.espMedida ?? ''}
+                                    onChange={(e) => updateDetalle(index, "espMedida", e.target.value)}
+                                    disabled={readOnly || !!editingPresupuesto}
+                                    inputProps={{ maxLength: 50, 'aria-label': 'Medida especial' }}
+                                    sx={{ width: 110 }}
+                                  />
+                                </Box>
+                              )}
+                            </Box>
                           ) : (
                             <Typography variant="body2" color="text.secondary">—</Typography>
                           )}
@@ -1537,7 +1607,7 @@ export default function PresupuestoFormDialog({
             <Button
               variant="contained"
               onClick={handleSavePresupuesto}
-              disabled={formLoading || (!formData.clienteId && !formData.leadId) || detalles.length === 0 || faltaObsEspecial}
+              disabled={formLoading || (!formData.clienteId && !formData.leadId) || detalles.length === 0 || faltaObsEspecial || faltaCaracteristicasEspecial}
               aria-label={editingPresupuesto ? "Actualizar presupuesto" : "Crear presupuesto"}
             >
               {formLoading ? <CircularProgress size={24} /> : editingPresupuesto ? "Actualizar" : "Crear"}

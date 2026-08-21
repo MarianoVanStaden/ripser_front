@@ -21,6 +21,10 @@ export type CartItem = {
   medidaNombre?: string;
   /** Marca "Especial": la línea EQUIPO tiene particularidades de fabricación. */
   especial?: boolean;
+  /** Características estructuradas del Especial (especial=true exige al menos una). */
+  espPuertasFrontales?: boolean;
+  espLuzFria?: boolean;
+  espMedida?: string;
   // Stock validation fields
   stockDisponible?: number;
   stockVerificado?: boolean;

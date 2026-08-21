@@ -30,4 +30,7 @@ export const initialDetalle: DetalleForm = {
   precioUnitario: 0,
   subtotal: 0,
   especial: false,
+  espPuertasFrontales: false,
+  espLuzFria: false,
+  espMedida: '',
 };

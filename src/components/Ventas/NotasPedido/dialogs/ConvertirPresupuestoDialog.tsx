@@ -33,7 +33,17 @@ import type {
   DocumentoComercial,
   MetodoPago,
   OpcionFinanciamientoDTO,
+  EquipoFabricadoListDTO,
 } from '../../../../types';
+
+/** Línea Especial del presupuesto con candidatos equivalentes en stock para reusar. */
+export interface LineaEspecialConvert {
+  /** id del detalle del PRESUPUESTO (clave que espera el backend en asignacionesEspeciales). */
+  detalleId: number;
+  descripcion: string;
+  caracteristicas: string;
+  candidatos: EquipoFabricadoListDTO[];
+}
 import type { ConvertFormData, TipoDescuento, TipoIva } from '../types';
 import { IVA_RATES } from '../constants';
 import { getTipoIvaLabel } from '../utils';
@@ -57,6 +67,12 @@ interface Props {
   showExcluirBono?: boolean;
   /** Aviso: el cliente tiene una NC reciente — posible venta rehecha. */
   ncRecienteWarning?: string | null;
+  /** Líneas Especiales con candidatos equivalentes en stock (solo las que tienen alguno). */
+  lineasEspeciales?: LineaEspecialConvert[];
+  /** Selección actual: detallePresupuestoId → equipoId (ausente = fabricar nuevo). */
+  asignacionesEspeciales?: Record<number, number>;
+  /** Cambio de selección; equipoId null = fabricar nuevo. */
+  onSelectEquipoEspecial?: (detalleId: number, equipoId: number | null) => void;
 }
 
 const ConvertirPresupuestoDialog: React.FC<Props> = ({
@@ -74,6 +90,9 @@ const ConvertirPresupuestoDialog: React.FC<Props> = ({
   onSelectOpcion,
   showExcluirBono = false,
   ncRecienteWarning = null,
+  lineasEspeciales = [],
+  asignacionesEspeciales = {},
+  onSelectEquipoEspecial,
 }) => {
   // Totales de la conversión, incluyendo el descuento extra que se aplica en
   // este diálogo. Se calculan una sola vez para que tanto el desglose de
@@ -204,6 +223,51 @@ const ConvertirPresupuestoDialog: React.FC<Props> = ({
                   Observaciones: {selectedPresupuesto.observaciones}
                 </Typography>
               )}
+            </Paper>
+          )}
+
+          {selectedPresupuesto && lineasEspeciales.length > 0 && (
+            <Paper sx={{ p: 2, mt: 2, border: '1px solid', borderColor: 'success.light' }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Equipos Especiales — reuso de stock
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                Hay equipos Especiales equivalentes disponibles en stock. Elegí reusarlos o fabricar
+                uno nuevo (default). Revisá las observaciones del equipo antes de confirmar.
+              </Typography>
+              {lineasEspeciales.map((linea) => (
+                <Box key={linea.detalleId} sx={{ mb: 1.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {linea.descripcion}
+                    {linea.caracteristicas && (
+                      <Typography component="span" variant="caption" color="text.secondary">
+                        {' '}({linea.caracteristicas})
+                      </Typography>
+                    )}
+                  </Typography>
+                  <TextField
+                    select
+                    fullWidth
+                    size="small"
+                    margin="dense"
+                    label="Equipo a usar"
+                    value={asignacionesEspeciales[linea.detalleId] ?? ''}
+                    onChange={(e) => onSelectEquipoEspecial?.(
+                      linea.detalleId,
+                      e.target.value === '' ? null : Number(e.target.value)
+                    )}
+                  >
+                    <MenuItem value="">Fabricar nuevo (default)</MenuItem>
+                    {linea.candidatos.map((c) => (
+                      <MenuItem key={c.id} value={c.id}>
+                        Reusar {c.numeroHeladera} — {c.modelo}
+                        {c.color?.nombre ? ` · ${c.color.nombre}` : ''}
+                        {c.observaciones ? ` · Obs: ${c.observaciones}` : ''}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Box>
+              ))}
             </Paper>
           )}
 

@@ -666,7 +666,7 @@ const FacturacionPage = () => {
     }
   }, []);
 
-  const updateCartItem = async (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento'|'colorId'|'especial', value: any) => {
+  const updateCartItem = async (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento'|'colorId'|'especial'|'espPuertasFrontales'|'espLuzFria'|'espMedida', value: any) => {
     const newCart = [...cart];
     const item = { ...newCart[index] };
 
@@ -766,6 +766,18 @@ const FacturacionPage = () => {
       item.descuento = Math.min(100, Math.max(0, Number(value) || 0));
     } else if (field === 'especial') {
       item.especial = Boolean(value);
+      if (!item.especial) {
+        // Sin marca Especial no puede haber características (invariante del backend).
+        item.espPuertasFrontales = false;
+        item.espLuzFria = false;
+        item.espMedida = '';
+      }
+    } else if (field === 'espPuertasFrontales') {
+      item.espPuertasFrontales = Boolean(value);
+    } else if (field === 'espLuzFria') {
+      item.espLuzFria = Boolean(value);
+    } else if (field === 'espMedida') {
+      item.espMedida = String(value);
     }
 
     newCart[index] = item;
@@ -905,6 +917,9 @@ const FacturacionPage = () => {
         detalle.descripcion = equipoDesc;
         if (item.colorId != null) detalle.colorId = item.colorId;
         detalle.especial = item.especial ?? false;
+        detalle.espPuertasFrontales = item.espPuertasFrontales ?? false;
+        detalle.espLuzFria = item.espLuzFria ?? false;
+        detalle.espMedida = (item.espMedida || '').trim() || undefined;
       } else if (item.tipoItem === 'ENVIO') {
         detalle.descripcion = item.descripcion || 'Envío';
       } else if (item.tipoItem === 'REVESTIMIENTO') {
@@ -958,6 +973,9 @@ const FacturacionPage = () => {
         descuento: item.descuento || 0,
         subtotal: 0,
         especial: item.especial ?? false,
+        espPuertasFrontales: item.espPuertasFrontales ?? false,
+        espLuzFria: item.espLuzFria ?? false,
+        espMedida: (item.espMedida || '').trim() || null,
         ...(item.colorId != null && {
           color: { id: item.colorId, nombre: item.colorNombre || '' } as any,
         }),
@@ -1063,6 +1081,11 @@ const FacturacionPage = () => {
     // Equipos "Especial": las particularidades se detallan en Observaciones → obligatorias.
     if (cart.some((i) => i.tipoItem === 'EQUIPO' && (i as any).especial) && !(notes || '').trim()) {
       return setError('Agregá especificaciones de equipo/s especiales en Observaciones.');
+    }
+    // Cada línea Especial debe tener al menos una característica estructurada (invariante del backend).
+    if (cart.some((i) => i.tipoItem === 'EQUIPO' && i.especial
+        && !i.espPuertasFrontales && !i.espLuzFria && !(i.espMedida || '').trim())) {
+      return setError('Cada equipo Especial debe indicar al menos una característica (puertas frontales, luz fría o medida especial).');
     }
 
     // La caja al contado es OPCIONAL: se elige solo si la plata entra en el acto.

@@ -529,6 +529,8 @@ export const documentoApi = {
     cajaAhorroId?: number | null;
     excluirDeBono?: boolean;
     documentoReemplazaId?: number | null;
+    /** Reuso de Especiales: detallePresupuestoId → equipoFabricadoId confirmado por el vendedor. */
+    asignacionesEspeciales?: Record<number, number>;
   }): Promise<ConvertToNotaPedidoResult> => {
     const response = await api.post<ConvertToNotaPedidoResult>('/api/documentos/nota-pedido', dto);
     return response.data;

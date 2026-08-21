@@ -77,6 +77,8 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
   const [colorFilter, setColorFilter] = useState<number | ''>('');
   const [medidaFilter, setMedidaFilter] = useState<number | ''>('');
   const [especialFilter, setEspecialFilter] = useState(false);
+  // Bandeja de normalización: Especiales sin características estructuradas cargadas.
+  const [sinCaracteristicasFilter, setSinCaracteristicasFilter] = useState(false);
   const [modeloInput, setModeloInput] = useState('');
   const [modeloFilter, setModeloFilter] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -94,7 +96,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
   // Al cambiar cualquier filtro, volver a la página 0.
   useEffect(() => {
     setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
-  }, [estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter, especialFilter, modeloFilter, searchFilter]);
+  }, [estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter, especialFilter, sinCaracteristicasFilter, modeloFilter, searchFilter]);
 
   // Lista paginada server-side de la sección. El padre refresca tras cada
   // mutación invalidando ['equipos'].
@@ -107,6 +109,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
       colorId: colorFilter === '' ? undefined : colorFilter,
       medidaId: medidaFilter === '' ? undefined : medidaFilter,
       especial: especialFilter ? true : undefined,
+      sinCaracteristicas: sinCaracteristicasFilter ? true : undefined,
       modelo: modeloFilter || undefined,
       search: searchFilter || undefined,
     }],
@@ -121,6 +124,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
       colorId: colorFilter === '' ? undefined : colorFilter,
       medidaId: medidaFilter === '' ? undefined : medidaFilter,
       especial: especialFilter ? true : undefined,
+      sinCaracteristicas: sinCaracteristicasFilter ? true : undefined,
       search: searchFilter || undefined,
     }),
     placeholderData: keepPreviousData,
@@ -131,7 +135,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
 
   const hayFiltrosActivos =
     estadosFilter.length > 0 || estadosAsignacionFilter.length > 0 ||
-    colorFilter !== '' || medidaFilter !== '' || especialFilter || !!modeloInput || !!searchInput;
+    colorFilter !== '' || medidaFilter !== '' || especialFilter || sinCaracteristicasFilter || !!modeloInput || !!searchInput;
 
   const limpiarFiltros = () => {
     setEstadosFilter([]);
@@ -139,6 +143,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
     setColorFilter('');
     setMedidaFilter('');
     setEspecialFilter(false);
+    setSinCaracteristicasFilter(false);
     setModeloInput('');
     setSearchInput('');
     setModeloFilter('');
@@ -259,6 +264,17 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
               />
             }
             label="Solo especiales"
+          />
+          <FormControlLabel
+            sx={{ alignSelf: 'center', ml: 0 }}
+            control={
+              <Checkbox
+                size="small"
+                checked={sinCaracteristicasFilter}
+                onChange={(e) => setSinCaracteristicasFilter(e.target.checked)}
+              />
+            }
+            label="Especiales sin clasificar"
           />
           {hayFiltrosActivos && (
             <Button
