@@ -41,7 +41,7 @@ export default function RevestimientoDialog({ open, onClose, cantidadInicial, on
       especial: false,
       espPuertasFrontales: false,
       espLuzFria: false,
-      espMedida: '',
+      espLateraMixta: false,
     });
     onClose();
   };

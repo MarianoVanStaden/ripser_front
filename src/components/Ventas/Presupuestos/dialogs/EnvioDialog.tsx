@@ -56,7 +56,7 @@ export default function EnvioDialog({ open, onClose, cantidadInicial, onConfirm 
       especial: false,
       espPuertasFrontales: false,
       espLuzFria: false,
-      espMedida: '',
+      espLateraMixta: false,
     });
     onClose();
   };

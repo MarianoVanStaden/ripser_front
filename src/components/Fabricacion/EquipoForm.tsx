@@ -45,7 +45,7 @@ const schema = yup.object().shape({
   especial: yup.boolean(),
   espPuertasFrontales: yup.boolean(),
   espLuzFria: yup.boolean(),
-  espMedida: yup.string().max(50, 'La medida especial no puede exceder los 50 caracteres'),
+  espLateraMixta: yup.boolean(),
   observaciones: yup.string(),
 });
 
@@ -112,7 +112,7 @@ const EquipoForm: React.FC = () => {
       especial: false,
       espPuertasFrontales: false,
       espLuzFria: false,
-      espMedida: '',
+      espLateraMixta: false,
       observaciones: '',
     },
     context: { isEdit },
@@ -127,9 +127,9 @@ const EquipoForm: React.FC = () => {
   // Cada equipo Especial debe tener al menos una característica estructurada (invariante del backend).
   const espPuertasValue = watch('espPuertasFrontales');
   const espLuzValue = watch('espLuzFria');
-  const espMedidaValue = watch('espMedida');
+  const espLateraMixtaValue = watch('espLateraMixta');
   const faltaCaracteristicasEspecial =
-    !!especialValue && !espPuertasValue && !espLuzValue && !((espMedidaValue as string) || '').trim();
+    !!especialValue && !espPuertasValue && !espLuzValue && !espLateraMixtaValue;
 
   // Equipo a editar: query bajo el namespace ['equipos']; la hidratación del
   // form espera a los catálogos (para resolver receta/responsable) y corre
@@ -158,7 +158,7 @@ const EquipoForm: React.FC = () => {
       especial: (data as any).especial ?? false,
       espPuertasFrontales: (data as any).espPuertasFrontales ?? false,
       espLuzFria: (data as any).espLuzFria ?? false,
-      espMedida: (data as any).espMedida ?? '',
+      espLateraMixta: (data as any).espLateraMixta ?? false,
       observaciones: data.observaciones || '',
     });
     setEstado(data.estado);
@@ -225,7 +225,7 @@ const EquipoForm: React.FC = () => {
       if (faltaCaracteristicasEspecial) {
         setSnackbar({
           open: true,
-          message: 'Un equipo Especial debe indicar al menos una característica (puertas frontales, luz fría o medida especial)',
+          message: 'Un equipo Especial debe indicar al menos una característica (puertas frontales, luz fría o latera mixta)',
           severity: 'error',
         });
         setLoading(false);
@@ -312,9 +312,9 @@ const EquipoForm: React.FC = () => {
           especial: data.especial ?? false,
           espPuertasFrontales: data.espPuertasFrontales ?? false,
           espLuzFria: data.espLuzFria ?? false,
-          espMedida: (data.espMedida || '').trim() || null,
+          espLateraMixta: data.espLateraMixta ?? false,
         };
-        
+
         const response = await equipoFabricadoApi.update(equipoId, updateData);
         console.log('✅ Equipo updated successfully:', response);
         
@@ -339,7 +339,7 @@ const EquipoForm: React.FC = () => {
           especial: data.especial ?? false,
           espPuertasFrontales: data.espPuertasFrontales ?? false,
           espLuzFria: data.espLuzFria ?? false,
-          espMedida: (data.espMedida || '').trim() || null,
+          espLateraMixta: data.espLateraMixta ?? false,
           observaciones: data.observaciones,
           numeroHeladera: 'AUTO',
           recetaId: selectedReceta?.id,
@@ -370,7 +370,7 @@ const EquipoForm: React.FC = () => {
           especial: data.especial ?? false,
           espPuertasFrontales: data.espPuertasFrontales ?? false,
           espLuzFria: data.espLuzFria ?? false,
-          espMedida: (data.espMedida || '').trim() || null,
+          espLateraMixta: data.espLateraMixta ?? false,
           observaciones: data.observaciones,
           estado: 'PENDIENTE', // Always start in PENDIENTE for new equipos
           numeroHeladera: 'AUTO', // Placeholder - backend debe reemplazarlo
@@ -704,7 +704,7 @@ const EquipoForm: React.FC = () => {
                           // Sin marca Especial no puede haber características (invariante del backend).
                           setValue('espPuertasFrontales', false);
                           setValue('espLuzFria', false);
-                          setValue('espMedida', '');
+                          setValue('espLateraMixta', false);
                         }
                       }}
                     />
@@ -749,20 +749,26 @@ const EquipoForm: React.FC = () => {
                   )}
                 />
                 <Controller
-                  name="espMedida"
+                  name="espLateraMixta"
                   control={control}
                   render={({ field }) => (
-                    <TextField
-                      {...field}
-                      size="small"
-                      label="Medida especial"
-                      placeholder='Ej: 1,73 x 0,80'
-                      inputProps={{ maxLength: 50 }}
-                      error={faltaCaracteristicasEspecial}
-                      helperText={faltaCaracteristicasEspecial ? 'Indicá al menos una característica' : undefined}
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={!!field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                        />
+                      }
+                      label="Latera mixta"
                     />
                   )}
                 />
+                {faltaCaracteristicasEspecial && (
+                  <Typography variant="caption" color="error" sx={{ alignSelf: 'center' }}>
+                    Indicá al menos una característica
+                  </Typography>
+                )}
               </Stack>
             )}
 

@@ -54,7 +54,7 @@ export interface DetalleForm {
   /** Características estructuradas del Especial (especial=true exige al menos una). */
   espPuertasFrontales: boolean;
   espLuzFria: boolean;
-  espMedida: string;
+  espLateraMixta: boolean;
 }
 
 export type DestinatarioMode = 'CLIENTE' | 'LEAD';

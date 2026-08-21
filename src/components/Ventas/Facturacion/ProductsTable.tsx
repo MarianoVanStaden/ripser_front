@@ -280,14 +280,18 @@ export const ProductsTable = React.memo(
                                   }
                                   label={<Typography variant="caption">Luz fría</Typography>}
                                 />
-                                <TextField
-                                  size="small"
-                                  placeholder="Medida esp."
-                                  value={itemAny.espMedida ?? ''}
-                                  onChange={(e) => onUpdate(index, 'espMedida', e.target.value)}
-                                  disabled={!editable}
-                                  inputProps={{ maxLength: 50, 'aria-label': 'Medida especial' }}
-                                  sx={{ width: 110 }}
+                                <FormControlLabel
+                                  sx={{ m: 0 }}
+                                  control={
+                                    <Checkbox
+                                      size="small"
+                                      sx={{ p: 0.25 }}
+                                      checked={itemAny.espLateraMixta ?? false}
+                                      onChange={(e) => onUpdate(index, 'espLateraMixta', e.target.checked)}
+                                      disabled={!editable}
+                                    />
+                                  }
+                                  label={<Typography variant="caption">Latera mixta</Typography>}
                                 />
                               </Box>
                             )}

@@ -206,7 +206,7 @@ export default function PresupuestoFormDialog({
               especial: detalle.especial ?? false,
               espPuertasFrontales: detalle.espPuertasFrontales ?? false,
               espLuzFria: detalle.espLuzFria ?? false,
-              espMedida: detalle.espMedida ?? '',
+              espLateraMixta: detalle.espLateraMixta ?? false,
             }))
           : []
       );
@@ -369,7 +369,7 @@ export default function PresupuestoFormDialog({
   // Cada línea Especial debe tener al menos una característica estructurada (invariante del backend).
   const faltaCaracteristicasEspecial = !editingPresupuesto && detalles.some(
     (d) => d.tipoItem === 'EQUIPO' && d.especial
-      && !d.espPuertasFrontales && !d.espLuzFria && !(d.espMedida || '').trim()
+      && !d.espPuertasFrontales && !d.espLuzFria && !d.espLateraMixta
   );
 
   // Re-export desde utils compartido para consumidores que solo necesitan el label
@@ -430,14 +430,14 @@ export default function PresupuestoFormDialog({
           // Sin marca Especial no puede haber características (invariante del backend).
           detalle.espPuertasFrontales = false;
           detalle.espLuzFria = false;
-          detalle.espMedida = '';
+          detalle.espLateraMixta = false;
         }
       } else if (field === "espPuertasFrontales") {
         detalle.espPuertasFrontales = Boolean(value);
       } else if (field === "espLuzFria") {
         detalle.espLuzFria = Boolean(value);
-      } else if (field === "espMedida") {
-        detalle.espMedida = String(value);
+      } else if (field === "espLateraMixta") {
+        detalle.espLateraMixta = Boolean(value);
       } else if (field === "cantidad") {
         detalle.cantidad = Number(value) || 0;
       } else if (field === "precioUnitario") {
@@ -555,7 +555,7 @@ export default function PresupuestoFormDialog({
           baseDetalle.especial = d.especial ?? false;
           baseDetalle.espPuertasFrontales = d.espPuertasFrontales ?? false;
           baseDetalle.espLuzFria = d.espLuzFria ?? false;
-          baseDetalle.espMedida = (d.espMedida || '').trim() || undefined;
+          baseDetalle.espLateraMixta = d.espLateraMixta ?? false;
           // medida no se envía: el backend la deriva de la receta.
         }
         // ENVIO/REVESTIMIENTO: no productoId/recetaId — descripcion ya está en baseDetalle.
@@ -574,7 +574,7 @@ export default function PresupuestoFormDialog({
         return;
       }
       if (faltaCaracteristicasEspecial) {
-        setError("Cada equipo Especial debe indicar al menos una característica (puertas frontales, luz fría o medida especial)");
+        setError("Cada equipo Especial debe indicar al menos una característica (puertas frontales, luz fría o latera mixta)");
         return;
       }
       if (detalles.length === 0) {
@@ -1385,14 +1385,18 @@ export default function PresupuestoFormDialog({
                                     }
                                     label={<Typography variant="caption">Luz fría</Typography>}
                                   />
-                                  <TextField
-                                    size="small"
-                                    placeholder="Medida esp."
-                                    value={detalle.espMedida ?? ''}
-                                    onChange={(e) => updateDetalle(index, "espMedida", e.target.value)}
-                                    disabled={readOnly || !!editingPresupuesto}
-                                    inputProps={{ maxLength: 50, 'aria-label': 'Medida especial' }}
-                                    sx={{ width: 110 }}
+                                  <FormControlLabel
+                                    sx={{ m: 0 }}
+                                    control={
+                                      <Checkbox
+                                        size="small"
+                                        sx={{ p: 0.25 }}
+                                        checked={detalle.espLateraMixta ?? false}
+                                        onChange={(e) => updateDetalle(index, "espLateraMixta", e.target.checked)}
+                                        disabled={readOnly || !!editingPresupuesto}
+                                      />
+                                    }
+                                    label={<Typography variant="caption">Latera mixta</Typography>}
                                   />
                                 </Box>
                               )}

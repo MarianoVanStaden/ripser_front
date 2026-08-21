@@ -588,11 +588,11 @@ const EquiposList: React.FC = () => {
       sortable: false,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.value) return <Typography variant="body2" color="text.disabled">—</Typography>;
-        const row = params.row as { espPuertasFrontales?: boolean; espLuzFria?: boolean; espMedida?: string | null };
+        const row = params.row as { espPuertasFrontales?: boolean; espLuzFria?: boolean; espLateraMixta?: boolean };
         const caracteristicas = [
           row.espPuertasFrontales ? 'Puertas frontales' : null,
           row.espLuzFria ? 'Luz fría' : null,
-          row.espMedida ? `Medida: ${row.espMedida}` : null,
+          row.espLateraMixta ? 'Latera mixta' : null,
         ].filter(Boolean);
         return (
           <Tooltip

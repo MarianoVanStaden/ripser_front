@@ -117,7 +117,7 @@ const FacturarManualTab: React.FC<Props> = ({
   // Cada línea Especial debe tener al menos una característica estructurada (invariante del backend).
   const faltaCaracteristicasEspecial = cart.some(
     (i) => i.tipoItem === 'EQUIPO' && i.especial
-      && !i.espPuertasFrontales && !i.espLuzFria && !(i.espMedida || '').trim()
+      && !i.espPuertasFrontales && !i.espLuzFria && !i.espLateraMixta
   );
   return (
     <Box sx={{ width: '100%', maxWidth: '100%' }}>

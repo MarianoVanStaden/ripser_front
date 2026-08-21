@@ -24,7 +24,7 @@ export type CartItem = {
   /** Características estructuradas del Especial (especial=true exige al menos una). */
   espPuertasFrontales?: boolean;
   espLuzFria?: boolean;
-  espMedida?: string;
+  espLateraMixta?: boolean;
   // Stock validation fields
   stockDisponible?: number;
   stockVerificado?: boolean;

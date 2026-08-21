@@ -32,5 +32,5 @@ export const initialDetalle: DetalleForm = {
   especial: false,
   espPuertasFrontales: false,
   espLuzFria: false,
-  espMedida: '',
+  espLateraMixta: false,
 };

@@ -132,7 +132,7 @@ export interface EquipoFabricadoDTO {
   especial?: boolean;
   espPuertasFrontales?: boolean;
   espLuzFria?: boolean;
-  espMedida?: string | null;
+  espLateraMixta?: boolean;
   fechaCreacion: string;
   numeroHeladera: string;
   codigoVenta?: string | null;   // código de venta/despacho (se asigna al vender)
@@ -195,7 +195,7 @@ export interface EquipoFabricadoListDTO {
   especial?: boolean;
   espPuertasFrontales?: boolean;
   espLuzFria?: boolean;
-  espMedida?: string | null;
+  espLateraMixta?: boolean;
   cantidad: number;
   asignado: boolean;
   estadoAsignacion?: EstadoAsignacionEquipo;
@@ -290,7 +290,7 @@ export interface EquipoFabricadoCreateDTO {
   /** Características estructuradas: especial=true exige al menos una. */
   espPuertasFrontales?: boolean;
   espLuzFria?: boolean;
-  espMedida?: string | null;
+  espLateraMixta?: boolean;
 }
 
 export interface EquipoFabricadoUpdateDTO {
@@ -310,7 +310,7 @@ export interface EquipoFabricadoUpdateDTO {
   especial?: boolean;
   espPuertasFrontales?: boolean;
   espLuzFria?: boolean;
-  espMedida?: string | null;
+  espLateraMixta?: boolean;
 }
 export type EstadoFabricacion = 'PENDIENTE' | 'EN_PROCESO' | 'PENDIENTE_CONTROL_CALIDAD' | 'COMPLETADO' | 'CANCELADO' | 'FABRICADO_SIN_TERMINACION';
 

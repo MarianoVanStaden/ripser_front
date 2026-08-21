@@ -613,7 +613,7 @@ const NotasPedidoPage: React.FC = () => {
                   colorId: d.color?.id,
                   espPuertasFrontales: d.espPuertasFrontales ?? false,
                   espLuzFria: d.espLuzFria ?? false,
-                  espMedida: d.espMedida || undefined,
+                  espLateraMixta: d.espLateraMixta ?? false,
                 });
               } catch {
                 // Best-effort: sin sugerencia la línea se fabrica igual que siempre.
@@ -622,7 +622,7 @@ const NotasPedidoPage: React.FC = () => {
             const caracteristicas = [
               d.espPuertasFrontales ? 'Puertas frontales' : null,
               d.espLuzFria ? 'Luz fría' : null,
-              d.espMedida ? `Medida: ${d.espMedida}` : null,
+              d.espLateraMixta ? 'Latera mixta' : null,
             ].filter(Boolean).join(' · ');
             return {
               detalleId: d.id!,

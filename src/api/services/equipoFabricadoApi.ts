@@ -74,7 +74,7 @@ export interface CandidatosEspecialesParams {
   colorId?: number;
   espPuertasFrontales?: boolean;
   espLuzFria?: boolean;
-  espMedida?: string;
+  espLateraMixta?: boolean;
 }
 
 export const equipoFabricadoApi = {

@@ -200,7 +200,7 @@ export interface DetalleDocumento {
   // Características estructuradas del Especial (especial=true exige al menos una)
   espPuertasFrontales?: boolean;
   espLuzFria?: boolean;
-  espMedida?: string | null;
+  espLateraMixta?: boolean;
 
   // For EQUIPO items in Factura - list of assigned equipos
   equiposFabricadosIds?: number[];
@@ -232,7 +232,7 @@ export interface DetalleDocumentoDTO {
   // Características estructuradas del Especial (especial=true exige al menos una)
   espPuertasFrontales?: boolean;
   espLuzFria?: boolean;
-  espMedida?: string | null;
+  espLateraMixta?: boolean;
 
   // For EQUIPO items in Factura - list of assigned equipos
   equiposFabricadosIds?: number[];

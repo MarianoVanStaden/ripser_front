@@ -114,7 +114,7 @@ interface DetalleAsignacion {
   especial: boolean;
   espPuertasFrontales?: boolean;
   espLuzFria?: boolean;
-  espMedida?: string | null;
+  espLateraMixta?: boolean;
 }
 
 const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
@@ -163,7 +163,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
           especial: Boolean(detalle.especial),
           espPuertasFrontales: (detalle as any).espPuertasFrontales ?? false,
           espLuzFria: (detalle as any).espLuzFria ?? false,
-          espMedida: (detalle as any).espMedida ?? null,
+          espLateraMixta: (detalle as any).espLateraMixta ?? false,
         };
 
         newAsignaciones.push(asignacion);
@@ -218,7 +218,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
             colorId: asignacion.colorId,
             espPuertasFrontales: asignacion.espPuertasFrontales ?? false,
             espLuzFria: asignacion.espLuzFria ?? false,
-            espMedida: asignacion.espMedida || undefined,
+            espLateraMixta: asignacion.espLateraMixta ?? false,
           });
           setAsignaciones((prev) =>
             prev.map((a, index) =>
