@@ -786,6 +786,8 @@ const RegistroVentasPage: React.FC = () => {
                 >
                   <MenuItem value="all">Todos</MenuItem>
                   <MenuItem value="PENDIENTE">Pendiente</MenuItem>
+                  <MenuItem value="APROBADO">Aprobada</MenuItem>
+                  <MenuItem value="RECHAZADO">Rechazada</MenuItem>
                   <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
                   <MenuItem value="FACTURADA">Facturada</MenuItem>
                   <MenuItem value="PAGADA">Pagada</MenuItem>
