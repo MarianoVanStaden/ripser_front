@@ -581,6 +581,9 @@ export const LeadFormPage = () => {
                   fullWidth
                   required
                   label="Teléfono"
+                  type="tel"
+                  autoComplete="tel"
+                  inputProps={{ inputMode: 'tel' }}
                   value={formData.telefono}
                   onChange={handleChange('telefono')}
                   onBlur={handleTelefonoBlur}
@@ -594,6 +597,9 @@ export const LeadFormPage = () => {
                   fullWidth
                   label="Teléfono alternativo"
                   placeholder="opcional"
+                  type="tel"
+                  autoComplete="tel"
+                  inputProps={{ inputMode: 'tel' }}
                   value={formData.telefonoAlternativo ?? ''}
                   onChange={handleChange('telefonoAlternativo')}
                   error={Boolean(errors.telefonoAlternativo)}

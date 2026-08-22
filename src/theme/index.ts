@@ -37,7 +37,9 @@ const theme = createTheme({
     },
     text: {
       primary: '#212121',
-      secondary: '#757575',
+      // #616161 sobre #f5f5f5 ≈ 4.95:1 (pasa WCAG AA); #757575 daba 4.05:1,
+      // ilegible con sol directo para el personal de campo.
+      secondary: '#616161',
     },
   },
   typography: {

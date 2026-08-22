@@ -23,6 +23,8 @@ interface Props {
   onConfirm: () => void;
   motivo: string;
   setMotivo: (value: string) => void;
+  /** Mutación en curso: bloquea Rechazar/Cancelar para evitar doble submit. */
+  submitting: boolean;
 }
 
 const RejectDeliveryDialog: React.FC<Props> = ({
@@ -31,6 +33,7 @@ const RejectDeliveryDialog: React.FC<Props> = ({
   onConfirm,
   motivo,
   setMotivo,
+  submitting,
 }) => {
   const { isMobile } = useResponsive();
 
@@ -57,17 +60,17 @@ const RejectDeliveryDialog: React.FC<Props> = ({
         title="Marcar como No Entregada"
         actions={
           <Stack direction="row" spacing={1.5}>
-            <Button onClick={onClose} sx={{ flex: 1, minHeight: 48 }}>
+            <Button onClick={onClose} disabled={submitting} sx={{ flex: 1, minHeight: 48 }}>
               Cancelar
             </Button>
             <Button
               variant="contained"
               color="error"
               onClick={onConfirm}
-              disabled={!motivo.trim()}
+              disabled={submitting || !motivo.trim()}
               sx={{ flex: 1, minHeight: 48 }}
             >
-              Rechazar
+              {submitting ? 'Enviando…' : 'Rechazar'}
             </Button>
           </Stack>
         }
@@ -126,17 +129,17 @@ const RejectDeliveryDialog: React.FC<Props> = ({
           />
 
           <Box display="flex" gap={2} mt={2}>
-            <Button onClick={onClose} sx={{ flex: 1 }}>
+            <Button onClick={onClose} disabled={submitting} sx={{ flex: 1 }}>
               Cancelar
             </Button>
             <Button
               variant="contained"
               color="error"
               onClick={onConfirm}
-              disabled={!motivo.trim()}
+              disabled={submitting || !motivo.trim()}
               sx={{ flex: 1 }}
             >
-              Rechazar
+              {submitting ? 'Enviando…' : 'Rechazar'}
             </Button>
           </Box>
         </Stack>

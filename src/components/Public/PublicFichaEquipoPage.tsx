@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -16,6 +16,7 @@ import {
   Tooltip,
   Skeleton,
   Divider,
+  Snackbar,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -27,7 +28,10 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { usePublicEquipo } from '../../hooks/usePublicEquipo';
-import { generarFichaTecnicaPDF } from '../../services/pdfService';
+
+// Teléfono real de soporte, configurado por entorno. Sin valor, el botón de
+// contacto no se muestra (nunca un placeholder marcable en producción).
+const SOPORTE_TEL = (import.meta.env.VITE_SOPORTE_TEL as string | undefined)?.trim() || null;
 
 /**
  * Página PÚBLICA de ficha técnica de equipo.
@@ -58,6 +62,8 @@ const PublicFichaEquipoPage: React.FC = () => {
   const navigate = useNavigate();
   const { numeroHeladera: paramNumero } = useParams<{ numeroHeladera?: string }>();
   const { ficha, status, error, cargar, reintentar } = usePublicEquipo();
+  const [pdfError, setPdfError] = useState(false);
+  const [descargandoPDF, setDescargandoPDF] = useState(false);
 
   // Cargar equipo al montar componente
   useEffect(() => {
@@ -71,9 +77,13 @@ const PublicFichaEquipoPage: React.FC = () => {
   // ═════════════════════════════════════════════════════════════════════════
 
   const handleDescargarPDF = async () => {
-    if (!ficha) return;
+    if (!ficha || descargandoPDF) return;
 
+    setDescargandoPDF(true);
     try {
+      // Import dinámico: pdfService arrastra jspdf; quien escanea el QR solo
+      // quiere VER la ficha — el peso del PDF se paga recién al descargarlo.
+      const { generarFichaTecnicaPDF } = await import('../../services/pdfService');
       // Mapear FichaEquipoPublicDTO a FichaTecnicaEquipoDTO para compatibilidad con pdfService
       const doc = await generarFichaTecnicaPDF({
         ficha: {
@@ -107,7 +117,9 @@ const PublicFichaEquipoPage: React.FC = () => {
       doc.save(`ficha-equipo-${ficha.numeroHeladera}.pdf`);
     } catch (err) {
       console.error('Error generando PDF:', err);
-      alert('Error al descargar PDF. Intenta de nuevo.');
+      setPdfError(true);
+    } finally {
+      setDescargandoPDF(false);
     }
   };
 
@@ -571,9 +583,10 @@ const PublicFichaEquipoPage: React.FC = () => {
           color="primary"
           startIcon={<Download />}
           onClick={handleDescargarPDF}
+          disabled={descargandoPDF}
           size="large"
         >
-          Descargar PDF
+          {descargandoPDF ? 'Generando…' : 'Descargar PDF'}
         </Button>
 
         <Button
@@ -593,14 +606,16 @@ const PublicFichaEquipoPage: React.FC = () => {
           <Typography variant="body2" color="text.secondary">
             ¿Preguntas sobre este equipo?
           </Typography>
-          <Button
-            variant="text"
-            startIcon={<PhoneInTalk />}
-            href="tel:+541234567890"
-            sx={{ justifyContent: 'center' }}
-          >
-            Contactar Soporte
-          </Button>
+          {SOPORTE_TEL && (
+            <Button
+              variant="text"
+              startIcon={<PhoneInTalk />}
+              href={`tel:${SOPORTE_TEL}`}
+              sx={{ justifyContent: 'center' }}
+            >
+              Contactar Soporte
+            </Button>
+          )}
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2 }}>
             Ficha recuperada el {dayjs(ficha.recuperadoEn).format('DD/MM/YYYY HH:mm')}
           </Typography>
@@ -617,6 +632,17 @@ const PublicFichaEquipoPage: React.FC = () => {
           </Typography>
         </Stack>
       </Box>
+
+      <Snackbar
+        open={pdfError}
+        autoHideDuration={5000}
+        onClose={() => setPdfError(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setPdfError(false)}>
+          Error al descargar el PDF. Intentá de nuevo.
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

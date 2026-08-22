@@ -79,7 +79,7 @@ export default function EntregaDocumentosCard({
                   >
                     <Box sx={{ height: compact ? 64 : 80, overflow: 'hidden', bgcolor: 'grey.100', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {thumbnails[doc.id] ? (
-                        <img src={thumbnails[doc.id]} alt={doc.originalName ?? doc.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={thumbnails[doc.id]} alt={doc.originalName ?? doc.fileName} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <PhotoCameraIcon color="action" fontSize={compact ? 'small' : 'medium'} />
                       )}

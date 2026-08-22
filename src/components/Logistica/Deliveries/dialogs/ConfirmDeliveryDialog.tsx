@@ -38,6 +38,8 @@ interface Props {
   fotos: File[];
   fotoPreviews: (string | null)[];
   uploading: boolean;
+  /** Mutación en curso: bloquea Confirmar/Cancelar para evitar doble submit. */
+  submitting: boolean;
   onPickFile: () => void;
   onRemoveFile: (index: number) => void;
 }
@@ -118,9 +120,11 @@ const ConfirmDeliveryDialog: React.FC<Props> = ({
   fotos,
   fotoPreviews,
   uploading,
+  submitting,
   onPickFile,
   onRemoveFile,
 }) => {
+  const busy = submitting || uploading;
   const { isMobile } = useResponsive();
   const fileButtonLabel =
     fotos.length > 0
@@ -135,17 +139,18 @@ const ConfirmDeliveryDialog: React.FC<Props> = ({
         title="Confirmar Entrega"
         actions={
           <Stack direction="row" spacing={1.5}>
-            <Button onClick={onClose} sx={{ flex: 1, minHeight: 48 }}>
+            <Button onClick={onClose} disabled={busy} sx={{ flex: 1, minHeight: 48 }}>
               Cancelar
             </Button>
             <Button
               variant="contained"
               color="success"
               onClick={onConfirm}
-              disabled={!receptor.nombre.trim()}
+              disabled={busy || !receptor.nombre.trim()}
+              startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : undefined}
               sx={{ flex: 1, minHeight: 48 }}
             >
-              Confirmar
+              {submitting ? 'Confirmando…' : 'Confirmar'}
             </Button>
           </Stack>
         }
@@ -278,17 +283,18 @@ const ConfirmDeliveryDialog: React.FC<Props> = ({
           {uploading && <UploadingIndicator />}
 
           <Box display="flex" gap={2} mt={2}>
-            <Button onClick={onClose} sx={{ flex: 1 }}>
+            <Button onClick={onClose} disabled={busy} sx={{ flex: 1 }}>
               Cancelar
             </Button>
             <Button
               variant="contained"
               color="success"
               onClick={onConfirm}
-              disabled={!receptor.nombre.trim()}
+              disabled={busy || !receptor.nombre.trim()}
+              startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : undefined}
               sx={{ flex: 1 }}
             >
-              Confirmar
+              {submitting ? 'Confirmando…' : 'Confirmar'}
             </Button>
           </Box>
         </Stack>

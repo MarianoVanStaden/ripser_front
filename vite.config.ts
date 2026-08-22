@@ -43,7 +43,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': el SW nuevo espera a que el usuario acepte (ReloadPrompt).
+      // Con 'autoUpdate' + skipWaiting un deploy recargaba la app sin aviso,
+      // descartando formularios de campo a medio llenar.
+      registerType: 'prompt',
       injectRegister: 'auto',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
@@ -71,14 +74,29 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
         // El chunk `vendor` pesa ~1.8 MB raw — el límite default de precache
         // (2 MiB) lo dejaría afuera con warning. Margen para que entre.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // El SW nunca debe responder navegaciones/requests de la API con el
         // index.html cacheado.
         navigateFallbackDenylist: [/^\/api\//],
+        // Cache runtime SOLO de GETs de la API (NetworkFirst): con señal se
+        // usa la red; sin señal el operario ve los últimos datos en vez de
+        // una pantalla de error. Las escrituras (POST/PUT/...) nunca se
+        // cachean — este bloque no las toca.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url, request }) =>
+              request.method === 'GET' && url.pathname.startsWith('/api/'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-get',
+              networkTimeoutSeconds: 8,
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 12 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
     analyzePlugin,
@@ -123,7 +141,7 @@ export default defineConfig({
       resolveDependencies: (_filename, deps) =>
         deps.filter(
           (d) =>
-            !/(?:^|\/)(?:vendor-jspdf|vendor-exceljs|vendor-recharts|vendor-mui-datagrid|vendor-mui-pickers|vendor-mui-icons|vendor-mui-lab|vendor-sentry|vendor-rhf|vendor-yup)-/.test(
+            !/(?:^|\/)(?:vendor-jspdf|vendor-exceljs|vendor-html2canvas|vendor-recharts|vendor-mui-datagrid|vendor-mui-pickers|vendor-mui-icons|vendor-mui-lab|vendor-sentry|vendor-rhf|vendor-yup)-/.test(
               d,
             ),
         ),
@@ -157,6 +175,9 @@ export default defineConfig({
           if (id.includes('/recharts/') || id.includes('/d3-')) return 'vendor-recharts'
           if (id.includes('/exceljs/')) return 'vendor-exceljs'
           if (id.includes('/jspdf'))    return 'vendor-jspdf'
+          // html2canvas solo se usa al exportar PDFs con gráficos; sin esta
+          // regla caía al `vendor` eager (~200 KB raw en el first paint).
+          if (id.includes('/html2canvas/')) return 'vendor-html2canvas'
 
           // Pure-ESM utility libs sin interop con React — seguros de
           // splittear. La meta es bajar el tamaño del chunk `vendor` que

@@ -22,6 +22,7 @@ const LightboxDialog: React.FC<Props> = ({ src, onClose }) => {
           <img
             src={src}
             alt="Vista previa"
+            decoding="async"
             style={{
               width: '100%',
               maxHeight: '80vh',

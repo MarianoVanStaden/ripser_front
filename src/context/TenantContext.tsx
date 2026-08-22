@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useState, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { Empresa, Sucursal, UsuarioEmpresa, RolEmpresa } from '../types';
 import { authApi } from '../api/authApi';
@@ -124,14 +124,14 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [rolActual, setRolActual] = useState<RolEmpresa | null>(null);
 
   // Wrapper para setSucursalFiltro que persiste en sessionStorage
-  const setSucursalFiltro = (id: number | null) => {
+  const setSucursalFiltro = useCallback((id: number | null) => {
     setSucursalFiltroState(id);
     if (id !== null) {
       safeSession.setItem('sucursalFiltro', id.toString());
     } else {
       safeSession.removeItem('sucursalFiltro');
     }
-  };
+  }, []);
 
   // Determinar si el usuario puede seleccionar diferentes sucursales
   const canSelectSucursal = useMemo(() => {
@@ -342,7 +342,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setLoading(false);
   }, []);
 
-  const cambiarTenant = async (newEmpresaId: number, newSucursalId?: number) => {
+  const cambiarTenant = useCallback(async (newEmpresaId: number, newSucursalId?: number) => {
     try {
       setLoading(true);
 
@@ -403,10 +403,10 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setLoading(false);
       }
     }
-  };
+  }, [empresaId, loading]);
 
   // Método simplificado para cambiar solo la sucursal (sin recargar)
-  const cambiarSucursal = async (newSucursalId: number | null) => {
+  const cambiarSucursal = useCallback(async (newSucursalId: number | null) => {
     if (!empresaId) {
       console.error('No hay empresa activa para cambiar sucursal');
       return;
@@ -451,10 +451,12 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [empresaId]);
 
-  return (
-    <TenantContext.Provider value={{
+  // value memoizado: sin esto, cada render del provider re-renderizaba a
+  // todos los consumidores de useTenant (patrón de ColoresContext).
+  const value = useMemo(
+    () => ({
       empresaId,
       sucursalId,
       esSuperAdmin,
@@ -472,11 +474,27 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       canSelectSucursal,
       // Nuevos valores para permisos
       rolActual,
-      usuarioEmpresa
-    }}>
-      {children}
-    </TenantContext.Provider>
+      usuarioEmpresa,
+    }),
+    [
+      empresaId,
+      sucursalId,
+      esSuperAdmin,
+      empresaActual,
+      sucursalActual,
+      cambiarTenant,
+      cambiarSucursal,
+      loading,
+      sucursalFiltro,
+      setSucursalFiltro,
+      sucursales,
+      canSelectSucursal,
+      rolActual,
+      usuarioEmpresa,
+    ],
   );
+
+  return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;
 };
 
 export const useTenant = () => {

@@ -18,6 +18,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -185,6 +186,9 @@ const SortableDeliveryList: React.FC<SortableDeliveryListProps> = ({
 }) => {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    // Touch: delay para que el drag no compita con el scroll vertical de la
+    // lista; tolerance permite el temblor natural del dedo durante la espera.
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
   );
 
   const rowIds = deliveries.map(rowKey);

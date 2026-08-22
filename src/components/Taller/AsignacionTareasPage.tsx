@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
-// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
-import React, { useState, useEffect, useMemo } from 'react';
+// (@ts-nocheck removido — ver MUI_V7_GRID_FIX.md si reaparecen errores de Grid)
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -60,6 +60,9 @@ const AsignacionTareasPage: React.FC = () => {
   const [editingTarea, setEditingTarea] = useState<TareaServicio | null>(null);
   const [tareaToDelete, setTareaToDelete] = useState<TareaServicio | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  // Guard anti doble-submit: un doble tap en 3G crearía dos tareas.
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   // Estados para modal de completar tarea
   const [completarDialogOpen, setCompletarDialogOpen] = useState(false);
@@ -180,13 +183,14 @@ const AsignacionTareasPage: React.FC = () => {
   };
 
   const handleSaveTarea = async () => {
-    console.log('formData before validation:', formData);
-    
     // Validación: verificar que ordenServicioId esté presente
     if (!formData.ordenServicioId) {
       setError('Por favor seleccione una Orden de Servicio');
       return;
     }
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
 
     try {
       const tareaData: any = {
@@ -223,6 +227,9 @@ const AsignacionTareasPage: React.FC = () => {
       }
       setError(errorMsg);
       console.error('Error saving tarea:', err);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -769,10 +776,10 @@ const AsignacionTareasPage: React.FC = () => {
             onClick={handleSaveTarea}
             variant="contained"
             size="large"
-            disabled={!formData.ordenServicioId || !formData.descripcion || !formData.horasEstimadas}
+            disabled={saving || !formData.ordenServicioId || !formData.descripcion || !formData.horasEstimadas}
             sx={{ minWidth: 160 }}
           >
-            {editingTarea ? '💾 Guardar Cambios' : '➕ Crear Tarea'}
+            {saving ? 'Guardando…' : editingTarea ? '💾 Guardar Cambios' : '➕ Crear Tarea'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Button,
@@ -43,6 +43,9 @@ export const ConvertLeadPage = () => {
 
   const [loading, setLoading] = useState(true);
   const [converting, setConverting] = useState(false);
+  // Guard síncrono anti doble-submit (mismo patrón que LeadFormPage): el ref
+  // gana la carrera contra el re-render; un doble tap crearía dos clientes.
+  const convertingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<ConversionLeadResponse | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -195,6 +198,8 @@ export const ConvertLeadPage = () => {
     if (!validateForm() || !id) {
       return;
     }
+    if (convertingRef.current) return;
+    convertingRef.current = true;
 
     try {
       setConverting(true);
@@ -240,6 +245,7 @@ export const ConvertLeadPage = () => {
         setError('Error al convertir el lead. Por favor, intente nuevamente.');
       }
     } finally {
+      convertingRef.current = false;
       setConverting(false);
     }
   };
@@ -551,7 +557,7 @@ export const ConvertLeadPage = () => {
                       value={conversionData.cuitCliente || ''}
                       onChange={handleChange('cuitCliente')}
                       helperText="Para facturación (opcional)"
-                      inputProps={{ maxLength: 13 }}
+                      inputProps={{ maxLength: 13, inputMode: 'numeric' }}
                     />
                   </Grid>
 
@@ -571,9 +577,12 @@ export const ConvertLeadPage = () => {
                     <TextField
                       fullWidth
                       label="Teléfono alternativo"
+                      type="tel"
+                      autoComplete="tel"
                       value={conversionData.telefonoAlternativoCliente || ''}
                       onChange={handleChange('telefonoAlternativoCliente')}
                       helperText="Segundo teléfono de contacto (opcional)"
+                      inputProps={{ inputMode: 'tel' }}
                     />
                   </Grid>
 

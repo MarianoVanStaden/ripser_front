@@ -210,9 +210,27 @@ api.interceptors.response.use(
     if (status === 500) {
       logger.error('❌ Server error:', error.response?.data);
     }
-    
+
     return Promise.reject(error);
   }
 );
+
+/** Error sin respuesta HTTP: timeout, DNS, sin señal. */
+export const isNetworkError = (err: unknown): boolean => {
+  const e = err as { response?: unknown; request?: unknown } | null;
+  return !!e && typeof e === 'object' && 'request' in e && !e.response;
+};
+
+/**
+ * Mensaje para mostrar al usuario. Distingue el caso "sin conexión" (frecuente
+ * en campo con 3G) del error de negocio que manda el backend.
+ */
+export const getApiErrorMessage = (err: unknown, fallback = 'Ocurrió un error'): string => {
+  if (isNetworkError(err)) {
+    return 'Sin conexión con el servidor. Verificá la señal y reintentá.';
+  }
+  const e = err as { response?: { data?: { message?: string } } } | null;
+  return e?.response?.data?.message || fallback;
+};
 
 export default api;

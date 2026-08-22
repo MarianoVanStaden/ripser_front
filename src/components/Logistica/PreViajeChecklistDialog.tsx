@@ -287,7 +287,7 @@ const PreViajeChecklistDialog: React.FC<Props> = ({ open, trip, onClose, onCompl
             <TextField
               label="Kilómetros de salida" required={!readOnly} fullWidth size="small" type="number" disabled={readOnly}
               value={kmSalida} onChange={(e) => setKmSalida(e.target.value)}
-              inputProps={{ min: 0 }}
+              inputProps={{ min: 0, inputMode: 'numeric' }}
             />
           </Grid>
         </Grid>
@@ -352,7 +352,7 @@ const PreViajeChecklistDialog: React.FC<Props> = ({ open, trip, onClose, onCompl
                                     label="Cant." size="small" type="number" sx={{ width: 90 }} disabled={readOnly}
                                     value={zunchosCantidad}
                                     onChange={(e) => setZunchosCantidad(e.target.value)}
-                                    inputProps={{ min: 0 }}
+                                    inputProps={{ min: 0, inputMode: 'numeric' }}
                                   />
                                 )}
                               </Stack>

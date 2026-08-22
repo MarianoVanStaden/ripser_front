@@ -156,6 +156,12 @@ const DeliveriesPage2: React.FC = () => {
   // Estados para modal de confirmar entrega
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [confirmDeliveryId, setConfirmDeliveryId] = useState<number | null>(null);
+  // Guard anti doble-submit: el ref gana la carrera contra el re-render (un
+  // doble tap en 3G dispararía dos confirmarEntrega → cobro duplicado).
+  const confirmingRef = useRef(false);
+  const [confirming, setConfirming] = useState(false);
+  const rejectingRef = useRef(false);
+  const [rejecting, setRejecting] = useState(false);
   const [receptorData, setReceptorData] = useState({
     nombre: '',
     dni: '',
@@ -574,6 +580,9 @@ const DeliveriesPage2: React.FC = () => {
 
   const handleConfirmDelivery = async () => {
     if (!confirmDeliveryId) return;
+    if (confirmingRef.current) return;
+    confirmingRef.current = true;
+    setConfirming(true);
 
     try {
       if (!receptorData.nombre.trim()) {
@@ -629,6 +638,9 @@ const DeliveriesPage2: React.FC = () => {
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error?.response?.data?.message || 'Error al confirmar');
+    } finally {
+      confirmingRef.current = false;
+      setConfirming(false);
     }
   };
 
@@ -640,6 +652,9 @@ const DeliveriesPage2: React.FC = () => {
 
   const handleRejectDelivery = async () => {
     if (!rejectDeliveryId) return;
+    if (rejectingRef.current) return;
+    rejectingRef.current = true;
+    setRejecting(true);
 
     try {
       if (!rejectMotivo.trim()) {
@@ -664,6 +679,9 @@ const DeliveriesPage2: React.FC = () => {
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error?.response?.data?.message || 'Error al rechazar');
+    } finally {
+      rejectingRef.current = false;
+      setRejecting(false);
     }
   };
 
@@ -1223,9 +1241,20 @@ const DeliveriesPage2: React.FC = () => {
           {/* Delivery List */}
           {isMobile ? (
             <Stack spacing={1.5}>
-              {paginatedDeliveries.map((delivery) => (
-                <MobileDeliveryCard key={delivery.id} delivery={delivery} />
-              ))}
+              {paginatedDeliveries.length === 0 && !loading ? (
+                <Card variant="outlined">
+                  <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                    <DeliveryIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+                    <Typography color="text.secondary">
+                      No hay entregas para los filtros seleccionados
+                    </Typography>
+                  </CardContent>
+                </Card>
+              ) : (
+                paginatedDeliveries.map((delivery) => (
+                  <MobileDeliveryCard key={delivery.id} delivery={delivery} />
+                ))
+              )}
             </Stack>
           ) : (
             <Card>
@@ -1517,8 +1546,11 @@ const DeliveriesPage2: React.FC = () => {
 
       <ConfirmDeliveryDialog
         open={confirmDialogOpen}
-        onClose={() => setConfirmDialogOpen(false)}
+        onClose={() => {
+          if (!confirming && !uploadingFoto) setConfirmDialogOpen(false);
+        }}
         onConfirm={handleConfirmDelivery}
+        submitting={confirming}
         receptor={receptorData}
         setReceptor={setReceptorData}
         cobro={cobroData}
@@ -1533,8 +1565,11 @@ const DeliveriesPage2: React.FC = () => {
 
       <RejectDeliveryDialog
         open={rejectDialogOpen}
-        onClose={() => setRejectDialogOpen(false)}
+        onClose={() => {
+          if (!rejecting) setRejectDialogOpen(false);
+        }}
         onConfirm={handleRejectDelivery}
+        submitting={rejecting}
         motivo={rejectMotivo}
         setMotivo={setRejectMotivo}
       />

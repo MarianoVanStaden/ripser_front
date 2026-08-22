@@ -464,6 +464,7 @@ const HospedajesPage: React.FC = () => {
                 label="Último precio (ARS)" fullWidth size="small" type="number"
                 value={form.ultimoPrecio ?? ''}
                 onChange={(e) => setForm((p) => ({ ...p, ultimoPrecio: e.target.value ? Number(e.target.value) : null }))}
+                inputProps={{ min: 0, inputMode: 'decimal' }}
               />
               <Box>
                 <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Calificación</Typography>

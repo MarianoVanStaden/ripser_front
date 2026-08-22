@@ -434,6 +434,7 @@ const KmEmpleadosPage: React.FC = () => {
                 value={form.anio}
                 onChange={(e) => setForm((f) => ({ ...f, anio: e.target.value }))}
                 fullWidth
+                inputProps={{ inputMode: 'numeric' }}
               />
               <TextField
                 select
@@ -454,7 +455,7 @@ const KmEmpleadosPage: React.FC = () => {
                 value={form.kmRecorridos}
                 onChange={(e) => setForm((f) => ({ ...f, kmRecorridos: e.target.value }))}
                 fullWidth
-                inputProps={{ min: 0 }}
+                inputProps={{ min: 0, inputMode: 'numeric' }}
               />
               <TextField
                 label="Horas extra"
@@ -462,7 +463,7 @@ const KmEmpleadosPage: React.FC = () => {
                 value={form.horasExtra}
                 onChange={(e) => setForm((f) => ({ ...f, horasExtra: e.target.value }))}
                 fullWidth
-                inputProps={{ min: 0 }}
+                inputProps={{ min: 0, inputMode: 'decimal' }}
               />
             </Stack>
             <TextField

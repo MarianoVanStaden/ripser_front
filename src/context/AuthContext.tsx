@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { authApi } from "../api/authApi";
 import axios from "axios";
 import { setAuthToken } from "../api/config";
@@ -122,7 +122,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     validateToken();
   }, []);
 
-  const login = async (usernameOrEmail: string, password: string) => {
+  // useCallback([]) es seguro: login/refreshSession/logout solo cierran sobre
+  // setters de estado y storage, nunca leen estado del render.
+  const login = useCallback(async (usernameOrEmail: string, password: string) => {
     setLoading(true);
     try {
       const res = await authApi.login({ usernameOrEmail, password });
@@ -215,14 +217,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Refresh the access token using the stored refresh token, propagate the new
   // token to React state, axios, and localStorage. Throws if refresh is not
   // possible (no refresh token, refresh endpoint rejected). Callers that need
   // to recover from a 401 outside the axios pipeline (SSE, manual flows) should
   // await this and retry on success.
-  const refreshSession = async (): Promise<string> => {
+  const refreshSession = useCallback(async (): Promise<string> => {
     const stored = safeLocal.getItem('auth_refresh_token');
     if (!stored) throw new Error('No refresh token available');
     const res = await authApi.refresh(stored);
@@ -235,7 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     axios.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
     setToken(newAccess);
     return newAccess;
-  };
+  }, []);
 
   // Stay in sync with refreshes triggered by the axios interceptor (config.ts),
   // which writes the new token to localStorage but cannot call setToken directly.
@@ -249,7 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('auth-token-refreshed', onRefreshed);
   }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setToken(null);
     setUser(null);
     setEsSuperAdmin(false);
@@ -266,7 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     safeSession.removeItem("sucursalFiltro");
     delete axios.defaults.headers.common.Authorization;
     setAuthToken(null);
-  };
+  }, []);
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
@@ -316,22 +318,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('tenant-context-updated', handleTenantUpdate);
   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        esSuperAdmin,
-        esPlatformOwner,
-        login,
-        logout,
-        refreshSession,
-        loading,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  // value memoizado: sin esto, cada render del provider re-renderizaba a
+  // todos los consumidores de useAuth (patrón de ColoresContext).
+  const value = useMemo(
+    () => ({
+      user,
+      token,
+      esSuperAdmin,
+      esPlatformOwner,
+      login,
+      logout,
+      refreshSession,
+      loading,
+    }),
+    [user, token, esSuperAdmin, esPlatformOwner, login, logout, refreshSession, loading],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // Hook export (named export)
