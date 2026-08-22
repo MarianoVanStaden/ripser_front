@@ -89,7 +89,7 @@ const PaymentMethodPieChart: React.FC<PaymentMethodPieChartProps> = ({
                 return [`${formatARS(v)} (${pct}%)`, props?.payload?.name ?? ''];
               }}
             />
-            <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
+            <Legend verticalAlign="bottom" align="center" layout="horizontal" iconType="circle" />
           </PieChart>
         </ResponsiveContainer>
       </Box>
