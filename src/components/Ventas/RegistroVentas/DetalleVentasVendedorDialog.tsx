@@ -141,6 +141,11 @@ const DetalleVentasVendedorDialog: React.FC<Props> = ({
                             sx={{ mr: 0.5, mb: 0.5, fontFamily: 'monospace' }}
                           />
                         ))
+                      ) : d.tipoMovimiento === 'VENTA' && d.facturaNumero ? (
+                        <Typography variant="caption" color="text.secondary">
+                          {d.facturaNumero}
+                          {d.facturaAnulada ? ' (anulada)' : ''}
+                        </Typography>
                       ) : (
                         <Typography variant="caption" color="text.disabled">
                           {d.tipoMovimiento === 'VENTA' ? 'Sin facturar' : '—'}

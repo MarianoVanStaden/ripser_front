@@ -103,6 +103,11 @@ export interface VentaEquipoDetalle {
   // solo si la NP ya fue facturada con equipos asignados; null en otro caso.
   // Puede traer varios códigos separados por coma.
   codigoVenta: string | null;
+  // Factura generada desde la NP (best-effort, solo VENTA). Se informa aunque
+  // esté anulada por NC, para que la venta no quede huérfana frente a su NC
+  // (al anular se liberan los equipos y codigoVenta deja de resolverse).
+  facturaNumero: string | null;
+  facturaAnulada: boolean;
 }
 
 export interface ImportarFacturasResult {
