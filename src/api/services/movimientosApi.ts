@@ -1,47 +1,55 @@
 import api from '../config';
 import type { MovimientoStockDeposito, MovimientoEquipo } from '../../types';
 
+// Etapa 7-I: la base path correcta es /api/movimientos-stock-depositos (antes
+// apuntaba a /api/movimientos-stock → 404, con las pantallas de auditoría e
+// inventario de depósitos rotas). Además el back devuelve Page<...>, no un array
+// pelado: desempaquetamos .content. Pedimos un size alto (no el default 20) para
+// no truncar la auditoría en silencio; migrar a paginación real es el fix definitivo.
+const DEPOSITO_BASE = '/api/movimientos-stock-depositos';
+const PAGE_SIZE_ALTO = 1000;
+
 export const movimientoStockDepositoApi = {
   getAll: async (): Promise<MovimientoStockDeposito[]> => {
-    const response = await api.get('/api/movimientos-stock');
-    return response.data;
+    const response = await api.get(`${DEPOSITO_BASE}/all`, { params: { size: PAGE_SIZE_ALTO } });
+    return response.data.content;
   },
 
   getRecientes: async (): Promise<MovimientoStockDeposito[]> => {
-    const response = await api.get('/api/movimientos-stock/recientes');
-    return response.data;
+    const response = await api.get(`${DEPOSITO_BASE}/recientes`, { params: { size: PAGE_SIZE_ALTO } });
+    return response.data.content;
   },
 
   getByProducto: async (productoId: number): Promise<MovimientoStockDeposito[]> => {
-    const response = await api.get(`/api/movimientos-stock/producto/${productoId}`);
-    return response.data;
+    const response = await api.get(`${DEPOSITO_BASE}/por-producto/${productoId}`, { params: { size: PAGE_SIZE_ALTO } });
+    return response.data.content;
   },
 
   getByDeposito: async (depositoId: number): Promise<MovimientoStockDeposito[]> => {
-    const response = await api.get(`/api/movimientos-stock/deposito/${depositoId}`);
-    return response.data;
+    const response = await api.get(`${DEPOSITO_BASE}/por-deposito/${depositoId}`, { params: { size: PAGE_SIZE_ALTO } });
+    return response.data.content;
   },
 
   getByDepositoOrigen: async (depositoId: number): Promise<MovimientoStockDeposito[]> => {
-    const response = await api.get(`/api/movimientos-stock/deposito-origen/${depositoId}`);
-    return response.data;
+    const response = await api.get(`${DEPOSITO_BASE}/deposito-origen/${depositoId}`, { params: { size: PAGE_SIZE_ALTO } });
+    return response.data.content;
   },
 
   getByDepositoDestino: async (depositoId: number): Promise<MovimientoStockDeposito[]> => {
-    const response = await api.get(`/api/movimientos-stock/deposito-destino/${depositoId}`);
-    return response.data;
+    const response = await api.get(`${DEPOSITO_BASE}/deposito-destino/${depositoId}`, { params: { size: PAGE_SIZE_ALTO } });
+    return response.data.content;
   },
 
   getByUsuario: async (usuarioId: number): Promise<MovimientoStockDeposito[]> => {
-    const response = await api.get(`/api/movimientos-stock/usuario/${usuarioId}`);
-    return response.data;
+    const response = await api.get(`${DEPOSITO_BASE}/por-usuario/${usuarioId}`, { params: { size: PAGE_SIZE_ALTO } });
+    return response.data.content;
   },
 
   getByFechaRange: async (fechaInicio: string, fechaFin: string): Promise<MovimientoStockDeposito[]> => {
-    const response = await api.get('/api/movimientos-stock/fecha-range', {
-      params: { fechaInicio, fechaFin }
+    const response = await api.get(`${DEPOSITO_BASE}/fecha-range`, {
+      params: { fechaInicio, fechaFin, size: PAGE_SIZE_ALTO }
     });
-    return response.data;
+    return response.data.content;
   },
 
   getByProductoAndFechaRange: async (
@@ -49,10 +57,10 @@ export const movimientoStockDepositoApi = {
     fechaInicio: string,
     fechaFin: string
   ): Promise<MovimientoStockDeposito[]> => {
-    const response = await api.get(`/api/movimientos-stock/producto/${productoId}/fecha-range`, {
-      params: { fechaInicio, fechaFin }
+    const response = await api.get(`${DEPOSITO_BASE}/por-producto/${productoId}/rango-fechas`, {
+      params: { fechaInicio, fechaFin, size: PAGE_SIZE_ALTO }
     });
-    return response.data;
+    return response.data.content;
   },
 };
 
