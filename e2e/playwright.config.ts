@@ -83,9 +83,35 @@ export default defineConfig({
     {
       name: 'chromium',
       testMatch: /modules\/.*\.spec\.ts/,
-      testIgnore: /modules\/auth\/auth\.spec\.ts/,
+      // Ignora auth.spec.ts (lo corre 'auth') y los *.mobile.spec.ts
+      // (los corren los proyectos mobile-* con viewport de teléfono).
+      testIgnore: [/modules\/auth\/auth\.spec\.ts/, /\.mobile\.spec\.ts/],
       use: {
         ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
+
+    /**
+     * MOBILE — specs *.mobile.spec.ts en viewport de teléfono (flujos de
+     * campo: entregas, checklists, garantías). Autenticados vía el mismo
+     * storageState que 'chromium'.
+     */
+    {
+      name: 'mobile-android',
+      testMatch: /.*\.mobile\.spec\.ts/,
+      use: {
+        ...devices['Pixel 5'],
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'mobile-ios',
+      testMatch: /.*\.mobile\.spec\.ts/,
+      use: {
+        ...devices['iPhone 13'],
         storageState: 'e2e/.auth/user.json',
       },
       dependencies: ['setup'],

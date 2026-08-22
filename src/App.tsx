@@ -17,6 +17,10 @@ import { SidebarProvider } from './context/SidebarContext';
 import SentryScope from './components/SentryScope';
 import SentryErrorBoundary from './components/SentryErrorBoundary';
 import ImpersonationBanner from './components/common/ImpersonationBanner';
+import OfflineBanner from './components/common/OfflineBanner';
+import ReloadPrompt from './components/common/ReloadPrompt';
+import { ToastProvider } from './components/common/ToastProvider';
+import ScrollMemory from './components/common/ScrollMemory';
 
 // ---------------------------------------------------------------------------
 // Lazy route helpers
@@ -322,9 +326,13 @@ function App() {
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <SidebarProvider>
+          <ToastProvider>
           <Router>
             {/* Banner rojo global de impersonación (se autooculta si no aplica) */}
             <ImpersonationBanner />
+            <OfflineBanner />
+            <ReloadPrompt />
+            <ScrollMemory />
             <Suspense fallback={<CenteredFallback />}>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
@@ -512,6 +520,7 @@ function App() {
               </Routes>
             </Suspense>
           </Router>
+          </ToastProvider>
           </SidebarProvider>
         </ThemeProvider>
         </MedidasProvider>
