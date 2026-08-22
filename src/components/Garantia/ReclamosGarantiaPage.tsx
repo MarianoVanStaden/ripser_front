@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell,
   TableHead, TableRow, TextField, Stack, Chip,
@@ -27,12 +27,14 @@ import LoadingOverlay from '../common/LoadingOverlay';
 
 const ReclamosGarantiaPage: React.FC = () => {
   const [reclamos, setReclamos] = useState<ReclamoGarantiaDTO[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
   const [garantias, setGarantias] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Filters
+
+  // Filters (server-side: search/estado/garantiaId viajan al backend)
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
   const [garantiaFilter, setGarantiaFilter] = useState<any>(null);
 
@@ -40,44 +42,39 @@ const ReclamosGarantiaPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // Stats server-side (totalElements de 1 request size:1 por estado — patrón GarantiasPage)
+  const [stats, setStats] = useState({ total: 0, pendientes: 0, enProceso: 0, resueltos: 0 });
+
   // Dialogs
   const [formOpen, setFormOpen] = useState(false);
   const [selectedReclamo, setSelectedReclamo] = useState<ReclamoGarantiaDTO | null>(null);
 
+  // Debounce de búsqueda (mismo patrón que GarantiasPage)
   useEffect(() => {
-    loadData();
-  }, []);
+    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   // Al cambiar cualquier filtro se vuelve a la página 0: si no, una página
   // fuera de rango deja la lista vacía (y en mobile, sin controles de paginado).
   useEffect(() => {
     setPage(0);
-  }, [search, estadoFilter, garantiaFilter]);
+  }, [debouncedSearch, estadoFilter, garantiaFilter]);
 
-  const loadData = async () => {
+  const loadReclamos = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // size grande: la tabla filtra y pagina del lado del cliente, así que
-      // necesitamos traer TODOS los reclamos (no sólo la primera página por
-      // defecto del backend). Antes esto pedía sin params y sólo cargaba ~20,
-      // por eso no coincidía con el dashboard de postventa.
-      const [reclamosResponse, garantiasResponse] = await Promise.all([
-        reclamoGarantiaApi.findAll({ page: 0, size: 1000 }),
-        garantiaApi.findAll({ page: 0, size: 1000 })
-      ]);
-      
-      const reclamosList = Array.isArray(reclamosResponse) 
-        ? reclamosResponse 
-        : (reclamosResponse as any).content || [];
-        
-      const garantiasList = Array.isArray(garantiasResponse) 
-        ? garantiasResponse 
-        : (garantiasResponse as any).content || [];
-      
-      setReclamos(reclamosList);
-      setGarantias(garantiasList);
+      const response = await reclamoGarantiaApi.findAll({
+        page,
+        size: rowsPerPage,
+        sort: 'fechaReclamo,desc',
+        search: debouncedSearch || undefined,
+        estado: estadoFilter !== 'TODOS' ? (estadoFilter as ReclamoGarantiaDTO['estado']) : undefined,
+        garantiaId: garantiaFilter?.id ?? undefined,
+      });
+      setReclamos(response.content ?? []);
+      setTotalElements(response.totalElements ?? 0);
     } catch (err: any) {
       console.error('Error loading reclamos:', err);
       setError(err.response?.data?.message || 'Error al cargar los reclamos');
@@ -86,29 +83,54 @@ const ReclamosGarantiaPage: React.FC = () => {
     }
   };
 
-  // Filter reclamos
-  const filteredReclamos = useMemo(() => {
-    return reclamos.filter(r => {
-      const matchSearch = search === '' ||
-        r.numeroReclamo.toLowerCase().includes(search.toLowerCase()) ||
-        r.descripcionProblema.toLowerCase().includes(search.toLowerCase()) ||
-        r.garantiaNumeroSerie.toLowerCase().includes(search.toLowerCase()) ||
-        (r.garantiaEquipoModelo?.toLowerCase().includes(search.toLowerCase()) || false);
+  const loadStats = async () => {
+    try {
+      const [total, pendientes, enProceso, resueltos] = await Promise.all([
+        reclamoGarantiaApi.findAll({ page: 0, size: 1 }),
+        reclamoGarantiaApi.findAll({ page: 0, size: 1, estado: 'PENDIENTE' }),
+        reclamoGarantiaApi.findAll({ page: 0, size: 1, estado: 'EN_PROCESO' }),
+        reclamoGarantiaApi.findAll({ page: 0, size: 1, estado: 'RESUELTO' }),
+      ]);
+      setStats({
+        total: total.totalElements ?? 0,
+        pendientes: pendientes.totalElements ?? 0,
+        enProceso: enProceso.totalElements ?? 0,
+        resueltos: resueltos.totalElements ?? 0,
+      });
+    } catch (err) {
+      console.error('Error loading stats de reclamos:', err);
+    }
+  };
 
-      const matchEstado = estadoFilter === 'TODOS' || r.estado === estadoFilter;
-      const matchGarantia = !garantiaFilter || r.garantiaId === garantiaFilter.id;
+  // Garantías para el Autocomplete de filtro y el form dialog.
+  const loadGarantias = async () => {
+    try {
+      const garantiasResponse = await garantiaApi.findAll({ page: 0, size: 1000 });
+      const garantiasList = Array.isArray(garantiasResponse)
+        ? garantiasResponse
+        : (garantiasResponse as any).content || [];
+      setGarantias(garantiasList);
+    } catch (err) {
+      console.error('Error loading garantias:', err);
+    }
+  };
 
-      return matchSearch && matchEstado && matchGarantia;
-    });
-  }, [reclamos, search, estadoFilter, garantiaFilter]);
+  useEffect(() => {
+    loadReclamos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, rowsPerPage, debouncedSearch, estadoFilter, garantiaFilter]);
 
-  // Paginate filtered reclamos
-  const paginatedReclamos = useMemo(() => {
-    return filteredReclamos.slice(
-      page * rowsPerPage,
-      page * rowsPerPage + rowsPerPage
-    );
-  }, [filteredReclamos, page, rowsPerPage]);
+  useEffect(() => {
+    loadStats();
+    loadGarantias();
+  }, []);
+
+  const loadData = async () => {
+    await Promise.all([loadReclamos(), loadStats()]);
+  };
+
+  const filteredReclamos = reclamos;
+  const paginatedReclamos = reclamos;
 
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
@@ -133,14 +155,6 @@ const ReclamosGarantiaPage: React.FC = () => {
       default:
         return 'default';
     }
-  };
-
-  // Calculate statistics
-  const stats = {
-    total: reclamos.length,
-    pendientes: reclamos.filter(r => r.estado === 'PENDIENTE').length,
-    enProceso: reclamos.filter(r => r.estado === 'EN_PROCESO').length,
-    resueltos: reclamos.filter(r => r.estado === 'RESUELTO').length,
   };
 
   return (
@@ -409,7 +423,7 @@ const ReclamosGarantiaPage: React.FC = () => {
         pagination={
           <TablePagination
             component="div"
-            count={filteredReclamos.length}
+            count={totalElements}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
@@ -525,7 +539,7 @@ const ReclamosGarantiaPage: React.FC = () => {
         <Box sx={{ display: { xs: 'block', md: 'none' } }}>
           <TablePagination
             component="div"
-            count={filteredReclamos.length}
+            count={totalElements}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}

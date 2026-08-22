@@ -37,12 +37,19 @@ export interface ReclamoGarantiaUpdateDTO {
   tecnicoId?: number;
 }
 
+export interface ReclamoFilterParams extends PaginationParams {
+  /** Búsqueda server-side: N° reclamo, N° serie, modelo, descripción o cliente. */
+  search?: string;
+  estado?: ReclamoGarantiaDTO['estado'];
+  garantiaId?: number;
+}
+
 // ==================== RECLAMOS API ====================
 export const reclamoGarantiaApi = {
-  // GET /api/reclamos-garantia
-  findAll: async (pagination: PaginationParams = {}): Promise<PageResponse<ReclamoGarantiaDTO>> => {
+  // GET /api/reclamos-garantia — filtros server-side (search/estado/garantiaId)
+  findAll: async (params: ReclamoFilterParams = {}): Promise<PageResponse<ReclamoGarantiaDTO>> => {
     const response = await api.get<PageResponse<ReclamoGarantiaDTO>>('/api/reclamos-garantia', {
-      params: { ...pagination },
+      params: { ...params },
     });
     return response.data;
   },
