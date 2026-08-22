@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
-// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
+// (@ts-nocheck removido — ver MUI_V7_GRID_FIX.md si reaparecen errores de Grid)
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
@@ -48,7 +48,9 @@ import { employeeApi } from '../../api/services/employeeApi';
 import { equipoFabricadoApi } from '../../api/services';
 import type { OrdenServicio, Cliente, Empleado, EquipoFabricadoDTO } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 import { StickyScrollTable } from '../common/StickyScrollTable';
+import ResponsiveDataView from '../common/ResponsiveDataView';
 
 
 const OrdenesServicioPage: React.FC = () => {
@@ -69,6 +71,8 @@ const OrdenesServicioPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [saving, setSaving] = useState(false);
+  const [ordenACancelar, setOrdenACancelar] = useState<OrdenServicio | null>(null);
+  const [cancelando, setCancelando] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -261,7 +265,6 @@ const OrdenesServicioPage: React.FC = () => {
         }
       }
 
-      const isCreating = !editingOrden;
       if (editingOrden) {
         await ordenServicioApi.update(editingOrden.id, ordenData);
         setSuccessMessage('Orden de servicio actualizada correctamente');
@@ -296,6 +299,19 @@ const OrdenesServicioPage: React.FC = () => {
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cambiar el estado');
       console.error('Error changing estado:', err);
+    }
+  };
+
+  // Cancelar es destructivo e irreversible: pasa por confirmación, a
+  // diferencia de Iniciar/Finalizar que son parte del flujo normal.
+  const handleCancelarOrden = async () => {
+    if (!ordenACancelar) return;
+    setCancelando(true);
+    try {
+      await handleCambiarEstado(ordenACancelar.id, 'CANCELADA');
+      setOrdenACancelar(null);
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -418,6 +434,114 @@ const OrdenesServicioPage: React.FC = () => {
             </TextField>
           </Box>
 
+          <ResponsiveDataView<OrdenServicio>
+            items={filteredOrdenes}
+            getKey={(orden) => orden.id}
+            emptyState={
+              <Box py={4} textAlign="center">
+                <Typography variant="body2" color="textSecondary">
+                  No hay órdenes de servicio disponibles
+                </Typography>
+              </Box>
+            }
+            renderCard={(orden) => (
+              <Card variant="outlined">
+                <CardContent sx={{ pb: 1.5 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}>
+                    <Box>
+                      <Typography fontWeight={600}>{orden.numeroOrden}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {getClientName(orden)}
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={orden.estado}
+                      color={getEstadoColor(orden.estado)}
+                      size="small"
+                    />
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {new Date(orden.fechaCreacion).toLocaleDateString()}
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      ${(orden.total ?? 0).toLocaleString('es-AR')}
+                    </Typography>
+                  </Stack>
+                  {orden.descripcionTrabajo && (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mt: 1,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {orden.descripcionTrabajo}
+                    </Typography>
+                  )}
+                  <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mt: 1.5 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<ViewIcon />}
+                      onClick={() => handleViewDetails(orden)}
+                      sx={{ minHeight: 44 }}
+                    >
+                      Ver
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<EditIcon />}
+                      onClick={() => handleOpenForm(orden)}
+                      sx={{ minHeight: 44 }}
+                    >
+                      Editar
+                    </Button>
+                    {orden.estado === 'PENDIENTE' && (
+                      <Button
+                        variant="contained"
+                        color="warning"
+                        size="small"
+                        startIcon={<PlayArrowIcon />}
+                        onClick={() => handleCambiarEstado(orden.id, 'EN_PROCESO')}
+                        sx={{ minHeight: 44 }}
+                      >
+                        Iniciar
+                      </Button>
+                    )}
+                    {orden.estado === 'EN_PROCESO' && (
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        startIcon={<CheckCircleIcon />}
+                        onClick={() => handleCambiarEstado(orden.id, 'FINALIZADA')}
+                        sx={{ minHeight: 44 }}
+                      >
+                        Finalizar
+                      </Button>
+                    )}
+                    {(orden.estado === 'PENDIENTE' || orden.estado === 'EN_PROCESO') && (
+                      <Button
+                        variant="text"
+                        color="error"
+                        size="small"
+                        startIcon={<CancelIcon />}
+                        onClick={() => setOrdenACancelar(orden)}
+                        sx={{ minHeight: 44, ml: 'auto' }}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
+                  </Stack>
+                </CardContent>
+              </Card>
+            )}
+            renderTable={() => (
           <StickyScrollTable minWidth={800}>
             <Table>
               <TableHead>
@@ -507,9 +631,9 @@ const OrdenesServicioPage: React.FC = () => {
 
                           {(orden.estado === 'PENDIENTE' || orden.estado === 'EN_PROCESO') && (
                             <Tooltip title="Cancelar">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCambiarEstado(orden.id, 'CANCELADA')}
+                              <IconButton
+                                size="small"
+                                onClick={() => setOrdenACancelar(orden)}
                                 color="error"
                               >
                                 <CancelIcon />
@@ -524,8 +648,27 @@ const OrdenesServicioPage: React.FC = () => {
               </TableBody>
             </Table>
           </StickyScrollTable>
+            )}
+          />
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={ordenACancelar !== null}
+        onClose={() => setOrdenACancelar(null)}
+        onConfirm={handleCancelarOrden}
+        title="Cancelar orden de servicio"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description={
+          ordenACancelar
+            ? `¿Cancelar la orden ${ordenACancelar.numeroOrden ?? `#${ordenACancelar.id}`} de ${getClientName(ordenACancelar)}?`
+            : ''
+        }
+        confirmLabel="Cancelar orden"
+        cancelLabel="Volver"
+        loading={cancelando}
+      />
 
       {/* Dialog de Detalles */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="lg" fullWidth fullScreen={isMobile}>
@@ -716,7 +859,6 @@ const OrdenesServicioPage: React.FC = () => {
 
               {/* Equipos en Service */}
               {selected.equipos && selected.equipos.length > 0 && (
-                // @ts-expect-error
                 <Grid item xs={12}>
                   <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
                     <CardContent sx={{ p: 3 }}>
@@ -760,7 +902,6 @@ const OrdenesServicioPage: React.FC = () => {
 
               {/* Materiales Utilizados */}
               {selected.materiales && selected.materiales.length > 0 && (
-                // @ts-expect-error
                 <Grid item xs={12}>
                   <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
                     <CardContent sx={{ p: 3 }}>
@@ -800,7 +941,6 @@ const OrdenesServicioPage: React.FC = () => {
 
               {/* Tareas */}
               {selected.tareas && selected.tareas.length > 0 && (
-                // @ts-expect-error
                 <Grid item xs={12}>
                   <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
                     <CardContent sx={{ p: 3 }}>

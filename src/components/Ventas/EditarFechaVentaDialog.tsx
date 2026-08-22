@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  DialogTitle, DialogContent, DialogActions,
   Button, TextField, Alert, Typography, Box,
 } from '@mui/material';
+import ResponsiveDialog from '../common/ResponsiveDialog';
 import { DateTimePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -63,7 +64,7 @@ export const EditarFechaVentaDialog: React.FC<Props> = ({
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <ResponsiveDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth disableDismiss={submitting}>
         <DialogTitle>Editar Fecha de Emisión</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
@@ -134,7 +135,7 @@ export const EditarFechaVentaDialog: React.FC<Props> = ({
             {submitting ? 'Guardando...' : 'Guardar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </ResponsiveDialog>
     </LocalizationProvider>
   );
 };

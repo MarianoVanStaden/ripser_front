@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
-// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
+// (@ts-nocheck removido — ver MUI_V7_GRID_FIX.md si reaparecen errores de Grid)
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
@@ -44,6 +44,7 @@ import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import type { OrdenServicio } from '../../types';
 import dayjs from 'dayjs';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ResponsiveDataView from '../common/ResponsiveDataView';
 
 const TrabajosRealizadosPage: React.FC = () => {
   const theme = useTheme();
@@ -304,6 +305,71 @@ const TrabajosRealizadosPage: React.FC = () => {
             </Grid>
           </Box>
 
+          <ResponsiveDataView<OrdenServicio>
+            items={filteredOrdenes}
+            getKey={(orden) => orden.id}
+            emptyState={
+              <Box py={4} textAlign="center">
+                <Typography variant="body2" color="textSecondary">
+                  No hay trabajos realizados disponibles
+                </Typography>
+              </Box>
+            }
+            renderCard={(orden) => (
+              <Card variant="outlined">
+                <CardContent sx={{ pb: 1.5 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}>
+                    <Box>
+                      <Typography fontWeight={600}>{getClientName(orden)}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {orden.numeroOrden}
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={orden.estado}
+                      color={getEstadoColor(orden.estado)}
+                      size="small"
+                    />
+                  </Stack>
+                  {orden.descripcionTrabajo && (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mt: 1,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {orden.descripcionTrabajo}
+                    </Typography>
+                  )}
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {orden.fechaFinalizacion
+                        ? dayjs(orden.fechaFinalizacion).format('DD/MM/YYYY')
+                        : '-'}
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600} color="primary.main">
+                      ${(orden.total ?? 0).toLocaleString('es-AR')}
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" sx={{ mt: 1.5 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<ViewIcon />}
+                      onClick={() => handleViewDetails(orden)}
+                      sx={{ minHeight: 44 }}
+                    >
+                      Ver detalle
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+            )}
+            renderTable={() => (
           <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
             <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
               <TableHead>
@@ -382,6 +448,8 @@ const TrabajosRealizadosPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+            )}
+          />
         </CardContent>
       </Card>
 

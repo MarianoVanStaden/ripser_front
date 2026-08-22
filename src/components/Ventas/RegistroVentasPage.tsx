@@ -18,17 +18,18 @@ import {
   TableRow,
   Paper,
   Chip,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
+  Menu,
   MenuItem,
   Grid,
   FormControl,
   InputLabel,
   Select,
   Divider,
+  Stack,
   TablePagination,
   Autocomplete,
   Tabs,
@@ -49,6 +50,7 @@ import {
   AttachMoney as AttachMoneyIcon,
   EditCalendar as EditCalendarIcon,
   Palette as PaletteIcon,
+  MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
@@ -64,6 +66,8 @@ import { generarVentaPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
 import { useClienteSearch } from '../../hooks/useClienteSearch';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ResponsiveDataView from '../common/ResponsiveDataView';
+import ResponsiveDialog from '../common/ResponsiveDialog';
 import VentasEquiposVendedorTab from './RegistroVentas/VentasEquiposVendedorTab';
 
 const RegistroVentasPage: React.FC = () => {
@@ -92,6 +96,9 @@ const RegistroVentasPage: React.FC = () => {
   // Asignar/completar equipos en una factura ya emitida (líneas EQUIPO sin equipo).
   const [asignarEquiposOpen, setAsignarEquiposOpen] = useState(false);
   const [ventaToDelete, setVentaToDelete] = useState<Venta | null>(null);
+  // Menú overflow de acciones por card (vista mobile).
+  const [rowMenuAnchor, setRowMenuAnchor] = useState<HTMLElement | null>(null);
+  const [rowMenuSale, setRowMenuSale] = useState<Venta | null>(null);
   const [editingSale, setEditingSale] = useState<Venta | null>(null);
   const [editForm, setEditForm] = useState({
     numeroVenta: '',
@@ -911,6 +918,68 @@ const RegistroVentasPage: React.FC = () => {
       {/* Sales Table */}
       <Card>
         <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+          <ResponsiveDataView<Venta>
+            items={paginatedSales}
+            getKey={(sale) => sale.id}
+            emptyState={
+              <Box py={4} textAlign="center">
+                <Typography color="text.secondary">
+                  No se encontraron ventas que coincidan con los filtros aplicados
+                </Typography>
+              </Box>
+            }
+            renderCard={(sale) => (
+              <Card variant="outlined">
+                <CardContent sx={{ pb: 1.5, '&:last-child': { pb: 1.5 } }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Box>
+                      <Typography fontWeight={600}>
+                        {sale.ventaNumero || `#${sale.id}`}
+                      </Typography>
+                      <Typography variant="body2">
+                        {getClientFullName(sale.cliente || null)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {sale.fechaVenta ? new Date(sale.fechaVenta).toLocaleDateString() : '-'}
+                        {(sale.usuario || sale.empleado)
+                          ? ` · ${getUsuarioFullName((sale.usuario || sale.empleado) as Usuario)}`
+                          : ''}
+                      </Typography>
+                    </Box>
+                    <IconButton
+                      aria-label="Más acciones"
+                      onClick={(e) => {
+                        setRowMenuAnchor(e.currentTarget);
+                        setRowMenuSale(sale);
+                      }}
+                      sx={{ minWidth: 44, minHeight: 44 }}
+                    >
+                      <MoreVertIcon />
+                    </IconButton>
+                  </Stack>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                    <Chip
+                      label={getStatusLabel(sale.estado)}
+                      color={getStatusColor(sale.estado)}
+                      size="small"
+                    />
+                    <Typography fontWeight={700}>
+                      ${(sale.total || 0).toLocaleString('es-AR')}
+                    </Typography>
+                  </Stack>
+                  <Divider sx={{ my: 1 }} />
+                  <Button
+                    variant="outlined"
+                    startIcon={<VisibilityIcon />}
+                    onClick={() => handleViewSale(sale)}
+                    sx={{ minHeight: 44 }}
+                  >
+                    Ver
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            renderTable={() => (
           <TableContainer sx={{ overflowX: 'auto' }}>
             <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
               <TableHead>
@@ -1042,19 +1111,69 @@ const RegistroVentasPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {paginatedSales.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center">
-                      <Typography color="text.secondary">
-                        No se encontraron ventas que coincidan con los filtros aplicados
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           </TableContainer>
-          
+            )}
+          />
+
+          {/* Menú overflow de acciones de la card (mobile) */}
+          <Menu
+            anchorEl={rowMenuAnchor}
+            open={Boolean(rowMenuAnchor)}
+            onClose={() => { setRowMenuAnchor(null); setRowMenuSale(null); }}
+          >
+            <MenuItem
+              onClick={() => {
+                if (rowMenuSale) handleEditSale(rowMenuSale);
+                setRowMenuAnchor(null);
+              }}
+            >
+              Editar estado
+            </MenuItem>
+            {isAdmin && (rowMenuSale as any)?.tipoDocumento === 'FACTURA' && (
+              <MenuItem
+                onClick={() => {
+                  if (rowMenuSale) {
+                    setVentaToEditarFecha(rowMenuSale);
+                    setEditarFechaDialogOpen(true);
+                  }
+                  setRowMenuAnchor(null);
+                }}
+              >
+                Editar fecha de emisión
+              </MenuItem>
+            )}
+            <MenuItem
+              onClick={() => {
+                if (rowMenuSale) handleOpenColorDialog(rowMenuSale);
+                setRowMenuAnchor(null);
+              }}
+            >
+              Editar color de equipos
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                if (rowMenuSale) handleExportarPDF(rowMenuSale);
+                setRowMenuAnchor(null);
+              }}
+            >
+              Exportar PDF
+            </MenuItem>
+            <MenuItem
+              sx={{ color: 'error.main' }}
+              onClick={() => {
+                if (rowMenuSale) {
+                  setVentaToDelete(rowMenuSale);
+                  setDeleteDialogOpen(true);
+                }
+                setRowMenuAnchor(null);
+              }}
+            >
+              Eliminar
+            </MenuItem>
+          </Menu>
+
           <TablePagination
             component="div"
             count={totalSales}
@@ -1074,7 +1193,7 @@ const RegistroVentasPage: React.FC = () => {
       )}
 
       {/* View Sale Dialog */}
-      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+      <ResponsiveDialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
           Detalles de la Venta #{viewingSale?.id}
         </DialogTitle>
@@ -1386,14 +1505,15 @@ const RegistroVentasPage: React.FC = () => {
             Imprimir PDF
           </Button>
         </DialogActions>
-      </Dialog>
+      </ResponsiveDialog>
 
       {/* Edit Sale Dialog */}
-      <Dialog 
-        open={editDialogOpen} 
-        onClose={() => setEditDialogOpen(false)} 
-        maxWidth="md" 
+      <ResponsiveDialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        maxWidth="md"
         fullWidth
+        disableDismiss={editLoading}
       >
         <DialogTitle>
           Cambiar Estado - Factura #{(editingSale as any)?.numeroDocumento || editingSale?.id}
@@ -1464,14 +1584,15 @@ const RegistroVentasPage: React.FC = () => {
             Guardar Cambios
           </Button>
         </DialogActions>
-      </Dialog>
+      </ResponsiveDialog>
 
       {/* Confirm State Change Dialog */}
-      <Dialog
+      <ResponsiveDialog
         open={confirmStateChangeDialogOpen}
         onClose={() => setConfirmStateChangeDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        disableDismiss={editLoading}
       >
         <DialogTitle>Confirmar Cambio de Estado</DialogTitle>
         <DialogContent>
@@ -1536,10 +1657,10 @@ const RegistroVentasPage: React.FC = () => {
             {editLoading ? <CircularProgress size={24} /> : 'Confirmar Cambio'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </ResponsiveDialog>
 
       {/* Delete Sale Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+      <ResponsiveDialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Eliminar venta</DialogTitle>
         <DialogContent>
           <Typography>
@@ -1568,7 +1689,7 @@ const RegistroVentasPage: React.FC = () => {
             Eliminar
           </Button>
         </DialogActions>
-      </Dialog>
+      </ResponsiveDialog>
 
       {/* Integration Info */}
       <Box mt={3}>

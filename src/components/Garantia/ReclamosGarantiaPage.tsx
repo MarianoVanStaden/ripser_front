@@ -3,9 +3,10 @@ import {
   Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell,
   TableHead, TableRow, TextField, Stack, Chip,
   IconButton, Alert, Grid, MenuItem, Select, FormControl,
-  InputLabel, InputAdornment, Autocomplete, TablePagination
+  InputLabel, InputAdornment, Autocomplete, TablePagination, Divider
 } from '@mui/material';
 import { StickyScrollTable } from '../common/StickyScrollTable';
+import ResponsiveDataView from '../common/ResponsiveDataView';
 import { 
   Add as AddIcon, 
   Edit as EditIcon,
@@ -46,6 +47,12 @@ const ReclamosGarantiaPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Al cambiar cualquier filtro se vuelve a la página 0: si no, una página
+  // fuera de rango deja la lista vacía (y en mobile, sin controles de paginado).
+  useEffect(() => {
+    setPage(0);
+  }, [search, estadoFilter, garantiaFilter]);
 
   const loadData = async () => {
     try {
@@ -331,7 +338,72 @@ const ReclamosGarantiaPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Table — StickyScrollTable: barra de scroll fija + arrastrar para desplazar lateralmente */}
+      {/* Desktop: StickyScrollTable / Mobile: cards */}
+      <ResponsiveDataView
+        items={paginatedReclamos}
+        getKey={(reclamo) => reclamo.id}
+        emptyState={
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="body2" color="textSecondary" align="center" py={4}>
+                No se encontraron reclamos
+              </Typography>
+            </CardContent>
+          </Card>
+        }
+        renderCard={(reclamo) => (
+          <Card variant="outlined">
+            <CardContent sx={{ pb: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                <Box>
+                  <Typography fontWeight={600}>
+                    {reclamo.clienteNombre && reclamo.clienteApellido
+                      ? `${reclamo.clienteNombre} ${reclamo.clienteApellido}`
+                      : reclamo.clienteNombre || '—'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {reclamo.garantiaEquipoModelo || 'Sin modelo'} · {reclamo.numeroReclamo}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {dayjs(reclamo.fechaReclamo).format('DD/MM/YYYY HH:mm')}
+                  </Typography>
+                </Box>
+                <Chip
+                  label={reclamo.estado?.replace('_', ' ') || 'SIN ESTADO'}
+                  color={getEstadoColor(reclamo.estado)}
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              </Stack>
+              <Typography
+                variant="body2"
+                sx={{
+                  mt: 1,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
+                {reclamo.descripcionProblema}
+              </Typography>
+              <Divider sx={{ my: 1 }} />
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<VisibilityIcon />}
+                sx={{ minHeight: 44 }}
+                onClick={() => {
+                  setSelectedReclamo(reclamo);
+                  setFormOpen(true);
+                }}
+              >
+                Ver / Editar
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+        renderTable={() => (
       <StickyScrollTable
         minWidth={1370}
         pagination={
@@ -445,6 +517,27 @@ const ReclamosGarantiaPage: React.FC = () => {
               </TableBody>
             </Table>
       </StickyScrollTable>
+        )}
+      />
+
+      {/* Paginación en mobile (en desktop vive dentro de StickyScrollTable) */}
+      {filteredReclamos.length > 0 && (
+        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+          <TablePagination
+            component="div"
+            count={filteredReclamos.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25]}
+            labelRowsPerPage="Por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
+        </Box>
+      )}
 
       {/* Reclamo Dialog */}
       <ReclamoFormDialog

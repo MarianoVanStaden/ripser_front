@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
+  DialogTitle, DialogContent, DialogActions, Button, TextField,
   MenuItem, Stack, Alert, CircularProgress, Autocomplete, InputAdornment
 } from '@mui/material';
+import ResponsiveDialog from '../common/ResponsiveDialog';
 import {
   reclamoGarantiaApi,
   type ReclamoGarantiaDTO,
@@ -152,7 +153,7 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <ResponsiveDialog open={open} onClose={onClose} maxWidth="md" fullWidth disableDismiss={loading}>
       <DialogTitle>
         {reclamo ? 'Editar Reclamo' : 'Nuevo Reclamo de Garantía'}
       </DialogTitle>
@@ -240,6 +241,7 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
                 value={form.costoSolucion}
                 onChange={handleChange}
                 fullWidth
+                inputProps={{ min: 0, inputMode: 'decimal' }}
                 InputProps={{
                   startAdornment: <InputAdornment position="start">$</InputAdornment>,
                 }}
@@ -271,7 +273,7 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
           {loading ? <CircularProgress size={24} /> : 'Guardar'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </ResponsiveDialog>
   );
 };
 

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell,
   TableHead, TableRow, IconButton, TextField, Stack,
-  Chip, Alert, Grid, InputAdornment, Dialog,
+  Chip, Alert, Grid, InputAdornment, Divider,
   MenuItem, Select, FormControl, InputLabel, TablePagination
 } from '@mui/material';
 import { StickyScrollTable } from '../common/StickyScrollTable';
+import ResponsiveDataView from '../common/ResponsiveDataView';
+import ResponsiveDialog from '../common/ResponsiveDialog';
 import { 
   Add as AddIcon, 
   Search as SearchIcon,
@@ -198,6 +200,24 @@ const GarantiasPage: React.FC = () => {
     return tiposGarantiaStr.split(',').map(t => t.trim());
   };
 
+  // Un solo elemento de paginación: en desktop va dentro de StickyScrollTable,
+  // en mobile se renderiza debajo de las cards.
+  const paginationEl = (
+    <TablePagination
+      component="div"
+      count={totalElements}
+      page={page}
+      onPageChange={handleChangePage}
+      rowsPerPage={rowsPerPage}
+      onRowsPerPageChange={handleChangeRowsPerPage}
+      rowsPerPageOptions={[5, 10, 25, 50, 100]}
+      labelRowsPerPage="Filas por página:"
+      labelDisplayedRows={({ from, to, count }) =>
+        `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+      }
+    />
+  );
+
   return (
     <Box p={3}>
       <LoadingOverlay open={loading} message="Cargando garantías..." />
@@ -367,24 +387,114 @@ const GarantiasPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Table — StickyScrollTable: barra de scroll fija + arrastrar para desplazar lateralmente */}
+      {/* Tabla desktop / cards mobile */}
+      <ResponsiveDataView
+        items={garantias}
+        getKey={(g) => g.id}
+        emptyState={
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="body2" color="textSecondary" align="center" py={4}>
+                No se encontraron garantías
+              </Typography>
+            </CardContent>
+          </Card>
+        }
+        renderCard={(garantia) => (
+          <Card variant="outlined">
+            <CardContent sx={{ pb: 1 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                <Box>
+                  <Typography fontWeight={600}>
+                    {garantia.clienteNombre && garantia.clienteApellido
+                      ? `${garantia.clienteNombre} ${garantia.clienteApellido}`
+                      : garantia.clienteNombre || '-'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {garantia.equipoFabricadoModelo || 'Sin equipo'} · N° {garantia.numeroSerie}
+                  </Typography>
+                </Box>
+                <Chip
+                  label={garantia.estado}
+                  color={getStatusColor(garantia.estado)}
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              </Stack>
+
+              {garantia.estado !== 'ANULADA' && (
+                <Stack spacing={1} sx={{ mt: 1.5 }}>
+                  {garantia.fechaVencimientoFabrica && (
+                    <GarantiaVigenciaBar
+                      compact
+                      tipo="DESPERFECTO_FABRICA"
+                      fechaCompra={garantia.fechaCompra}
+                      fechaVencimiento={garantia.fechaVencimientoFabrica}
+                      estado={garantia.estado}
+                    />
+                  )}
+                  {garantia.fechaVencimientoElectrico && (
+                    <GarantiaVigenciaBar
+                      compact
+                      tipo="DESPERFECTO_ELECTRICO"
+                      fechaCompra={garantia.fechaCompra}
+                      fechaVencimiento={garantia.fechaVencimientoElectrico}
+                      estado={garantia.estado}
+                    />
+                  )}
+                  {!garantia.fechaVencimientoFabrica && !garantia.fechaVencimientoElectrico && (
+                    <Typography variant="body2" color="text.secondary">
+                      Vence: {dayjs(garantia.fechaVencimiento).format('DD/MM/YYYY')}
+                    </Typography>
+                  )}
+                </Stack>
+              )}
+
+              <Divider sx={{ my: 1 }} />
+              <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center">
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    sx={{ minHeight: 44 }}
+                    startIcon={<VisibilityIcon />}
+                    onClick={() => {
+                      setSelectedGarantia(garantia);
+                      setDetailOpen(true);
+                    }}
+                  >
+                    Ver
+                  </Button>
+                  {garantia.estado !== 'ANULADA' && (
+                    <Button
+                      size="small"
+                      color="secondary"
+                      sx={{ minHeight: 44 }}
+                      startIcon={<AddTaskIcon />}
+                      onClick={() => setReclamoTarget(garantia)}
+                    >
+                      Nuevo reclamo
+                    </Button>
+                  )}
+                </Stack>
+                {garantia.estado === 'VIGENTE' && (
+                  <Button
+                    size="small"
+                    color="error"
+                    sx={{ minHeight: 44 }}
+                    onClick={() => handleAnular(garantia.id)}
+                  >
+                    Anular
+                  </Button>
+                )}
+              </Stack>
+            </CardContent>
+          </Card>
+        )}
+        renderTable={() => (
+      /* Table — StickyScrollTable: barra de scroll fija + arrastrar para desplazar lateralmente */
       <StickyScrollTable
         minWidth={1180}
-        pagination={
-          <TablePagination
-            component="div"
-            count={totalElements}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[5, 10, 25, 50, 100]}
-            labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) =>
-              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-            }
-          />
-        }
+        pagination={paginationEl}
       >
             <Table>
               <TableHead>
@@ -528,6 +638,11 @@ const GarantiasPage: React.FC = () => {
               </TableBody>
             </Table>
       </StickyScrollTable>
+        )}
+      />
+
+      {/* Paginación en vista mobile (en desktop va dentro de StickyScrollTable) */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>{paginationEl}</Box>
 
       {/* Dialogs */}
       <GarantiaFormDialog
@@ -546,10 +661,10 @@ const GarantiasPage: React.FC = () => {
         ventas={facturas}
       />
 
-      <Dialog 
-        open={detailOpen} 
-        onClose={() => setDetailOpen(false)} 
-        maxWidth="md" 
+      <ResponsiveDialog
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        maxWidth="md"
         fullWidth
       >
         {selectedGarantia && (
@@ -562,7 +677,7 @@ const GarantiasPage: React.FC = () => {
             }}
           />
         )}
-      </Dialog>
+      </ResponsiveDialog>
 
       {reclamoTarget && (
         <ReclamoFormDialog

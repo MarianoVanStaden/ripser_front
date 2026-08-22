@@ -17,7 +17,8 @@ import {
   CircularProgress,
   Alert,
   Button,
-  Dialog,
+  Card,
+  CardContent,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -32,6 +33,8 @@ import {
   Tab,
   Divider,
   Autocomplete,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -44,6 +47,8 @@ import {
   ErrorOutline as ErrorOutlineIcon,
   NotificationsActive as NotificationsActiveIcon,
 } from '@mui/icons-material';
+import { ResponsiveDataView } from '../common/ResponsiveDataView';
+import ResponsiveDialog from '../common/ResponsiveDialog';
 import { vehiculoApi } from '../../api/services/vehiculoApi';
 import { incidenciaVehiculoApi } from '../../api/services/incidenciaVehiculoApi';
 import type {
@@ -185,7 +190,7 @@ const ResolverDialog: React.FC<ResolverDialogProps> = ({ open, incidencia, onClo
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+    <ResponsiveDialog open={open} onClose={handleClose} maxWidth="xs" fullWidth disableDismiss={submitting}>
       <DialogTitle>Resolver Incidencia</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} mt={0.5}>
@@ -230,7 +235,7 @@ const ResolverDialog: React.FC<ResolverDialogProps> = ({ open, incidencia, onClo
           Resolver
         </Button>
       </DialogActions>
-    </Dialog>
+    </ResponsiveDialog>
   );
 };
 
@@ -381,7 +386,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <ResponsiveDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth disableDismiss={submitting}>
       <DialogTitle>{isEdit ? 'Editar Incidencia' : 'Nueva Incidencia'}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} mt={0.5}>
@@ -444,7 +449,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
                 size="small"
                 value={form.kmVehiculo}
                 onChange={(e) => set('kmVehiculo', e.target.value === '' ? '' : Number(e.target.value))}
-                inputProps={{ min: 0 }}
+                inputProps={{ min: 0, inputMode: 'numeric' }}
               />
             </Grid>
           </Grid>
@@ -562,7 +567,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
           {isEdit ? 'Guardar cambios' : 'Crear incidencia'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </ResponsiveDialog>
   );
 };
 
@@ -582,7 +587,7 @@ const ConfirmDeleteDialog: React.FC<ConfirmDeleteProps> = ({ open, onClose, onCo
     finally { setSubmitting(false); }
   };
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <ResponsiveDialog open={open} onClose={onClose} maxWidth="xs" fullWidth disableDismiss={submitting}>
       <DialogTitle>Eliminar incidencia</DialogTitle>
       <DialogContent>
         <Typography>¿Estás seguro de que deseas eliminar esta incidencia? Esta acción no se puede deshacer.</Typography>
@@ -594,7 +599,82 @@ const ConfirmDeleteDialog: React.FC<ConfirmDeleteProps> = ({ open, onClose, onCo
           Eliminar
         </Button>
       </DialogActions>
-    </Dialog>
+    </ResponsiveDialog>
+  );
+};
+
+// ─── Incidencia Card (mobile) ─────────────────────────────────────────────────
+
+interface IncidenciaCardProps {
+  inc: IncidenciaVehiculoDTO;
+  showVehiculo: boolean;
+  onEdit?: (inc: IncidenciaVehiculoDTO) => void;
+  onResolve?: (inc: IncidenciaVehiculoDTO) => void;
+  onDelete?: (inc: IncidenciaVehiculoDTO) => void;
+}
+
+const IncidenciaCard: React.FC<IncidenciaCardProps> = ({ inc, showVehiculo, onEdit, onResolve, onDelete }) => {
+  const isResuelto = inc.estado === 'RESUELTA' || inc.estado === 'CERRADA';
+  return (
+    <Card variant="outlined" sx={{ bgcolor: getRowBgByGravedad(inc.gravedad, inc.estado) }}>
+      <CardContent sx={{ pb: 1.5, '&:last-child': { pb: 1.5 } }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+          <Box sx={{ minWidth: 0 }}>
+            {showVehiculo && (
+              inc.vehiculo ? (
+                <Typography fontWeight={600}>
+                  {inc.vehiculo.patente} · {inc.vehiculo.marca} {inc.vehiculo.modelo}
+                </Typography>
+              ) : (
+                <Typography fontWeight={600} color="text.disabled">
+                  Vehículo no encontrado (ID: {inc.vehiculoId})
+                </Typography>
+              )
+            )}
+            <Typography variant="body2" color="text.secondary">
+              {formatDate(inc.fecha)}
+              {inc.kmVehiculo != null ? ` · ${inc.kmVehiculo.toLocaleString()} km` : ''}
+            </Typography>
+          </Box>
+          <EstadoChip estado={inc.estado} />
+        </Stack>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1, flexWrap: 'wrap', rowGap: 0.5 }}>
+          <Typography variant="body2" fontWeight={600}>{TIPO_INCIDENCIA_LABELS[inc.tipo] ?? inc.tipo}</Typography>
+          <GravedadChip gravedad={inc.gravedad} />
+        </Stack>
+        {/* Sin Tooltip (hover no existe en touch): el texto completo se ve al abrir Editar */}
+        <Typography
+          variant="body2"
+          sx={{ mt: 0.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+        >
+          {inc.descripcion}
+        </Typography>
+        {inc.fechaVencimientoDoc && (
+          <Typography variant="caption" color="warning.dark" display="block">
+            Vence: {formatDate(inc.fechaVencimientoDoc)}
+          </Typography>
+        )}
+        <Divider sx={{ my: 1 }} />
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" rowGap={1}>
+          {onResolve && !isResuelto && (
+            <Button size="small" variant="outlined" color="success" sx={{ minHeight: 44 }} onClick={() => onResolve(inc)}>
+              Resolver
+            </Button>
+          )}
+          {onEdit && (
+            <Button size="small" variant="outlined" sx={{ minHeight: 44 }} onClick={() => onEdit(inc)}>
+              Editar
+            </Button>
+          )}
+          <Box sx={{ flexGrow: 1 }} />
+          {onDelete && (
+            <Button size="small" variant="outlined" color="error" sx={{ minHeight: 44 }} onClick={() => onDelete(inc)}>
+              Eliminar
+            </Button>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -617,13 +697,16 @@ const IncidenciasTable: React.FC<IncidenciasTableProps> = ({
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
+  const theme = useTheme();
+  // mismo breakpoint que ResponsiveDataView: en cards la paginación va afuera
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const paginated = useMemo(
     () => rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage),
     [rows, page, rowsPerPage]
   );
 
-  return (
+  const renderTable = () => (
     <TableContainer component={Paper}>
       <Table size="small">
         <TableHead>
@@ -738,6 +821,43 @@ const IncidenciasTable: React.FC<IncidenciasTableProps> = ({
         labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
       />
     </TableContainer>
+  );
+
+  return (
+    <>
+      <ResponsiveDataView
+        items={paginated}
+        getKey={(inc) => inc.id}
+        renderCard={(inc) => (
+          <IncidenciaCard
+            inc={inc}
+            showVehiculo={showVehiculo}
+            onEdit={onEdit}
+            onResolve={onResolve}
+            onDelete={onDelete}
+          />
+        )}
+        renderTable={renderTable}
+        emptyState={
+          <Paper sx={{ p: 4, textAlign: 'center' }}>
+            <Typography color="text.secondary">No hay incidencias</Typography>
+          </Paper>
+        }
+      />
+      {isMobile && rows.length > rowsPerPage && (
+        <TablePagination
+          component="div"
+          count={rows.length}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          labelRowsPerPage="Filas:"
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+        />
+      )}
+    </>
   );
 };
 
@@ -886,9 +1006,15 @@ const TabLegajo: React.FC<TabLegajoProps> = ({ vehiculos, onMutation }) => {
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
           {/* Toolbar */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 1 }}>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-              <FormControl size="small" sx={{ minWidth: 130 }}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ xs: 'stretch', md: 'center' }}
+            spacing={1}
+            sx={{ mb: 1 }}
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }} flexWrap="wrap" useFlexGap>
+              <FormControl size="small" sx={{ minWidth: { sm: 130 } }}>
                 <InputLabel>Estado</InputLabel>
                 <Select value={filterEstado} label="Estado" onChange={(e) => setFilterEstado(e.target.value as EstadoIncidencia | '')}>
                   <MenuItem value=""><em>Todos</em></MenuItem>
@@ -897,7 +1023,7 @@ const TabLegajo: React.FC<TabLegajoProps> = ({ vehiculos, onMutation }) => {
                   ))}
                 </Select>
               </FormControl>
-              <FormControl size="small" sx={{ minWidth: 180 }}>
+              <FormControl size="small" sx={{ minWidth: { sm: 180 } }}>
                 <InputLabel>Tipo</InputLabel>
                 <Select value={filterTipo} label="Tipo" onChange={(e) => setFilterTipo(e.target.value as TipoIncidenciaVehiculo | '')}>
                   <MenuItem value=""><em>Todos</em></MenuItem>
@@ -906,7 +1032,7 @@ const TabLegajo: React.FC<TabLegajoProps> = ({ vehiculos, onMutation }) => {
                   ))}
                 </Select>
               </FormControl>
-              <FormControl size="small" sx={{ minWidth: 130 }}>
+              <FormControl size="small" sx={{ minWidth: { sm: 130 } }}>
                 <InputLabel>Gravedad</InputLabel>
                 <Select value={filterGravedad} label="Gravedad" onChange={(e) => setFilterGravedad(e.target.value as GravedadIncidencia | '')}>
                   <MenuItem value=""><em>Todas</em></MenuItem>
@@ -920,16 +1046,17 @@ const TabLegajo: React.FC<TabLegajoProps> = ({ vehiculos, onMutation }) => {
                   Limpiar filtros
                 </Button>
               )}
-            </Box>
+            </Stack>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               size="small"
+              sx={{ minHeight: { xs: 44, md: 'auto' } }}
               onClick={() => { setEditTarget(null); setFormOpen(true); }}
             >
               Nueva incidencia
             </Button>
-          </Box>
+          </Stack>
 
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -1278,9 +1405,9 @@ export const IncidenciasVehiculoPage: React.FC = () => {
   );
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 1 }}>
         <Box>
           <Typography variant="h5" fontWeight={700}>
             Legajo de Vehículos
@@ -1308,7 +1435,14 @@ export const IncidenciasVehiculoPage: React.FC = () => {
       ) : (
         <>
           <Paper sx={{ mb: 2 }}>
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            {/* scrollable: con 3 tabs con ícono, la 3ra queda inalcanzable en 360px con variant standard */}
+            <Tabs
+              value={tab}
+              onChange={(_, v) => setTab(v)}
+              variant="scrollable"
+              allowScrollButtonsMobile
+              sx={{ borderBottom: 1, borderColor: 'divider' }}
+            >
               <Tab label="Legajo por vehículo" icon={<DirectionsCarIcon />} iconPosition="start" />
               <Tab
                 label={

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
+  DialogTitle, DialogContent, DialogActions, Button, TextField,
   Stack, Autocomplete, Alert, CircularProgress, FormControl, InputLabel, Select, MenuItem,
   Box, Typography, FormControlLabel, Checkbox, Divider
 } from '@mui/material';
 import dayjs from 'dayjs';
+import ResponsiveDialog from '../common/ResponsiveDialog';
 import { garantiaApi, type GarantiaCreateDTO } from '../../api/services/garantiaApi';
 
 interface GarantiaFormDialogProps {
@@ -134,7 +135,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <ResponsiveDialog open={open} onClose={onClose} maxWidth="sm" fullWidth disableDismiss={loading}>
       <DialogTitle>Nueva Garantía</DialogTitle>
       <DialogContent>
         {error && (
@@ -297,7 +298,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
           {loading ? <CircularProgress size={24} /> : 'Guardar'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </ResponsiveDialog>
   );
 };
 

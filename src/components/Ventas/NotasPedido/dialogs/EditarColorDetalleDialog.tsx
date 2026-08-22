@@ -8,7 +8,6 @@ import {
   Alert,
   Box,
   Button,
-  Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
@@ -23,6 +22,7 @@ import {
   TableRow,
   TextField,
 } from '@mui/material';
+import ResponsiveDialog from '../../../common/ResponsiveDialog';
 import { documentoApi } from '../../../../api/services';
 import { colorApi, type Color } from '../../../../api/services/colorApi';
 import type { DocumentoComercial } from '../../../../types';
@@ -102,7 +102,7 @@ const EditarColorDetalleDialog: React.FC<Props> = ({ open, onClose, onSaved, doc
   };
 
   return (
-    <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="sm" fullWidth>
+    <ResponsiveDialog open={open} onClose={onClose} maxWidth="sm" fullWidth disableDismiss={saving}>
       <DialogTitle>Editar color — {documento?.numeroDocumento}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -166,7 +166,7 @@ const EditarColorDetalleDialog: React.FC<Props> = ({ open, onClose, onSaved, doc
           {saving ? 'Guardando…' : 'Guardar color'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </ResponsiveDialog>
   );
 };
 
