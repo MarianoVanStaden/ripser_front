@@ -30,9 +30,9 @@ export default tseslint.config([
     },
   },
   // Anti-drift de la migración a tokens semánticos (modo oscuro): nada de
-  // colores literales en componentes. 'warn' mientras dura la migración;
-  // pasa a 'error' en el lote final. El conteo de warnings es la métrica
-  // de avance.
+  // colores literales en componentes. Migración completada (ago 2026) — la
+  // regla quedó en 'error'; los literales legítimos viven en la allowlist de
+  // abajo o bajo eslint-disable con motivo.
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: [
@@ -60,7 +60,7 @@ export default tseslint.config([
       ripser: { rules: { 'no-literal-colors': noLiteralColors } },
     },
     rules: {
-      'ripser/no-literal-colors': 'warn',
+      'ripser/no-literal-colors': 'error',
     },
   },
 ])
