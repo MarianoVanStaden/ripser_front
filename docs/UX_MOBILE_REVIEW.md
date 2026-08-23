@@ -146,7 +146,7 @@ export default function ReloadPrompt() {
   return (
     <Snackbar
       open={needRefresh}
-      message="Hay una versión nueva de Ripser"
+      message="Hay una versión nueva de Ripser App"
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       action={
         <>
