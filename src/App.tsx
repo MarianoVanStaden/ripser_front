@@ -323,7 +323,7 @@ function App() {
       <TenantProvider>
         <ColoresProvider onlyActive>
         <MedidasProvider onlyActive>
-        <ThemeProvider theme={theme}>
+        <ThemeProvider theme={theme} defaultMode="system" disableTransitionOnChange>
           <CssBaseline />
           <SidebarProvider>
           <ToastProvider>

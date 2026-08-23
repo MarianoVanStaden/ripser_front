@@ -11,18 +11,19 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--mui-palette-primary-main);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--mui-palette-primary-dark);
 }
 
+/* El fondo lo maneja el theme (CssBaseline + var); ver también el fallback
+   pre-JS inline en index.html. */
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #f5f5f5;
 }
 
 button:focus,

@@ -38,6 +38,7 @@ import { useNavItemsFlat, type FlatNavItem } from '../../navigation/useNavItemsF
 import { useFavoritos } from '../../hooks/useFavoritos';
 import { useRecientes } from '../../hooks/useRecientes';
 import SucursalSelector from '../Sucursal/SucursalSelector';
+import ThemeModeToggle from './ThemeModeToggle';
 import { NavModuleGroup } from './NavModuleGroup';
 import { SidebarQuickAccess } from './SidebarQuickAccess';
 import { CommandPalette } from './CommandPalette';
@@ -388,6 +389,7 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Ripser
           </Typography>
+          <ThemeModeToggle />
         </Toolbar>
       </AppBar>
 
