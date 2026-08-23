@@ -2,7 +2,7 @@ import api from '../config';
 import type {
   RegistroActividadDTO,
   HorarioLaboralDTO,
-  TipoAccionActividad,
+  TipoAccionMeta,
   ActividadFilters,
 } from '../../types/actividad.types';
 import type { PageResponse } from '../../types/pagination.types';
@@ -33,8 +33,8 @@ export const registroActividadApi = {
     return res.data;
   },
 
-  getTipos: async (): Promise<TipoAccionActividad[]> => {
-    const res = await api.get<TipoAccionActividad[]>(`${BASE}/tipos`);
+  getTipos: async (): Promise<TipoAccionMeta[]> => {
+    const res = await api.get<TipoAccionMeta[]>(`${BASE}/tipos`);
     return res.data;
   },
 

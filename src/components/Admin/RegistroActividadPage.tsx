@@ -42,11 +42,11 @@ import { usePermisos } from '../../hooks/usePermisos';
 import type {
   ActividadFilters,
   RegistroActividadDTO,
-  TipoAccionActividad,
 } from '../../types/actividad.types';
 import {
-  TIPO_ACCION_FAMILIA,
-  TIPO_ACCION_LABELS,
+  MODULO_LABELS,
+  familiaForTipo,
+  labelForTipo,
 } from '../../types/actividad.types';
 import type { Usuario } from '../../types';
 import { HorarioLaboralDialog } from './HorarioLaboralDialog';
@@ -62,23 +62,10 @@ const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'personalizado', label: 'Personalizado' },
 ];
 
-const TIPOS_DISPONIBLES: TipoAccionActividad[] = [
-  'LOGIN_OK',
-  'LOGIN_FAIL',
-  'LOGOUT',
-  'PRESUPUESTO_CREADO',
-  'PRESUPUESTO_CONVERTIDO_A_NOTA',
-  'NOTA_PEDIDO_CONVERTIDA_A_FACTURA',
-  'NOTA_PEDIDO_ESTADO_CAMBIADO',
-  'FACTURA_CREADA',
-  'FACTURA_ANULADA',
-  'PAGO_REGISTRADO',
-  'MOVIMIENTO_EXTRA_CREADO',
-  'MOVIMIENTO_EXTRA_ANULADO',
-  'GESTION_COBRANZA_CERRADA',
-  'AMORTIZACION_EJECUTADA',
-  'AMORTIZACION_CONVERTIDA',
-  'LEAD_CREADO',
+// Orden estable de los módulos en el filtro agrupado.
+const MODULO_ORDEN = [
+  'DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES',
+  'LOGISTICA', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'RRHH',
 ];
 
 const FAMILIA_COLOR: Record<string, 'default' | 'primary' | 'success' | 'error' | 'info' | 'warning'> = {
@@ -135,13 +122,29 @@ const formatFecha = (iso: string): string => {
   return `${d.format('DD/MM/YYYY')} ${d.format('HH:mm:ss')}`;
 };
 
+// Renderiza el JSON estructurado de `detalle` como "clave: valor" compacto.
+// Si no parsea (o no es un objeto), muestra el texto crudo — nunca rompe.
+const formatDetalle = (raw: string): string => {
+  try {
+    const obj = JSON.parse(raw);
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      return Object.entries(obj)
+        .map(([k, v]) => `${k}: ${String(v)}`)
+        .join(' · ');
+    }
+  } catch {
+    // no-op: cae al texto crudo
+  }
+  return raw;
+};
+
 export const RegistroActividadPage = () => {
   const { tienePermiso } = usePermisos();
 
   const [datePreset, setDatePreset] = useState<DatePreset>('hoy');
   const [customDesde, setCustomDesde] = useState<Dayjs | null>(null);
   const [customHasta, setCustomHasta] = useState<Dayjs | null>(null);
-  const [tiposSel, setTiposSel] = useState<TipoAccionActividad[]>([]);
+  const [tiposSel, setTiposSel] = useState<string[]>([]);
   const [soloFueraHorario, setSoloFueraHorario] = useState(false);
   const [usuarioSel, setUsuarioSel] = useState<Usuario | null>(null);
   const [horarioOpen, setHorarioOpen] = useState(false);
@@ -154,6 +157,30 @@ export const RegistroActividadPage = () => {
     enabled: tienePermiso('ADMINISTRACION'),
   });
   const usuarios = usuariosQuery.data ?? [];
+
+  // Tipos de acción disponibles (con su módulo), server-side. Reemplaza la lista
+  // hardcodeada: un tipo nuevo en el backend aparece sin tocar el front.
+  const tiposQuery = useQuery({
+    queryKey: ['actividad-tipos'],
+    queryFn: () => registroActividadApi.getTipos(),
+    enabled: tienePermiso('ADMINISTRACION'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Agrupados por módulo, en un orden estable, para el filtro.
+  const tiposPorModulo = useMemo<[string, string[]][]>(() => {
+    const grupos = new Map<string, string[]>();
+    for (const meta of tiposQuery.data ?? []) {
+      const arr = grupos.get(meta.categoria) ?? [];
+      arr.push(meta.value);
+      grupos.set(meta.categoria, arr);
+    }
+    return [...grupos.entries()].sort((a, b) => {
+      const ia = MODULO_ORDEN.indexOf(a[0]);
+      const ib = MODULO_ORDEN.indexOf(b[0]);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+  }, [tiposQuery.data]);
 
   // backendFilters: se reconstruye solo cuando cambia algún filtro real.
   // El switch a múltiples tipos es client-side via 1 query por tipo (raro);
@@ -270,27 +297,42 @@ export const RegistroActividadPage = () => {
               <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                 Tipo de acción (elegí uno para filtrar):
               </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                {TIPOS_DISPONIBLES.map((t) => (
-                  <Chip
-                    key={t}
-                    label={TIPO_ACCION_LABELS[t]}
-                    size="small"
-                    onClick={() => {
-                      // Comportamiento: solo 1 a la vez (el backend solo
-                      // acepta uno). Click sobre el seleccionado lo limpia.
-                      setTiposSel((prev) => (prev[0] === t ? [] : [t]));
-                    }}
-                    color={tiposSel.includes(t) ? FAMILIA_COLOR[TIPO_ACCION_FAMILIA[t]] : 'default'}
-                    variant={tiposSel.includes(t) ? 'filled' : 'outlined'}
-                  />
+              <Stack spacing={1}>
+                {tiposPorModulo.map(([modulo, tipos]) => (
+                  <Box key={modulo}>
+                    <Typography
+                      variant="overline"
+                      color="text.secondary"
+                      sx={{ display: 'block', lineHeight: 1.6 }}
+                    >
+                      {MODULO_LABELS[modulo] ?? modulo}
+                    </Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      {tipos.map((t) => {
+                        const fam = familiaForTipo(t);
+                        const selected = tiposSel[0] === t;
+                        return (
+                          <Chip
+                            key={t}
+                            label={labelForTipo(t)}
+                            size="small"
+                            // Solo 1 a la vez (el backend acepta uno). Click sobre
+                            // el seleccionado lo limpia.
+                            onClick={() => setTiposSel((prev) => (prev[0] === t ? [] : [t]))}
+                            color={selected ? (fam ? FAMILIA_COLOR[fam] : 'default') : 'default'}
+                            variant={selected ? 'filled' : 'outlined'}
+                          />
+                        );
+                      })}
+                    </Stack>
+                  </Box>
                 ))}
+                {tiposPorModulo.length === 0 && (
+                  <Typography variant="caption" color="text.secondary">
+                    {tiposQuery.isLoading ? 'Cargando tipos…' : 'No se pudieron cargar los tipos de acción.'}
+                  </Typography>
+                )}
               </Stack>
-              {tiposSel.length > 1 && (
-                <Typography variant="caption" color="warning.main" sx={{ mt: 0.5, display: 'block' }}>
-                  Solo se aplica un tipo a la vez en el server.
-                </Typography>
-              )}
             </Box>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
@@ -372,7 +414,7 @@ export const RegistroActividadPage = () => {
                 </TableRow>
               ) : (
                 registros.map((r) => {
-                  const familia = TIPO_ACCION_FAMILIA[r.tipoAccion];
+                  const familia = familiaForTipo(r.tipoAccion);
                   return (
                     <TableRow
                       key={r.id}
@@ -393,14 +435,24 @@ export const RegistroActividadPage = () => {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={TIPO_ACCION_LABELS[r.tipoAccion]}
+                          label={labelForTipo(r.tipoAccion)}
                           size="small"
-                          color={FAMILIA_COLOR[familia]}
+                          color={familia ? FAMILIA_COLOR[familia] : 'default'}
                           variant={familia === 'fallo' || familia === 'anulacion' ? 'filled' : 'outlined'}
                         />
                       </TableCell>
                       <TableCell sx={{ fontSize: '0.85rem' }}>
                         {r.descripcion || '—'}
+                        {r.detalle && (
+                          <Typography
+                            component="div"
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ fontFamily: 'monospace', mt: 0.25, whiteSpace: 'pre-wrap' }}
+                          >
+                            {formatDetalle(r.detalle)}
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
                         {r.ipAddress ?? '—'}

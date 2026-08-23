@@ -16,9 +16,11 @@ export type TipoAccionActividad =
   | 'MOVIMIENTO_EXTRA_CREADO'
   | 'MOVIMIENTO_EXTRA_ANULADO'
   | 'GESTION_COBRANZA_CERRADA'
+  | 'PRESTAMO_ELIMINADO'
   | 'AMORTIZACION_EJECUTADA'
   | 'AMORTIZACION_CONVERTIDA'
-  | 'LEAD_CREADO';
+  | 'LEAD_CREADO'
+  | 'LEADS_REASIGNADOS';
 
 export const TIPO_ACCION_LABELS: Record<TipoAccionActividad, string> = {
   LOGIN_OK: 'Login',
@@ -38,6 +40,8 @@ export const TIPO_ACCION_LABELS: Record<TipoAccionActividad, string> = {
   AMORTIZACION_EJECUTADA: 'Amortización ejecutada',
   AMORTIZACION_CONVERTIDA: 'Amortización convertida',
   LEAD_CREADO: 'Lead creado',
+  LEADS_REASIGNADOS: 'Leads reasignados',
+  PRESTAMO_ELIMINADO: 'Préstamo eliminado',
 };
 
 /**
@@ -65,7 +69,43 @@ export const TIPO_ACCION_FAMILIA: Record<TipoAccionActividad, AccionFamilia> = {
   AMORTIZACION_EJECUTADA: 'pago',
   AMORTIZACION_CONVERTIDA: 'pago',
   LEAD_CREADO: 'documento',
+  LEADS_REASIGNADOS: 'documento',
+  PRESTAMO_ELIMINADO: 'anulacion',
 };
+
+/**
+ * Etiqueta del grupo (módulo) para el dropdown de tipos. Claves = valores de
+ * `enums/Modulo` del backend; `Record<string,...>` a propósito para tolerar un
+ * módulo nuevo (cae al valor crudo en la UI).
+ */
+export const MODULO_LABELS: Record<string, string> = {
+  DASHBOARD: 'Acceso / General',
+  VENTAS: 'Ventas',
+  CLIENTES: 'Clientes / Cobranzas',
+  PROVEEDORES: 'Proveedores',
+  LOGISTICA: 'Logística',
+  TALLER: 'Taller',
+  PRODUCCION: 'Producción',
+  GARANTIAS: 'Garantías',
+  RRHH: 'RRHH',
+};
+
+/** Item de GET /api/admin/actividad/tipos: valor del enum + su módulo. */
+export interface TipoAccionMeta {
+  /** Puede ser un valor que este front todavía no conoce (el backend agrega tipos sin migración). */
+  value: string;
+  categoria: string; // Modulo
+}
+
+/**
+ * Lookups tolerantes: un tipo/categoría que el backend agregó y el front aún no
+ * conoce NO rompe el render — cae al valor crudo (label) o color neutro (familia).
+ */
+export const labelForTipo = (t: string): string =>
+  TIPO_ACCION_LABELS[t as TipoAccionActividad] ?? t;
+
+export const familiaForTipo = (t: string): AccionFamilia | undefined =>
+  TIPO_ACCION_FAMILIA[t as TipoAccionActividad];
 
 export interface RegistroActividadDTO {
   id: number;
@@ -76,6 +116,8 @@ export interface RegistroActividadDTO {
   entidadTipo: string | null;
   entidadId: number | null;
   descripcion: string | null;
+  /** Metadata estructurada opcional (JSON crudo): {monto, estadoAnterior, ...}. */
+  detalle: string | null;
   ipAddress: string | null;
   fecha: string; // ISO 8601 LocalDateTime
   fueraHorario: boolean;
@@ -93,6 +135,6 @@ export interface ActividadFilters {
   fechaDesde?: string;     // ISO LocalDateTime
   fechaHasta?: string;
   usuarioId?: number;
-  tipoAccion?: TipoAccionActividad;
+  tipoAccion?: string; // un value de TipoAccionMeta (tolerante a tipos nuevos)
   fueraHorario?: boolean;
 }
