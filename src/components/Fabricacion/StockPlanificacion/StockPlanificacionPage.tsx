@@ -118,9 +118,9 @@ export const StockPlanificacionPage: React.FC = () => {
             sx={
               summary.TERMINAR_BASE > 0
                 ? {
-                    backgroundColor: '#e65100',
-                    color: '#fff',
-                    '& .MuiChip-icon': { color: '#fff' },
+                    backgroundColor: 'warning.dark',
+                    color: 'common.white',
+                    '& .MuiChip-icon': { color: 'common.white' },
                   }
                 : undefined
             }

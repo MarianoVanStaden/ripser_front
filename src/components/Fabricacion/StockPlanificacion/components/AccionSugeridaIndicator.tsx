@@ -17,7 +17,7 @@ const CONFIG: Record<AccionSugerida, { icon: React.ReactElement; color: string }
   },
   TERMINAR_BASE: {
     icon: <HandymanIcon fontSize="small" />,
-    color: '#e65100',
+    color: 'warning.dark',
   },
   OK: {
     icon: <CheckCircleIcon fontSize="small" />,

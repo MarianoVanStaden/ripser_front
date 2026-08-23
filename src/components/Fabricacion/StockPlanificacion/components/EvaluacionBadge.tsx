@@ -24,8 +24,8 @@ export const EvaluacionBadge: React.FC<EvaluacionBadgeProps> = ({ accionSugerida
         label={ACCION_SUGERIDA_LABELS[accionSugerida]}
         size="small"
         sx={{
-          backgroundColor: '#e65100',
-          color: '#fff',
+          backgroundColor: 'warning.dark',
+          color: 'common.white',
           fontWeight: 500,
         }}
       />

@@ -31,8 +31,12 @@ interface EstadisticasEstados {
   total: number;
 }
 
-// Fuente única de verdad para los estados de asignación: orden fijo, color, ícono.
-// Paleta validada (CVD-safe); la leyenda con conteos y la tabla cubren el relief de contraste.
+// Tokens semánticos de estado (theme.status.*) como CSS vars: válidos en sx, borders y SVG (Recharts).
+const fgVar = (role: string) => `var(--mui-palette-status-${role}-fg)`;
+const bgVar = (role: string) => `var(--mui-palette-status-${role}-bg)`;
+
+// Fuente única de verdad para los estados de asignación: orden fijo, rol visual, ícono.
+// La leyenda con conteos y la tabla cubren el relief de contraste.
 const ESTADOS_ASIGNACION: Array<{
   key: EstadoAsignacionEquipo;
   label: string;
@@ -40,29 +44,29 @@ const ESTADOS_ASIGNACION: Array<{
   bg: string;
   icon: React.ReactElement<{ sx?: object }>;
 }> = [
-  { key: 'DISPONIBLE', label: 'Disponible', hex: '#1baf7a', bg: '#e6f7f0', icon: <Inventory /> },
-  { key: 'RESERVADO', label: 'Reservado', hex: '#eda100', bg: '#fdf3dd', icon: <Assignment /> },
-  { key: 'FACTURADO', label: 'Facturado', hex: '#2a78d6', bg: '#e7f0fb', icon: <CheckCircle /> },
-  { key: 'EN_TRANSITO', label: 'En Tránsito', hex: '#4a3aa7', bg: '#edeaf9', icon: <LocalShipping /> },
-  { key: 'ENTREGADO', label: 'Entregado', hex: '#008300', bg: '#e8f5e9', icon: <CheckCircle /> },
-  { key: 'PENDIENTE_TERMINACION', label: 'Pend. Terminación', hex: '#e87ba4', bg: '#fbeaf1', icon: <HourglassEmpty /> },
-  { key: 'EN_SERVICE', label: 'En Service', hex: '#e34948', bg: '#fceaea', icon: <Build /> },
+  { key: 'DISPONIBLE', label: 'Disponible', hex: fgVar('success'), bg: bgVar('success'), icon: <Inventory /> },
+  { key: 'RESERVADO', label: 'Reservado', hex: fgVar('warning'), bg: bgVar('warning'), icon: <Assignment /> },
+  { key: 'FACTURADO', label: 'Facturado', hex: fgVar('info'), bg: bgVar('info'), icon: <CheckCircle /> },
+  { key: 'EN_TRANSITO', label: 'En Tránsito', hex: fgVar('process'), bg: bgVar('process'), icon: <LocalShipping /> },
+  { key: 'ENTREGADO', label: 'Entregado', hex: fgVar('success'), bg: bgVar('success'), icon: <CheckCircle /> },
+  { key: 'PENDIENTE_TERMINACION', label: 'Pend. Terminación', hex: fgVar('warning'), bg: bgVar('warning'), icon: <HourglassEmpty /> },
+  { key: 'EN_SERVICE', label: 'En Service', hex: fgVar('danger'), bg: bgVar('danger'), icon: <Build /> },
 ];
 
 const estadoCfg = (estado: EstadoAsignacionEquipo) =>
   ESTADOS_ASIGNACION.find((e) => e.key === estado);
 
-// Estados de fabricación en curso (snapshot actual): mismos colores que el donut de fabricación.
+// Estados de fabricación en curso (snapshot actual): mismos roles que el donut de fabricación.
 const ESTADOS_FABRICACION_WIP: Array<{
   key: string;
   label: string;
   hex: string;
   bg: string;
 }> = [
-  { key: 'PENDIENTE', label: 'Pendiente', hex: '#1baf7a', bg: '#e6f7f0' },
-  { key: 'EN_PROCESO', label: 'En Proceso', hex: '#2a78d6', bg: '#e7f0fb' },
-  { key: 'PENDIENTE_CONTROL_CALIDAD', label: 'Control Calidad', hex: '#4a3aa7', bg: '#edeaf9' },
-  { key: 'FABRICADO_SIN_TERMINACION', label: 'Sin Terminación', hex: '#eda100', bg: '#fdf3dd' },
+  { key: 'PENDIENTE', label: 'Pendiente', hex: fgVar('warning'), bg: bgVar('warning') },
+  { key: 'EN_PROCESO', label: 'En Proceso', hex: fgVar('process'), bg: bgVar('process') },
+  { key: 'PENDIENTE_CONTROL_CALIDAD', label: 'Control Calidad', hex: fgVar('info'), bg: bgVar('info') },
+  { key: 'FABRICADO_SIN_TERMINACION', label: 'Sin Terminación', hex: fgVar('neutral'), bg: bgVar('neutral') },
 ];
 
 // Máximo de chips de códigos visibles por estado antes de colapsar en "+N más".
@@ -82,7 +86,8 @@ const DonutLegend: React.FC<{ data: Array<{ name: string; value: number; color: 
           <Typography variant="body2" fontWeight={600}>
             {d.value}
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ width: 38, textAlign: 'right' }}>
+          {/* eslint-disable-next-line ripser/no-literal-colors -- texto sobre fondo blanco fijo de captura PDF */}
+          <Typography variant="caption" sx={{ width: 38, textAlign: 'right', color: 'rgba(0, 0, 0, 0.6)' }}>
             {total > 0 ? `${((d.value / total) * 100).toFixed(0)}%` : '0%'}
           </Typography>
         </Box>
@@ -91,7 +96,9 @@ const DonutLegend: React.FC<{ data: Array<{ name: string; value: number; color: 
   );
 };
 
-/** Donut sin labels superpuestos: gap blanco entre porciones, total al centro, leyenda al costado. */
+/** Donut sin labels superpuestos: gap blanco entre porciones, total al centro, leyenda al costado.
+ * El wrapper mantiene fondo blanco fijo (se captura como imagen para el PDF, siempre claro);
+ * por eso el texto interno usa colores fijos oscuros, no tokens de texto del theme. */
 const DonutChart: React.FC<{
   id: string;
   data: Array<{ name: string; value: number; color: string }>;
@@ -99,7 +106,8 @@ const DonutChart: React.FC<{
 }> = ({ id, data, centerLabel }) => {
   const total = data.reduce((acc, d) => acc + d.value, 0);
   return (
-    <div id={id} style={{ background: '#fff' }}>
+    // eslint-disable-next-line ripser/no-literal-colors -- fondo blanco fijo para captura PDF; texto fijo oscuro encima
+    <div id={id} style={{ background: '#fff', color: 'rgba(0, 0, 0, 0.87)' }}>
       <Box display="flex" alignItems="center" flexWrap="wrap">
         <Box sx={{ width: { xs: '100%', sm: 240 }, height: 240, position: 'relative' }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -111,6 +119,7 @@ const DonutChart: React.FC<{
                 innerRadius={62}
                 outerRadius={95}
                 paddingAngle={1.5}
+                // eslint-disable-next-line ripser/no-literal-colors -- gap entre porciones sobre el fondo blanco fijo de captura
                 stroke="#fff"
                 strokeWidth={2}
                 dataKey="value"
@@ -129,7 +138,8 @@ const DonutChart: React.FC<{
             }}
           >
             <Typography variant="h4" fontWeight={700}>{total}</Typography>
-            <Typography variant="caption" color="text.secondary">{centerLabel}</Typography>
+            {/* eslint-disable-next-line ripser/no-literal-colors -- texto sobre fondo blanco fijo de captura PDF */}
+            <Typography variant="caption" sx={{ color: 'rgba(0, 0, 0, 0.6)' }}>{centerLabel}</Typography>
           </Box>
         </Box>
         <Box sx={{ flex: 1, pl: { sm: 2 }, pt: { xs: 1, sm: 0 } }}>
@@ -307,12 +317,12 @@ const ReportesEstadosPage: React.FC = () => {
   const estadoFabData = useMemo(() => {
     if (!resumenEstados) return [] as Array<{ name: string; value: number; color: string }>;
     return [
-      { name: 'Completados', value: resumenEstados.completados, color: '#008300' },
-      { name: 'Sin Terminación', value: resumenEstados.sinTerminacion, color: '#eda100' },
-      { name: 'En Proceso', value: resumenEstados.enProceso, color: '#2a78d6' },
-      { name: 'Pendientes', value: resumenEstados.pendientes, color: '#1baf7a' },
-      { name: 'Control Calidad', value: resumenEstados.pendienteControlCalidad, color: '#4a3aa7' },
-      { name: 'Cancelados', value: resumenEstados.cancelados, color: '#e34948' },
+      { name: 'Completados', value: resumenEstados.completados, color: fgVar('success') },
+      { name: 'Sin Terminación', value: resumenEstados.sinTerminacion, color: fgVar('neutral') },
+      { name: 'En Proceso', value: resumenEstados.enProceso, color: fgVar('process') },
+      { name: 'Pendientes', value: resumenEstados.pendientes, color: fgVar('warning') },
+      { name: 'Control Calidad', value: resumenEstados.pendienteControlCalidad, color: fgVar('info') },
+      { name: 'Cancelados', value: resumenEstados.cancelados, color: fgVar('danger') },
     ].filter((d) => d.value > 0);
   }, [resumenEstados]);
 
@@ -475,7 +485,7 @@ const ReportesEstadosPage: React.FC = () => {
       </Box>
       <Grid container spacing={2} mb={3}>
         <Grid item xs={12} sm={6} md={2}>
-          <Card sx={{ bgcolor: '#f5f5f5' }}>
+          <Card sx={{ bgcolor: 'background.default' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box>
@@ -486,7 +496,7 @@ const ReportesEstadosPage: React.FC = () => {
                     {estadisticas.total}
                   </Typography>
                 </Box>
-                <TrendingUp sx={{ fontSize: 40, color: 'grey.600' }} />
+                <TrendingUp sx={{ fontSize: 40, color: 'text.secondary' }} />
               </Box>
             </CardContent>
           </Card>
@@ -535,7 +545,8 @@ const ReportesEstadosPage: React.FC = () => {
                   <Typography variant="h6" gutterBottom>
                     Cantidad por Estado
                   </Typography>
-                  <div id="estados-bar-chart" style={{ background: '#fff' }}>
+                  {/* eslint-disable-next-line ripser/no-literal-colors -- fondo blanco fijo para captura PDF */}
+                  <div id="estados-bar-chart" style={{ background: '#fff', color: 'rgba(0, 0, 0, 0.87)' }}>
                     <ResponsiveContainer width="100%" height={260}>
                       <BarChart data={barChartData}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -651,12 +662,12 @@ const ReportesEstadosPage: React.FC = () => {
       {/* KPIs por estado de fabricación (snapshot actual, no depende del mes) */}
       <Grid container spacing={2} mb={3}>
         {[
-          { label: 'Total', value: resumenEstados?.total ?? 0, bg: '#f5f5f5', color: 'grey.700' },
-          { label: 'Completados', value: resumenEstados?.completados ?? 0, bg: '#e8f5e9', color: '#008300' },
-          { label: 'Sin Terminación', value: resumenEstados?.sinTerminacion ?? 0, bg: '#fdf3dd', color: '#eda100' },
-          { label: 'En Proceso', value: resumenEstados?.enProceso ?? 0, bg: '#e7f0fb', color: '#2a78d6' },
-          { label: 'Pendientes', value: resumenEstados?.pendientes ?? 0, bg: '#e6f7f0', color: '#1baf7a' },
-          { label: 'Control Calidad', value: resumenEstados?.pendienteControlCalidad ?? 0, bg: '#edeaf9', color: '#4a3aa7' },
+          { label: 'Total', value: resumenEstados?.total ?? 0, bg: 'background.default', color: 'text.secondary' },
+          { label: 'Completados', value: resumenEstados?.completados ?? 0, bg: bgVar('success'), color: fgVar('success') },
+          { label: 'Sin Terminación', value: resumenEstados?.sinTerminacion ?? 0, bg: bgVar('neutral'), color: fgVar('neutral') },
+          { label: 'En Proceso', value: resumenEstados?.enProceso ?? 0, bg: bgVar('process'), color: fgVar('process') },
+          { label: 'Pendientes', value: resumenEstados?.pendientes ?? 0, bg: bgVar('warning'), color: fgVar('warning') },
+          { label: 'Control Calidad', value: resumenEstados?.pendienteControlCalidad ?? 0, bg: bgVar('info'), color: fgVar('info') },
         ].map((k) => (
           <Grid item xs={6} sm={4} md={2} key={k.label}>
             <Card sx={{ bgcolor: k.bg }}>
@@ -691,7 +702,8 @@ const ReportesEstadosPage: React.FC = () => {
               <Typography variant="h6" gutterBottom>
                 Producción por mes: ingresos vs. completados
               </Typography>
-              <div id="fabricacion-mensual-chart" style={{ background: '#fff' }}>
+              {/* eslint-disable-next-line ripser/no-literal-colors -- fondo blanco fijo para captura PDF */}
+              <div id="fabricacion-mensual-chart" style={{ background: '#fff', color: 'rgba(0, 0, 0, 0.87)' }}>
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart
                     data={mensualData}
@@ -705,8 +717,8 @@ const ReportesEstadosPage: React.FC = () => {
                     <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="ingresos" name="Ingresaron" fill="#2a78d6" radius={[4, 4, 0, 0]} cursor="pointer" />
-                    <Bar dataKey="completados" name="Completados" fill="#008300" radius={[4, 4, 0, 0]} cursor="pointer" />
+                    <Bar dataKey="ingresos" name="Ingresaron" fill={fgVar('info')} radius={[4, 4, 0, 0]} cursor="pointer" />
+                    <Bar dataKey="completados" name="Completados" fill={fgVar('success')} radius={[4, 4, 0, 0]} cursor="pointer" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

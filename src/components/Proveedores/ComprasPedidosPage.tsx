@@ -1263,7 +1263,7 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
           stockActual: 0,
         } as Producto));
         return (
-  <Box key={index} sx={{ mb: 3, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+  <Box key={index} sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
     <Box display="flex" gap={2} alignItems="flex-start" mb={2}>
       <Autocomplete
         options={opcionesProducto}

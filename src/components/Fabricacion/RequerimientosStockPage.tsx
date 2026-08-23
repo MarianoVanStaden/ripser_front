@@ -200,7 +200,7 @@ const MetricCard: React.FC<{
           height: 44,
           borderRadius: 2,
           bgcolor: `${color}.main`,
-          color: '#fff',
+          color: 'common.white',
           flexShrink: 0,
         }}
       >

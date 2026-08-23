@@ -39,7 +39,8 @@ const highlight = (text: string, q: string): React.ReactNode => {
   return (
     <>
       {text.slice(0, idx)}
-      <mark style={{ background: '#fff59d', padding: 0 }}>
+      {/* eslint-disable-next-line ripser/no-literal-colors -- resaltado de búsqueda amarillo fijo sin token equivalente; texto fijo oscuro para legibilidad en ambos esquemas */}
+      <mark style={{ background: '#fff59d', color: 'rgba(0, 0, 0, 0.87)', padding: 0 }}>
         {text.slice(idx, idx + q.length)}
       </mark>
       {text.slice(idx + q.length)}

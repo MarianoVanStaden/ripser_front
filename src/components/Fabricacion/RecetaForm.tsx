@@ -393,7 +393,7 @@ const RecetaForm: React.FC = () => {
                   )
                 : null;
               return (
-                <Card key={index} sx={{ mb: 2, border: !detalle.productoId || detalle.productoId === 0 ? '2px solid #f44336' : 'none' }}>
+                <Card key={index} sx={{ mb: 2, border: !detalle.productoId || detalle.productoId === 0 ? '2px solid var(--mui-palette-status-danger-fg)' : 'none' }}>
                   <CardContent>
                     <Stack direction="row" spacing={2} alignItems="flex-start">
                       <TextField

@@ -41,6 +41,7 @@ import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoDTO, EquipoFabricado
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { usePermisos } from '../../hooks/usePermisos';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { CHART_AXIS, CHART_GRID, CHART_TOOLTIP_BG, CHART_TOOLTIP_TEXT } from '../../theme/chartTokens';
 
 /**
  * Medidas permitidas en el filtro (whitelist ordenada). El catálogo real puede tener
@@ -1018,14 +1019,14 @@ const EquiposList: React.FC = () => {
     },
   ];
 
-  // Chart colors
+  // Chart colors: CSS vars del theme, válidas como fill/stroke SVG y adaptan al esquema.
   const COLORS = {
-    primary: '#1976d2',
-    success: '#2e7d32',
-    warning: '#ed6c02',
-    error: '#d32f2f',
-    info: '#0288d1',
-    grey: '#757575',
+    primary: 'var(--mui-palette-primary-main)',
+    success: 'var(--mui-palette-status-success-fg)',
+    warning: 'var(--mui-palette-status-warning-fg)',
+    error: 'var(--mui-palette-status-danger-fg)',
+    info: 'var(--mui-palette-status-info-fg)',
+    grey: 'var(--mui-palette-status-neutral-fg)',
   };
 
   return (
@@ -1061,7 +1062,7 @@ const EquiposList: React.FC = () => {
             <Card sx={{ height: '100%', bgcolor: 'primary.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.main', color: 'white' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.main', color: 'common.white' }}>
                     <Inventory fontSize="large" />
                   </Box>
                   <Box>
@@ -1081,7 +1082,7 @@ const EquiposList: React.FC = () => {
             <Card sx={{ height: '100%', bgcolor: 'success.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.main', color: 'white' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.main', color: 'common.white' }}>
                     <Done fontSize="large" />
                   </Box>
                   <Box>
@@ -1101,7 +1102,7 @@ const EquiposList: React.FC = () => {
             <Card sx={{ height: '100%', bgcolor: 'warning.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.main', color: 'white' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.main', color: 'common.white' }}>
                     <Pending fontSize="large" />
                   </Box>
                   <Box>
@@ -1121,7 +1122,7 @@ const EquiposList: React.FC = () => {
             <Card sx={{ height: '100%', bgcolor: 'info.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'info.main', color: 'white' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'info.main', color: 'common.white' }}>
                     <Build fontSize="large" />
                   </Box>
                   <Box>
@@ -1141,7 +1142,7 @@ const EquiposList: React.FC = () => {
             <Card sx={{ height: '100%', bgcolor: 'warning.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.main', color: 'white' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.main', color: 'common.white' }}>
                     <Assignment fontSize="large" />
                   </Box>
                   <Box>
@@ -1161,7 +1162,7 @@ const EquiposList: React.FC = () => {
             <Card sx={{ height: '100%', bgcolor: 'success.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.dark', color: 'white' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.dark', color: 'common.white' }}>
                     <LocalShipping fontSize="large" />
                   </Box>
                   <Box>
@@ -1181,7 +1182,7 @@ const EquiposList: React.FC = () => {
             <Card sx={{ height: '100%', bgcolor: 'grey.100' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'grey.600', color: 'white' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'grey.600', color: 'common.white' }}>
                     <Inventory fontSize="large" />
                   </Box>
                   <Box>
@@ -1201,7 +1202,7 @@ const EquiposList: React.FC = () => {
             <Card sx={{ height: '100%', bgcolor: 'success.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.main', color: 'white' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.main', color: 'common.white' }}>
                     <CheckCircle fontSize="large" />
                   </Box>
                   <Box>
@@ -1221,7 +1222,7 @@ const EquiposList: React.FC = () => {
             <Card sx={{ height: '100%', bgcolor: 'error.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'error.main', color: 'white' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'error.main', color: 'common.white' }}>
                     <Cancel fontSize="large" />
                   </Box>
                   <Box>
@@ -1241,7 +1242,7 @@ const EquiposList: React.FC = () => {
             <Card sx={{ height: '100%', bgcolor: 'secondary.50' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'secondary.main', color: 'white' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'secondary.main', color: 'common.white' }}>
                     <Brush fontSize="large" />
                   </Box>
                   <Box>
@@ -1312,14 +1313,14 @@ const EquiposList: React.FC = () => {
                         labelLine={false}
                         label={(entry) => `${entry.name}: ${entry.value}`}
                         outerRadius={80}
-                        fill="#8884d8"
+                        fill={COLORS.primary}
                         dataKey="value"
                       >
                         <Cell fill={COLORS.info} />
                         <Cell fill={COLORS.success} />
                         <Cell fill={COLORS.error} />
                       </Pie>
-                      <RechartsTooltip />
+                      <RechartsTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
@@ -1344,13 +1345,13 @@ const EquiposList: React.FC = () => {
                         labelLine={false}
                         label={(entry) => `${entry.name}: ${entry.value}`}
                         outerRadius={80}
-                        fill="#8884d8"
+                        fill={COLORS.primary}
                         dataKey="value"
                       >
                         <Cell fill={COLORS.warning} />
                         <Cell fill={COLORS.grey} />
                       </Pie>
-                      <RechartsTooltip />
+                      <RechartsTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
@@ -1373,10 +1374,10 @@ const EquiposList: React.FC = () => {
                       ]}
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="tipo" />
-                      <YAxis />
-                      <RechartsTooltip />
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                      <XAxis dataKey="tipo" tick={{ fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                      <YAxis tick={{ fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                      <RechartsTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                       <Bar dataKey="cantidad" fill={COLORS.primary} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -1399,10 +1400,10 @@ const EquiposList: React.FC = () => {
                       ]}
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="estado" />
-                      <YAxis />
-                      <RechartsTooltip />
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                      <XAxis dataKey="estado" tick={{ fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                      <YAxis tick={{ fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                      <RechartsTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                       <Bar dataKey="cantidad" fill={COLORS.primary}>
                         {[COLORS.info, COLORS.success, COLORS.warning, COLORS.error].map((color, index) => (
                           <Cell key={`cell-${index}`} fill={color} />

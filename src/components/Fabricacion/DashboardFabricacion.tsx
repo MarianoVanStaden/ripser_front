@@ -58,25 +58,25 @@ const DashboardFabricacion: React.FC = () => {
       label: 'Total Equipos',
       value: totalEquipos,
       icon: <Inventory fontSize="large" />,
-      color: '#2196f3',
+      color: 'status.info.fg',
     },
     {
       label: 'En Proceso',
       value: enProceso,
       icon: <BuildIcon fontSize="large" />,
-      color: '#ff9800',
+      color: 'status.process.fg',
     },
     {
       label: 'Completados',
       value: completados,
       icon: <CheckCircle fontSize="large" />,
-      color: '#4caf50',
+      color: 'status.success.fg',
     },
     {
       label: 'Cancelados',
       value: cancelados,
       icon: <Cancel fontSize="large" />,
-      color: '#f44336',
+      color: 'status.danger.fg',
     },
   ];
 

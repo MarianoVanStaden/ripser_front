@@ -861,7 +861,7 @@ const EquipoForm: React.FC = () => {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'success.main', color: 'white' }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'success.main', color: 'common.white' }}>
           <CheckCircle />
           Equipo Actualizado
         </DialogTitle>

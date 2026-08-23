@@ -225,7 +225,7 @@ const ComprasDashboard: React.FC = () => {
         <MetricCard
           title="Órdenes de compra"
           value={comprasMes.length}
-          color="#1976d2"
+          color="var(--mui-palette-primary-main)"
           icon={<ShoppingCartIcon />}
           subtitle="Creadas este mes"
           onClick={() => navigate('/proveedores/compras')}
@@ -233,7 +233,7 @@ const ComprasDashboard: React.FC = () => {
         <MetricCard
           title="Monto comprado"
           value={montoComprasMes}
-          color="#2e7d32"
+          color="var(--mui-palette-status-success-fg)"
           icon={<TrendingUpIcon />}
           subtitle="Total mes en curso"
           isMoney
@@ -241,7 +241,7 @@ const ComprasDashboard: React.FC = () => {
         <MetricCard
           title="Pendientes de recepción"
           value={pendientesRecepcion.length}
-          color="#ed6c02"
+          color="var(--mui-palette-status-warning-fg)"
           icon={<HourglassEmptyIcon />}
           subtitle="Compras sin ingresar a depósito"
           onClick={() => navigate('/proveedores/compras')}
@@ -249,7 +249,7 @@ const ComprasDashboard: React.FC = () => {
         <MetricCard
           title="Ticket promedio"
           value={comprasMes.length > 0 ? Math.round(montoComprasMes / comprasMes.length) : 0}
-          color="#7b1fa2"
+          color="var(--mui-palette-tertiary-dark)"
           icon={<TrendingUpIcon />}
           subtitle="Promedio por orden del mes"
           isMoney
@@ -264,7 +264,7 @@ const ComprasDashboard: React.FC = () => {
         <MetricCard
           title="Proveedores activos"
           value={proveedoresActivos.length}
-          color="#0288d1"
+          color="var(--mui-palette-status-info-fg)"
           icon={<BusinessIcon />}
           subtitle={`${proveedores.length} totales`}
           onClick={() => navigate('/proveedores/gestion')}
@@ -272,7 +272,7 @@ const ComprasDashboard: React.FC = () => {
         <MetricCard
           title="Saldo a pagar"
           value={saldoTotalProveedores}
-          color="#d32f2f"
+          color="var(--mui-palette-status-danger-fg)"
           icon={<AccountBalanceIcon />}
           subtitle="Cta. cte. proveedores"
           isMoney
@@ -281,14 +281,14 @@ const ComprasDashboard: React.FC = () => {
         <MetricCard
           title="Stock crítico (0)"
           value={stockCritico}
-          color="#c62828"
+          color="var(--mui-palette-status-danger-fg)"
           icon={<WarningIcon />}
           subtitle="Productos sin stock"
         />
         <MetricCard
           title="Modelos a fabricar"
           value={evaluacionesFabricar.length}
-          color="#ef6c00"
+          color="var(--mui-palette-status-warning-fg)"
           icon={<BuildIcon />}
           subtitle="Stock objetivo bajo mínimo"
           onClick={() => navigate('/fabricacion/stock-planificacion')}
@@ -296,7 +296,7 @@ const ComprasDashboard: React.FC = () => {
         <MetricCard
           title="Stock objetivo OK"
           value={evaluacionesOk}
-          color="#2e7d32"
+          color="var(--mui-palette-status-success-fg)"
           icon={<CheckCircleIcon />}
           subtitle="Sin acción requerida"
           onClick={() => navigate('/fabricacion/stock-planificacion')}
