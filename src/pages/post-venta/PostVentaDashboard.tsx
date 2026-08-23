@@ -76,6 +76,13 @@ const initialEntregaMetrics: EntregaMetrics = {
   rechazadas: 0,
 };
 
+// Colores de las metric cards vía CSS vars del theme: válidos dentro del
+// template `4px solid ${color}` y como color de texto/ícono en sx.
+const CARD_PRIMARY = 'var(--mui-palette-primary-main)';
+const CARD_SUCCESS = 'var(--mui-palette-status-success-fg)';
+const CARD_WARNING = 'var(--mui-palette-status-warning-fg)';
+const CARD_DANGER = 'var(--mui-palette-status-danger-fg)';
+
 const estadoReclamoChip = (estado: string) => {
   switch (estado) {
     case 'ABIERTO':
@@ -237,7 +244,7 @@ const PostVentaDashboard: React.FC = () => {
         <MetricCard
           title="Total entregas"
           value={entregaMetrics.total}
-          color="#1976d2"
+          color={CARD_PRIMARY}
           icon={<LocalShippingIcon />}
           subtitle={`${dayjs().format('DD/MM/YYYY')}`}
           onClick={() => navigate('/logistica/distribucion/entregas-productos')}
@@ -245,7 +252,7 @@ const PostVentaDashboard: React.FC = () => {
         <MetricCard
           title="Completadas"
           value={entregaMetrics.completadas}
-          color="#4caf50"
+          color={CARD_SUCCESS}
           icon={<CheckCircleIcon />}
           subtitle="Entregas exitosas"
           onClick={() => navigate('/logistica/distribucion/entregas-productos')}
@@ -253,7 +260,7 @@ const PostVentaDashboard: React.FC = () => {
         <MetricCard
           title="Pendientes"
           value={entregaMetrics.pendientes}
-          color="#ff9800"
+          color={CARD_WARNING}
           icon={<PendingIcon />}
           subtitle="Aún en ruta"
           onClick={() => navigate('/logistica/distribucion/entregas-productos')}
@@ -261,7 +268,7 @@ const PostVentaDashboard: React.FC = () => {
         <MetricCard
           title="Rechazadas"
           value={entregaMetrics.rechazadas}
-          color="#d32f2f"
+          color={CARD_DANGER}
           icon={<ErrorIcon />}
           subtitle="No entregadas"
           onClick={() => navigate('/logistica/distribucion/entregas-productos')}
@@ -276,7 +283,7 @@ const PostVentaDashboard: React.FC = () => {
         <MetricCard
           title="Planificados"
           value={viajesPlanificados.length}
-          color="#1976d2"
+          color={CARD_PRIMARY}
           icon={<DirectionsCarIcon />}
           subtitle="Listos para salir"
           onClick={() => navigate('/logistica/distribucion/viajes')}
@@ -284,7 +291,7 @@ const PostVentaDashboard: React.FC = () => {
         <MetricCard
           title="En curso"
           value={viajesEnCurso.length}
-          color="#ff9800"
+          color={CARD_WARNING}
           icon={<DirectionsCarIcon />}
           subtitle="En ruta ahora"
           onClick={() => navigate('/logistica/distribucion/viajes')}
@@ -292,7 +299,7 @@ const PostVentaDashboard: React.FC = () => {
         <MetricCard
           title="Completados"
           value={viajesCompletados.length}
-          color="#4caf50"
+          color={CARD_SUCCESS}
           icon={<CheckCircleIcon />}
           subtitle="Finalizados"
           onClick={() => navigate('/logistica/distribucion/viajes')}

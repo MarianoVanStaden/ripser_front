@@ -17,7 +17,7 @@ interface Props {
 const LightboxDialog: React.FC<Props> = ({ src, onClose }) => {
   return (
     <Dialog open={!!src} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogContent sx={{ p: 0, bgcolor: 'black' }}>
+      <DialogContent sx={{ p: 0, bgcolor: 'common.black' }}>
         {src && (
           <img
             src={src}

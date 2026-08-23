@@ -89,8 +89,9 @@ const FotosGrid: React.FC<FotosGridProps> = ({ fotos, fotoPreviews, onRemoveFile
             position: 'absolute',
             top: 2,
             right: 2,
+            // eslint-disable-next-line ripser/no-literal-colors -- velo oscuro sobre miniatura de imagen, fijo en ambos modos
             bgcolor: 'rgba(0,0,0,0.55)',
-            color: 'white',
+            color: 'common.white',
             p: '2px',
           }}
         >

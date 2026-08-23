@@ -313,7 +313,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Notas de Pedido"
           value={notasPedidoMes.length}
-          color="#1976d2"
+          color="primary.main"
           icon={<ShoppingCartIcon />}
           subtitle={`${equiposEnNotasMes} equipos pedidos`}
           onClick={() => navigate('/ventas/registro')}
@@ -321,7 +321,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Facturas emitidas"
           value={facturasMes.length}
-          color="#2e7d32"
+          color="status.success.fg"
           icon={<ReceiptIcon />}
           subtitle={`${equiposEnFacturasMes} equipos facturados`}
           onClick={() => navigate('/ventas/registro')}
@@ -329,14 +329,14 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Promedio equipos / factura"
           value={promedioEquiposPorFactura}
-          color="#ed6c02"
+          color="status.warning.fg"
           icon={<TrendingUpIcon />}
           subtitle="Equipos por factura del mes"
         />
         <MetricCard
           title="Equipos fabricados (mes)"
           value={fabMetrics.completadosMes}
-          color="#4caf50"
+          color="status.success.fg"
           icon={<FactoryIcon />}
           subtitle="Finalizados en este mes"
           onClick={() => navigate('/fabricacion/equipos')}
@@ -351,7 +351,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Total en proceso"
           value={fabMetrics.total}
-          color="#1976d2"
+          color="primary.main"
           icon={<BuildIcon />}
           subtitle="Equipos activos (sin cancelados)"
           onClick={() => navigate('/fabricacion/equipos')}
@@ -359,7 +359,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Pendientes"
           value={fabMetrics.pendiente}
-          color="#9e9e9e"
+          color="status.neutral.fg"
           icon={<PendingIcon />}
           subtitle="Sin iniciar fabricación"
           onClick={() => navigate('/fabricacion/equipos')}
@@ -367,7 +367,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="En proceso"
           value={fabMetrics.enProceso}
-          color="#ff9800"
+          color="status.warning.fg"
           icon={<BuildIcon />}
           subtitle={`${pctEnProceso}% del total`}
           onClick={() => navigate('/fabricacion/equipos')}
@@ -375,7 +375,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Completados"
           value={fabMetrics.completado}
-          color="#4caf50"
+          color="status.success.fg"
           icon={<CheckCircleIcon />}
           subtitle={`${pctCompletado}% del total`}
           onClick={() => navigate('/fabricacion/equipos')}
@@ -428,7 +428,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Reservados"
           value={equipoMetrics.reservado}
-          color="#ff9800"
+          color="status.warning.fg"
           icon={<AssignmentIcon />}
           subtitle="Asignados a cliente, en planta"
           onClick={() => navigate('/fabricacion/equipos')}
@@ -436,7 +436,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Facturados"
           value={equipoMetrics.facturado}
-          color="#2196f3"
+          color="status.info.fg"
           icon={<ReceiptIcon />}
           subtitle="Facturados, pendientes de armar viaje"
           onClick={() => navigate('/logistica/distribucion/entregas-equipos')}
@@ -444,7 +444,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="En Tránsito"
           value={equipoMetrics.enTransito}
-          color="#9c27b0"
+          color="tertiary.main"
           icon={<LocalShippingIcon />}
           subtitle="Viajando hacia el cliente"
           onClick={() => navigate('/logistica/distribucion/viajes')}
@@ -452,7 +452,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Entregados"
           value={equipoMetrics.entregado}
-          color="#4caf50"
+          color="status.success.fg"
           icon={<CheckCircleIcon />}
           subtitle="Entregas confirmadas"
           onClick={() => navigate('/logistica/distribucion/entregas-equipos')}
@@ -460,7 +460,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Pdte. Terminación"
           value={equipoMetrics.pendienteTerminacion}
-          color="#795548"
+          color="status.neutral.fg"
           icon={<PendingIcon />}
           subtitle="Reservados sin color final"
         />
@@ -474,7 +474,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Viajes en curso"
           value={viajesEnCurso.length}
-          color="#ff9800"
+          color="status.warning.fg"
           icon={<DirectionsCarIcon />}
           subtitle="Vehículos en ruta ahora"
           onClick={() => navigate('/logistica/distribucion/viajes')}
@@ -482,7 +482,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Viajes planificados"
           value={viajesPlanificados.length}
-          color="#1976d2"
+          color="primary.main"
           icon={<AssignmentIcon />}
           subtitle="Listos para salir"
           onClick={() => navigate('/logistica/distribucion/viajes')}
@@ -490,7 +490,7 @@ const TransporteDashboard: React.FC = () => {
         <MetricCard
           title="Entregas pendientes"
           value={entregasPendientes}
-          color="#d32f2f"
+          color="status.danger.fg"
           icon={<PendingIcon />}
           subtitle="En viajes en curso, sin confirmar"
           onClick={() => navigate('/logistica/distribucion/entregas-productos')}
@@ -651,7 +651,8 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, color, icon, subt
       sx={{
         cursor: onClick ? 'pointer' : 'default',
         height: '100%',
-        borderTop: `4px solid ${color}`,
+        borderTop: '4px solid',
+        borderTopColor: color,
         transition: 'transform 0.15s',
         '&:hover': onClick ? { transform: 'translateY(-2px)', boxShadow: 3 } : undefined,
       }}

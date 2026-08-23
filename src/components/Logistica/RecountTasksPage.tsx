@@ -359,9 +359,9 @@ const RecountTasksPage: React.FC = () => {
                         <>
                           <strong>Diferencia detectada:</strong>{' '}
                           {diff > 0 ? (
-                            <span style={{ color: '#2e7d32' }}>+{diff} unidades (sobrante)</span>
+                            <span style={{ color: 'var(--mui-palette-status-success-fg)' }}>+{diff} unidades (sobrante)</span>
                           ) : (
-                            <span style={{ color: '#d32f2f' }}>{diff} unidades (faltante)</span>
+                            <span style={{ color: 'var(--mui-palette-status-danger-fg)' }}>{diff} unidades (faltante)</span>
                           )}
                           <br />
                           Se creará automáticamente un ajuste de inventario.

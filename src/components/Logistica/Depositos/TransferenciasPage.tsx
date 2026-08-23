@@ -93,6 +93,7 @@ import {
   LineChart,
   Line,
 } from 'recharts';
+import { chartSerie, CHART_AXIS, CHART_GRID, CHART_TOOLTIP_BG, CHART_TOOLTIP_TEXT } from '../../../theme/chartTokens';
 
 dayjs.locale('es');
 
@@ -669,8 +670,6 @@ const TransferenciasPage: React.FC = () => {
   );
 
   // Metrics calculations
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
-
   const transferenciasPorEstado = useMemo(() => {
     const estadoMap = new Map<EstadoTransferencia, number>();
     transferencias.forEach((t) => {
@@ -913,14 +912,14 @@ const TransferenciasPage: React.FC = () => {
                       labelLine={false}
                       label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
                       outerRadius={80}
-                      fill="#8884d8"
+                      fill={chartSerie(0)}
                       dataKey="value"
                     >
                       {transferenciasPorEstado.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={chartSerie(index)} />
                       ))}
                     </Pie>
-                    <RechartsTooltip />
+                    <RechartsTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -935,15 +934,15 @@ const TransferenciasPage: React.FC = () => {
                 </Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={transferenciasUltimosMeses}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" angle={-45} textAnchor="end" height={80} />
-                    <YAxis />
-                    <RechartsTooltip />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                    <XAxis dataKey="month" angle={-45} textAnchor="end" height={80} stroke={CHART_AXIS} tick={{ fill: CHART_AXIS }} />
+                    <YAxis stroke={CHART_AXIS} tick={{ fill: CHART_AXIS }} />
+                    <RechartsTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                     <Legend />
                     <Line
                       type="monotone"
                       dataKey="count"
-                      stroke="#8884d8"
+                      stroke={chartSerie(0)}
                       strokeWidth={2}
                       name="Transferencias"
                     />
@@ -960,13 +959,13 @@ const TransferenciasPage: React.FC = () => {
                 </Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={depositosConMasMovimientos} layout="horizontal">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="nombre" type="category" width={100} />
-                    <RechartsTooltip />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                    <XAxis type="number" stroke={CHART_AXIS} tick={{ fill: CHART_AXIS }} />
+                    <YAxis dataKey="nombre" type="category" width={100} stroke={CHART_AXIS} tick={{ fill: CHART_AXIS }} />
+                    <RechartsTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                     <Legend />
-                    <Bar dataKey="salidas" fill="#FF8042" name="Salidas" />
-                    <Bar dataKey="entradas" fill="#00C49F" name="Entradas" />
+                    <Bar dataKey="salidas" fill="var(--mui-palette-status-danger-fg)" name="Salidas" />
+                    <Bar dataKey="entradas" fill="var(--mui-palette-status-success-fg)" name="Entradas" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

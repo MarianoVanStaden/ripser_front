@@ -941,6 +941,7 @@ const DeliveriesPage2: React.FC = () => {
                 <IconButton
                   onClick={(e) => { e.stopPropagation(); openWhatsAppWeb(getClientPhone(delivery)); }}
                   disabled={!getClientPhone(delivery)}
+                  // eslint-disable-next-line ripser/no-literal-colors -- verde WhatsApp, identidad fija
                   sx={{ minWidth: 44, minHeight: 44, color: getClientPhone(delivery) ? '#25D366' : undefined }}
                 >
                   <WhatsAppIcon />
@@ -1345,6 +1346,7 @@ const DeliveriesPage2: React.FC = () => {
                                     onClick={() => openWhatsAppWeb(getClientPhone(delivery))}
                                     size="small"
                                     disabled={!getClientPhone(delivery)}
+                                    // eslint-disable-next-line ripser/no-literal-colors -- verde WhatsApp, identidad fija
                                     sx={{ color: getClientPhone(delivery) ? '#25D366' : undefined }}
                                   >
                                     <WhatsAppIcon fontSize="small" />

@@ -66,6 +66,7 @@ import { exportToPDF, prepareTableDataForPDF } from '../../../utils/exportPDF';
 import { calcularStockDisponible, calcularStockAsignado, validarAsignacionStock, formatearErrorBackend, detectarDesincronizacion } from '../../../utils/stockCalculations';
 import dayjs from 'dayjs';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { chartSerie, CHART_AXIS, CHART_GRID, CHART_TOOLTIP_BG, CHART_TOOLTIP_TEXT } from '../../../theme/chartTokens';
 import TabPanel from '../../common/TabPanel';
 
 const InventarioDepositoPage: React.FC = () => {
@@ -281,8 +282,6 @@ const InventarioDepositoPage: React.FC = () => {
       .sort((a, b) => b.cantidad - a.cantidad)
       .slice(0, 10);
   }, [stockItems]);
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
 
   // Get total stock for a product
   const getTotalStock = (productoId: number) => {
@@ -874,14 +873,14 @@ const InventarioDepositoPage: React.FC = () => {
                     labelLine={false}
                     label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
                     outerRadius={80}
-                    fill="#8884d8"
+                    fill={chartSerie(0)}
                     dataKey="cantidad"
                   >
                     {stockPorDeposito.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={chartSerie(index)} />
                     ))}
                   </Pie>
-                  <RechartsTooltip />
+                  <RechartsTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -896,11 +895,11 @@ const InventarioDepositoPage: React.FC = () => {
               </Typography>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={top10Productos}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="nombre" angle={-45} textAnchor="end" height={100} />
-                  <YAxis />
-                  <RechartsTooltip />
-                  <Bar dataKey="cantidad" fill="#8884d8" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                  <XAxis dataKey="nombre" angle={-45} textAnchor="end" height={100} stroke={CHART_AXIS} tick={{ fill: CHART_AXIS }} />
+                  <YAxis stroke={CHART_AXIS} tick={{ fill: CHART_AXIS }} />
+                  <RechartsTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
+                  <Bar dataKey="cantidad" fill={chartSerie(0)} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

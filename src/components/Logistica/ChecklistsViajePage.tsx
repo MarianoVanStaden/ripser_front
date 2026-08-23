@@ -28,6 +28,7 @@ import {
   Refresh as RefreshIcon,
   WarningAmber as WarningAmberIcon,
 } from '@mui/icons-material';
+import { statusSx } from '../../theme/statusRoles';
 import { viajeApi } from '../../api/services/viajeApi';
 import type { ChecklistViaje, ChecklistViajeItems, Viaje } from '../../types/logistica.types';
 import PreViajeChecklistDialog from './PreViajeChecklistDialog';
@@ -88,10 +89,10 @@ const ChecklistsViajePage: React.FC = () => {
 
   const fallasSx: SxProps<Theme> =
     conFallas === 0
-      ? { bgcolor: '#F0FBF0', color: '#2E7D32' }
+      ? statusSx('success')
       : conFallas <= 2
-        ? { bgcolor: '#FFFBF0', color: '#E65100' }
-        : { bgcolor: '#FFF5F5', color: '#C62828' };
+        ? statusSx('warning')
+        : statusSx('danger');
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -103,9 +104,9 @@ const ChecklistsViajePage: React.FC = () => {
       {!loading && total > 0 && (
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
           {[
-            { label: 'Total', value: total, sx: { bgcolor: '#F5F5F5', color: '#616161' } as SxProps<Theme> },
+            { label: 'Total', value: total, sx: statusSx('neutral') as SxProps<Theme> },
             { label: 'Con novedades', value: conFallas, sx: fallasSx },
-            { label: 'Sin novedades', value: sinFallas, sx: { bgcolor: '#F0FBF0', color: '#2E7D32' } as SxProps<Theme> },
+            { label: 'Sin novedades', value: sinFallas, sx: statusSx('success') as SxProps<Theme> },
           ].map(({ label, value, sx }) => (
             <Paper key={label} elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, textAlign: 'center', ...sx }}>
               <Typography variant="h3" fontWeight={700} lineHeight={1}>{value}</Typography>

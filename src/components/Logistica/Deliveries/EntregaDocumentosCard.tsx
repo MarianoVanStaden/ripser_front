@@ -90,7 +90,8 @@ export default function EntregaDocumentosCard({
                     <IconButton
                       size="small"
                       onClick={(e) => { e.stopPropagation(); onDelete(doc); }}
-                      sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.45)', color: 'white', p: '2px' }}
+                      // eslint-disable-next-line ripser/no-literal-colors -- velo oscuro sobre miniatura de imagen, fijo en ambos modos
+                      sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.45)', color: 'common.white', p: '2px' }}
                     >
                       <CloseIcon sx={{ fontSize: compact ? 12 : 14 }} />
                     </IconButton>

@@ -57,6 +57,7 @@ import type { DocumentoComercial } from '../../types/documentoComercial.types';
 type EstadoFilter = 'PENDIENTES' | 'REALIZADAS' | 'TODAS';
 type CanalFilter = '' | CanalComunicacionPostventa;
 
+// eslint-disable-next-line ripser/no-literal-colors -- verde WhatsApp, identidad fija
 const WHATSAPP_GREEN = '#25D366';
 
 const formatFecha = (iso?: string): string => {

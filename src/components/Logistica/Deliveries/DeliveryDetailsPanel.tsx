@@ -227,6 +227,7 @@ export default function DeliveryDetailsPanel({
                           startIcon={<WhatsAppIcon />}
                           onClick={() => openWhatsAppWeb(getClientPhone(selectedDelivery))}
                           disabled={!getClientPhone(selectedDelivery)}
+                          // eslint-disable-next-line ripser/no-literal-colors -- verde WhatsApp, identidad fija
                           sx={{ alignSelf: 'flex-start', minHeight: 44, color: '#25D366', borderColor: '#25D366' }}
                         >
                           {getClientPhone(selectedDelivery) ? 'WhatsApp al cliente' : 'Sin teléfono'}
@@ -387,6 +388,7 @@ export default function DeliveryDetailsPanel({
                           startIcon={<WhatsAppIcon />}
                           onClick={() => openWhatsAppWeb(getClientPhone(selectedDelivery))}
                           disabled={!getClientPhone(selectedDelivery)}
+                          // eslint-disable-next-line ripser/no-literal-colors -- verde WhatsApp, identidad fija
                           sx={{ alignSelf: 'flex-start', color: '#25D366', borderColor: '#25D366' }}
                         >
                           {getClientPhone(selectedDelivery) ? 'WhatsApp al cliente' : 'Sin teléfono'}

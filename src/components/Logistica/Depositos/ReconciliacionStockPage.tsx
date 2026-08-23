@@ -70,6 +70,12 @@ import dayjs from 'dayjs';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+// Tinte translúcido de un color de la paleta vía CSS var channel: idéntico al
+// literal original en light y se adapta solo en dark (el channel cambia por scheme).
+const tintChannel = (color: 'primary' | 'error' | 'warning' | 'success', alpha: number) =>
+  // eslint-disable-next-line ripser/no-literal-colors -- rgba sobre mainChannel del theme, no es un color hardcodeado
+  `rgba(var(--mui-palette-${color}-mainChannel) / ${alpha})`;
+
 const formatearErrorBackend = (err: any): string => {
   if (err.response?.data?.message) return err.response.data.message;
   if (err.response?.data?.error) return err.response.data.error;
@@ -349,7 +355,7 @@ const ProductoExpandidoContent: React.FC<ProductoExpandidoContentProps> = ({
           borderColor: 'primary.light',
           borderRadius: 1,
           p: 2,
-          bgcolor: 'rgba(25, 118, 210, 0.03)',
+          bgcolor: tintChannel('primary', 0.03),
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -847,7 +853,7 @@ const ReconciliacionStockPage: React.FC = () => {
                   <Grid item xs={12} sm={6} md={3}>
                     <Card
                       sx={{
-                        bgcolor: 'rgba(237, 108, 2, 0.08)',
+                        bgcolor: tintChannel('warning', 0.08),
                         border: '1px solid',
                         borderColor: 'warning.light',
                       }}
@@ -865,7 +871,7 @@ const ReconciliacionStockPage: React.FC = () => {
                   <Grid item xs={12} sm={6} md={3}>
                     <Card
                       sx={{
-                        bgcolor: 'rgba(211, 47, 47, 0.08)',
+                        bgcolor: tintChannel('error', 0.08),
                         border: '1px solid',
                         borderColor: 'error.light',
                       }}
@@ -915,27 +921,27 @@ const ReconciliacionStockPage: React.FC = () => {
                             sx={{
                               bgcolor:
                                 item.tipoDiferencia === 'FALTANTE'
-                                  ? 'rgba(211, 47, 47, 0.04)'
+                                  ? tintChannel('error', 0.04)
                                   : item.tipoDiferencia === 'SOBRANTE'
-                                  ? 'rgba(237, 108, 2, 0.04)'
-                                  : 'rgba(46, 125, 50, 0.04)',
+                                  ? tintChannel('warning', 0.04)
+                                  : tintChannel('success', 0.04),
                               '&:hover': {
                                 bgcolor:
                                   item.tipoDiferencia === 'FALTANTE'
-                                    ? 'rgba(211, 47, 47, 0.08)'
+                                    ? tintChannel('error', 0.08)
                                     : item.tipoDiferencia === 'SOBRANTE'
-                                    ? 'rgba(237, 108, 2, 0.08)'
-                                    : 'rgba(46, 125, 50, 0.08)',
+                                    ? tintChannel('warning', 0.08)
+                                    : tintChannel('success', 0.08),
                               },
                               borderRadius: 1,
                               mb: 0.5,
                               border: '1px solid',
                               borderColor:
                                 item.tipoDiferencia === 'FALTANTE'
-                                  ? 'rgba(211, 47, 47, 0.2)'
+                                  ? tintChannel('error', 0.2)
                                   : item.tipoDiferencia === 'SOBRANTE'
-                                  ? 'rgba(237, 108, 2, 0.2)'
-                                  : 'rgba(46, 125, 50, 0.2)',
+                                  ? tintChannel('warning', 0.2)
+                                  : tintChannel('success', 0.2),
                             }}
                           >
                             <ListItemText
