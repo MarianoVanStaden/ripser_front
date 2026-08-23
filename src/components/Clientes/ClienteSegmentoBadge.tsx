@@ -6,6 +6,7 @@ import {
   CircleOutlined as BasicoIcon
 } from '@mui/icons-material';
 import type { SegmentoCliente } from '../../types';
+import { statusSx, type StatusRole } from '../../theme/statusRoles';
 
 interface ClienteSegmentoBadgeProps {
   segmento: SegmentoCliente;
@@ -13,11 +14,12 @@ interface ClienteSegmentoBadgeProps {
   showIcon?: boolean;
 }
 
-const SEGMENTO_COLORS: Record<SegmentoCliente, string> = {
-  VIP: '#9333EA', // Púrpura oscuro
-  PREMIUM: '#EA580C', // Naranja
-  STANDARD: '#0284C7', // Azul
-  BASICO: '#64748B' // Gris
+// Rol visual por segmento (antes hexes fijos: púrpura/naranja/azul/gris).
+const SEGMENTO_ROLES: Record<SegmentoCliente, StatusRole> = {
+  VIP: 'process', // Púrpura
+  PREMIUM: 'warning', // Naranja
+  STANDARD: 'info', // Azul
+  BASICO: 'neutral' // Gris
 };
 
 const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
@@ -41,13 +43,12 @@ export const ClienteSegmentoBadge = ({ segmento, size = 'small', showIcon = true
       icon={showIcon ? SEGMENTO_ICONS[segmento] : undefined}
       size={size}
       sx={{
-        backgroundColor: SEGMENTO_COLORS[segmento],
-        color: 'white',
+        ...statusSx(SEGMENTO_ROLES[segmento]),
         fontWeight: 'bold',
         fontSize: size === 'small' ? '0.75rem' : '0.875rem',
         minWidth: size === 'small' ? 70 : 90,
         '& .MuiChip-icon': {
-          color: 'white'
+          color: `status.${SEGMENTO_ROLES[segmento]}.fg`
         }
       }}
     />

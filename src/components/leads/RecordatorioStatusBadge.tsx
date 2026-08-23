@@ -63,12 +63,20 @@ export const RecordatorioStatusBadge = ({ recordatorios }: RecordatorioStatusBad
   };
 
   const getColorEstado = (diasRestantes: number) => {
-    if (diasRestantes < 0) return { bgcolor: '#ef5350', color: 'white', borderColor: '#c62828' }; // Vencido
-    if (diasRestantes === 0) return { bgcolor: '#ff9800', color: 'white', borderColor: '#e65100' }; // Hoy
+    // Escala ordinal de urgencia (6 niveles) — más granular que los 6 roles de
+    // status; texto fijo legible sobre cada fondo (common.white / #000).
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
+    if (diasRestantes < 0) return { bgcolor: '#ef5350', color: 'common.white', borderColor: '#c62828' }; // Vencido
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
+    if (diasRestantes === 0) return { bgcolor: '#ff9800', color: 'common.white', borderColor: '#e65100' }; // Hoy
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
     if (diasRestantes === 1) return { bgcolor: '#fdd835', color: '#000', borderColor: '#f57f17' }; // Mañana
-    if (diasRestantes <= 3) return { bgcolor: '#c0ca33', color: 'white', borderColor: '#827717' }; // 2-3 días
-    if (diasRestantes <= 7) return { bgcolor: '#7cb342', color: 'white', borderColor: '#558b2f' }; // 4-7 días
-    return { bgcolor: '#66bb6a', color: 'white', borderColor: '#2e7d32' }; // 7+ días
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
+    if (diasRestantes <= 3) return { bgcolor: '#c0ca33', color: 'common.white', borderColor: '#827717' }; // 2-3 días
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
+    if (diasRestantes <= 7) return { bgcolor: '#7cb342', color: 'common.white', borderColor: '#558b2f' }; // 4-7 días
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
+    return { bgcolor: '#66bb6a', color: 'common.white', borderColor: '#2e7d32' }; // 7+ días
   };
 
   const formatearFechaCorta = (fecha: string): string => {
@@ -156,7 +164,7 @@ export const RecordatorioStatusBadge = ({ recordatorios }: RecordatorioStatusBad
                     height: 18,
                     fontSize: '0.65rem',
                     bgcolor: 'warning.light',
-                    color: 'white'
+                    color: 'common.white'
                   }}
                 />
               )}
@@ -169,9 +177,9 @@ export const RecordatorioStatusBadge = ({ recordatorios }: RecordatorioStatusBad
                     height: 18,
                     fontSize: '0.65rem',
                     bgcolor: 'success.light',
-                    color: 'white',
+                    color: 'common.white',
                     '& .MuiChip-icon': {
-                      color: 'white',
+                      color: 'common.white',
                       fontSize: '0.7rem'
                     }
                   }}
@@ -222,9 +230,9 @@ export const RecordatorioStatusBadge = ({ recordatorios }: RecordatorioStatusBad
           size="small"
           sx={{
             bgcolor: 'success.light',
-            color: 'white',
+            color: 'common.white',
             '& .MuiChip-icon': {
-              color: 'white'
+              color: 'common.white'
             }
           }}
         />

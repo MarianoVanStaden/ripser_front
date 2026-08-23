@@ -14,7 +14,7 @@ export const LeadStatusBadge = ({ status, size = 'small' }: LeadStatusBadgeProps
       size={size}
       sx={{
         backgroundColor: ESTADO_COLORS[status],
-        color: 'white',
+        color: 'common.white',
         fontWeight: 'bold',
         fontSize: isSmall ? '0.7rem' : '0.85rem',
         // Permitir que etiquetas largas (p.ej. "Cliente Potencial Calificado",

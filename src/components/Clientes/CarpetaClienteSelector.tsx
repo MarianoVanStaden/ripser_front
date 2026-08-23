@@ -99,6 +99,7 @@ const CarpetaClienteSelector: React.FC = () => {
           borderRadius: 3,
           border: '1px solid',
           borderColor: 'divider',
+          // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa; la separación la da el borde divider
           boxShadow: '0 6px 18px rgba(0,0,0,0.06)',
         }}
       >

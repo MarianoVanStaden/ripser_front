@@ -26,10 +26,16 @@ interface ProximoRecordatorioProps {
   onRecordatorioEnviado?: () => void;
 }
 
+// Íconos por tipo sobre la card de escala ordinal (fondo pastel FIJO en ambos
+// esquemas), por eso los colores quedan fijos y no van a tokens de paleta.
 const TIPO_RECORDATORIO_CONFIG: Record<string, { icon: React.ReactElement; label: string; color: string }> = {
+  // eslint-disable-next-line ripser/no-literal-colors -- ícono sobre card de escala ordinal fija, revisar en dark
   EMAIL: { icon: <EmailIcon />, label: 'Email', color: '#1976d2' },
+  // eslint-disable-next-line ripser/no-literal-colors -- ícono sobre card de escala ordinal fija, revisar en dark
   SMS: { icon: <SmsIcon />, label: 'SMS', color: '#9c27b0' },
+  // eslint-disable-next-line ripser/no-literal-colors -- ícono sobre card de escala ordinal fija, revisar en dark
   TAREA: { icon: <TaskIcon />, label: 'Tarea', color: '#f57c00' },
+  // eslint-disable-next-line ripser/no-literal-colors -- ícono sobre card de escala ordinal fija, revisar en dark
   NOTIFICACION: { icon: <NotificationsIcon />, label: 'Notificación', color: '#0288d1' }
 };
 
@@ -67,11 +73,20 @@ export const ProximoRecordatorio = ({ leadId, recordatorio, onRecordatorioEnviad
   };
 
   const getColorPorProximidad = (diasRestantes: number) => {
+    // Escala ordinal de urgencia (6 niveles) — más granular que los 6 roles de
+    // status. Fondos pastel FIJOS en ambos esquemas; el texto sobre ellos usa
+    // colores fijos legibles (ver sx de la card abajo).
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
     if (diasRestantes < 0) return { bgcolor: '#ffebee', borderColor: '#ef5350', color: '#c62828' }; // Vencido - rojo
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
     if (diasRestantes === 0) return { bgcolor: '#fff3e0', borderColor: '#ff9800', color: '#e65100' }; // Hoy - naranja
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
     if (diasRestantes === 1) return { bgcolor: '#fffde7', borderColor: '#fdd835', color: '#f57f17' }; // Mañana - amarillo
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
     if (diasRestantes <= 3) return { bgcolor: '#f9fbe7', borderColor: '#c0ca33', color: '#827717' }; // 2-3 días - amarillo-verde
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
     if (diasRestantes <= 7) return { bgcolor: '#f1f8e9', borderColor: '#7cb342', color: '#558b2f' }; // 4-7 días - verde claro
+    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
     return { bgcolor: '#e8f5e9', borderColor: '#66bb6a', color: '#2e7d32' }; // 7+ días - verde
   };
 
@@ -144,26 +159,46 @@ export const ProximoRecordatorio = ({ leadId, recordatorio, onRecordatorioEnviad
           <Chip 
             label={getTextoProximidad(diasRestantes)}
             size="small"
-            sx={{ 
+            sx={{
               bgcolor: colores.borderColor,
-              color: 'white',
+              color: 'common.white',
               fontWeight: 'bold'
             }}
           />
         </Box>
 
         <Box sx={{ mb: 2 }}>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
+          {/* La card usa el fondo pastel fijo de la escala ordinal: en dark el
+              texto vuelve a colores oscuros fijos para seguir legible; en light
+              queda idéntico (text.secondary / text.primary). */}
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            gutterBottom
+            // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre card de escala ordinal fija (solo dark)
+            sx={(theme) => theme.applyStyles('dark', { color: 'rgba(0,0,0,0.6)' })}
+          >
             <strong>Tipo:</strong> {tipoConfig.label}
           </Typography>
-          
-          <Typography variant="body2" color="text.secondary" gutterBottom>
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            gutterBottom
+            // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre card de escala ordinal fija (solo dark)
+            sx={(theme) => theme.applyStyles('dark', { color: 'rgba(0,0,0,0.6)' })}
+          >
             <strong>Fecha:</strong> {formatearFecha(recordatorio.fechaRecordatorio)}
           </Typography>
 
           {recordatorio.mensaje && (
-            <Box sx={{ mt: 1, p: 1, bgcolor: 'white', borderRadius: 1, border: '1px solid', borderColor: 'grey.300' }}>
-              <Typography variant="body2" color="text.primary">
+            <Box sx={{ mt: 1, p: 1, bgcolor: 'common.white', borderRadius: 1, border: '1px solid', borderColor: 'grey.300' }}>
+              <Typography
+                variant="body2"
+                color="text.primary"
+                // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre fondo blanco fijo de la card ordinal (solo dark)
+                sx={(theme) => theme.applyStyles('dark', { color: 'rgba(0,0,0,0.87)' })}
+              >
                 {recordatorio.mensaje}
               </Typography>
             </Box>

@@ -36,7 +36,7 @@ export const ChurnRiskIndicator = ({
       <Tooltip title={getMotivoRiesgo()}>
         <WarningIcon
           sx={{
-            color: '#EF4444',
+            color: 'status.danger.fg',
             fontSize: size === 'small' ? 18 : 24,
             cursor: 'pointer'
           }}
@@ -54,12 +54,12 @@ export const ChurnRiskIndicator = ({
           label="Riesgo Churn"
           size={size}
           sx={{
-            backgroundColor: '#FEE2E2',
-            color: '#991B1B',
+            backgroundColor: 'status.danger.bg',
+            color: 'status.danger.fg',
             fontWeight: 'bold',
             fontSize: size === 'small' ? '0.7rem' : '0.8rem',
             '& .MuiChip-icon': {
-              color: '#EF4444'
+              color: 'status.danger.fg'
             }
           }}
         />
@@ -75,17 +75,18 @@ export const ChurnRiskIndicator = ({
         alignItems: 'center',
         gap: 1,
         p: 1.5,
-        backgroundColor: '#FEE2E2',
+        backgroundColor: 'status.danger.bg',
         borderRadius: 1,
-        border: '1px solid #FCA5A5'
+        border: '1px solid',
+        borderColor: 'status.danger.fg'
       }}
     >
-      <WarningIcon sx={{ color: '#EF4444', fontSize: 20 }} />
+      <WarningIcon sx={{ color: 'status.danger.fg', fontSize: 20 }} />
       <Box>
-        <Typography variant="body2" fontWeight="bold" color="#991B1B">
+        <Typography variant="body2" fontWeight="bold" color="status.danger.fg">
           Cliente en Riesgo de Churn
         </Typography>
-        <Typography variant="caption" color="#7F1D1D">
+        <Typography variant="caption" color="status.danger.fg">
           {getMotivoRiesgo()}
         </Typography>
       </Box>

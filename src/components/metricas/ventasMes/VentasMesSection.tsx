@@ -105,7 +105,7 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuar
                 title="Ventas totales"
                 value={data.totalVentas}
                 icon={<PointOfSaleIcon fontSize="large" />}
-                color="#144272"
+                color="primary.main"
               />
               <StatCard
                 title="Con cobro total"
@@ -116,7 +116,7 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuar
                     : undefined
                 }
                 icon={<PaidIcon fontSize="large" />}
-                color="#2e7d32"
+                color="status.success.fg"
               />
               <StatCard
                 title="Financiadas"
@@ -127,13 +127,13 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuar
                     : undefined
                 }
                 icon={<CreditScoreIcon fontSize="large" />}
-                color="#ed6c02"
+                color="status.warning.fg"
               />
               <StatCard
                 title="Anulaciones"
                 value={data.totalAnulaciones}
                 icon={<CancelIcon fontSize="large" />}
-                color="#d32f2f"
+                color="status.danger.fg"
               />
             </Box>
 

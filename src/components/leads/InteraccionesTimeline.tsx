@@ -292,7 +292,7 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'white',
+                    color: 'common.white',
                     fontSize: '0.9rem',
                     boxShadow: 2
                   }}
@@ -353,7 +353,7 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
                           size="small"
                           sx={{
                             bgcolor: RESULTADO_INTERACCION_COLORS[interaccion.resultado],
-                            color: 'white'
+                            color: 'common.white'
                           }}
                         />
                       )}

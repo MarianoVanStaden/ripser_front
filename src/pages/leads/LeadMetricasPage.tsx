@@ -525,28 +525,28 @@ export const LeadMetricasPage = () => {
 
             {/* Embudo de Ventas */}
             <Grid item xs={12} md={6}>
-              <div id="metricas-embudo-chart" style={{ background: '#fff' }}>
+              <div id="metricas-embudo-chart" style={{ background: 'var(--mui-palette-background-paper)' }}>
                 <EmbudoVentasChart data={metricas.embudoVentas} />
               </div>
             </Grid>
 
             {/* Métricas por Canal */}
             <Grid item xs={12} md={6}>
-              <div id="metricas-canal-chart" style={{ background: '#fff' }}>
+              <div id="metricas-canal-chart" style={{ background: 'var(--mui-palette-background-paper)' }}>
                 <MetricasCanalChart data={metricas.metricasPorCanal} ocultarMontos={ocultarMontos} />
               </div>
             </Grid>
 
             {/* Métricas por Prioridad */}
             <Grid item xs={12} md={6}>
-              <div id="metricas-prioridad-chart" style={{ background: '#fff' }}>
+              <div id="metricas-prioridad-chart" style={{ background: 'var(--mui-palette-background-paper)' }}>
                 <MetricasPrioridadChart data={metricas.metricasPorPrioridad} ocultarMontos={ocultarMontos} />
               </div>
             </Grid>
 
             {/* Tendencias Temporales */}
             <Grid item xs={12} md={6}>
-              <div id="metricas-tendencias-chart" style={{ background: '#fff' }}>
+              <div id="metricas-tendencias-chart" style={{ background: 'var(--mui-palette-background-paper)' }}>
                 <TendenciasTemporalesChart data={metricas.tendenciasTemporales} />
               </div>
             </Grid>

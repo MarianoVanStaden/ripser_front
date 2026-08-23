@@ -59,7 +59,7 @@ export const RankingVendedoresTable = ({ data, ocultarMontos = false }: RankingV
                   key={vendedor.vendedorId}
                   hover
                   sx={{
-                    backgroundColor: index < 3 ? 'rgba(255, 193, 7, 0.08)' : 'inherit'
+                    backgroundColor: index < 3 ? 'status.warning.bg' : 'inherit'
                   }}
                 >
                   <TableCell>

@@ -66,7 +66,16 @@ import { VentasMesSection } from '../../components/metricas/ventasMes/VentasMesS
 
 dayjs.locale('es');
 
+// eslint-disable-next-line ripser/no-literal-colors -- navy de marca Ripser (header y CTA), fijo en ambos esquemas
 const RIPSER_BLUE = '#144272';
+// eslint-disable-next-line ripser/no-literal-colors -- par oscuro del gradiente de marca
+const RIPSER_BLUE_DARK = '#0d2d4d';
+
+// Tokens de estado como CSS vars: usables dentro de color-mix() y templates de sx.
+const DANGER = 'var(--mui-palette-status-danger-fg)';
+const WARNING = 'var(--mui-palette-status-warning-fg)';
+const SUCCESS = 'var(--mui-palette-status-success-fg)';
+const INFO = 'var(--mui-palette-status-info-fg)';
 
 interface QuickStats {
   totalLeads: number;
@@ -87,9 +96,9 @@ interface QuickStats {
 type ReminderItem = RecordatorioLeadDTO & { leadNombre: string; leadId: number };
 
 const PRIORITY_CONFIG = {
-  HOT: { color: '#d32f2f', chipColor: 'error' as const },
-  WARM: { color: '#ed6c02', chipColor: 'warning' as const },
-  COLD: { color: '#0288d1', chipColor: 'info' as const },
+  HOT: { color: DANGER, chipColor: 'error' as const },
+  WARM: { color: WARNING, chipColor: 'warning' as const },
+  COLD: { color: INFO, chipColor: 'info' as const },
 };
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -134,7 +143,7 @@ const KpiCard: React.FC<{
       transition: 'all 0.2s ease',
       border: '1px solid',
       borderColor: urgent ? color : 'divider',
-      boxShadow: urgent ? `0 0 0 1px ${color}30` : 1,
+      boxShadow: urgent ? `0 0 0 1px color-mix(in srgb, ${color} 19%, transparent)` : 1,
       '&:hover': onClick ? { transform: 'translateY(-2px)', boxShadow: 3 } : {},
     }}
   >
@@ -143,7 +152,7 @@ const KpiCard: React.FC<{
         <Box sx={{
           p: 1.25,
           borderRadius: 2,
-          bgcolor: color + '18',
+          bgcolor: `color-mix(in srgb, ${color} 9%, transparent)`,
           color,
           display: 'inline-flex',
           flexShrink: 0,
@@ -352,18 +361,20 @@ export const VentasDashboard = () => {
     (quickStats.recordatoriosVencidos > 0 || quickStats.hotLeads > 0);
 
   const pipelineStages = [
-    { label: 'Primer Contacto', count: quickStats?.primerContacto ?? 0, color: '#1976d2' },
-    { label: 'Mostró Interés', count: quickStats?.mostraronInteres ?? 0, color: '#ed6c02' },
-    { label: 'Cliente Potencial', count: quickStats?.clientePotencial ?? 0, color: '#7b1fa2' },
-    { label: 'CP Calificado', count: quickStats?.clientePotencialCalificado ?? 0, color: '#2e7d32' },
+    { label: 'Primer Contacto', count: quickStats?.primerContacto ?? 0, color: 'var(--mui-palette-primary-main)' },
+    { label: 'Mostró Interés', count: quickStats?.mostraronInteres ?? 0, color: WARNING },
+    { label: 'Cliente Potencial', count: quickStats?.clientePotencial ?? 0, color: 'var(--mui-palette-tertiary-dark)' },
+    { label: 'CP Calificado', count: quickStats?.clientePotencialCalificado ?? 0, color: SUCCESS },
   ];
   const pipelineMax = Math.max(...pipelineStages.map(s => s.count), 1);
 
   return (
     <Box sx={{ pb: 4 }}>
       {/* ── HEADER ── */}
+      {/* eslint-disable ripser/no-literal-colors -- header de marca con fondo navy fijo
+          en ambos esquemas: velos rgba blancos y chips saturados sobre ese fondo. */}
       <Box sx={{
-        background: `linear-gradient(135deg, ${RIPSER_BLUE} 0%, #0d2d4d 100%)`,
+        background: `linear-gradient(135deg, ${RIPSER_BLUE} 0%, ${RIPSER_BLUE_DARK} 100%)`,
         borderRadius: { xs: 0, sm: 2 },
         p: { xs: 2.5, sm: 3 },
         mb: 3,
@@ -435,6 +446,7 @@ export const VentasDashboard = () => {
           </Box>
         </Box>
       </Box>
+      {/* eslint-enable ripser/no-literal-colors */}
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} >
@@ -518,7 +530,7 @@ export const VentasDashboard = () => {
               title="Leads HOT"
               value={quickStats?.hotLeads ?? 0}
               icon={<WhatshotIcon />}
-              color="#d32f2f"
+              color={DANGER}
               subtitle="Alta prioridad"
               urgent={(quickStats?.hotLeads ?? 0) > 0}
               onClick={() => navigate('/leads')}
@@ -527,7 +539,7 @@ export const VentasDashboard = () => {
               title="Pendientes Hoy"
               value={(quickStats?.recordatoriosVencidos ?? 0) + (quickStats?.recordatoriosHoy ?? 0)}
               icon={<AccessTimeIcon />}
-              color={(quickStats?.recordatoriosVencidos ?? 0) > 0 ? '#d32f2f' : '#ed6c02'}
+              color={(quickStats?.recordatoriosVencidos ?? 0) > 0 ? DANGER : WARNING}
               subtitle={`${quickStats?.recordatoriosVencidos ?? 0} vencidos · ${quickStats?.recordatoriosHoy ?? 0} de hoy`}
               urgent={(quickStats?.recordatoriosVencidos ?? 0) > 0}
             />
@@ -539,7 +551,7 @@ export const VentasDashboard = () => {
                   : '—'
               }
               icon={<AssessmentIcon />}
-              color="#2e7d32"
+              color={SUCCESS}
               subtitle={metricas
                 ? `${metricas.tasaConversion?.leadsConvertidos ?? 0} de ${metricas.tasaConversion?.totalLeads ?? 0} leads`
                 : 'Sin datos aún'
@@ -589,8 +601,10 @@ export const VentasDashboard = () => {
                   const d = dayjs(`${reminder.fechaRecordatorio} ${reminder.hora || '00:00'}`);
                   const isOverdue = d.isBefore(dayjs());
                   const borderColor = isOverdue ? 'error.main' : 'warning.main';
-                  const bgColor = isOverdue ? 'rgba(211,47,47,0.05)' : 'rgba(237,108,2,0.05)';
-                  const iconBg = isOverdue ? '#d32f2f' : '#ed6c02';
+                  const bgColor = isOverdue
+                    ? `color-mix(in srgb, ${DANGER} 5%, transparent)`
+                    : `color-mix(in srgb, ${WARNING} 5%, transparent)`;
+                  const iconBg = isOverdue ? DANGER : WARNING;
                   return (
                     <Paper
                       key={i}
@@ -602,7 +616,11 @@ export const VentasDashboard = () => {
                         bgcolor: bgColor,
                         cursor: 'pointer',
                         transition: 'background 0.15s',
-                        '&:hover': { bgcolor: isOverdue ? 'rgba(211,47,47,0.1)' : 'rgba(237,108,2,0.1)' },
+                        '&:hover': {
+                          bgcolor: isOverdue
+                            ? `color-mix(in srgb, ${DANGER} 10%, transparent)`
+                            : `color-mix(in srgb, ${WARNING} 10%, transparent)`,
+                        },
                       }}
                       onClick={() => navigate(`/leads/${reminder.leadId}`)}
                     >
@@ -611,7 +629,7 @@ export const VentasDashboard = () => {
                           p: 0.75,
                           borderRadius: 1,
                           bgcolor: iconBg,
-                          color: 'white',
+                          color: 'common.white',
                           display: 'inline-flex',
                           flexShrink: 0,
                         }}>
@@ -687,7 +705,7 @@ export const VentasDashboard = () => {
                         sx={{
                           height: 8,
                           borderRadius: 4,
-                          bgcolor: stage.color + '18',
+                          bgcolor: `color-mix(in srgb, ${stage.color} 9%, transparent)`,
                           '& .MuiLinearProgress-bar': { bgcolor: stage.color, borderRadius: 4 },
                         }}
                       />
@@ -896,7 +914,7 @@ export const VentasDashboard = () => {
                           p: 0.75,
                           borderRadius: 1,
                           bgcolor: isThisWeek ? 'info.main' : 'grey.400',
-                          color: 'white',
+                          color: 'common.white',
                           display: 'inline-flex',
                           flexShrink: 0,
                         }}>
@@ -1016,7 +1034,7 @@ export const VentasDashboard = () => {
               variant="contained"
               startIcon={<AddCircleIcon />}
               onClick={() => navigate('/leads/nuevo')}
-              sx={{ py: 1.5, bgcolor: RIPSER_BLUE, '&:hover': { bgcolor: '#0d2d4d' }, textTransform: 'none' }}
+              sx={{ py: 1.5, bgcolor: RIPSER_BLUE, '&:hover': { bgcolor: RIPSER_BLUE_DARK }, textTransform: 'none' }}
               fullWidth
             >
               Nuevo Lead

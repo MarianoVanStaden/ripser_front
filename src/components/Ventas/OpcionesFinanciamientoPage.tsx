@@ -452,7 +452,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
               <Typography variant="body2" color="text.secondary">
                 Seleccione un documento para gestionar sus opciones de financiamiento.
                 {selectedDocumentoId && (
-                  <span style={{ display: 'block', marginTop: 8, fontWeight: 'bold', color: '#1976d2' }}>
+                  <span style={{ display: 'block', marginTop: 8, fontWeight: 'bold', color: 'var(--mui-palette-primary-main)' }}>
                     {opciones.length} opción(es) configurada(s)
                   </span>
                 )}

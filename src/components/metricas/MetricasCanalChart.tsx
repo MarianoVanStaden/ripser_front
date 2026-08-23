@@ -49,7 +49,7 @@ export const MetricasCanalChart = ({ data, ocultarMontos = false }: MetricasCana
                   sx={{
                     width: '100%',
                     height: 30,
-                    backgroundColor: '#f5f5f5',
+                    backgroundColor: 'action.hover',
                     borderRadius: 1,
                     overflow: 'hidden',
                     position: 'relative',
@@ -60,7 +60,7 @@ export const MetricasCanalChart = ({ data, ocultarMontos = false }: MetricasCana
                     sx={{
                       width: `${width}%`,
                       height: '100%',
-                      background: 'linear-gradient(90deg, #2196f3 0%, #1976d2 100%)',
+                      background: 'linear-gradient(90deg, var(--mui-palette-primary-light) 0%, var(--mui-palette-primary-main) 100%)',
                       transition: 'width 0.3s ease'
                     }}
                   />

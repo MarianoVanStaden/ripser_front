@@ -494,7 +494,7 @@ const NotasCreditoPage: React.FC = () => {
   const StepBadge = ({ n }: { n: number }) => (
     <Box sx={{
       width: 28, height: 28, borderRadius: '50%',
-      bgcolor: 'primary.main', color: 'white',
+      bgcolor: 'primary.main', color: 'primary.contrastText',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontWeight: 600, fontSize: '0.875rem', flexShrink: 0,
     }}>

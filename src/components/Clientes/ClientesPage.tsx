@@ -178,6 +178,7 @@ const ClientesPage: React.FC = () => {
     p: { sm: 2, md: 2.5 },
     mb: 3,
     borderRadius: 3,
+    // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa; la separación la da el borde divider
     boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
     border: '1px solid',
     borderColor: 'divider',

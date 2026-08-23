@@ -91,10 +91,15 @@ export const LeadDetailPage = () => {
     return leadData.estadoLead !== EstadoLeadEnum.CONVERTIDO;
   };
 
+  // Escala ordinal de urgencia (6 niveles + enviado) — más granular que los 6
+  // roles de status. Fondos pastel FIJOS en ambos esquemas; el texto sobre
+  // ellos usa colores fijos legibles (ver Paper del listado de recordatorios).
   const getRecordatorioColor = (fechaRecordatorio: string, enviado: boolean) => {
     if (enviado) {
       return {
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         bgcolor: '#e8f5e9', // Verde muy claro
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         borderColor: '#4caf50'
       };
     }
@@ -109,37 +114,49 @@ export const LeadDetailPage = () => {
     if (diferenciaDias < 0) {
       // Vencido - rojo claro
       return {
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         bgcolor: '#ffebee',
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         borderColor: '#ef5350'
       };
     } else if (diferenciaDias === 0) {
       // Hoy - naranja muy claro
       return {
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         bgcolor: '#fff3e0',
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         borderColor: '#ff9800'
       };
     } else if (diferenciaDias === 1) {
       // Mañana - amarillo claro
       return {
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         bgcolor: '#fffde7',
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         borderColor: '#fdd835'
       };
     } else if (diferenciaDias <= 3) {
       // 2-3 días - amarillo verdoso claro
       return {
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         bgcolor: '#f9fbe7',
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         borderColor: '#c0ca33'
       };
     } else if (diferenciaDias <= 7) {
       // 4-7 días - verde amarillento claro
       return {
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         bgcolor: '#f1f8e9',
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         borderColor: '#9ccc65'
       };
     } else {
       // Más de 7 días - verde claro
       return {
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         bgcolor: '#e8f5e9',
+        // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal propia, revisar en dark
         borderColor: '#66bb6a'
       };
     }
@@ -513,14 +530,29 @@ export const LeadDetailPage = () => {
                     const colors = getRecordatorioColor(recordatorio.fechaRecordatorio, recordatorio.enviado || false);
                     return (
                     <ListItem key={recordatorio.id}>
-                      <Paper 
-                        sx={{ 
-                          p: 2, 
+                      <Paper
+                        sx={(theme) => ({
+                          p: 2,
                           width: '100%',
                           bgcolor: colors.bgcolor,
                           borderLeft: 4,
-                          borderColor: colors.borderColor
-                        }}
+                          borderColor: colors.borderColor,
+                          // El fondo pastel de la escala ordinal queda fijo (claro) en
+                          // ambos esquemas: en dark el texto vuelve a colores oscuros
+                          // fijos para seguir siendo legible. En light no cambia nada.
+                          ...theme.applyStyles('dark', {
+                            // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre fondo pastel fijo de la escala ordinal
+                            color: 'rgba(0,0,0,0.87)',
+                            '& .MuiTypography-root': {
+                              // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre fondo pastel fijo de la escala ordinal
+                              color: 'rgba(0,0,0,0.87)'
+                            },
+                            '& .MuiTypography-root.MuiTypography-caption': {
+                              // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre fondo pastel fijo de la escala ordinal
+                              color: 'rgba(0,0,0,0.6)'
+                            }
+                          })
+                        })}
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
                           <NotificationsIcon fontSize="small" />

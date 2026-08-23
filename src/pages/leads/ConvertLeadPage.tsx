@@ -760,7 +760,7 @@ export const ConvertLeadPage = () => {
                                 alignItems: 'center',
                                 mb: 1,
                                 p: 1,
-                                bgcolor: 'white',
+                                bgcolor: 'background.paper',
                                 borderRadius: 1
                               }}
                             >

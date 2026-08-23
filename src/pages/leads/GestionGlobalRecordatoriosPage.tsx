@@ -79,6 +79,7 @@ import { leadApi } from '../../api/services/leadApi';
 import { usuarioApi } from '../../api/services/usuarioApi';
 import { sucursalService } from '../../services/sucursalService';
 import { openWhatsAppWeb } from '../../utils/whatsapp';
+import { statusSx, type StatusRole } from '../../theme/statusRoles';
 import type { Sucursal, Usuario } from '../../types';
 import type {
   RecordatorioConLeadDTO,
@@ -187,10 +188,11 @@ const PRIORIDAD_RECORDATORIO_LABELS: Record<string, string> = {
   BAJA: 'Baja',
 };
 
-const PRIORIDAD_RECORDATORIO_COLORS: Record<string, string> = {
-  ALTA: '#EF4444',
-  MEDIA: '#F59E0B',
-  BAJA: '#9CA3AF',
+// Rol visual por prioridad (antes hexes fijos rojo/ámbar/gris).
+const PRIORIDAD_RECORDATORIO_ROLES: Record<string, StatusRole> = {
+  ALTA: 'danger',
+  MEDIA: 'warning',
+  BAJA: 'neutral',
 };
 
 const TIPO_RECORDATORIO_ICONS: Record<string, React.ReactNode> = {
@@ -198,6 +200,7 @@ const TIPO_RECORDATORIO_ICONS: Record<string, React.ReactNode> = {
   SMS: <SmsIcon fontSize="small" />,
   TAREA: <TaskIcon fontSize="small" />,
   NOTIFICACION: <NotificationsActiveIcon fontSize="small" />,
+  // eslint-disable-next-line ripser/no-literal-colors -- verde de identidad de WhatsApp
   WHATSAPP: <WhatsAppIcon fontSize="small" sx={{ color: '#25D366' }} />,
   LLAMADA: <PhoneIcon fontSize="small" />,
 };
@@ -1757,7 +1760,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                               maxWidth: 240,
                             }}
                           >
-                            {rec.mensaje || <span style={{ color: '#bbb', fontWeight: 400 }}>Sin mensaje</span>}
+                            {rec.mensaje || <span style={{ color: 'var(--mui-palette-text-disabled)', fontWeight: 400 }}>Sin mensaje</span>}
                           </Typography>
                         </Tooltip>
                         {rec.prioridad && (
@@ -1767,8 +1770,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                             sx={{
                               height: 16,
                               fontSize: '0.62rem',
-                              bgcolor: PRIORIDAD_RECORDATORIO_COLORS[rec.prioridad] ?? '#9CA3AF',
-                              color: 'white',
+                              ...statusSx(PRIORIDAD_RECORDATORIO_ROLES[rec.prioridad] ?? 'neutral'),
                               fontWeight: 600,
                               flexShrink: 0,
                             }}
@@ -1829,6 +1831,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                           <Tooltip title="WhatsApp">
                             <IconButton
                               size="small"
+                              // eslint-disable-next-line ripser/no-literal-colors -- verde de identidad de WhatsApp
                               sx={{ color: '#25D366', p: 0.25 }}
                               onClick={() => openWhatsApp(telefono)}
                             >

@@ -60,6 +60,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { generateSalesReportPDF, generateSaleDetailPDF, captureElementAsImage } from '../../utils/pdfExportUtils';
+import { chartSerie, CHART_AXIS, CHART_GRID, CHART_TOOLTIP_BG, CHART_TOOLTIP_TEXT } from '../../theme/chartTokens';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -639,13 +640,6 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
     }
   };
 
-  // Paleta categórica (misma cadencia que chartConfig.categoricalPalette,
-  // copiada localmente para preservar los colores originales del dashboard).
-  const chartColors = [
-    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
-    '#FF99E6', '#4169E1', '#FFD700', '#32CD32', '#FF4500', '#9932CC',
-  ];
-
   // recharts consume un array de objetos, no {labels, datasets}.
   const chartData = Object.entries(salesReport).map(([key, item]) => ({
     label: key,
@@ -948,29 +942,29 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
           <Typography variant="h6" gutterBottom>
             Visualización del Informe
           </Typography>
-          <Box id="ventas-chart-container" sx={{ height: 400, mb: 3, backgroundColor: '#fff' }}>
+          <Box id="ventas-chart-container" sx={{ height: 400, mb: 3, backgroundColor: 'background.paper' }}>
             <ResponsiveContainer width="100%" height="100%">
               {chartType === 'bar' ? (
                 <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} />
-                  <RTooltip formatter={tooltipFormatter} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                  <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                  <RTooltip formatter={tooltipFormatter} contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                   <RLegend />
-                  <Bar dataKey="total" name={`Ventas por ${groupBy}`} fill="rgba(75, 192, 192, 0.6)" />
+                  <Bar dataKey="total" name={`Ventas por ${groupBy}`} fill={chartSerie(0)} />
                 </BarChart>
               ) : chartType === 'line' ? (
                 <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} />
-                  <RTooltip formatter={tooltipFormatter} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                  <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                  <RTooltip formatter={tooltipFormatter} contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                   <RLegend />
                   <Line
                     type="monotone"
                     dataKey="total"
                     name={`Ventas por ${groupBy}`}
-                    stroke="rgba(75, 192, 192, 1)"
+                    stroke={chartSerie(0)}
                     strokeWidth={2}
                     dot={{ r: 3 }}
                   />
@@ -990,10 +984,10 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                     }}
                   >
                     {chartData.map((entry, i) => (
-                      <Cell key={entry.label} fill={chartColors[i % chartColors.length]} />
+                      <Cell key={entry.label} fill={chartSerie(i)} />
                     ))}
                   </Pie>
-                  <RTooltip formatter={tooltipFormatter} />
+                  <RTooltip formatter={tooltipFormatter} contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                   <RLegend verticalAlign="middle" align="right" layout="vertical" />
                 </PieChart>
               )}

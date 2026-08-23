@@ -21,13 +21,15 @@ export const MetricasPrioridadChart = ({ data, ocultarMontos = false }: Metricas
     'COLD': '❄️ Cold'
   };
 
+  // Prioridades con semántica de estado → tokens de status (fg) como color de
+  // serie; strings var(--…) válidos como fill SVG y backgroundColor.
   const prioridadColors: Record<string, string> = {
-    'ALTA': '#f44336',
-    'MEDIA': '#ff9800',
-    'BAJA': '#4caf50',
-    'HOT': '#f44336',
-    'WARM': '#ff9800',
-    'COLD': '#2196f3'
+    'ALTA': 'var(--mui-palette-status-danger-fg)',
+    'MEDIA': 'var(--mui-palette-status-warning-fg)',
+    'BAJA': 'var(--mui-palette-status-success-fg)',
+    'HOT': 'var(--mui-palette-status-danger-fg)',
+    'WARM': 'var(--mui-palette-status-warning-fg)',
+    'COLD': 'var(--mui-palette-status-info-fg)'
   };
 
   const total = data.reduce((sum, item) => sum + item.cantidad, 0);
@@ -66,7 +68,7 @@ export const MetricasPrioridadChart = ({ data, ocultarMontos = false }: Metricas
                     key={item.prioridad}
                     d={`M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
                     fill={prioridadColors[item.prioridad]}
-                    stroke="white"
+                    stroke="var(--mui-palette-background-paper)"
                     strokeWidth="2"
                   />
                 );

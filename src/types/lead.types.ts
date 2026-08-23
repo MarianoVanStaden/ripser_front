@@ -276,6 +276,10 @@ export interface ValidationErrors {
 }
 
 // Constantes
+/* eslint-disable ripser/no-literal-colors -- escalas propias del embudo de
+   leads (14 estados / 3 prioridades / 6 resultados) con granularidad que los
+   6 roles de status.* no cubren. Se usan como fondo SÓLIDO saturado con texto
+   common.white en los badges: legibles en ambos esquemas sin variante dark. */
 export const ESTADO_COLORS: Record<EstadoLeadEnum, string> = {
   PRIMER_CONTACTO: '#3B82F6',
   SEGUNDO_CONTACTO: '#2563EB',
@@ -403,3 +407,4 @@ export const RESULTADO_INTERACCION_COLORS: Record<ResultadoInteraccionEnum, stri
   INTERESADO: '#3B82F6',
   CONVERTIDO: '#8B5CF6'
 };
+/* eslint-enable ripser/no-literal-colors */

@@ -9,8 +9,9 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
+import { CHART_SERIES, CHART_AXIS, CHART_GRID, CHART_TOOLTIP_BG, CHART_TOOLTIP_TEXT } from '../../../theme/chartTokens';
 
-const BAR_COLOR = '#144272';
+const BAR_COLOR = CHART_SERIES[0];
 const TOP = 5;
 
 interface Props {
@@ -46,10 +47,10 @@ export const TopModelosChart: React.FC<Props> = ({ data }) => {
           <Box sx={{ height: Math.max(200, visible.length * 44) }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={visible} layout="vertical" margin={{ left: 8, right: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e0e0e0" />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
-                <YAxis type="category" dataKey="modelo" width={150} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(v) => [v ?? 0, 'Unidades']} />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={CHART_GRID} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                <YAxis type="category" dataKey="modelo" width={150} tick={{ fontSize: 12, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                <Tooltip formatter={(v) => [v ?? 0, 'Unidades']} contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                 <Bar dataKey="unidades" fill={BAR_COLOR} radius={[0, 4, 4, 0]} barSize={18} />
               </BarChart>
             </ResponsiveContainer>

@@ -25,19 +25,31 @@ export const EmbudoVentasChart = ({ data }: EmbudoVentasChartProps) => {
     'DESCARTADO': 'Descartado'
   };
 
-  // Colores para cada estado
+  // Colores para cada estado — escala ordinal del embudo (9 niveles,
+  // azul→verde + gris), más granular que los 6 roles de status y con orden
+  // secuencial propio; queda fija en ambos esquemas, con texto blanco fijo.
   const getColor = (estado: string) => {
     const colors: Record<string, string> = {
+      // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal del embudo (9 niveles), revisar en dark
       'PRIMER_CONTACTO': '#2196f3',
+      // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal del embudo (9 niveles), revisar en dark
       'SEGUNDO_CONTACTO': '#1976d2',
+      // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal del embudo (9 niveles), revisar en dark
       'TERCER_CONTACTO': '#1565c0',
+      // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal del embudo (9 niveles), revisar en dark
       'MOSTRO_INTERES': '#03a9f4',
+      // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal del embudo (9 niveles), revisar en dark
       'CLIENTE_POTENCIAL': '#00bcd4',
+      // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal del embudo (9 niveles), revisar en dark
       'CLIENTE_POTENCIAL_CALIFICADO': '#009688',
+      // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal del embudo (9 niveles), revisar en dark
       'VENTA': '#4caf50',
+      // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal del embudo (9 niveles), revisar en dark
       'CONVERTIDO': '#8bc34a',
+      // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal del embudo (9 niveles), revisar en dark
       'DESCARTADO': '#9e9e9e'
     };
+    // eslint-disable-next-line ripser/no-literal-colors -- fallback de la escala ordinal fija
     return colors[estado] || '#757575';
   };
 
@@ -65,7 +77,7 @@ export const EmbudoVentasChart = ({ data }: EmbudoVentasChartProps) => {
                   sx={{
                     width: '100%',
                     height: 40,
-                    backgroundColor: '#f5f5f5',
+                    backgroundColor: 'action.hover',
                     borderRadius: 1,
                     overflow: 'hidden',
                     position: 'relative'
@@ -80,7 +92,7 @@ export const EmbudoVentasChart = ({ data }: EmbudoVentasChartProps) => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       transition: 'width 0.3s ease',
-                      color: 'white',
+                      color: 'common.white',
                       fontWeight: 'bold'
                     }}
                   >

@@ -466,15 +466,16 @@ export const LeadsTablePage = () => {
     return `${dia}/${mes}/${anio}`;
   };
 
+  // Resalte de fila por estado/antigüedad → fondos suaves de status del theme.
   const getRowColor = (lead: LeadListItemDTO): string => {
     const dias = calcularDias(lead.fechaPrimerContacto);
-    if (lead.estadoLead === EstadoLeadEnum.CONVERTIDO) return 'rgba(5, 150, 105, 0.08)';
+    if (lead.estadoLead === EstadoLeadEnum.CONVERTIDO) return 'status.success.bg';
     if (lead.estadoLead === EstadoLeadEnum.DESCARTADO || lead.estadoLead === EstadoLeadEnum.PERDIDO) {
-      return 'rgba(107, 114, 128, 0.08)';
+      return 'status.neutral.bg';
     }
-    if (dias > 30) return 'rgba(239, 68, 68, 0.1)';
-    if (dias > 15) return 'rgba(245, 158, 11, 0.1)';
-    if (dias > 7) return 'rgba(59, 130, 246, 0.08)';
+    if (dias > 30) return 'status.danger.bg';
+    if (dias > 15) return 'status.warning.bg';
+    if (dias > 7) return 'status.info.bg';
     return '';
   };
 
@@ -836,6 +837,7 @@ export const LeadsTablePage = () => {
                             <Tooltip title="WhatsApp">
                               <IconButton
                                 size="small"
+                                // eslint-disable-next-line ripser/no-literal-colors -- verde de identidad de WhatsApp
                                 sx={{ p: 0.5, color: '#25D366' }}
                                 onClick={() => openWhatsAppWeb(lead.telefono)}
                               >

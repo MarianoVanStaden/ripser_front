@@ -13,7 +13,7 @@ export const LeadPriorityBadge = ({ priority, size = 'small' }: LeadPriorityBadg
       size={size}
       sx={{
         backgroundColor: PRIORIDAD_COLORS[priority],
-        color: 'white',
+        color: 'common.white',
         fontWeight: 'bold',
         fontSize: size === 'small' ? '0.75rem' : '0.875rem',
         minWidth: size === 'small' ? 80 : 100

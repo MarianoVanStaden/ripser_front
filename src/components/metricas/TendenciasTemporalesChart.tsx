@@ -49,11 +49,11 @@ export const TendenciasTemporalesChart = ({ data }: TendenciasTemporalesChartPro
                       width: '100%',
                       height: `${height}%`,
                       minHeight: item.cantidad > 0 ? 10 : 0,
-                      backgroundColor: '#2196f3',
+                      backgroundColor: 'charts.serie1',
                       borderRadius: '4px 4px 0 0',
                       transition: 'height 0.3s ease',
                       '&:hover': {
-                        backgroundColor: '#1976d2',
+                        backgroundColor: 'primary.dark',
                         cursor: 'pointer'
                       }
                     }}
@@ -118,11 +118,11 @@ export const TendenciasTemporalesChart = ({ data }: TendenciasTemporalesChartPro
                       width: '100%',
                       height: `${height}%`,
                       minHeight: item.cantidad > 0 ? 10 : 0,
-                      backgroundColor: '#4caf50',
+                      backgroundColor: 'charts.serie3',
                       borderRadius: '4px 4px 0 0',
                       transition: 'height 0.3s ease',
                       '&:hover': {
-                        backgroundColor: '#388e3c',
+                        backgroundColor: 'success.dark',
                         cursor: 'pointer'
                       }
                     }}

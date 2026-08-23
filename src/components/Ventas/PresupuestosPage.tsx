@@ -558,15 +558,21 @@ const PresupuestosPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 140 }}>Financiamiento</TableCell>
                   <TableCell sx={{ minWidth: 110 }}>Creado por</TableCell>
                   <TableCell
-                    sx={{
+                    sx={(theme) => ({
                       minWidth: 220,
                       whiteSpace: 'nowrap',
                       position: 'sticky',
                       right: 0,
                       backgroundColor: 'background.paper',
                       zIndex: 2,
+                      // eslint-disable-next-line ripser/no-literal-colors -- sombra solo en light; en dark se reemplaza por borde (applyStyles abajo)
                       boxShadow: '-4px 0 6px -2px rgba(0,0,0,0.08)',
-                    }}
+                      ...theme.applyStyles('dark', {
+                        boxShadow: 'none',
+                        borderLeft: '1px solid',
+                        borderLeftColor: theme.vars.palette.divider,
+                      }),
+                    })}
                   >
                     Acciones
                   </TableCell>
@@ -628,14 +634,20 @@ const PresupuestosPage: React.FC = () => {
                         <UsuarioBadge nombre={presupuesto.usuarioCreadorPresupuestoNombre ?? null} />
                       </TableCell>
                       <TableCell
-                        sx={{
+                        sx={(theme) => ({
                           whiteSpace: 'nowrap',
                           position: 'sticky',
                           right: 0,
                           backgroundColor: 'background.paper',
                           zIndex: 1,
+                          // eslint-disable-next-line ripser/no-literal-colors -- sombra solo en light; en dark se reemplaza por borde (applyStyles abajo)
                           boxShadow: '-4px 0 6px -2px rgba(0,0,0,0.08)',
-                        }}
+                          ...theme.applyStyles('dark', {
+                            boxShadow: 'none',
+                            borderLeft: '1px solid',
+                            borderLeftColor: theme.vars.palette.divider,
+                          }),
+                        })}
                       >
                         <Tooltip title="Ver">
                           <IconButton size="small" color="primary" onClick={() => handleOpenViewDialog(presupuesto)} aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}>
