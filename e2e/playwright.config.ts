@@ -32,7 +32,7 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: '../playwright-report/e2e', open: 'never' }],
     ['json', { outputFile: '../playwright-report/e2e/results.json' }],
-    ...(process.env.CI ? (['github'] as any[]) : []),
+    ...(process.env.CI ? ([['github']] as [string][]) : []),
   ],
 
   use: {
