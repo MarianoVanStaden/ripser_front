@@ -30,6 +30,7 @@ import type {
   DetalleDocumento,
 } from '../../../types';
 import { documentoApi } from '../../../api/documentoApi';
+import { nombreModeloEquipo } from '../../../utils/equipoDescripcion';
 import {
   formatARS,
   formatFechaLarga,
@@ -54,8 +55,7 @@ function buildDescripcion(d: DetalleDocumento): string {
   }
   // EQUIPO
   const partes = [
-    d.recetaNombre,
-    d.recetaModelo,
+    nombreModeloEquipo(d.recetaNombre, d.recetaModelo),
     d.medida,
     d.color,
   ].filter(Boolean);

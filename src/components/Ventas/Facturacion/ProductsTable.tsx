@@ -24,6 +24,7 @@ import type { Producto, RecetaFabricacionDTO } from '../../../types';
 import ColorPicker from '../../common/ColorPicker';
 import type { CartItem, NotaCartItem } from './types';
 import { useOfertasVigentes } from '../../../hooks/useOfertasVigentes';
+import { nombreModeloEquipo } from '../../../utils/equipoDescripcion';
 
 // Memoized so React keeps a stable component reference across re-renders,
 // preventing input focus loss when editing cart fields.
@@ -179,7 +180,7 @@ export const ProductsTable = React.memo(
                             ) : (
                               recetasFiltradas.map((r) => (
                                 <MenuItem key={r.id} value={r.id}>
-                                  {r.nombre} - {r.modelo} ({r.tipoEquipo})
+                                  {nombreModeloEquipo(r.nombre, r.modelo)} ({r.tipoEquipo})
                                 </MenuItem>
                               ))
                             )}

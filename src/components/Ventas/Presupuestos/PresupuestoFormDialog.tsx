@@ -43,6 +43,7 @@ import { clienteApi, leadApi, productApi } from "../../../api/services";
 import { documentoApi } from "../../../api/services/documentoApi";
 import { recetaFabricacionApi } from "../../../api/services/recetaFabricacionApi";
 import { useOfertasVigentes } from "../../../hooks/useOfertasVigentes";
+import { nombreModeloEquipo } from "../../../utils/equipoDescripcion";
 import { prestamoPersonalApi } from "../../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../../api/services/cuentaCorrienteApi";
 import { ESTADO_LABELS, PRIORIDAD_LABELS } from "../../../types/lead.types";
@@ -466,7 +467,7 @@ export default function PresupuestoFormDialog({
         if (receta) {
           const base = receta.precioVenta || 0;
           const { precioEfectivo, hayOferta } = getPrecioEfectivo('RECETA', Number(value), base);
-          const baseDesc = `${receta.nombre} - ${receta.modelo || ''} (${receta.tipoEquipo})`;
+          const baseDesc = `${nombreModeloEquipo(receta.nombre, receta.modelo)} (${receta.tipoEquipo})`;
           detalle.descripcion = hayOferta ? `${baseDesc} [OFERTA]` : baseDesc;
           detalle.precioUnitario = precioEfectivo;
           detalle.subtotal = detalle.cantidad * precioEfectivo;

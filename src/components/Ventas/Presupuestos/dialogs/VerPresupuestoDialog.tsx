@@ -26,6 +26,7 @@ import {
 import { Edit as EditIcon } from '@mui/icons-material';
 import type { DetalleDocumento, DocumentoComercial, Usuario } from '../../../../types';
 import { calculateCostoEnvio } from '../../../../utils/financiamiento';
+import { nombreModeloEquipo } from '../../../../utils/equipoDescripcion';
 import AuditoriaFlujo from '../../../common/AuditoriaFlujo';
 import { getStatusColor, getStatusLabel } from '../utils';
 
@@ -272,9 +273,7 @@ const VerPresupuestoDialog: React.FC<Props> = ({
                     <TableRow key={index}>
                       <TableCell>
                         {detalle.tipoItem === 'EQUIPO'
-                          ? `${detalle.recetaNombre || ''} ${
-                              detalle.recetaModelo ? `- ${detalle.recetaModelo}` : ''
-                            }`
+                          ? nombreModeloEquipo(detalle.recetaNombre, detalle.recetaModelo)
                           : detalle.productoNombre || '-'}
                       </TableCell>
                       <TableCell>{detalle.color?.nombre || '-'}</TableCell>

@@ -22,6 +22,7 @@ import {
 import { CheckCircle, Warning, HourglassEmpty, Build, ColorLens } from '@mui/icons-material';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import type { DetalleDocumento, EquipoFabricadoDTO, EstadoAsignacionEquipo } from '../../types';
+import { nombreModeloEquipo } from '../../utils/equipoDescripcion';
 
 // Helper function to get color for estadoAsignacion
 const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefined): 'default' | 'warning' | 'info' | 'secondary' | 'success' => {
@@ -514,8 +515,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                     <Box>
                       <Typography variant="subtitle1" fontWeight="600">
-                        {asignacion.recetaNombre}
-                        {asignacion.recetaModelo && ` - ${asignacion.recetaModelo}`}
+                        {nombreModeloEquipo(asignacion.recetaNombre, asignacion.recetaModelo)}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Tipo: {asignacion.recetaTipo} | Cantidad requerida: {asignacion.cantidadRequerida}
