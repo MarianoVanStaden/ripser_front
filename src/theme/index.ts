@@ -65,10 +65,13 @@ const DARK_BORDER = '1px solid #343434';
 
 const theme = createTheme({
   cssVariables: {
-    // `data` -> attribute selector on <html>: [data-mui-color-scheme="dark"].
+    // Selector de esquema: [data-mui-color-scheme="light|dark"] sobre <html>.
+    // OJO: el valor 'data' a secas genera [data-light]/[data-dark], que NO es
+    // el atributo que setea el script anti-FOUC de index.html — hay que nombrar
+    // el atributo completo para que ambos hablen el mismo contrato.
     // The inline script in index.html sets the attribute BEFORE first paint
     // (anti-FOUC) using the same storage key the ThemeProvider manages.
-    colorSchemeSelector: 'data',
+    colorSchemeSelector: 'data-mui-color-scheme',
   },
   colorSchemes: {
     light: {
