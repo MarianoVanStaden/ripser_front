@@ -5,6 +5,10 @@ import type { RolEmpresaOption } from '../types/usuario-enhanced.types';
 /**
  * Available empresa roles with metadata for UI rendering
  */
+/* eslint-disable ripser/no-literal-colors -- campo `color` legacy: ningún consumidor
+   lo usa para renderizar (UsersPage colorea roles vía ROL_EMPRESA_STATUS_ROLE +
+   statusSx); se mantiene solo porque RolEmpresaOption lo exige y el test verifica
+   que esté definido. No agregar nuevos usos de estos hex. */
 export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
   {
     value: 'SUPER_ADMIN',
@@ -145,6 +149,7 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     systemRole: 'CONDUCTOR'
   }
 ];
+/* eslint-enable ripser/no-literal-colors */
 
 /**
  * Maps a tenant role (RolEmpresa) to its corresponding system role (TipoRol)

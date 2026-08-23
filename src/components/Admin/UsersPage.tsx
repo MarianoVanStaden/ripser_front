@@ -64,43 +64,70 @@ import type { CreateUsuarioWithEmpresaDTO, UsuarioWithEmpresa, RolEmpresaOption 
 import type { Empresa, Sucursal, RolEmpresa } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
+import { statusSx, type StatusRole } from '../../theme/statusRoles';
 
-// Available roles with labels and colors (for table display)
-const availableRoles = [
-  { value: 'SUPER_ADMIN' as TipoRol, label: 'Super Administrador', color: '#d32f2f' },
-  { value: 'ADMIN' as TipoRol, label: 'Administrador', color: '#c62828' },
-  { value: 'ADMIN_EMPRESA_LIMITADO' as TipoRol, label: 'Administrador (Limitado)', color: '#ef6c00' },
-  { value: 'GERENTE_SUCURSAL' as TipoRol, label: 'Gerente de Sucursal', color: '#1976d2' },
-  { value: 'SUPERVISOR' as TipoRol, label: 'Supervisor', color: '#388e3c' },
-  { value: 'VENDEDOR' as TipoRol, label: 'Vendedor', color: '#1565c0' },
-  { value: 'TALLER' as TipoRol, label: 'Técnico de Taller', color: '#5d4037' },
-  { value: 'OFICINA' as TipoRol, label: 'Personal de Oficina', color: '#0288d1' },
-  { value: 'RECURSOS_HUMANOS' as TipoRol, label: 'Recursos Humanos', color: '#2e7d32' },
-  { value: 'POST_VENTA' as TipoRol, label: 'Post-Venta', color: '#ff6f00' },
-  { value: 'CONDUCTOR' as TipoRol, label: 'Conductor', color: '#37474f' },
-  { value: 'USUARIO' as TipoRol, label: 'Usuario', color: '#7b1fa2' },
-  { value: 'USER' as TipoRol, label: 'Usuario (básico)', color: '#6a1b9a' },
+// Available roles with labels and status roles (for table display)
+const availableRoles: { value: TipoRol; label: string; color: StatusRole }[] = [
+  { value: 'SUPER_ADMIN' as TipoRol, label: 'Super Administrador', color: 'danger' },
+  { value: 'ADMIN' as TipoRol, label: 'Administrador', color: 'danger' },
+  { value: 'ADMIN_EMPRESA_LIMITADO' as TipoRol, label: 'Administrador (Limitado)', color: 'warning' },
+  { value: 'GERENTE_SUCURSAL' as TipoRol, label: 'Gerente de Sucursal', color: 'info' },
+  { value: 'SUPERVISOR' as TipoRol, label: 'Supervisor', color: 'success' },
+  { value: 'VENDEDOR' as TipoRol, label: 'Vendedor', color: 'info' },
+  { value: 'TALLER' as TipoRol, label: 'Técnico de Taller', color: 'neutral' },
+  { value: 'OFICINA' as TipoRol, label: 'Personal de Oficina', color: 'info' },
+  { value: 'RECURSOS_HUMANOS' as TipoRol, label: 'Recursos Humanos', color: 'success' },
+  { value: 'POST_VENTA' as TipoRol, label: 'Post-Venta', color: 'warning' },
+  { value: 'CONDUCTOR' as TipoRol, label: 'Conductor', color: 'neutral' },
+  { value: 'USUARIO' as TipoRol, label: 'Usuario', color: 'process' },
+  { value: 'USER' as TipoRol, label: 'Usuario (básico)', color: 'process' },
 ];
 
 // System roles available for explicit assignment in the form
-const systemRoleOptions: { value: TipoRol; label: string; description: string; color: string }[] = [
-  { value: 'ADMIN', label: 'Administrador', description: 'Acceso completo a todos los módulos', color: '#c62828' },
-  { value: 'ADMIN_EMPRESA_LIMITADO', label: 'Administrador (Limitado)', description: 'Administrador interno: acceso a casi toda la empresa salvo RRHH y configuraciones sensibles (reservadas al dueño)', color: '#ef6c00' },
-  { value: 'GERENTE_SUCURSAL', label: 'Gerente de Sucursal', description: 'Gestión completa de una sucursal', color: '#1976d2' },
-  { value: 'SUPERVISOR', label: 'Supervisor', description: 'Acceso de Vendedor + Cobranzas + Transporte, y aterriza en Métrica de Leads', color: '#388e3c' },
-  { value: 'VENDEDOR', label: 'Vendedor', description: 'Acceso a ventas y clientes', color: '#1565c0' },
-  { value: 'TALLER', label: 'Técnico de Taller', description: 'Acceso a taller, garantías y logística', color: '#5d4037' },
-  { value: 'OFICINA', label: 'Personal de Oficina', description: 'Acceso a ventas, clientes, proveedores y logística', color: '#0288d1' },
-  { value: 'COBRANZAS', label: 'Cobranzas', description: 'Acceso a Registro de Ventas, Gestión y Carpeta de Clientes, y módulo Cobranzas', color: '#00897b' },
-  { value: 'TRANSPORTE', label: 'Transporte', description: 'Arma viajes y gestiona entregas. Acceso a Registro Ventas, Clientes, Transporte, Equipos Fabricados, Garantías y Taller', color: '#6a1b9a' },
-  { value: 'POST_VENTA', label: 'Post-Venta', description: 'Gestión post-venta: Acceso a Registro de Ventas, Clientes completos, Viajes y Control de Entregas, con dashboard de KPIs operativos', color: '#ff6f00' },
-  { value: 'RECURSOS_HUMANOS', label: 'Recursos Humanos', description: 'Acceso exclusivo al módulo RRHH: empleados, legajos, sueldos, asistencias, licencias, capacitaciones y puestos', color: '#2e7d32' },
-  { value: 'COORDINADORA_COMPRAS', label: 'Coordinadora de Compras', description: 'Producción, Logística y Proveedores completos. En Administración ve flujo de caja, balance, bancos, cajas y catálogos', color: '#e65100' },
-  { value: 'COORDINADORA_LOGISTICA', label: 'Coordinadora de Logística', description: 'Todo lo de Transporte + RRHH parcial (Sueldos, Adelantos, Config, Organigrama) + Administración financiera básica', color: '#4527a0' },
-  { value: 'LOGISTICO', label: 'Logístico', description: 'Todo lo de Transporte + Proveedores parcial (sin Cuenta Corriente) + Gestión Stock, Stock Equipos y Ubicación Equipos', color: '#00695c' },
-  { value: 'CONDUCTOR', label: 'Conductor', description: 'Acceso exclusivo al módulo Transporte: Armado de Viajes, Control de Entregas y Legajo de Vehículos', color: '#37474f' },
-  { value: 'USUARIO', label: 'Usuario', description: 'Solo acceso al dashboard', color: '#7b1fa2' },
+const systemRoleOptions: { value: TipoRol; label: string; description: string; color: StatusRole }[] = [
+  { value: 'ADMIN', label: 'Administrador', description: 'Acceso completo a todos los módulos', color: 'danger' },
+  { value: 'ADMIN_EMPRESA_LIMITADO', label: 'Administrador (Limitado)', description: 'Administrador interno: acceso a casi toda la empresa salvo RRHH y configuraciones sensibles (reservadas al dueño)', color: 'warning' },
+  { value: 'GERENTE_SUCURSAL', label: 'Gerente de Sucursal', description: 'Gestión completa de una sucursal', color: 'info' },
+  { value: 'SUPERVISOR', label: 'Supervisor', description: 'Acceso de Vendedor + Cobranzas + Transporte, y aterriza en Métrica de Leads', color: 'success' },
+  { value: 'VENDEDOR', label: 'Vendedor', description: 'Acceso a ventas y clientes', color: 'info' },
+  { value: 'TALLER', label: 'Técnico de Taller', description: 'Acceso a taller, garantías y logística', color: 'neutral' },
+  { value: 'OFICINA', label: 'Personal de Oficina', description: 'Acceso a ventas, clientes, proveedores y logística', color: 'info' },
+  { value: 'COBRANZAS', label: 'Cobranzas', description: 'Acceso a Registro de Ventas, Gestión y Carpeta de Clientes, y módulo Cobranzas', color: 'success' },
+  { value: 'TRANSPORTE', label: 'Transporte', description: 'Arma viajes y gestiona entregas. Acceso a Registro Ventas, Clientes, Transporte, Equipos Fabricados, Garantías y Taller', color: 'process' },
+  { value: 'POST_VENTA', label: 'Post-Venta', description: 'Gestión post-venta: Acceso a Registro de Ventas, Clientes completos, Viajes y Control de Entregas, con dashboard de KPIs operativos', color: 'warning' },
+  { value: 'RECURSOS_HUMANOS', label: 'Recursos Humanos', description: 'Acceso exclusivo al módulo RRHH: empleados, legajos, sueldos, asistencias, licencias, capacitaciones y puestos', color: 'success' },
+  { value: 'COORDINADORA_COMPRAS', label: 'Coordinadora de Compras', description: 'Producción, Logística y Proveedores completos. En Administración ve flujo de caja, balance, bancos, cajas y catálogos', color: 'warning' },
+  { value: 'COORDINADORA_LOGISTICA', label: 'Coordinadora de Logística', description: 'Todo lo de Transporte + RRHH parcial (Sueldos, Adelantos, Config, Organigrama) + Administración financiera básica', color: 'process' },
+  { value: 'LOGISTICO', label: 'Logístico', description: 'Todo lo de Transporte + Proveedores parcial (sin Cuenta Corriente) + Gestión Stock, Stock Equipos y Ubicación Equipos', color: 'success' },
+  { value: 'CONDUCTOR', label: 'Conductor', description: 'Acceso exclusivo al módulo Transporte: Armado de Viajes, Control de Entregas y Legajo de Vehículos', color: 'neutral' },
+  { value: 'USUARIO', label: 'Usuario', description: 'Solo acceso al dashboard', color: 'process' },
 ];
+
+// RolEmpresa (roleMapper) -> visual status role, mirroring the hue each rol
+// used to render with. Unknown roles fall back to neutral.
+const ROL_EMPRESA_STATUS_ROLE: Record<string, StatusRole> = {
+  SUPER_ADMIN: 'danger',
+  ADMIN_EMPRESA: 'warning',
+  ADMIN_EMPRESA_LIMITADO: 'warning',
+  GERENTE_SUCURSAL: 'info',
+  SUPERVISOR: 'success',
+  TALLER: 'neutral',
+  OFICINA: 'info',
+  USUARIO_SUCURSAL: 'process',
+  COBRANZAS: 'success',
+  TRANSPORTE: 'process',
+  POST_VENTA: 'warning',
+  RECURSOS_HUMANOS: 'success',
+  COORDINADORA_COMPRAS: 'warning',
+  COORDINADORA_LOGISTICA: 'process',
+  LOGISTICO: 'success',
+  CONDUCTOR: 'neutral',
+};
+
+const rolEmpresaChipSx = (rol: string | null | undefined) => ({
+  ...statusSx(ROL_EMPRESA_STATUS_ROLE[rol ?? ''] ?? 'neutral'),
+  fontWeight: 600,
+});
 
 const UsersPage: React.FC = () => {
   const theme = useTheme();
@@ -646,7 +673,7 @@ const UsersPage: React.FC = () => {
 
   // Get role label and color
   const getRoleInfo = (role: TipoRol) => {
-    return availableRoles.find(r => r.value === role) || { label: role, color: '#757575' };
+    return availableRoles.find(r => r.value === role) || { label: role, color: 'neutral' as StatusRole };
   };
 
   return (
@@ -728,8 +755,7 @@ const UsersPage: React.FC = () => {
                                 label={roleInfo.label}
                                 size="small"
                                 sx={{
-                                  bgcolor: roleInfo.color,
-                                  color: 'white',
+                                  ...statusSx(roleInfo.color),
                                   fontWeight: 600,
                                 }}
                               />
@@ -750,11 +776,7 @@ const UsersPage: React.FC = () => {
                                   <Chip
                                     label={rolOption?.label || ue.rol}
                                     size="small"
-                                    sx={{
-                                      bgcolor: rolOption?.color || '#757575',
-                                      color: 'white',
-                                      fontWeight: 600,
-                                    }}
+                                    sx={rolEmpresaChipSx(ue.rol)}
                                   />
                                 </Tooltip>
                               );
@@ -948,7 +970,7 @@ const UsersPage: React.FC = () => {
                     <Box mt={1}>
                       <Chip
                         label={selectedRolOption.label}
-                        sx={{ bgcolor: selectedRolOption.color, color: 'white' }}
+                        sx={rolEmpresaChipSx(selectedRolOption.value)}
                         size="small"
                       />
                     </Box>
@@ -966,7 +988,7 @@ const UsersPage: React.FC = () => {
                     label="Rol del Sistema *"
                   >
                     {[
-                      ...(esSuperAdmin ? [{ value: 'SUPER_ADMIN' as TipoRol, label: 'Super Administrador', description: 'Acceso completo al sistema', color: '#d32f2f' }] : []),
+                      ...(esSuperAdmin ? [{ value: 'SUPER_ADMIN' as TipoRol, label: 'Super Administrador', description: 'Acceso completo al sistema', color: 'danger' as StatusRole }] : []),
                       ...systemRoleOptions,
                     ].map(role => (
                       <MenuItem key={role.value} value={role.value}>
@@ -974,7 +996,7 @@ const UsersPage: React.FC = () => {
                           <Chip
                             label={role.label}
                             size="small"
-                            sx={{ bgcolor: role.color, color: 'white', fontWeight: 600, minWidth: 130 }}
+                            sx={{ ...statusSx(role.color), fontWeight: 600, minWidth: 130 }}
                           />
                           <Typography variant="caption" color="text.secondary">
                             {role.description}
@@ -1071,7 +1093,7 @@ const UsersPage: React.FC = () => {
         fullWidth
         fullScreen={isMobile}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#1976d2' }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main' }}>
           <CheckCircleIcon color="primary" />
           {editingUser ? '¿Actualizar Usuario?' : '¿Crear Usuario?'}
         </DialogTitle>
@@ -1083,7 +1105,7 @@ const UsersPage: React.FC = () => {
             <Typography variant="body1" paragraph>
               {editingUser ? 'Está a punto de actualizar el usuario:' : 'Está a punto de crear el usuario:'}
             </Typography>
-            <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 1, mb: 2 }}>
+            <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 1, mb: 2 }}>
               <Typography variant="body2" sx={{ mb: 1 }}>
                 <strong>Usuario:</strong> {formData.username}
               </Typography>
@@ -1103,11 +1125,7 @@ const UsersPage: React.FC = () => {
                 <Chip
                   label={getRolEmpresaOption(formData.rolEmpresa)?.label || formData.rolEmpresa}
                   size="small"
-                  sx={{
-                    bgcolor: getRolEmpresaOption(formData.rolEmpresa)?.color || '#757575',
-                    color: 'white',
-                    fontWeight: 600,
-                  }}
+                  sx={rolEmpresaChipSx(formData.rolEmpresa)}
                 />
               </Typography>
               {formData.sucursalId && (
@@ -1150,7 +1168,7 @@ const UsersPage: React.FC = () => {
         fullWidth
         fullScreen={isMobile}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#d32f2f' }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
           <SecurityIcon color="error" />
           ¿Crear Super Administrador?
         </DialogTitle>
@@ -1197,7 +1215,7 @@ const UsersPage: React.FC = () => {
         fullWidth
         fullScreen={isMobile}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#d32f2f' }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
           <WarningIcon color="error" />
           ¿Eliminar Usuario?
         </DialogTitle>
@@ -1210,7 +1228,7 @@ const UsersPage: React.FC = () => {
               <Typography variant="body1" paragraph>
                 Está a punto de eliminar el usuario:
               </Typography>
-              <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 1, mb: 2 }}>
+              <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 1, mb: 2 }}>
                 <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
                   {userToDelete.username}
                 </Typography>
@@ -1233,11 +1251,7 @@ const UsersPage: React.FC = () => {
                           key={ue.id}
                           label={rolOption?.label || ue.rol}
                           size="small"
-                          sx={{
-                            bgcolor: rolOption?.color || '#757575',
-                            color: 'white',
-                            fontWeight: 600,
-                          }}
+                          sx={rolEmpresaChipSx(ue.rol)}
                         />
                       );
                     })}
@@ -1278,7 +1292,7 @@ const UsersPage: React.FC = () => {
         fullWidth
         fullScreen={isMobile}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#388e3c' }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'success.main' }}>
           <PersonIcon color="success" />
           {createdUserInfo?.isEdit ? '¡Usuario Actualizado Exitosamente!' : '¡Usuario Creado Exitosamente!'}
         </DialogTitle>
@@ -1299,11 +1313,7 @@ const UsersPage: React.FC = () => {
                 <Chip
                   label={createdUserInfo.role}
                   size="small"
-                  sx={{
-                    bgcolor: getRolEmpresaOption(formData.rolEmpresa)?.color || '#757575',
-                    color: 'white',
-                    fontWeight: 600,
-                  }}
+                  sx={rolEmpresaChipSx(formData.rolEmpresa)}
                 />
               </Typography>
               {!createdUserInfo.isEdit && (
@@ -1334,7 +1344,7 @@ const UsersPage: React.FC = () => {
         fullWidth
         fullScreen={isMobile}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#1976d2', color: 'white' }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
           <VisibilityIcon />
           Detalles del Usuario
         </DialogTitle>
@@ -1343,7 +1353,7 @@ const UsersPage: React.FC = () => {
             <Box>
               {/* Basic Information */}
               <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: '#1976d2' }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'primary.main' }}>
                   <PersonIcon />
                   Información Básica
                 </Typography>
@@ -1408,7 +1418,7 @@ const UsersPage: React.FC = () => {
 
               {/* System Roles */}
               <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: '#1976d2' }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'primary.main' }}>
                   <SecurityIcon />
                   Roles del Sistema
                 </Typography>
@@ -1422,8 +1432,7 @@ const UsersPage: React.FC = () => {
                           key={role}
                           label={roleInfo.label}
                           sx={{
-                            bgcolor: roleInfo.color,
-                            color: 'white',
+                            ...statusSx(roleInfo.color),
                             fontWeight: 600,
                           }}
                         />
@@ -1439,7 +1448,7 @@ const UsersPage: React.FC = () => {
 
               {/* Empresa Assignments */}
               <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: '#1976d2' }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'primary.main' }}>
                   <BusinessIcon />
                   Asignaciones a Empresas
                 </Typography>
@@ -1453,9 +1462,10 @@ const UsersPage: React.FC = () => {
                           key={ue.id}
                           sx={{
                             p: 2,
-                            bgcolor: '#f5f5f5',
+                            bgcolor: 'action.hover',
                             borderRadius: 1,
-                            border: '1px solid #e0e0e0',
+                            border: '1px solid',
+                            borderColor: 'divider',
                           }}
                         >
                           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
@@ -1467,11 +1477,7 @@ const UsersPage: React.FC = () => {
                                 <Chip
                                   label={rolOption?.label || ue.rol}
                                   size="small"
-                                  sx={{
-                                    bgcolor: rolOption?.color || '#757575',
-                                    color: 'white',
-                                    fontWeight: 600,
-                                  }}
+                                  sx={rolEmpresaChipSx(ue.rol)}
                                 />
                               </Box>
                             </Box>
@@ -1543,7 +1549,7 @@ const UsersPage: React.FC = () => {
 
               {/* Empleado vinculado */}
               <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: '#1976d2' }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'primary.main' }}>
                   <BadgeIcon />
                   Empleado Vinculado
                 </Typography>

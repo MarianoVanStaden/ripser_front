@@ -590,7 +590,7 @@ const AsignacionTareasPage: React.FC = () => {
         <DialogTitle
           sx={{
             bgcolor: 'primary.main',
-            color: 'white',
+            color: 'common.white',
             py: 2.5
           }}
         >
@@ -623,7 +623,7 @@ const AsignacionTareasPage: React.FC = () => {
                       label="Orden de Servicio *"
                       required
                       placeholder="Seleccione una orden"
-                      sx={{ bgcolor: 'white' }}
+                      sx={{ bgcolor: 'background.paper' }}
                     />
                   )}
                 />
@@ -644,7 +644,7 @@ const AsignacionTareasPage: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                     required
                     placeholder="Describa la tarea a realizar..."
-                    sx={{ bgcolor: 'white' }}
+                    sx={{ bgcolor: 'background.paper' }}
                   />
 
                   <Autocomplete
@@ -659,7 +659,7 @@ const AsignacionTareasPage: React.FC = () => {
                         {...params}
                         label="Empleado Asignado"
                         placeholder="Seleccione un empleado (opcional)"
-                        sx={{ bgcolor: 'white' }}
+                        sx={{ bgcolor: 'background.paper' }}
                       />
                     )}
                   />
@@ -672,7 +672,7 @@ const AsignacionTareasPage: React.FC = () => {
                     value={formData.observaciones}
                     onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
                     placeholder="Notas adicionales sobre la tarea..."
-                    sx={{ bgcolor: 'white' }}
+                    sx={{ bgcolor: 'background.paper' }}
                   />
                 </Stack>
               </Paper>
@@ -698,7 +698,7 @@ const AsignacionTareasPage: React.FC = () => {
                           </InputAdornment>
                         ),
                       }}
-                      sx={{ bgcolor: 'white' }}
+                      sx={{ bgcolor: 'background.paper' }}
                     />
                   </Grid>
 
@@ -717,7 +717,7 @@ const AsignacionTareasPage: React.FC = () => {
                         ),
                       }}
                       helperText="Se actualiza al completar la tarea"
-                      sx={{ bgcolor: 'white' }}
+                      sx={{ bgcolor: 'background.paper' }}
                     />
                   </Grid>
 
@@ -732,7 +732,7 @@ const AsignacionTareasPage: React.FC = () => {
                           ...formData,
                           estado: e.target.value as typeof formData.estado
                         })}
-                        sx={{ bgcolor: 'white' }}
+                        sx={{ bgcolor: 'background.paper' }}
                       >
                         <MenuItem value="PENDIENTE">⏳ Pendiente</MenuItem>
                         <MenuItem value="EN_PROCESO">🔧 En Proceso</MenuItem>
@@ -794,6 +794,7 @@ const AsignacionTareasPage: React.FC = () => {
         PaperProps={{
           sx: {
             borderRadius: isMobile ? 0 : 3,
+            // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa del dialog, no es separación visual
             boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
           }
         }}
@@ -801,7 +802,7 @@ const AsignacionTareasPage: React.FC = () => {
         <DialogTitle
           sx={{
             bgcolor: 'success.main',
-            color: 'white',
+            color: 'common.white',
             py: 3,
             textAlign: 'center'
           }}

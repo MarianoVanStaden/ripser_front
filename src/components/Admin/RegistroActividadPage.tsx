@@ -421,7 +421,7 @@ export const RegistroActividadPage = () => {
                       key={r.id}
                       hover
                       sx={{
-                        bgcolor: r.fueraHorario ? 'rgba(239, 68, 68, 0.06)' : undefined,
+                        bgcolor: r.fueraHorario ? 'status.danger.bg' : undefined,
                       }}
                     >
                       <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>

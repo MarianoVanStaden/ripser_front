@@ -439,7 +439,7 @@ const ControlMaterialesPage: React.FC = () => {
         <DialogTitle
           sx={{
             bgcolor: 'primary.main',
-            color: 'white',
+            color: 'common.white',
             py: 2.5
           }}
         >
@@ -535,7 +535,7 @@ const ControlMaterialesPage: React.FC = () => {
                         onChange={(e) => setFormData({ ...formData, cantidad: e.target.value })}
                         required
                         inputProps={{ min: 1 }}
-                        sx={{ bgcolor: 'white' }}
+                        sx={{ bgcolor: 'background.paper' }}
                       />
                     </Grid>
                     <Grid item xs={6}>
@@ -549,7 +549,7 @@ const ControlMaterialesPage: React.FC = () => {
                         InputProps={{
                           startAdornment: <InputAdornment position="start">$</InputAdornment>,
                         }}
-                        sx={{ bgcolor: 'white' }}
+                        sx={{ bgcolor: 'background.paper' }}
                       />
                     </Grid>
                   </Grid>

@@ -1023,7 +1023,7 @@ const OrdenesServicioPage: React.FC = () => {
         <DialogTitle
           sx={{
             bgcolor: 'primary.main',
-            color: 'white',
+            color: 'common.white',
             py: 2.5
           }}
         >
@@ -1088,7 +1088,7 @@ const OrdenesServicioPage: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, descripcionTrabajo: e.target.value })}
                     required
                     placeholder="Describa el trabajo a realizar de forma detallada..."
-                    sx={{ bgcolor: 'white' }}
+                    sx={{ bgcolor: 'background.paper' }}
                   />
 
                   <TextField
@@ -1099,7 +1099,7 @@ const OrdenesServicioPage: React.FC = () => {
                     value={formData.observaciones}
                     onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
                     placeholder="Notas adicionales, requerimientos especiales..."
-                    sx={{ bgcolor: 'white' }}
+                    sx={{ bgcolor: 'background.paper' }}
                   />
                 </Stack>
               </Paper>
@@ -1151,7 +1151,7 @@ const OrdenesServicioPage: React.FC = () => {
                         ? 'Cargando…'
                         : 'El cliente no tiene equipos disponibles para service'
                     }
-                    sx={{ mb: 2, bgcolor: 'white' }}
+                    sx={{ mb: 2, bgcolor: 'background.paper' }}
                     renderInput={(params) => (
                       <TextField
                         {...params}
@@ -1248,7 +1248,7 @@ const OrdenesServicioPage: React.FC = () => {
                           sx={{
                             px: 1.5,
                             py: 1,
-                            bgcolor: 'white',
+                            bgcolor: 'background.paper',
                             borderRadius: 1,
                             border: '1px solid',
                             borderColor: 'grey.300',
@@ -1287,7 +1287,7 @@ const OrdenesServicioPage: React.FC = () => {
                   onChange={(e) => setDescripcionFalla(e.target.value)}
                   placeholder="Describa el problema o falla reportada..."
                   size="small"
-                  sx={{ bgcolor: 'white' }}
+                  sx={{ bgcolor: 'background.paper' }}
                   disabled={equiposOrden.length === 0}
                   helperText={equiposOrden.length === 0 ? 'Agregue al menos un equipo para ingresar la falla' : undefined}
                 />
@@ -1308,7 +1308,7 @@ const OrdenesServicioPage: React.FC = () => {
                       onChange={(e) => setFormData({ ...formData, fechaEstimada: e.target.value })}
                       InputLabelProps={{ shrink: true }}
                       helperText="Opcional - Fecha estimada para completar el trabajo"
-                      sx={{ bgcolor: 'white' }}
+                      sx={{ bgcolor: 'background.paper' }}
                     />
                   </Grid>
 
@@ -1323,7 +1323,7 @@ const OrdenesServicioPage: React.FC = () => {
                           ...formData,
                           estado: e.target.value as typeof formData.estado
                         })}
-                        sx={{ bgcolor: 'white' }}
+                        sx={{ bgcolor: 'background.paper' }}
                       >
                         <MenuItem value="PENDIENTE">⏳ Pendiente</MenuItem>
                         <MenuItem value="EN_PROCESO">🔧 En Proceso</MenuItem>
@@ -1387,6 +1387,7 @@ const OrdenesServicioPage: React.FC = () => {
         PaperProps={{
           sx: {
             borderRadius: 3,
+            // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa del dialog, no es separación visual
             boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
           },
         }}

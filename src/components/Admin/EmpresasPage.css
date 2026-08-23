@@ -12,19 +12,19 @@
 .page-header h1 {
   margin: 0;
   font-size: 1.75rem;
-  color: #333;
+  color: var(--mui-palette-text-primary);
 }
 
 .loading {
   text-align: center;
   padding: 40px;
   font-size: 1.1rem;
-  color: #666;
+  color: var(--mui-palette-text-secondary);
 }
 
 .table-responsive {
   overflow-x: auto;
-  background: white;
+  background: var(--mui-palette-background-paper);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -35,23 +35,23 @@
 }
 
 .table thead {
-  background-color: #f8f9fa;
+  background-color: var(--mui-palette-background-default);
 }
 
 .table th,
 .table td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--mui-palette-divider);
 }
 
 .table th {
   font-weight: 600;
-  color: #495057;
+  color: var(--mui-palette-text-secondary);
 }
 
 .table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: var(--mui-palette-action-hover);
 }
 
 .actions {
@@ -74,57 +74,57 @@
 }
 
 .btn-primary {
-  background-color: #007bff;
-  color: white;
+  background-color: var(--mui-palette-primary-main);
+  color: var(--mui-palette-primary-contrastText);
 }
 
 .btn-primary:hover {
-  background-color: #0056b3;
+  background-color: var(--mui-palette-primary-dark);
 }
 
 .btn-info {
-  background-color: #17a2b8;
-  color: white;
+  background-color: var(--mui-palette-info-main);
+  color: var(--mui-palette-info-contrastText);
 }
 
 .btn-info:hover {
-  background-color: #117a8b;
+  background-color: var(--mui-palette-info-dark);
 }
 
 .btn-success {
-  background-color: #28a745;
-  color: white;
+  background-color: var(--mui-palette-success-main);
+  color: var(--mui-palette-success-contrastText);
 }
 
 .btn-success:hover {
-  background-color: #1e7e34;
+  background-color: var(--mui-palette-success-dark);
 }
 
 .btn-warning {
-  background-color: #ffc107;
-  color: #212529;
+  background-color: var(--mui-palette-warning-main);
+  color: var(--mui-palette-warning-contrastText);
 }
 
 .btn-warning:hover {
-  background-color: #e0a800;
+  background-color: var(--mui-palette-warning-dark);
 }
 
 .btn-danger {
-  background-color: #dc3545;
-  color: white;
+  background-color: var(--mui-palette-error-main);
+  color: var(--mui-palette-error-contrastText);
 }
 
 .btn-danger:hover {
-  background-color: #bd2130;
+  background-color: var(--mui-palette-error-dark);
 }
 
 .btn-secondary {
-  background-color: #6c757d;
-  color: white;
+  background-color: var(--mui-palette-grey-600);
+  color: var(--mui-palette-common-white);
 }
 
 .btn-secondary:hover {
-  background-color: #545b62;
+  background-color: var(--mui-palette-grey-700);
 }
 
 .badge {
@@ -135,23 +135,23 @@
 }
 
 .badge-success {
-  background-color: #d4edda;
-  color: #155724;
+  background-color: var(--mui-palette-status-success-bg);
+  color: var(--mui-palette-status-success-fg);
 }
 
 .badge-warning {
-  background-color: #fff3cd;
-  color: #856404;
+  background-color: var(--mui-palette-status-warning-bg);
+  color: var(--mui-palette-status-warning-fg);
 }
 
 .badge-danger {
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: var(--mui-palette-status-danger-bg);
+  color: var(--mui-palette-status-danger-fg);
 }
 
 .badge-secondary {
-  background-color: #e2e3e5;
-  color: #383d41;
+  background-color: var(--mui-palette-status-neutral-bg);
+  color: var(--mui-palette-status-neutral-fg);
 }
 
 .alert {
@@ -161,9 +161,9 @@
 }
 
 .alert-danger {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background-color: var(--mui-palette-status-danger-bg);
+  color: var(--mui-palette-status-danger-fg);
+  border: 1px solid var(--mui-palette-divider);
 }
 
 /* Modal Styles */
@@ -181,7 +181,7 @@
 }
 
 .modal-content {
-  background: white;
+  background: var(--mui-palette-background-paper);
   border-radius: 8px;
   max-width: 600px;
   width: 90%;
@@ -195,20 +195,20 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--mui-palette-divider);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: #333;
+  color: var(--mui-palette-text-primary);
 }
 
 .close-button {
   background: none;
   border: none;
   font-size: 2rem;
-  color: #999;
+  color: var(--mui-palette-text-disabled);
   cursor: pointer;
   padding: 0;
   width: 30px;
@@ -217,7 +217,7 @@
 }
 
 .close-button:hover {
-  color: #333;
+  color: var(--mui-palette-text-primary);
 }
 
 .modal-content form {
@@ -232,20 +232,20 @@
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
-  color: #555;
+  color: var(--mui-palette-text-secondary);
 }
 
 .form-control {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--mui-palette-divider);
   border-radius: 4px;
   font-size: 1rem;
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--mui-palette-primary-main);
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
@@ -254,8 +254,8 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 15px 20px;
-  border-top: 1px solid #dee2e6;
-  background-color: #f8f9fa;
+  border-top: 1px solid var(--mui-palette-divider);
+  background-color: var(--mui-palette-background-default);
 }
 
 .icon-plus::before {

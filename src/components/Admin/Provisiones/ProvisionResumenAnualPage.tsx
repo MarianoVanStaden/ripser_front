@@ -36,6 +36,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { provisionApi } from '../../../api/services/provisionApi';
+import { CHART_SERIES, CHART_AXIS, CHART_GRID, CHART_TOOLTIP_BG, CHART_TOOLTIP_TEXT } from '../../../theme/chartTokens';
 import { tipoProvisionApi } from '../../../api/services/tipoProvisionApi';
 import type { ProvisionMensualDTO, TipoProvisionDTO } from '../../../types';
 
@@ -216,18 +217,19 @@ export default function ProvisionResumenAnualPage() {
             </Typography>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartData} margin={{ top: 4, right: 16, left: 16, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis tickFormatter={(v) => `$${new Intl.NumberFormat('es-AR', { notation: 'compact' }).format(v)}`} />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                <XAxis dataKey="mes" tick={{ fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                <YAxis tickFormatter={(v) => `$${new Intl.NumberFormat('es-AR', { notation: 'compact' }).format(v)}`} tick={{ fill: CHART_AXIS }} stroke={CHART_AXIS} />
                 <RechartsTooltip
+                  contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }}
                   formatter={(value, name) => [
                     `$${fmt(typeof value === 'number' ? value : Number(value) || 0)}`,
                     name === 'provisionado' ? 'Provisionado' : 'Pagado',
                   ]}
                 />
                 <Legend formatter={(value) => value === 'provisionado' ? 'Provisionado' : 'Pagado'} />
-                <Bar dataKey="provisionado" fill="#1976d2" name="provisionado" />
-                <Bar dataKey="pagado" fill="#2e7d32" name="pagado" />
+                <Bar dataKey="provisionado" fill={CHART_SERIES[0]} name="provisionado" />
+                <Bar dataKey="pagado" fill={CHART_SERIES[2]} name="pagado" />
               </BarChart>
             </ResponsiveContainer>
           </Paper>

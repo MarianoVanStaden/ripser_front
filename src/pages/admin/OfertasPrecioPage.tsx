@@ -522,7 +522,7 @@ const OfertasPrecioPage: React.FC = () => {
               <Typography variant="body1" gutterBottom>
                 Está a punto de eliminar la oferta:
               </Typography>
-              <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+              <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
                   {ofertaToDelete.referenciaNombre}
                 </Typography>

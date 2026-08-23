@@ -5,7 +5,7 @@
   padding: 8px 16px;
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  color: white;
+  color: var(--mui-palette-common-white);
 }
 
 .tenant-badge {
@@ -19,8 +19,8 @@
 }
 
 .tenant-badge.super-admin {
-  background-color: #dc3545;
-  color: white;
+  background-color: var(--mui-palette-error-main);
+  color: var(--mui-palette-error-contrastText);
 }
 
 .tenant-empresa,
