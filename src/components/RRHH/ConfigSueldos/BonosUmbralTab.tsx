@@ -127,10 +127,10 @@ const BonosUmbralTab: React.FC<Props> = ({ variant }) => {
             <Table sx={{ minWidth: 600 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Categoría</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Umbral (unidades)</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Monto</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Acciones</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Categoría</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Umbral (unidades)</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Monto</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -166,7 +166,7 @@ const BonosUmbralTab: React.FC<Props> = ({ variant }) => {
 
       {/* Form Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
+        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>
           {editing ? `Editar umbral` : `Nuevo umbral de bono ${label.toLowerCase()}`}
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
@@ -210,7 +210,7 @@ const BonosUmbralTab: React.FC<Props> = ({ variant }) => {
 
       {/* Delete Dialog */}
       <Dialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ bgcolor: 'error.main', color: 'white' }}>Eliminar umbral</DialogTitle>
+        <DialogTitle sx={{ bgcolor: 'error.main', color: 'error.contrastText' }}>Eliminar umbral</DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           <Typography>¿Eliminar este umbral?</Typography>
         </DialogContent>

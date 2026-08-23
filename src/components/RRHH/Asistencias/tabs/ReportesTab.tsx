@@ -63,6 +63,7 @@ import {
 } from 'recharts';
 import dayjs from 'dayjs';
 import type { Empleado, Licencia, RegistroAsistencia } from '../../../../types';
+import { CHART_SERIES } from '../../../../theme/chartTokens';
 import { buildLicenciaRows, getEmpleadoNombre } from '../utils';
 import {
   exportAsistenciasToExcel,
@@ -128,6 +129,13 @@ const colorLicencia = (tipo?: string): 'primary' | 'error' | 'warning' | 'info' 
 };
 
 const DIAS_SEMANA_LABEL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+// Colores de series con semántica de estado (CSS vars → siguen el esquema activo).
+const SERIE_SUCCESS = 'var(--mui-palette-status-success-fg)';
+const SERIE_WARNING = 'var(--mui-palette-status-warning-fg)';
+const SERIE_DANGER = 'var(--mui-palette-status-danger-fg)';
+const SERIE_INFO = 'var(--mui-palette-status-info-fg)';
+const SERIE_PROCESS = 'var(--mui-palette-status-process-fg)';
 
 interface DiaSemanaStats {
   dia: string;
@@ -260,12 +268,12 @@ const ReportesTab: React.FC<Props> = ({
     {
       name: 'Presente',
       value: reportFilteredAsistencias.filter((a) => !findExcepcion(a)).length,
-      color: '#4caf50',
+      color: SERIE_SUCCESS,
     },
-    { name: 'Tardanza', value: reportStats.tardanzas, color: '#ff9800' },
-    { name: 'Inasistencia', value: reportStats.inasistencias, color: '#f44336' },
-    { name: 'Horas Extras', value: horasExtrasEnPeriodo, color: '#2196f3' },
-    { name: 'En Licencia', value: diasEnLicencia, color: '#9c27b0' },
+    { name: 'Tardanza', value: reportStats.tardanzas, color: SERIE_WARNING },
+    { name: 'Inasistencia', value: reportStats.inasistencias, color: SERIE_DANGER },
+    { name: 'Horas Extras', value: horasExtrasEnPeriodo, color: SERIE_INFO },
+    { name: 'En Licencia', value: diasEnLicencia, color: SERIE_PROCESS },
   ].filter((item) => item.value > 0);
 
   const horasPorEmpleado: Array<{ nombre: string; horas: number; extras: number }> = reportEmpleadoFilter
@@ -569,10 +577,10 @@ const ReportesTab: React.FC<Props> = ({
                     <YAxis />
                     <RechartsTooltip />
                     <Legend />
-                    <Bar dataKey="horas" fill="#4caf50" name="Horas Totales" />
-                    <Bar dataKey="promedio" fill="#2196f3" name="Promedio Diario" />
-                    <Bar dataKey="tardanzas" fill="#ff9800" name="Tardanzas" />
-                    <Bar dataKey="inasistencias" fill="#f44336" name="Inasistencias" />
+                    <Bar dataKey="horas" fill={SERIE_SUCCESS} name="Horas Totales" />
+                    <Bar dataKey="promedio" fill={SERIE_INFO} name="Promedio Diario" />
+                    <Bar dataKey="tardanzas" fill={SERIE_WARNING} name="Tardanzas" />
+                    <Bar dataKey="inasistencias" fill={SERIE_DANGER} name="Inasistencias" />
                   </BarChart>
                 </ResponsiveContainer>
 
@@ -863,7 +871,7 @@ const ReportesTab: React.FC<Props> = ({
                       labelLine={false}
                       label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
                       outerRadius={80}
-                      fill="#8884d8"
+                      fill={CHART_SERIES[0]}
                       dataKey="value"
                     >
                       {estadosDistribucion.map((entry, index) => (
@@ -895,14 +903,14 @@ const ReportesTab: React.FC<Props> = ({
                     <Line
                       type="monotone"
                       dataKey="horas"
-                      stroke="#4caf50"
+                      stroke={SERIE_SUCCESS}
                       name="Horas Totales"
                       strokeWidth={2}
                     />
                     <Line
                       type="monotone"
                       dataKey="promedio"
-                      stroke="#2196f3"
+                      stroke={SERIE_INFO}
                       name="Promedio"
                       strokeWidth={2}
                       strokeDasharray="5 5"
@@ -928,8 +936,8 @@ const ReportesTab: React.FC<Props> = ({
                       <YAxis />
                       <RechartsTooltip />
                       <Legend />
-                      <Bar dataKey="horas" fill="#4caf50" name="Horas Normales" />
-                      <Bar dataKey="extras" fill="#2196f3" name="Horas Extras" />
+                      <Bar dataKey="horas" fill={SERIE_SUCCESS} name="Horas Normales" />
+                      <Bar dataKey="extras" fill={SERIE_INFO} name="Horas Extras" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -951,9 +959,9 @@ const ReportesTab: React.FC<Props> = ({
                     <YAxis />
                     <RechartsTooltip />
                     <Legend />
-                    <Bar dataKey="asistencias" fill="#4caf50" name="Asistencias" />
-                    <Bar dataKey="tardanzas" fill="#ff9800" name="Tardanzas" />
-                    <Bar dataKey="inasistencias" fill="#f44336" name="Inasistencias" />
+                    <Bar dataKey="asistencias" fill={SERIE_SUCCESS} name="Asistencias" />
+                    <Bar dataKey="tardanzas" fill={SERIE_WARNING} name="Tardanzas" />
+                    <Bar dataKey="inasistencias" fill={SERIE_DANGER} name="Inasistencias" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -978,7 +986,7 @@ const ReportesTab: React.FC<Props> = ({
                       dataKey={(data: DiaSemanaStats) =>
                         data.asistencias > 0 ? Number((data.horas / data.asistencias).toFixed(2)) : 0
                       }
-                      fill="#2196f3"
+                      fill={SERIE_INFO}
                       name="Horas Promedio"
                     />
                   </BarChart>

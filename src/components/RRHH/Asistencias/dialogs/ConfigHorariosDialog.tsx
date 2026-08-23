@@ -76,7 +76,7 @@ const ConfigHorariosDialog: React.FC<Props> = ({
               </Alert>
 
               {DIAS_SEMANA.map((dia) => (
-                <Box key={dia} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2 }}>
+                <Box key={dia} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
                   <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} sm={3}>
                       <FormControlLabel

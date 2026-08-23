@@ -37,6 +37,7 @@ import {
 } from 'recharts';
 import dayjs from 'dayjs';
 import { sancionApi } from '../../../api/services/sancionApi';
+import { chartSerie, CHART_GRID } from '../../../theme/chartTokens';
 import {
   NIVEL_GRAVEDAD_COLOR,
   TIPO_SANCION_LABEL,
@@ -44,17 +45,14 @@ import {
   type TipoSancion,
 } from '../../../types/sancion.types';
 
+// Severidad creciente → roles de estado (CSS vars, válidas como fill/stroke SVG).
+// DESPIDO usa el color de texto fuerte (era el rojo más oscuro de la escala).
 const TIPO_COLORS: Record<TipoSancion, string> = {
-  LLAMADA_ATENCION_VERBAL: '#29b6f6',
-  APERCIBIMIENTO_ESCRITO: '#ffa726',
-  SUSPENSION: '#ef5350',
-  DESPIDO: '#b71c1c',
+  LLAMADA_ATENCION_VERBAL: 'var(--mui-palette-status-info-fg)',
+  APERCIBIMIENTO_ESCRITO: 'var(--mui-palette-status-warning-fg)',
+  SUSPENSION: 'var(--mui-palette-status-danger-fg)',
+  DESPIDO: 'var(--mui-palette-text-primary)',
 };
-
-const SECTOR_PALETTE = [
-  '#1976d2', '#7b1fa2', '#388e3c', '#f57c00', '#0288d1',
-  '#c2185b', '#5d4037', '#455a64', '#00897b', '#fbc02d',
-];
 
 interface KpiCardProps {
   icon: React.ReactNode;
@@ -216,7 +214,7 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
                   <Pie
                     data={distTipoChart} dataKey="value" nameKey="name"
                     cx="50%" cy="50%" innerRadius={55} outerRadius={100}
-                    paddingAngle={2} stroke="#fff" strokeWidth={2}
+                    paddingAngle={2} stroke="var(--mui-palette-background-paper)" strokeWidth={2}
                   >
                     {distTipoChart.map((entry) => (
                       <Cell key={entry.tipo} fill={TIPO_COLORS[entry.tipo]} />
@@ -239,13 +237,13 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
             ) : (
               <ResponsiveContainer width="100%" height="90%">
                 <BarChart data={sectorChart} layout="vertical" margin={{ left: 20, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
                   <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
                   <YAxis dataKey="sector" type="category" tick={{ fontSize: 11 }} width={130} />
                   <Tooltip />
                   <Bar dataKey="count" radius={[0, 6, 6, 0]}>
                     {sectorChart.map((_, idx) => (
-                      <Cell key={idx} fill={SECTOR_PALETTE[idx % SECTOR_PALETTE.length]} />
+                      <Cell key={idx} fill={chartSerie(idx)} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -264,7 +262,7 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
             </Typography>
             <ResponsiveContainer width="100%" height="90%">
               <LineChart data={evolucionChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip />
@@ -272,7 +270,7 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
                 <Line type="monotone" dataKey="Llamadas" stroke={TIPO_COLORS.LLAMADA_ATENCION_VERBAL} strokeWidth={2} />
                 <Line type="monotone" dataKey="Apercibimientos" stroke={TIPO_COLORS.APERCIBIMIENTO_ESCRITO} strokeWidth={2} />
                 <Line type="monotone" dataKey="Suspensiones" stroke={TIPO_COLORS.SUSPENSION} strokeWidth={2} />
-                <Line type="monotone" dataKey="Total" stroke="#222" strokeWidth={3} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="Total" stroke="var(--mui-palette-text-primary)" strokeWidth={3} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </Paper>
@@ -300,7 +298,7 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
                       }}>
                         <Box sx={{
                           width: `${pct}%`, height: '100%',
-                          background: 'linear-gradient(90deg, #1976d2, #42a5f5)',
+                          background: 'linear-gradient(90deg, var(--mui-palette-primary-main), var(--mui-palette-primary-light))',
                         }} />
                       </Box>
                     </Box>

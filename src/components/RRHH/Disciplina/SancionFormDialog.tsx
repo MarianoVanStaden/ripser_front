@@ -146,7 +146,7 @@ const SancionFormDialog: React.FC<SancionFormDialogProps> = ({
       fullScreen={isMobile}
       PaperProps={{ sx: { borderRadius: isMobile ? 0 : 2 } }}
     >
-      <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', py: 2.5 }}>
+      <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', py: 2.5 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
           <GavelIcon />
           <Typography variant="h5" fontWeight={600}>

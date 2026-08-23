@@ -378,7 +378,7 @@ const AsistenciaTerminalPage: React.FC = () => {
             <TableContainer>
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                  <TableRow sx={{ backgroundColor: 'background.default' }}>
                     <TableCell>EnNo</TableCell>
                     <TableCell>Nombre en terminal</TableCell>
                     <TableCell align="right">Marcas</TableCell>
@@ -465,7 +465,7 @@ const AsistenciaTerminalPage: React.FC = () => {
         <TableContainer>
           <Table size="small">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+              <TableRow sx={{ backgroundColor: 'background.default' }}>
                 <TableCell>Empleado</TableCell>
                 <TableCell align="center">Código</TableCell>
                 <TableCell align="right">Días</TableCell>
@@ -542,7 +542,7 @@ const AsistenciaTerminalPage: React.FC = () => {
         <TableContainer>
           <Table size="small">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+              <TableRow sx={{ backgroundColor: 'background.default' }}>
                 <TableCell>Empleado</TableCell>
                 <TableCell align="center">Fecha</TableCell>
                 <TableCell align="center">Tipo</TableCell>

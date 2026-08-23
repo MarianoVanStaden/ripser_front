@@ -17,7 +17,6 @@ import {
   Divider,
   useTheme,
   useMediaQuery,
-  alpha,
 } from '@mui/material';
 import {
   PeopleAlt as PeopleAltIcon,
@@ -60,13 +59,16 @@ import type {
 } from '../../types/dashboardRRHH.types';
 import { useAuth } from '../../context/AuthContext';
 import { getFirstName } from '../../utils/userDisplay';
+import { CHART_SERIES, chartSerie, CHART_AXIS, CHART_GRID } from '../../theme/chartTokens';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Paleta corporativa — colores derivados del teal/azul del producto.
-// ─────────────────────────────────────────────────────────────────────────────
-const PRIMARY = '#00B8A9';
-const ACCENT = '#212A3E';
-const PIE_COLORS = ['#00B8A9', '#3F72AF', '#F08A5D', '#B83B5E', '#6A6B83', '#9CB4CC', '#F9D5A7', '#F2B6C1'];
+// Velos del color primario (CSS vars → siguen el esquema activo)
+/* eslint-disable ripser/no-literal-colors -- alpha sobre token del theme vía mainChannel, no es color hardcodeado */
+const PRIMARY_FADE_04 = 'rgba(var(--mui-palette-primary-mainChannel) / 0.04)';
+const PRIMARY_FADE_10 = 'rgba(var(--mui-palette-primary-mainChannel) / 0.1)';
+const PRIMARY_FADE_12 = 'rgba(var(--mui-palette-primary-mainChannel) / 0.12)';
+const PRIMARY_FADE_15 = 'rgba(var(--mui-palette-primary-mainChannel) / 0.15)';
+const PRIMARY_FADE_18 = 'rgba(var(--mui-palette-primary-mainChannel) / 0.18)';
+/* eslint-enable ripser/no-literal-colors */
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-componentes
@@ -77,11 +79,14 @@ interface KpiCardProps {
   value: string | number;
   hint?: string;
   icon: React.ReactNode;
+  /** Token de paleta (sx) para el ícono del avatar. */
   accentColor: string;
+  /** Token de paleta (sx) para el fondo suave del avatar. */
+  accentBg: string;
   loading?: boolean;
 }
 
-const KpiCard: React.FC<KpiCardProps> = ({ label, value, hint, icon, accentColor, loading }) => (
+const KpiCard: React.FC<KpiCardProps> = ({ label, value, hint, icon, accentColor, accentBg, loading }) => (
   <Card
     elevation={0}
     sx={{
@@ -92,6 +97,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, hint, icon, accentColor
       transition: 'transform 180ms ease, box-shadow 180ms ease',
       '&:hover': {
         transform: 'translateY(-2px)',
+        // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa de hover; la card ya tiene borde
         boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)',
       },
     }}
@@ -100,7 +106,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, hint, icon, accentColor
       <Stack direction="row" alignItems="flex-start" spacing={2}>
         <Avatar
           sx={{
-            bgcolor: alpha(accentColor, 0.12),
+            bgcolor: accentBg,
             color: accentColor,
             width: 48,
             height: 48,
@@ -115,7 +121,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, hint, icon, accentColor
           {loading ? (
             <Skeleton variant="text" width={80} height={36} />
           ) : (
-            <Typography variant="h4" sx={{ fontWeight: 700, mt: 0.25, color: ACCENT, lineHeight: 1.2 }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, mt: 0.25, color: 'text.primary', lineHeight: 1.2 }}>
               {value}
             </Typography>
           )}
@@ -153,7 +159,7 @@ const SectionCard: React.FC<SectionCardProps> = ({ title, subtitle, action, chil
     <CardContent sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column', minHeight }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: ACCENT }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
             {title}
           </Typography>
           {subtitle && (
@@ -231,11 +237,11 @@ const AsistenciaChart: React.FC<{ data: PuntoSerieDTO[] }> = ({ data }) => {
   return (
     <ResponsiveContainer width="100%" height={240}>
       <BarChart data={data} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#eef0f3" vertical={false} />
-        <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#94a3b8" />
-        <ChartTooltip cursor={{ fill: alpha(PRIMARY, 0.08) }} />
-        <Bar dataKey="valor" name="Asistentes" fill={PRIMARY} radius={[6, 6, 0, 0]} />
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+        <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke={CHART_AXIS} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke={CHART_AXIS} />
+        <ChartTooltip cursor={{ fill: 'var(--mui-palette-action-hover)' }} />
+        <Bar dataKey="valor" name="Asistentes" fill={CHART_SERIES[0]} radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -248,13 +254,13 @@ const RotacionChart: React.FC<{ data: TendenciaMensualDTO[] }> = ({ data }) => {
   return (
     <ResponsiveContainer width="100%" height={240}>
       <LineChart data={data} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#eef0f3" vertical={false} />
-        <XAxis dataKey="mes" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#94a3b8" />
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+        <XAxis dataKey="mes" tick={{ fontSize: 11 }} stroke={CHART_AXIS} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke={CHART_AXIS} />
         <ChartTooltip />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Line type="monotone" dataKey="altas" name="Altas" stroke={PRIMARY} strokeWidth={2.5} dot={{ r: 3 }} />
-        <Line type="monotone" dataKey="bajas" name="Bajas" stroke="#F08A5D" strokeWidth={2.5} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="altas" name="Altas" stroke="var(--mui-palette-status-success-fg)" strokeWidth={2.5} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="bajas" name="Bajas" stroke="var(--mui-palette-status-danger-fg)" strokeWidth={2.5} dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -276,7 +282,7 @@ const DistribucionChart: React.FC<{ data: DistribucionDTO[] }> = ({ data }) => {
           paddingAngle={2}
         >
           {data.map((_, idx) => (
-            <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+            <Cell key={idx} fill={chartSerie(idx)} />
           ))}
         </Pie>
         <ChartTooltip />
@@ -293,11 +299,11 @@ const HorasTrabajadasChart: React.FC<{ data: PuntoSerieDTO[] }> = ({ data }) => 
   return (
     <ResponsiveContainer width="100%" height={240}>
       <BarChart data={data} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#eef0f3" vertical={false} />
-        <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#94a3b8" />
-        <ChartTooltip cursor={{ fill: alpha(ACCENT, 0.06) }} />
-        <Bar dataKey="valor" name="Horas" fill={ACCENT} radius={[6, 6, 0, 0]} />
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+        <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke={CHART_AXIS} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke={CHART_AXIS} />
+        <ChartTooltip cursor={{ fill: 'var(--mui-palette-action-hover)' }} />
+        <Bar dataKey="valor" name="Horas" fill={CHART_SERIES[1]} radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -348,7 +354,7 @@ const DashboardRRHH: React.FC = () => {
       sx={{ mb: 3 }}
     >
       <Box>
-        <Typography variant="h4" sx={{ fontWeight: 700, color: ACCENT }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
           Recursos Humanos
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -361,9 +367,9 @@ const DashboardRRHH: React.FC = () => {
             onClick={() => fetchData(true)}
             disabled={refreshing}
             sx={{
-              bgcolor: alpha(PRIMARY, 0.1),
-              color: PRIMARY,
-              '&:hover': { bgcolor: alpha(PRIMARY, 0.18) },
+              bgcolor: PRIMARY_FADE_10,
+              color: 'primary.main',
+              '&:hover': { bgcolor: PRIMARY_FADE_18 },
             }}
           >
             <RefreshIcon sx={{ transform: refreshing ? 'rotate(360deg)' : 'none', transition: 'transform 600ms' }} />
@@ -380,51 +386,58 @@ const DashboardRRHH: React.FC = () => {
       value: data?.totalEmpleados ?? 0,
       hint: data ? `${data.empleadosActivos} activos / ${data.empleadosInactivos} inactivos` : undefined,
       icon: <PeopleAltIcon />,
-      accentColor: PRIMARY,
+      accentColor: 'primary.main',
+      accentBg: PRIMARY_FADE_12,
     },
     {
       label: 'Activos',
       value: data?.empleadosActivos ?? 0,
       hint: data?.empleadosEnLicencia ? `${data.empleadosEnLicencia} en licencia` : undefined,
       icon: <ActiveIcon />,
-      accentColor: '#2e7d32',
+      accentColor: 'status.success.fg',
+      accentBg: 'status.success.bg',
     },
     {
       label: 'Presentismo de hoy',
       value: data ? `${data.porcentajePresentismoHoy.toFixed(1)}%` : '—',
       hint: data ? `${data.presentismoHoy} / ${data.empleadosEsperadosHoy} esperados` : undefined,
       icon: <PresentismoIcon />,
-      accentColor: '#3F72AF',
+      accentColor: 'status.info.fg',
+      accentBg: 'status.info.bg',
     },
     {
       label: 'Ausencias / licencias',
       value: data?.ausenciasHoy ?? 0,
       hint: 'Activas hoy',
       icon: <EventBusyIcon />,
-      accentColor: '#F08A5D',
+      accentColor: 'status.warning.fg',
+      accentBg: 'status.warning.bg',
     },
     {
       label: 'Documentos por vencer',
       value: data?.documentosPorVencer ?? 0,
       hint: 'Próximos 30 días',
       icon: <DocumentIcon />,
-      accentColor: '#B83B5E',
+      accentColor: 'status.danger.fg',
+      accentBg: 'status.danger.bg',
     },
     {
       label: 'Cumpleaños del mes',
       value: data?.cumpleanosMes ?? 0,
       hint: 'Empleados activos',
       icon: <CakeIcon />,
-      accentColor: '#9C27B0',
+      accentColor: 'tertiary.main',
+      // eslint-disable-next-line ripser/no-literal-colors -- alpha sobre token del theme vía mainChannel
+      accentBg: 'rgba(var(--mui-palette-tertiary-mainChannel) / 0.12)',
     },
   ];
 
   // ── Accesos rápidos ───────────────────────────────────────────────────────
   const quickActions = [
-    { label: 'Alta empleado', icon: <PersonAddIcon />, to: '/rrhh/empleados', color: PRIMARY },
-    { label: 'Gestionar licencias', icon: <BeachAccessIcon />, to: '/rrhh/licencias', color: '#F08A5D' },
-    { label: 'Ver legajos', icon: <FolderIcon />, to: '/rrhh/legajos', color: '#3F72AF' },
-    { label: 'Generar reportes', icon: <AssessmentIcon />, to: '/rrhh/asistencia', color: ACCENT },
+    { label: 'Alta empleado', icon: <PersonAddIcon />, to: '/rrhh/empleados', color: 'var(--mui-palette-primary-main)' },
+    { label: 'Gestionar licencias', icon: <BeachAccessIcon />, to: '/rrhh/licencias', color: 'var(--mui-palette-status-warning-fg)' },
+    { label: 'Ver legajos', icon: <FolderIcon />, to: '/rrhh/legajos', color: 'var(--mui-palette-status-info-fg)' },
+    { label: 'Generar reportes', icon: <AssessmentIcon />, to: '/rrhh/asistencia', color: 'var(--mui-palette-text-primary)' },
   ];
 
   return (
@@ -462,7 +475,7 @@ const DashboardRRHH: React.FC = () => {
           border: '1px solid',
           borderColor: 'divider',
           mb: 3,
-          background: `linear-gradient(135deg, ${alpha(PRIMARY, 0.04)}, transparent)`,
+          background: `linear-gradient(135deg, ${PRIMARY_FADE_04}, transparent)`,
         }}
       >
         <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
@@ -481,13 +494,13 @@ const DashboardRRHH: React.FC = () => {
                     py: 1.25,
                     justifyContent: 'flex-start',
                     borderRadius: 2,
-                    borderColor: alpha(action.color, 0.3),
+                    borderColor: `color-mix(in srgb, ${action.color} 30%, transparent)`,
                     color: action.color,
                     textTransform: 'none',
                     fontWeight: 600,
                     '&:hover': {
                       borderColor: action.color,
-                      bgcolor: alpha(action.color, 0.06),
+                      bgcolor: 'action.hover',
                     },
                   }}
                 >
@@ -577,15 +590,15 @@ const DashboardRRHH: React.FC = () => {
                     sx={{
                       py: 1.25,
                       cursor: 'pointer',
-                      '&:hover': { bgcolor: alpha(PRIMARY, 0.04) },
+                      '&:hover': { bgcolor: 'action.hover' },
                     }}
                     onClick={() => navigate(`/rrhh/empleados`)}
                   >
-                    <Avatar sx={{ width: 36, height: 36, bgcolor: alpha(PRIMARY, 0.15), color: PRIMARY, fontSize: 14 }}>
+                    <Avatar sx={{ width: 36, height: 36, bgcolor: PRIMARY_FADE_15, color: 'primary.main', fontSize: 14 }}>
                       {emp.nombreCompleto.trim().charAt(0).toUpperCase()}
                     </Avatar>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: ACCENT }} noWrap>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }} noWrap>
                         {emp.nombreCompleto.trim()}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" noWrap>
@@ -623,11 +636,11 @@ const DashboardRRHH: React.FC = () => {
               <Stack divider={<Divider flexItem />}>
                 {data.solicitudesPendientes.slice(0, 5).map(s => (
                   <Stack key={s.id} direction="row" alignItems="center" spacing={1.5} sx={{ py: 1.25 }}>
-                    <Avatar sx={{ width: 36, height: 36, bgcolor: alpha('#F08A5D', 0.15), color: '#F08A5D' }}>
+                    <Avatar sx={{ width: 36, height: 36, bgcolor: 'status.warning.bg', color: 'status.warning.fg' }}>
                       <BeachAccessIcon fontSize="small" />
                     </Avatar>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: ACCENT }} noWrap>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }} noWrap>
                         {s.empleado}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" noWrap>
@@ -655,11 +668,14 @@ const DashboardRRHH: React.FC = () => {
               <Stack divider={<Divider flexItem />}>
                 {data.proximosCumpleanos.map(c => (
                   <Stack key={c.id} direction="row" alignItems="center" spacing={1.5} sx={{ py: 1.25 }}>
-                    <Avatar sx={{ width: 36, height: 36, bgcolor: alpha('#9C27B0', 0.15), color: '#9C27B0' }}>
+                    <Avatar
+                      // eslint-disable-next-line ripser/no-literal-colors -- alpha sobre token del theme vía mainChannel
+                      sx={{ width: 36, height: 36, bgcolor: 'rgba(var(--mui-palette-tertiary-mainChannel) / 0.15)', color: 'tertiary.main' }}
+                    >
                       <CakeIcon fontSize="small" />
                     </Avatar>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: ACCENT }} noWrap>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }} noWrap>
                         {c.nombreCompleto}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">

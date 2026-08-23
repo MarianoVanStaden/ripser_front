@@ -356,14 +356,14 @@ const SueldosPage: React.FC = () => {
             <Table sx={{ minWidth: { xs: 1000, md: 'auto' } }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Categoría</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Período</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Bruto</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Descuentos</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Neto</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Estado Pago</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Acciones</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Empleado</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Categoría</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Período</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Bruto</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Descuentos</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Neto</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Estado Pago</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -425,7 +425,7 @@ const SueldosPage: React.FC = () => {
                           </Tooltip>
                         )}
                         <Tooltip title="Descargar Recibo PDF">
-                          <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleExportarRecibo(sueldo)}>
+                          <IconButton size="small" sx={{ color: 'error.main' }} onClick={() => handleExportarRecibo(sueldo)}>
                             <PictureAsPdfIcon />
                           </IconButton>
                         </Tooltip>
@@ -454,7 +454,7 @@ const SueldosPage: React.FC = () => {
       <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (
           <>
-            <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
+            <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>
               <Box display="flex" alignItems="center" gap={2}>
                 <MoneyIcon />
                 <Typography variant="h6" fontWeight={600}>
@@ -587,7 +587,7 @@ const SueldosPage: React.FC = () => {
 
       {/* Delete Confirmation */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
-        <DialogTitle sx={{ bgcolor: 'error.main', color: 'white' }}>Confirmar Eliminación</DialogTitle>
+        <DialogTitle sx={{ bgcolor: 'error.main', color: 'error.contrastText' }}>Confirmar Eliminación</DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           <Typography variant="body1">¿Está seguro que desea eliminar este registro de sueldo?</Typography>
           {selected && (

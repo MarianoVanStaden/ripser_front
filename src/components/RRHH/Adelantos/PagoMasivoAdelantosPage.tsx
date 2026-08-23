@@ -349,19 +349,19 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
             <Table size="small" sx={{ minWidth: 700 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white' }} padding="checkbox">
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }} padding="checkbox">
                     <Checkbox
-                      sx={{ color: 'white' }}
+                      sx={{ color: 'primary.contrastText' }}
                       indeterminate={pendientes.some(a => seleccion[a.id]) && pendientes.some(a => !seleccion[a.id])}
                       checked={pendientes.length > 0 && pendientes.every(a => seleccion[a.id])}
                       onChange={(e) => toggleSeleccionAll(e.target.checked)}
                     />
                   </TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Período</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Fecha carga</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Monto</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Observaciones</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Empleado</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Período</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Fecha carga</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Monto</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Observaciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

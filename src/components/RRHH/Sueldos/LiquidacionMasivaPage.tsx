@@ -758,10 +758,10 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
             <Table size="small" stickyHeader sx={{ minWidth: 1600 }}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white' }} padding="checkbox">
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }} padding="checkbox">
                     <Tooltip title="Marcar/desmarcar todos los liquidables">
                       <Checkbox
-                        sx={{ color: 'white' }}
+                        sx={{ color: 'primary.contrastText' }}
                         // Sólo cuentan los liquidables (no los ya existentes —
                         // a esos no se les puede tocar desde acá).
                         indeterminate={
@@ -776,27 +776,27 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                       />
                     </Tooltip>
                   </TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Categoría</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }}>Empleado</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }}>Categoría</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">
                     <Tooltip title="Días corridos computados del mes (base 30). Se prorratea el básico y el presentismo para ingresos/egresos a mitad de mes.">
                       <span>Días</span>
                     </Tooltip>
                   </TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">Pres %</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">HE cant</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">HA cant</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">Asistencia</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">KM</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="right">B.Prod (auto)</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="right">B.Ventas (auto)</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">B.Especial</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">Desc. legales</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">Otros desc.</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">Adelantos</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="right">Bruto</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="right">Neto</TableCell>
-                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">Estado</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Pres %</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">HE cant</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">HA cant</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Asistencia</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">KM</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="right">B.Prod (auto)</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="right">B.Ventas (auto)</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">B.Especial</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Desc. legales</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Otros desc.</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Adelantos</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Bruto</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Neto</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Estado</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

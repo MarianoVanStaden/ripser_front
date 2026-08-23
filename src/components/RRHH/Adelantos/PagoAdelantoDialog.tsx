@@ -166,7 +166,7 @@ const PagoAdelantoDialog: React.FC<Props> = ({ open, adelanto, onClose, onSucces
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth fullScreen={isMobile}>
-      <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
+      <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>
         <Box display="flex" alignItems="center" gap={1.5}>
           <PaymentIcon />
           <Typography variant="h6" fontWeight={600}>

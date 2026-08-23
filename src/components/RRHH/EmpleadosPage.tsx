@@ -918,14 +918,14 @@ const EmpleadosPage: React.FC = () => {
       >
         {selectedEmpleado && (
           <>
-            <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', pb: 2 }}>
+            <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', pb: 2 }}>
               <Box display="flex" alignItems="center" gap={2}>
                 <EmpleadoFotoAvatar
                   empleadoId={selectedEmpleado.id}
                   nombre={selectedEmpleado.nombre}
                   apellido={selectedEmpleado.apellido}
                   size={56}
-                  sx={{ bgcolor: 'white', color: 'primary.main' }}
+                  sx={{ bgcolor: 'background.paper', color: 'primary.main' }}
                 />
                 <Box>
                   <Typography variant="h5" fontWeight="700">
@@ -934,7 +934,8 @@ const EmpleadosPage: React.FC = () => {
                   <Chip
                     label={selectedEmpleado.estado}
                     size="small"
-                    sx={{ mt: 0.5, bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}
+                    // eslint-disable-next-line ripser/no-literal-colors -- velo blanco sobre primary.main del header
+                    sx={{ mt: 0.5, bgcolor: 'rgba(255,255,255,0.2)', color: 'primary.contrastText' }}
                   />
                 </Box>
               </Box>
@@ -1229,7 +1230,7 @@ const EmpleadosPage: React.FC = () => {
         fullScreen={isMobile}
         PaperProps={{ sx: { borderRadius: isMobile ? 0 : 2 } }}
       >
-        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', py: 2.5 }}>
+        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', py: 2.5 }}>
           <Typography variant="h5" fontWeight="600">
             {editingEmpleado ? 'Editar Empleado' : 'Nuevo Empleado'}
           </Typography>

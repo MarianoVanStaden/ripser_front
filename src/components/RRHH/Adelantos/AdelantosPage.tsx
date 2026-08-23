@@ -290,13 +290,13 @@ const AdelantosPage: React.FC = () => {
             <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Período</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Fecha carga</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Monto</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Estado</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Observaciones</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Acciones</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Empleado</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Período</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Fecha carga</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Monto</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Estado</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Observaciones</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -413,7 +413,7 @@ const AdelantosPage: React.FC = () => {
       />
 
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
-        <DialogTitle sx={{ bgcolor: 'error.main', color: 'white' }}>Confirmar Eliminación</DialogTitle>
+        <DialogTitle sx={{ bgcolor: 'error.main', color: 'error.contrastText' }}>Confirmar Eliminación</DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           <Typography variant="body1">
             ¿Eliminar este adelanto? Esta acción no se puede deshacer.

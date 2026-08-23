@@ -77,7 +77,7 @@ const SancionDetailDrawer: React.FC<SancionDetailDrawerProps> = ({
       onClose={onClose}
       PaperProps={{ sx: { width: isMobile ? '100vw' : 520 } }}
     >
-      <Box sx={{ bgcolor: 'primary.main', color: 'white', p: 2.5 }}>
+      <Box sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', p: 2.5 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Stack direction="row" alignItems="center" spacing={1.5}>
             <GavelIcon />
@@ -88,7 +88,7 @@ const SancionDetailDrawer: React.FC<SancionDetailDrawerProps> = ({
               </Typography>
             </Box>
           </Stack>
-          <IconButton onClick={onClose} sx={{ color: 'white' }}>
+          <IconButton onClick={onClose} sx={{ color: 'primary.contrastText' }}>
             <CloseIcon />
           </IconButton>
         </Stack>
@@ -97,13 +97,15 @@ const SancionDetailDrawer: React.FC<SancionDetailDrawerProps> = ({
             label={ESTADO_SANCION_LABEL[sancion.estado]}
             color={ESTADO_SANCION_COLOR[sancion.estado]}
             size="small"
-            sx={{ bgcolor: 'rgba(255,255,255,0.18)', color: 'white', fontWeight: 600 }}
+            // eslint-disable-next-line ripser/no-literal-colors -- velo blanco sobre primary.main del header
+            sx={{ bgcolor: 'rgba(255,255,255,0.18)', color: 'primary.contrastText', fontWeight: 600 }}
           />
           {sancion.dias > 0 && (
             <Chip
               label={`${sancion.dias} día${sancion.dias === 1 ? '' : 's'}`}
               size="small"
-              sx={{ bgcolor: 'rgba(255,255,255,0.18)', color: 'white', fontWeight: 600 }}
+              // eslint-disable-next-line ripser/no-literal-colors -- velo blanco sobre primary.main del header
+            sx={{ bgcolor: 'rgba(255,255,255,0.18)', color: 'primary.contrastText', fontWeight: 600 }}
             />
           )}
         </Stack>

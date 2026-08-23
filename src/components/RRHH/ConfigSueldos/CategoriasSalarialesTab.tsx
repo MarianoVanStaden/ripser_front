@@ -98,14 +98,14 @@ const CategoriasSalarialesTab: React.FC = () => {
             <Table sx={{ minWidth: 900 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Categoría</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Sueldo Fijo</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Presentismo/día</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Valor HE</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Valor HA</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Valor KM</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Estado</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Acciones</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Categoría</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Sueldo Fijo</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Presentismo/día</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Valor HE</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Valor HA</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Valor KM</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Estado</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -142,7 +142,7 @@ const CategoriasSalarialesTab: React.FC = () => {
 
       {/* Form Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
+        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>
           {editing ? 'Editar Categoría Salarial' : 'Nueva Categoría Salarial'}
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
@@ -188,7 +188,7 @@ const CategoriasSalarialesTab: React.FC = () => {
 
       {/* Delete Dialog */}
       <Dialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ bgcolor: 'error.main', color: 'white' }}>Eliminar categoría</DialogTitle>
+        <DialogTitle sx={{ bgcolor: 'error.main', color: 'error.contrastText' }}>Eliminar categoría</DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           <Typography>¿Eliminar la categoría <strong>{confirmDelete?.nombre}</strong>?</Typography>
         </DialogContent>

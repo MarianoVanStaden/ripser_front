@@ -85,7 +85,7 @@ const AdelantoFormDialog: React.FC<Props> = ({ open, empleados, editing, onClose
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth fullScreen={isMobile}>
-      <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
+      <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>
         <Box display="flex" alignItems="center" gap={1.5}>
           <PaymentsIcon />
           <Typography variant="h6" fontWeight={600}>

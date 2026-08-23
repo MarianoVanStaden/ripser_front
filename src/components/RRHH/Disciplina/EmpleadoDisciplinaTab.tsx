@@ -117,7 +117,8 @@ const EmpleadoDisciplinaTab: React.FC<EmpleadoDisciplinaTabProps> = ({ empleado 
         elevation={0}
         sx={{
           p: 2.5, borderRadius: 2,
-          background: 'linear-gradient(135deg, rgba(25,118,210,0.08), rgba(25,118,210,0.02))',
+          // eslint-disable-next-line ripser/no-literal-colors -- gradiente con alpha sobre token del theme vía mainChannel
+          background: 'linear-gradient(135deg, rgba(var(--mui-palette-primary-mainChannel) / 0.08), rgba(var(--mui-palette-primary-mainChannel) / 0.02))',
           border: 1, borderColor: 'divider',
         }}
       >

@@ -78,13 +78,13 @@ const UsuariosPage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
 
-  // Available roles
-  const availableRoles: { value: TipoRol; label: string; color: string }[] = [
-    { value: 'ADMIN', label: 'Administrador', color: '#f44336' },
-    { value: 'VENDEDOR', label: 'Vendedor', color: '#2196f3' },
-    { value: 'TALLER', label: 'Taller', color: '#ff9800' },
-    { value: 'OFICINA', label: 'Oficina', color: '#4caf50' },
-    { value: 'USUARIO', label: 'Usuario', color: '#9c27b0' },
+  // Available roles — cada rol usa un par fg/bg de los tokens de estado del theme
+  const availableRoles: { value: TipoRol; label: string; fg: string; bg: string }[] = [
+    { value: 'ADMIN', label: 'Administrador', fg: 'status.danger.fg', bg: 'status.danger.bg' },
+    { value: 'VENDEDOR', label: 'Vendedor', fg: 'status.info.fg', bg: 'status.info.bg' },
+    { value: 'TALLER', label: 'Taller', fg: 'status.warning.fg', bg: 'status.warning.bg' },
+    { value: 'OFICINA', label: 'Oficina', fg: 'status.success.fg', bg: 'status.success.bg' },
+    { value: 'USUARIO', label: 'Usuario', fg: 'status.process.fg', bg: 'status.process.bg' },
   ];
 
   const queryClient = useQueryClient();
@@ -245,7 +245,7 @@ const UsuariosPage: React.FC = () => {
 
   // Get role label and color
   const getRoleInfo = (role: TipoRol) => {
-    return availableRoles.find(r => r.value === role) || { label: role, color: '#757575' };
+    return availableRoles.find(r => r.value === role) || { label: role, fg: 'status.neutral.fg', bg: 'status.neutral.bg' };
   };
 
   return (
@@ -336,8 +336,8 @@ const UsuariosPage: React.FC = () => {
                                     label={roleInfo.label}
                                     size="small"
                                     sx={{
-                                      bgcolor: roleInfo.color,
-                                      color: 'white',
+                                      bgcolor: roleInfo.bg,
+                                      color: roleInfo.fg,
                                       fontWeight: 600,
                                       mb: 0.5,
                                     }}
@@ -499,7 +499,7 @@ const UsuariosPage: React.FC = () => {
                             key={value}
                             label={roleInfo.label}
                             size="small"
-                            sx={{ bgcolor: roleInfo.color, color: 'white' }}
+                            sx={{ bgcolor: roleInfo.bg, color: roleInfo.fg }}
                           />
                         );
                       })}
@@ -556,7 +556,7 @@ const UsuariosPage: React.FC = () => {
                             key={value}
                             label={roleInfo.label}
                             size="small"
-                            sx={{ bgcolor: roleInfo.color, color: 'white' }}
+                            sx={{ bgcolor: roleInfo.bg, color: roleInfo.fg }}
                           />
                         );
                       })}

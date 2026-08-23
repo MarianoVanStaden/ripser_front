@@ -466,7 +466,7 @@ const DisciplinaPage: React.FC = () => {
                   ) : paginated.map((s) => (
                     <TableRow
                       key={s.id} hover
-                      sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'rgba(25,118,210,0.04)' } }}
+                      sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
                       onClick={() => setDetail(s)}
                     >
                       <TableCell>{dayjs(s.fecha).format('DD/MM/YYYY')}</TableCell>
