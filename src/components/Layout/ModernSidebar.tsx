@@ -34,6 +34,7 @@ const ModernSidebar: React.FC = () => {
   return (
     <Sidebar
       width={"260px"}
+      // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad; prop de lib externa con mode="dark" fijo
       themeColor="#00B8A9"
       mode="dark"
       userName={userName}

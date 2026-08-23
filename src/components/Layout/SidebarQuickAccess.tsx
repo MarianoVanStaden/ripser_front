@@ -24,6 +24,7 @@ interface SidebarQuickAccessProps {
 
 const subheaderSx = {
   bgcolor: 'inherit',
+  // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo
   color: '#00B8A9',
   fontWeight: 700,
   fontSize: 12,
@@ -54,9 +55,11 @@ export function SidebarQuickAccess({
             selected={selected}
             onClick={() => onNavigate(item.path)}
             sx={{
-              color: selected ? '#00B8A9' : '#fff',
+              // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo
+              color: selected ? '#00B8A9' : 'common.white',
               borderRadius: 1,
               py: 0.5,
+              // eslint-disable-next-line ripser/no-literal-colors -- velo teal de hover sobre navy fijo
               '&:hover': { background: 'rgba(0,184,169,0.15)' },
             }}
           >
@@ -79,9 +82,12 @@ export function SidebarQuickAccess({
           size="small"
           sx={{
             justifyContent: 'flex-start',
+            // eslint-disable-next-line ripser/no-literal-colors -- blanco atenuado sobre navy fijo del sidebar
             color: 'rgba(255,255,255,0.7)',
             textTransform: 'none',
+            // eslint-disable-next-line ripser/no-literal-colors -- velo blanco sobre navy fijo del sidebar
             bgcolor: 'rgba(255,255,255,0.06)',
+            // eslint-disable-next-line ripser/no-literal-colors -- velo blanco de hover sobre navy fijo
             '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
           }}
         >
@@ -107,6 +113,7 @@ export function SidebarQuickAccess({
         </List>
       )}
 
+      {/* eslint-disable-next-line ripser/no-literal-colors -- velo divisor sobre navy fijo del sidebar */}
       {hasQuickLists && <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
     </Box>
   );

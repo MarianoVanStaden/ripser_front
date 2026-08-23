@@ -107,7 +107,7 @@ const QuickActions: React.FC = () => {
                   p: 0.75,
                   borderRadius: 1,
                   bgcolor: `${action.color}.main`,
-                  color: 'white',
+                  color: `${action.color}.contrastText`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

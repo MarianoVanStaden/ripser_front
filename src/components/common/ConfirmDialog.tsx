@@ -148,7 +148,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           </Typography>
         )}
         {itemDetails && (
-          <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 1, mt: 1 }}>
+          <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 1, mt: 1 }}>
             {itemDetails}
           </Box>
         )}

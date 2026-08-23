@@ -48,6 +48,7 @@ const SucursalSelector: React.FC<SucursalSelectorProps> = ({
       <Typography
         variant="caption"
         sx={{
+          // eslint-disable-next-line ripser/no-literal-colors -- blanco atenuado sobre navy fijo del sidebar
           color: 'rgba(255,255,255,0.7)',
           fontWeight: 600,
           fontSize: '0.7rem',
@@ -65,35 +66,44 @@ const SucursalSelector: React.FC<SucursalSelectorProps> = ({
           displayEmpty
           startAdornment={loading ? <CircularProgress size={16} sx={{ mr: 1 }} /> : undefined}
           sx={{
+            // eslint-disable-next-line ripser/no-literal-colors -- velo blanco sobre navy fijo del sidebar
             bgcolor: 'rgba(255,255,255,0.05)',
-            color: '#fff',
+            color: 'common.white',
             fontSize: '0.875rem',
             '& .MuiOutlinedInput-notchedOutline': {
+              // eslint-disable-next-line ripser/no-literal-colors -- borde blanco atenuado sobre navy fijo
               borderColor: 'rgba(255,255,255,0.2)',
             },
             '&:hover .MuiOutlinedInput-notchedOutline': {
+              // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo
               borderColor: '#00B8A9',
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo
               borderColor: '#00B8A9',
             },
             '& .MuiSvgIcon-root': {
+              // eslint-disable-next-line ripser/no-literal-colors -- blanco atenuado sobre navy fijo del sidebar
               color: 'rgba(255,255,255,0.7)',
             },
           }}
           MenuProps={{
             PaperProps: {
               sx: {
+                // eslint-disable-next-line ripser/no-literal-colors -- menú oscuro de identidad del sidebar navy fijo
                 bgcolor: '#2C3E50',
                 '& .MuiMenuItem-root': {
-                  color: '#fff',
+                  color: 'common.white',
                   fontSize: '0.875rem',
                   '&:hover': {
+                    // eslint-disable-next-line ripser/no-literal-colors -- velo teal de hover sobre menú oscuro fijo
                     bgcolor: 'rgba(0,184,169,0.15)',
                   },
                   '&.Mui-selected': {
+                    // eslint-disable-next-line ripser/no-literal-colors -- velo teal de seleccionado sobre menú oscuro fijo
                     bgcolor: 'rgba(0,184,169,0.25)',
                     '&:hover': {
+                      // eslint-disable-next-line ripser/no-literal-colors -- velo teal de hover sobre menú oscuro fijo
                       bgcolor: 'rgba(0,184,169,0.35)',
                     },
                   },
@@ -123,8 +133,9 @@ const SucursalSelector: React.FC<SucursalSelectorProps> = ({
                       sx={{
                         height: 20,
                         fontSize: '0.65rem',
+                        // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo
                         bgcolor: '#00B8A9',
-                        color: '#fff'
+                        color: 'common.white'
                       }}
                     />
                   )}

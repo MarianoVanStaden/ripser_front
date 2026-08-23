@@ -63,6 +63,7 @@ export default function ImpersonationBanner() {
         sx={{
           color: 'error.contrastText',
           borderColor: 'error.contrastText',
+          // eslint-disable-next-line ripser/no-literal-colors -- velo blanco sobre error.main (fondo de estado fijo)
           '&:hover': { borderColor: 'error.contrastText', bgcolor: 'rgba(255,255,255,0.15)' },
         }}
       >

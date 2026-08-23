@@ -6,7 +6,7 @@ export const sxStickyCheckboxHead: SxProps<Theme> = {
   position: 'sticky',
   left: 0,
   zIndex: 4,
-  bgcolor: 'grey.100',
+  bgcolor: 'background.default',
   width: CHECKBOX_WIDTH,
   minWidth: CHECKBOX_WIDTH,
 };
@@ -27,9 +27,10 @@ export const sxStickyClienteHead: SxProps<Theme> = {
   position: 'sticky',
   left: CHECKBOX_WIDTH,
   zIndex: 4,
-  bgcolor: 'grey.100',
+  bgcolor: 'background.default',
   borderRight: '2px solid',
   borderColor: 'divider',
+  // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa; la separación real es el borde divider
   boxShadow: 'inset -4px 0 6px -4px rgba(0,0,0,0.15)',
 };
 
@@ -40,6 +41,7 @@ export const sxStickyClienteBody: SxProps<Theme> = {
   bgcolor: 'background.paper',
   borderRight: '2px solid',
   borderColor: 'divider',
+  // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa; la separación real es el borde divider
   boxShadow: 'inset -4px 0 6px -4px rgba(0,0,0,0.08)',
   '.MuiTableRow-root.MuiTableRow-hover:hover &': { bgcolor: 'action.hover' },
   '.MuiTableRow-root.Mui-selected &': { bgcolor: 'action.selected' },

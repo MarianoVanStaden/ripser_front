@@ -30,14 +30,26 @@ interface ActivityItem {
   priority?: 'low' | 'medium' | 'high';
 }
 
-const avatarColors = {
-  client: '#1976d2',
-  product: '#388e3c',
-  sale: '#7b1fa2',
-  purchase: '#f57c00',
-  equipment: '#0288d1',
-  payment: '#388e3c',
-  alert: '#d32f2f',
+// Tokens de paleta: el fondo usa el color pleno y el texto su contrastText,
+// así el par sigue siendo legible en ambos esquemas.
+const avatarColors: Record<ActivityType, string> = {
+  client: 'primary.main',
+  product: 'success.main',
+  sale: 'tertiary.dark',
+  purchase: 'warning.main',
+  equipment: 'info.main',
+  payment: 'success.main',
+  alert: 'error.main',
+};
+
+const avatarTextColors: Record<ActivityType, string> = {
+  client: 'primary.contrastText',
+  product: 'success.contrastText',
+  sale: 'tertiary.contrastText',
+  purchase: 'warning.contrastText',
+  equipment: 'info.contrastText',
+  payment: 'success.contrastText',
+  alert: 'error.contrastText',
 };
 
 const getTypeLabel = (type: ActivityType): string => {
@@ -190,6 +202,7 @@ export const RecentActivity: React.FC = () => {
           <Avatar
             sx={{
               bgcolor: a.avatarColor,
+              color: avatarTextColors[a.type],
               width: 36,
               height: 36,
               fontWeight: 'bold',
@@ -211,7 +224,7 @@ export const RecentActivity: React.FC = () => {
                     height: 20,
                     fontSize: '0.7rem',
                     bgcolor: a.avatarColor,
-                    color: 'white',
+                    color: avatarTextColors[a.type],
                     fontWeight: 500,
                   }}
                 />

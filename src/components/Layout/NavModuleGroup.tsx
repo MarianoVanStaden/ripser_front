@@ -55,12 +55,14 @@ function NavModuleGroupBase({
 }: NavModuleGroupProps) {
   return (
     <>
+      {/* eslint-disable-next-line ripser/no-literal-colors -- velo divisor sobre navy fijo del sidebar */}
       {showDivider && <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
       <ListSubheader
         disableSticky
         onClick={() => onToggle(title)}
         sx={{
           bgcolor: 'inherit',
+          // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo
           color: '#00B8A9',
           fontWeight: 700,
           fontSize: 13,
@@ -72,6 +74,7 @@ function NavModuleGroupBase({
           justifyContent: 'space-between',
           cursor: 'pointer',
           userSelect: 'none',
+          // eslint-disable-next-line ripser/no-literal-colors -- velo teal de hover sobre navy fijo
           '&:hover': { background: 'rgba(0,184,169,0.08)' },
         }}
       >
@@ -88,6 +91,7 @@ function NavModuleGroupBase({
                 key={item.text}
                 disablePadding
                 sx={{
+                  // eslint-disable-next-line ripser/no-literal-colors -- velo teal de seleccionado sobre navy fijo
                   background: selected ? 'rgba(0,184,169,0.08)' : 'inherit',
                   borderRadius: 1,
                   mb: 0.5,
@@ -99,7 +103,9 @@ function NavModuleGroupBase({
                   onFocus={prefetcher}
                   selected={selected}
                   sx={{
-                    color: selected ? '#00B8A9' : '#fff',
+                    // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo
+                    color: selected ? '#00B8A9' : 'common.white',
+                    // eslint-disable-next-line ripser/no-literal-colors -- velo teal de hover sobre navy fijo
                     '&:hover': { background: 'rgba(0,184,169,0.15)' },
                     borderRadius: 1,
                     minHeight: 48, // Touch-friendly height for mobile

@@ -71,14 +71,15 @@ export const TenantDebugPanel: React.FC = () => {
           bottom: '20px',
           right: '20px',
           zIndex: 9999,
-          backgroundColor: '#4CAF50',
-          color: 'white',
+          backgroundColor: 'var(--mui-palette-success-main)',
+          color: 'var(--mui-palette-success-contrastText)',
           border: 'none',
           borderRadius: '50%',
           width: '50px',
           height: '50px',
           fontSize: '20px',
           cursor: 'pointer',
+          // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa del botón flotante (panel solo-dev)
           boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
         }}
         title="Debug Panel"
@@ -95,13 +96,15 @@ export const TenantDebugPanel: React.FC = () => {
         bottom: '20px',
         right: '20px',
         zIndex: 9999,
-        backgroundColor: 'white',
-        border: '2px solid #333',
+        backgroundColor: 'var(--mui-palette-background-paper)',
+        color: 'var(--mui-palette-text-primary)',
+        border: '2px solid var(--mui-palette-divider)',
         borderRadius: '8px',
         padding: '16px',
         maxWidth: '400px',
         maxHeight: '600px',
         overflow: 'auto',
+        // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa del panel flotante (solo-dev); el borde da la separación
         boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
         fontSize: '12px',
         fontFamily: 'monospace'
@@ -123,7 +126,7 @@ export const TenantDebugPanel: React.FC = () => {
       </div>
 
       {/* Tenant Context */}
-      <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+      <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: 'var(--mui-palette-action-hover)', borderRadius: '4px' }}>
         <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>📍 Tenant Context</h4>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
@@ -146,7 +149,7 @@ export const TenantDebugPanel: React.FC = () => {
             <tr>
               <td style={{ padding: '4px', fontWeight: 'bold' }}>Super Admin:</td>
               <td style={{ padding: '4px' }}>
-                <span style={{ color: esSuperAdmin ? 'green' : 'red' }}>
+                <span style={{ color: esSuperAdmin ? 'var(--mui-palette-status-success-fg)' : 'var(--mui-palette-status-danger-fg)' }}>
                   {esSuperAdmin ? '✅ YES' : '❌ NO'}
                 </span>
               </td>
@@ -156,7 +159,7 @@ export const TenantDebugPanel: React.FC = () => {
       </div>
 
       {/* User Info */}
-      <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+      <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: 'var(--mui-palette-action-hover)', borderRadius: '4px' }}>
         <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>👤 User Info</h4>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
@@ -181,7 +184,7 @@ export const TenantDebugPanel: React.FC = () => {
       </div>
 
       {/* JWT Info */}
-      <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+      <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: 'var(--mui-palette-action-hover)', borderRadius: '4px' }}>
         <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>🔑 JWT Token</h4>
         {jwtPayload ? (
           <>
@@ -219,9 +222,15 @@ export const TenantDebugPanel: React.FC = () => {
             {expiration && (
               <div style={{
                 padding: '8px',
-                backgroundColor: expiration.isExpired ? '#ffebee' : '#e8f5e9',
+                backgroundColor: expiration.isExpired
+                  ? 'var(--mui-palette-status-danger-bg)'
+                  : 'var(--mui-palette-status-success-bg)',
                 borderRadius: '4px',
-                border: `1px solid ${expiration.isExpired ? '#f44336' : '#4caf50'}`
+                border: `1px solid ${
+                  expiration.isExpired
+                    ? 'var(--mui-palette-status-danger-fg)'
+                    : 'var(--mui-palette-status-success-fg)'
+                }`
               }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
                   {expiration.isExpired ? '⚠️ Token Expirado' : '✅ Token Válido'}
@@ -234,12 +243,12 @@ export const TenantDebugPanel: React.FC = () => {
             )}
           </>
         ) : (
-          <div style={{ color: '#999' }}>No token found</div>
+          <div style={{ color: 'var(--mui-palette-text-disabled)' }}>No token found</div>
         )}
       </div>
 
       {/* localStorage */}
-      <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+      <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: 'var(--mui-palette-action-hover)', borderRadius: '4px' }}>
         <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>💾 LocalStorage</h4>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
@@ -282,8 +291,8 @@ export const TenantDebugPanel: React.FC = () => {
           }}
           style={{
             padding: '6px 12px',
-            backgroundColor: '#2196F3',
-            color: 'white',
+            backgroundColor: 'var(--mui-palette-info-main)',
+            color: 'var(--mui-palette-info-contrastText)',
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',
@@ -305,8 +314,8 @@ export const TenantDebugPanel: React.FC = () => {
           }}
           style={{
             padding: '6px 12px',
-            backgroundColor: '#ff9800',
-            color: 'white',
+            backgroundColor: 'var(--mui-palette-warning-main)',
+            color: 'var(--mui-palette-warning-contrastText)',
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',
@@ -322,8 +331,8 @@ export const TenantDebugPanel: React.FC = () => {
           }}
           style={{
             padding: '6px 12px',
-            backgroundColor: '#9c27b0',
-            color: 'white',
+            backgroundColor: 'var(--mui-palette-tertiary-main)',
+            color: 'var(--mui-palette-tertiary-contrastText)',
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',
@@ -334,7 +343,7 @@ export const TenantDebugPanel: React.FC = () => {
         </button>
       </div>
 
-      <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '10px' }}>
+      <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'var(--mui-palette-status-warning-bg)', color: 'var(--mui-palette-status-warning-fg)', borderRadius: '4px', fontSize: '10px' }}>
         ⚠️ Solo para desarrollo. Remover en producción.
       </div>
     </div>

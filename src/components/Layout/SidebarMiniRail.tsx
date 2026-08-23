@@ -64,10 +64,12 @@ export function SidebarMiniRail({ secciones, activePath, onNavigate, onOpenPalet
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 1, gap: 0.5 }}>
       <Tooltip title="Buscar (Ctrl+K)" placement="right" arrow>
+        {/* eslint-disable-next-line ripser/no-literal-colors -- blanco atenuado sobre navy fijo del sidebar */}
         <IconButton onClick={onOpenPalette} sx={{ color: 'rgba(255,255,255,0.8)' }}>
           <SearchIcon />
         </IconButton>
       </Tooltip>
+      {/* eslint-disable-next-line ripser/no-literal-colors -- velo divisor sobre navy fijo del sidebar */}
       <Divider flexItem sx={{ borderColor: 'rgba(255,255,255,0.12)', my: 0.5, width: '60%', alignSelf: 'center' }} />
 
       {secciones.map((section) => {
@@ -79,8 +81,11 @@ export function SidebarMiniRail({ secciones, activePath, onNavigate, onOpenPalet
               onMouseLeave={scheduleClose}
               onClick={(e) => openFor(e, section)}
               sx={{
-                color: activeMod ? '#00B8A9' : '#fff',
+                // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo
+                color: activeMod ? '#00B8A9' : 'common.white',
+                // eslint-disable-next-line ripser/no-literal-colors -- velo teal de activo sobre navy fijo
                 bgcolor: activeMod ? 'rgba(0,184,169,0.12)' : 'transparent',
+                // eslint-disable-next-line ripser/no-literal-colors -- velo teal de hover sobre navy fijo
                 '&:hover': { bgcolor: 'rgba(0,184,169,0.15)' },
               }}
             >
@@ -105,8 +110,9 @@ export function SidebarMiniRail({ secciones, activePath, onNavigate, onOpenPalet
             onMouseLeave: scheduleClose,
             sx: {
               pointerEvents: 'auto',
+              // eslint-disable-next-line ripser/no-literal-colors -- navy de identidad del sidebar (flyout)
               bgcolor: '#212A3E',
-              color: '#fff',
+              color: 'common.white',
               minWidth: 220,
               ml: 0.5,
             },
@@ -116,9 +122,11 @@ export function SidebarMiniRail({ secciones, activePath, onNavigate, onOpenPalet
       >
         {active && (
           <Box>
+            {/* eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo */}
             <Typography sx={{ px: 2, py: 1, color: '#00B8A9', fontWeight: 700, fontSize: 13 }}>
               {active.title}
             </Typography>
+            {/* eslint-disable-next-line ripser/no-literal-colors -- velo divisor sobre navy fijo del sidebar */}
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
             <List dense>
               {active.items.map((item) => {
@@ -132,7 +140,9 @@ export function SidebarMiniRail({ secciones, activePath, onNavigate, onOpenPalet
                       closeNow();
                     }}
                     sx={{
-                      color: selected ? '#00B8A9' : '#fff',
+                      // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo
+                      color: selected ? '#00B8A9' : 'common.white',
+                      // eslint-disable-next-line ripser/no-literal-colors -- velo teal de hover sobre navy fijo
                       '&:hover': { background: 'rgba(0,184,169,0.15)' },
                     }}
                   >

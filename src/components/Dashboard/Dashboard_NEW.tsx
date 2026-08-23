@@ -40,11 +40,14 @@ interface StatCardProps {
   title: string;
   value: number | string;
   icon: React.ReactElement;
+  /** Token de paleta para el ícono (ej. 'primary.main'). */
   color: string;
+  /** Token de paleta para el fondo suave del ícono (ej. 'status.info.bg'). */
+  bgColor: string;
   subtitle?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle }) => (
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, bgColor, subtitle }) => (
   <Card sx={{ height: '100%' }}>
     <CardContent>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -52,7 +55,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle
           sx={{
             p: 1.5,
             borderRadius: 2,
-            backgroundColor: color + '20',
+            backgroundColor: bgColor,
             color: color,
             mr: 2,
           }}
@@ -197,26 +200,30 @@ const Dashboard: React.FC = () => {
               title="Total Clients"
               value={stats.totalClients}
               icon={<PeopleIcon />}
-              color="#1976d2"
+              color="primary.main"
+              bgColor="status.info.bg"
             />
             <StatCard
               title="Total Products"
               value={stats.totalProducts}
               icon={<InventoryIcon />}
-              color="#388e3c"
+              color="success.main"
+              bgColor="status.success.bg"
               subtitle={`${stats.lowStockProducts} low stock`}
             />
             <StatCard
               title="Total Orders"
               value={stats.totalOrders}
               icon={<ShoppingCartIcon />}
-              color="#f57c00"
+              color="warning.main"
+              bgColor="status.warning.bg"
             />
             <StatCard
               title="Monthly Sales"
               value={`$${stats.monthlySalesAmount.toLocaleString()}`}
               icon={<TrendingUpIcon />}
-              color="#7b1fa2"
+              color="tertiary.dark"
+              bgColor="status.process.bg"
               subtitle={`${stats.totalSales} total sales`}
             />
           </Box>

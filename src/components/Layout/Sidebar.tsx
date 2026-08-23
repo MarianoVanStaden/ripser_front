@@ -50,6 +50,11 @@ interface SidebarProps {
   onToggle?: () => void;
 }
 
+// El sidebar es identidad fija (navy #212A3E) en ambos esquemas: los velos y
+// acentos sobre ese fondo quedan literales a propósito.
+// eslint-disable-next-line ripser/no-literal-colors -- velo divisor sobre navy fijo del sidebar
+const sidebarDividerSx = { borderColor: 'rgba(255,255,255,0.12)' } as const;
+
 const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -163,7 +168,7 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
   const drawerContent = (
     <>
       <Toolbar sx={{ justifyContent: 'space-between' }}>
-        <Typography variant="h6" noWrap component="div" sx={{ color: '#fff' }}>
+        <Typography variant="h6" noWrap component="div" sx={{ color: 'common.white' }}>
           Ripser App
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -172,31 +177,33 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
             placement="bottom"
             arrow
           >
-            <IconButton onClick={() => setMultiOpen(!multiOpen)} sx={{ color: '#fff' }} size="small">
+            <IconButton onClick={() => setMultiOpen(!multiOpen)} sx={{ color: 'common.white' }} size="small">
               {multiOpen ? <UnfoldLessIcon fontSize="small" /> : <UnfoldMoreIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
           {!isMobile && (
             <Tooltip title="Colapsar a iconos" placement="bottom" arrow>
-              <IconButton onClick={toggleMini} sx={{ color: '#fff' }} size="small">
+              <IconButton onClick={toggleMini} sx={{ color: 'common.white' }} size="small">
                 <ChevronLeftIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
-          <IconButton onClick={onToggle} sx={{ color: '#fff' }}>
+          <IconButton onClick={onToggle} sx={{ color: 'common.white' }}>
             <CloseIcon />
           </IconButton>
         </Box>
       </Toolbar>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+      <Divider sx={sidebarDividerSx} />
 
       {/* User Profile Section */}
+      {/* eslint-disable-next-line ripser/no-literal-colors -- velo teal sobre navy fijo del sidebar */}
       <Box sx={{ p: 2, bgcolor: 'rgba(0,184,169,0.05)' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Avatar
             sx={{
               width: 40,
               height: 40,
+              // eslint-disable-next-line ripser/no-literal-colors -- teal de identidad del sidebar navy fijo
               bgcolor: '#00B8A9',
               fontSize: '1rem',
             }}
@@ -207,7 +214,7 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
             <Typography
               variant="body2"
               sx={{
-                color: '#fff',
+                color: 'common.white',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 overflow: 'hidden',
@@ -226,11 +233,12 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
                   mt: 0.5,
                   height: 20,
                   fontSize: '0.65rem',
+                  // eslint-disable-next-line ripser/no-literal-colors -- badge coral de Super Admin sobre navy fijo
                   bgcolor: '#FF6B6B',
-                  color: '#fff',
+                  color: 'common.white',
                   fontWeight: 700,
                   '& .MuiChip-icon': {
-                    color: '#fff',
+                    color: 'common.white',
                     fontSize: '0.875rem',
                   },
                 }}
@@ -239,7 +247,7 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
           </Box>
         </Box>
       </Box>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+      <Divider sx={sidebarDividerSx} />
 
       {/* Selector de Sucursal */}
       {(() => {
@@ -249,6 +257,7 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
         }
         return show ? (
           <>
+            {/* eslint-disable-next-line ripser/no-literal-colors -- velo oscuro sobre navy fijo del sidebar */}
             <Box sx={{ bgcolor: 'rgba(0,0,0,0.1)' }}>
               <SucursalSelector
                 sucursales={sucursales}
@@ -258,7 +267,7 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
                 onChangeBackend={cambiarSucursal}
               />
             </Box>
-            <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+            <Divider sx={sidebarDividerSx} />
           </>
         ) : null;
       })()}
@@ -311,12 +320,15 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
               right: 0,
               height: '100%',
               borderRadius: 0,
+              // eslint-disable-next-line ripser/no-literal-colors -- rojo de logout sobre navy fijo, legible en ambos esquemas
               bgcolor: 'rgba(244, 67, 54, 0.08)',
+              // eslint-disable-next-line ripser/no-literal-colors -- rojo de logout sobre navy fijo, legible en ambos esquemas
               color: '#f44336',
               transform: isMobile ? 'translateY(0)' : 'translateY(100%)',
               opacity: isMobile ? 1 : 0,
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
+                // eslint-disable-next-line ripser/no-literal-colors -- rojo de logout sobre navy fijo, legible en ambos esquemas
                 bgcolor: 'rgba(244, 67, 54, 0.15)',
               },
             }}
@@ -328,6 +340,7 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
 
       {/* Copyright */}
       <Box p={2} pt={1}>
+        {/* eslint-disable-next-line ripser/no-literal-colors -- gris tenue sobre navy fijo del sidebar */}
         <Typography variant="caption" color="#aaa">
           © {new Date().getFullYear()} Ripser
         </Typography>
@@ -340,12 +353,12 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
     <>
       <Toolbar sx={{ justifyContent: 'center', px: 0 }}>
         <Tooltip title="Expandir menú" placement="right" arrow>
-          <IconButton onClick={toggleMini} sx={{ color: '#fff' }}>
+          <IconButton onClick={toggleMini} sx={{ color: 'common.white' }}>
             <ChevronRightIcon />
           </IconButton>
         </Tooltip>
       </Toolbar>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+      <Divider sx={sidebarDividerSx} />
       <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         <SidebarMiniRail
           secciones={seccionesFiltradas}
@@ -354,9 +367,10 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
           onOpenPalette={() => setPaletteOpen(true)}
         />
       </Box>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+      <Divider sx={sidebarDividerSx} />
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
         <Tooltip title="Cerrar sesión" placement="right" arrow>
+          {/* eslint-disable-next-line ripser/no-literal-colors -- rojo de logout sobre navy fijo, legible en ambos esquemas */}
           <IconButton onClick={handleLogoutClick} sx={{ color: '#f44336' }}>
             <LogoutIcon />
           </IconButton>
@@ -371,6 +385,7 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
       <AppBar
         position="fixed"
         sx={{
+          // eslint-disable-next-line ripser/no-literal-colors -- navy de identidad del AppBar/sidebar
           bgcolor: '#212A3E',
           boxShadow: 1,
           zIndex: (theme) => theme.zIndex.drawer + 1,
@@ -408,8 +423,9 @@ const Sidebar: FC<SidebarProps> = ({ open = false, onToggle }) => {
           '& .MuiDrawer-paper': {
             width: effectiveWidth,
             boxSizing: 'border-box',
+            // eslint-disable-next-line ripser/no-literal-colors -- navy de identidad del sidebar
             background: '#212A3E',
-            color: '#fff',
+            color: 'common.white',
             display: 'flex',
             flexDirection: 'column',
             overflowX: 'hidden',

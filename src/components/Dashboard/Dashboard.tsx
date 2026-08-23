@@ -102,7 +102,10 @@ interface StatCardProps {
   title: string;
   value: number | string;
   icon: React.ReactElement;
+  /** Token de paleta para el ícono (ej. 'status.success.fg', 'primary.main'). */
   color: string;
+  /** Token de paleta para el fondo suave del ícono (ej. 'status.success.bg'). */
+  bgColor: string;
   subtitle?: string;
   trend?: {
     value: number;
@@ -111,7 +114,7 @@ interface StatCardProps {
   };
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle, trend }) => (
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, bgColor, subtitle, trend }) => (
   <Card sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
     <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
@@ -119,7 +122,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle
           sx={{
             p: { xs: 1, sm: 1.25 },
             borderRadius: 2,
-            backgroundColor: color + '20',
+            backgroundColor: bgColor,
             color,
             display: 'inline-flex',
             alignItems: 'center',
@@ -572,6 +575,7 @@ const Dashboard: React.FC = () => {
                 fontWeight="bold"
                 sx={{
                   fontSize: { xs: '1.75rem', sm: '2rem', md: '2.25rem' },
+                  // eslint-disable-next-line ripser/no-literal-colors -- gradiente decorativo del saludo, tonos medios legibles en ambos esquemas
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
@@ -705,7 +709,8 @@ const Dashboard: React.FC = () => {
               title="Ventas de Hoy"
               value={`$${stats.todaySales.toLocaleString()}`}
               icon={<MoneyIcon />}
-              color="#2e7d32"
+              color="status.success.fg"
+              bgColor="status.success.bg"
               subtitle={`${stats.completedOrdersToday} órdenes`}
               trend={{ value: Math.abs(stats.todayTrend), isPositive: stats.todayTrend >= 0, label: 'vs ayer' }}
             />
@@ -713,7 +718,8 @@ const Dashboard: React.FC = () => {
               title="Ventas Semanales"
               value={`$${stats.weekSales.toLocaleString()}`}
               icon={<TrendingUpIcon />}
-              color="#1976d2"
+              color="primary.main"
+              bgColor="status.info.bg"
               subtitle="Últimos 7 días"
               trend={{ value: Math.abs(stats.weekTrend), isPositive: stats.weekTrend >= 0, label: 'vs semana anterior' }}
             />
@@ -721,7 +727,8 @@ const Dashboard: React.FC = () => {
               title="Ventas Mensuales"
               value={`$${stats.monthlySalesAmount.toLocaleString()}`}
               icon={<AssessmentIcon />}
-              color="#7b1fa2"
+              color="tertiary.dark"
+              bgColor="status.process.bg"
               subtitle={`${stats.monthlySalesCount} ventas`}
               trend={{ value: Math.abs(stats.monthTrend), isPositive: stats.monthTrend >= 0, label: 'vs mes anterior' }}
             />
@@ -730,7 +737,8 @@ const Dashboard: React.FC = () => {
               subtitle='Últimos 90 días'
               value={`$${stats.averageOrderValue.toLocaleString(undefined, {maximumFractionDigits: 0})}`}
               icon={<ShoppingCartIcon />}
-              color="#ed6c02"
+              color="warning.main"
+              bgColor="status.warning.bg"
             />
           </Box>
 
@@ -751,28 +759,32 @@ const Dashboard: React.FC = () => {
               title="Total Clientes"
               value={stats.totalClients}
               icon={<PeopleIcon />}
-              color="#0288d1"
+              color="info.main"
+              bgColor="status.info.bg"
               subtitle={`+${stats.clientsThisMonth} este mes`}
             />
             <StatCard
               title="Total Productos"
               value={stats.totalProducts}
               icon={<InventoryIcon />}
-              color="#388e3c"
+              color="success.main"
+              bgColor="status.success.bg"
               subtitle={`${stats.productsOutOfStock} sin stock`}
             />
             <StatCard
               title="Stock Bajo"
               value={stats.lowStockProducts}
               icon={<WarningIcon />}
-              color="#f57c00"
+              color="warning.main"
+              bgColor="status.warning.bg"
               subtitle="Requiere atención"
             />
             <StatCard
               title="Total Órdenes"
               value={stats.totalOrders}
               icon={<ShoppingCartIcon />}
-              color="#5e35b1"
+              color="status.process.fg"
+              bgColor="status.process.bg"
             />
           </Box>
 
@@ -1001,6 +1013,7 @@ const Dashboard: React.FC = () => {
                                   sx={{
                                     width: 32,
                                     height: 32,
+                                    // eslint-disable-next-line ripser/no-literal-colors -- escala ordinal de ranking (hue rotativo), texto blanco fijo legible
                                     bgcolor: `hsl(${index * 70}, 70%, 50%)`,
                                     fontSize: '0.875rem'
                                   }}

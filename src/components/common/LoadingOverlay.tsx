@@ -21,11 +21,12 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ open, message, progress
   <Backdrop
     open={open}
     sx={{
-      color: '#fff',
+      color: 'common.white',
       zIndex: (theme) => theme.zIndex.modal + 1,
       flexDirection: 'column',
       gap: 2,
       backdropFilter: 'blur(2px)',
+      // eslint-disable-next-line ripser/no-literal-colors -- scrim de backdrop fijo, válido en ambos esquemas
       backgroundColor: 'rgba(0, 0, 0, 0.6)',
     }}
   >

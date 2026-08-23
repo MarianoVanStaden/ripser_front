@@ -1,3 +1,4 @@
+/* eslint-disable ripser/no-literal-colors -- identidad fija del login: gradiente corporativo #144272/#0d2d4d y branding Ripser, siempre con el mismo aspecto claro en ambos esquemas */
 import React, { useState } from "react";
 import {
   Box,

@@ -52,12 +52,18 @@ export default function DevEnvBadge() {
         flexDirection: 'column',
         padding: '6px 10px',
         borderRadius: 8,
+        // Badge solo-dev con look oscuro fijo (idéntico en ambos esquemas):
+        // eslint-disable-next-line ripser/no-literal-colors -- badge dev fijo oscuro, no sigue el theme
         background: 'rgba(17,24,39,0.92)', // gris muy oscuro translúcido
+        // eslint-disable-next-line ripser/no-literal-colors -- badge dev fijo oscuro, ámbar legible sobre él
         color: '#fcd34d', // amber 300
+        // eslint-disable-next-line ripser/no-literal-colors -- badge dev fijo oscuro
         border: '1px solid #f59e0b', // amber 500
+        // eslint-disable-next-line ripser/no-literal-colors -- badge dev fijo oscuro
         borderLeft: '4px solid #f59e0b',
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
         fontSize: 11,
+        // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa del badge dev fijo
         boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
         userSelect: 'none',
         maxWidth: 260,
@@ -70,8 +76,10 @@ export default function DevEnvBadge() {
             width: 7,
             height: 7,
             borderRadius: '50%',
+            // eslint-disable-next-line ripser/no-literal-colors -- LED verde del badge dev fijo oscuro
             background: '#34d399', // emerald 400
             display: 'inline-block',
+            // eslint-disable-next-line ripser/no-literal-colors -- glow del LED del badge dev fijo oscuro
             boxShadow: '0 0 6px #34d399',
           }}
         />

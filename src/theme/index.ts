@@ -40,6 +40,12 @@ export interface ChartPalette {
 }
 
 declare module '@mui/material/styles' {
+  // Opt-in de tipado para CSS theme variables: habilita `theme.vars` en Theme
+  // y las props de vars en ThemeProvider (colorSchemeNode, etc.).
+  interface CssThemeVariables {
+    enabled: true;
+  }
+
   interface Palette {
     tertiary: Palette['primary'];
     status: StatusPalette;

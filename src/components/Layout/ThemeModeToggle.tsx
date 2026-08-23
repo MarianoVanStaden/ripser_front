@@ -15,6 +15,7 @@ import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness';
 
 // Colores del browser chrome (meta theme-color) por esquema resuelto.
 // Deben coincidir con el script inline anti-FOUC de index.html.
+// eslint-disable-next-line ripser/no-literal-colors -- meta theme-color: el browser no resuelve CSS vars acá; espejo del script de index.html
 const THEME_COLOR = { light: '#1976d2', dark: '#1e1e1e' } as const;
 
 const MODES = [

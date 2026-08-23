@@ -14,7 +14,13 @@ import {
   Legend as RLegend,
   ResponsiveContainer,
 } from 'recharts';
-import { categoricalPalette } from '../../config/chartConfig';
+import {
+  chartSerie,
+  CHART_AXIS,
+  CHART_GRID,
+  CHART_TOOLTIP_BG,
+  CHART_TOOLTIP_TEXT,
+} from '../../theme/chartTokens';
 
 type Histogram = { byHour: number[]; byDOW: number[] };
 type AuthorTop = { name: string; count: number };
@@ -107,7 +113,7 @@ const DevKPIs: React.FC = () => {
     if (!data) return null;
     return Object.entries(data.typeDistribution)
       .filter(([, v]) => v > 0)
-      .map(([k, v], i) => ({ name: k, value: v, color: categoricalPalette[i % categoricalPalette.length] }));
+      .map(([k, v], i) => ({ name: k, value: v, color: chartSerie(i) }));
   }, [data]);
 
   const topAuthorsData = useMemo(() => {
@@ -191,11 +197,11 @@ const DevKPIs: React.FC = () => {
                 <Box sx={{ height: 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={hourData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={1} />
-                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                      <RTooltip />
-                      <Bar dataKey="Commits" fill="rgba(33, 150, 243, 0.6)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: CHART_AXIS }} stroke={CHART_AXIS} interval={1} />
+                      <YAxis tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} allowDecimals={false} />
+                      <RTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
+                      <Bar dataKey="Commits" fill={chartSerie(0)} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -211,11 +217,11 @@ const DevKPIs: React.FC = () => {
                 <Box sx={{ height: 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={dowData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
-                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                      <RTooltip />
-                      <Bar dataKey="Commits" fill="rgba(76, 175, 80, 0.7)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                      <YAxis tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} allowDecimals={false} />
+                      <RTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
+                      <Bar dataKey="Commits" fill={chartSerie(2)} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -237,7 +243,7 @@ const DevKPIs: React.FC = () => {
                           <Cell key={entry.name} fill={entry.color} />
                         ))}
                       </Pie>
-                      <RTooltip />
+                      <RTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
                       <RLegend />
                     </PieChart>
                   </ResponsiveContainer>
@@ -254,11 +260,11 @@ const DevKPIs: React.FC = () => {
                 <Box sx={{ height: 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topAuthorsData} layout="vertical" margin={{ left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
-                      <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
-                      <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={100} />
-                      <RTooltip />
-                      <Bar dataKey="Commits" fill="rgba(255, 99, 132, 0.7)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} allowDecimals={false} />
+                      <YAxis type="category" dataKey="label" tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} width={100} />
+                      <RTooltip contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT }} />
+                      <Bar dataKey="Commits" fill={chartSerie(4)} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>

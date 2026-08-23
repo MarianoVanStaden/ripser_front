@@ -159,6 +159,7 @@ export function CommandPalette({
                     e.stopPropagation();
                     toggleFavorito(item.path);
                   }}
+                  // eslint-disable-next-line ripser/no-literal-colors -- dorado de favoritos (one-off), legible en ambos esquemas
                   sx={{ color: fav ? '#F4B400' : 'action.disabled' }}
                 >
                   {fav ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
