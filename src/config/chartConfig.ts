@@ -4,35 +4,42 @@
  * Antes esto contenía también opciones de Chart.js; tras la migración a
  * recharts los options son props del componente, así que acá sólo quedan
  * los colores y un peineta de settings comunes.
+ *
+ * Los colores son tokens del theme (CSS vars, ver src/theme/chartTokens.ts):
+ * válidos como fill/stroke SVG y siguen el esquema claro/oscuro activo.
  */
 
+import { CHART_SERIES } from '../theme/chartTokens';
+
+// Series con semántica de estado (ingresos/egresos) usan los tokens de status
+// para conservar el significado verde=entra, rojo=sale.
+const SUCCESS = 'var(--mui-palette-status-success-fg)';
+const DANGER = 'var(--mui-palette-status-danger-fg)';
+const INFO = 'var(--mui-palette-status-info-fg)';
+
 export const chartColors = {
-  // Colores para métodos de pago
-  efectivo: '#4CAF50',
-  transferencia: '#2196F3',
-  cheque: '#FF9800',
-  tarjetaCredito: '#9C27B0',
-  tarjetaDebito: '#00BCD4',
-  financiacion: '#FFC107',
-  otro: '#9E9E9E',
+  // Colores para métodos de pago (categóricos: índice estable de CHART_SERIES)
+  efectivo: CHART_SERIES[2],
+  transferencia: CHART_SERIES[0],
+  cheque: CHART_SERIES[1],
+  tarjetaCredito: CHART_SERIES[3],
+  tarjetaDebito: CHART_SERIES[5],
+  financiacion: CHART_SERIES[4],
+  otro: CHART_SERIES[7],
 
   // Colores para ingresos/egresos
-  ingresos: '#4CAF50',
-  egresos: '#F44336',
-  flujoNeto: '#2196F3',
+  ingresos: SUCCESS,
+  egresos: DANGER,
+  flujoNeto: INFO,
 
   // Variantes translúcidas — útiles para áreas bajo líneas (`<Area>`)
-  ingresosAlpha: 'rgba(76, 175, 80, 0.2)',
-  egresosAlpha: 'rgba(244, 67, 54, 0.2)',
-  flujoNetoAlpha: 'rgba(33, 150, 243, 0.2)',
+  ingresosAlpha: `color-mix(in srgb, ${SUCCESS} 20%, transparent)`,
+  egresosAlpha: `color-mix(in srgb, ${DANGER} 20%, transparent)`,
+  flujoNetoAlpha: `color-mix(in srgb, ${INFO} 20%, transparent)`,
 };
 
 /** Colores rotativos para datasets arbitrarios (Pie slices, series dinámicas). */
-export const categoricalPalette = [
-  '#42a5f5', '#66bb6a', '#ffa726', '#ab47bc', '#ef5350',
-  '#29b6f6', '#9ccc65', '#ffca28', '#8d6e63', '#26a69a',
-  '#ec407a', '#78909c',
-];
+export const categoricalPalette: readonly string[] = CHART_SERIES;
 
 /** Formatea un número ARS para tooltips y ejes de recharts. */
 export const formatARS = (value: number | string | undefined): string => {

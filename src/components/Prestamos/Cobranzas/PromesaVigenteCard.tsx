@@ -4,10 +4,18 @@ import dayjs from 'dayjs';
 import type { PromesaPagoDTO } from '../../../types/cobranza.types';
 import {
   ESTADO_PROMESA_LABELS,
-  ESTADO_PROMESA_COLORS,
   EstadoPromesaPago,
 } from '../../../types/cobranza.types';
 import { formatPrice } from '../../../utils/priceCalculations';
+import { statusSx, type StatusRole } from '../../../theme/statusRoles';
+
+// Rol visual por estado de promesa (el mapa de colores literales vive en cobranza.types).
+const PROMESA_ROLE: Record<EstadoPromesaPago, StatusRole> = {
+  [EstadoPromesaPago.VIGENTE]: 'info',
+  [EstadoPromesaPago.CUMPLIDA]: 'success',
+  [EstadoPromesaPago.INCUMPLIDA]: 'danger',
+  [EstadoPromesaPago.CANCELADA]: 'neutral',
+};
 
 interface PromesaVigenteCardProps {
   promesa: PromesaPagoDTO | null;
@@ -51,16 +59,16 @@ export const PromesaVigenteCard: React.FC<PromesaVigenteCardProps> = ({
     );
   }
 
-  const color = ESTADO_PROMESA_COLORS[promesa.estado];
+  const role = PROMESA_ROLE[promesa.estado];
 
   return (
     <Paper
       variant="outlined"
       sx={{
         p: 2,
-        borderColor: estaVencida ? 'error.main' : color,
+        borderColor: estaVencida ? 'error.main' : `status.${role}.fg`,
         borderWidth: 2,
-        bgcolor: estaVencida ? 'error.50' : `${color}0A`,
+        bgcolor: estaVencida ? 'error.50' : `status.${role}.bg`,
       }}
     >
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -69,7 +77,7 @@ export const PromesaVigenteCard: React.FC<PromesaVigenteCardProps> = ({
             {estaVencida ? (
               <Warning color="error" fontSize="small" />
             ) : (
-              <Handshake fontSize="small" sx={{ color }} />
+              <Handshake fontSize="small" sx={{ color: `status.${role}.fg` }} />
             )}
             <Typography variant="subtitle2" fontWeight={700}>
               {estaVencida ? 'Promesa VENCIDA' : 'Promesa de Pago Vigente'}
@@ -77,12 +85,12 @@ export const PromesaVigenteCard: React.FC<PromesaVigenteCardProps> = ({
             <Chip
               label={ESTADO_PROMESA_LABELS[promesa.estado]}
               size="small"
-              sx={{ bgcolor: color, color: 'white', fontWeight: 700 }}
+              sx={{ ...statusSx(role), fontWeight: 700 }}
             />
           </Stack>
           <Typography variant="body2">
             <strong>Fecha:</strong>{' '}
-            <span style={{ color: estaVencida ? '#F44336' : 'inherit' }}>
+            <span style={{ color: estaVencida ? 'var(--mui-palette-status-danger-fg)' : 'inherit' }}>
               {dayjs(promesa.fechaPromesa).format('DD/MM/YYYY')}
             </span>
             {estaVencida && ' (venció hace ' + dayjs().diff(dayjs(promesa.fechaPromesa), 'day') + ' días)'}

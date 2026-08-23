@@ -53,10 +53,11 @@ const ChequeStatusCard: React.FC<ChequeStatusCardProps> = ({ data }) => {
     <Card
       sx={{
         height: '100%',
-        border: '2px solid #FF980020',
+        border: '2px solid',
+        borderColor: 'status.warning.bg',
         '&:hover': {
           boxShadow: 4,
-          borderColor: '#FF980060',
+          borderColor: 'color-mix(in srgb, var(--mui-palette-status-warning-fg) 38%, transparent)',
         },
         transition: 'all 0.3s ease',
       }}
@@ -67,13 +68,13 @@ const ChequeStatusCard: React.FC<ChequeStatusCardProps> = ({ data }) => {
             sx={{
               p: 1.5,
               borderRadius: 2,
-              bgcolor: '#FF980020',
+              bgcolor: 'status.warning.bg',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <ChequeIcon sx={{ color: '#FF9800', fontSize: 28 }} />
+            <ChequeIcon sx={{ color: 'status.warning.fg', fontSize: 28 }} />
           </Box>
         }
         title={
@@ -84,7 +85,7 @@ const ChequeStatusCard: React.FC<ChequeStatusCardProps> = ({ data }) => {
             <Chip
               label={totalCheques}
               size="small"
-              sx={{ bgcolor: '#FF980020', color: '#FF9800', fontWeight: 'bold' }}
+              sx={{ bgcolor: 'status.warning.bg', color: 'status.warning.fg', fontWeight: 'bold' }}
             />
           </Box>
         }
@@ -127,7 +128,7 @@ const ChequeStatusCard: React.FC<ChequeStatusCardProps> = ({ data }) => {
                 sx={{
                   height: 6,
                   borderRadius: 1,
-                  bgcolor: '#FFC10720',
+                  bgcolor: 'status.warning.bg',
                   '& .MuiLinearProgress-bar': {
                     bgcolor: getChequeEstadoColor('EN_CARTERA'),
                   },
@@ -172,7 +173,7 @@ const ChequeStatusCard: React.FC<ChequeStatusCardProps> = ({ data }) => {
                 sx={{
                   height: 6,
                   borderRadius: 1,
-                  bgcolor: '#2196F320',
+                  bgcolor: 'status.info.bg',
                   '& .MuiLinearProgress-bar': {
                     bgcolor: getChequeEstadoColor('DEPOSITADO'),
                   },

@@ -12,8 +12,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import {
-  ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS, TipoFinanciacion, EstadoCuota,
+  ESTADO_CUOTA_LABELS, TipoFinanciacion, EstadoCuota,
 } from '../../types/prestamo.types';
+import { cuotaEstadoSx } from './cuotaEstadoRole';
 import type { CuotaPrestamoDTO, PrestamoPersonalDTO } from '../../types/prestamo.types';
 
 /** Mismo cálculo que el backend (calcularFechaVencimiento). cuota n -> base + n períodos. */
@@ -205,7 +206,7 @@ const PreviewAnclaje: React.FC<{
                   <Chip
                     label={ESTADO_CUOTA_LABELS[c.estado]}
                     size="small"
-                    sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
+                    sx={cuotaEstadoSx(c.estado)}
                   />
                 </TableCell>
                 <TableCell>
@@ -216,7 +217,7 @@ const PreviewAnclaje: React.FC<{
                     <Chip
                       label={ESTADO_CUOTA_LABELS[estadoNuevo]}
                       size="small"
-                      sx={{ bgcolor: ESTADO_CUOTA_COLORS[estadoNuevo], color: 'white' }}
+                      sx={cuotaEstadoSx(estadoNuevo)}
                     />
                   ) : <em>—</em>}
                 </TableCell>

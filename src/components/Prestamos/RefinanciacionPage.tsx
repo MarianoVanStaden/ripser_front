@@ -16,8 +16,9 @@ import dayjs from 'dayjs';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import { refinanciacionApi } from '../../api/services/refinanciacionApi';
 import {
-  TIPO_FINANCIACION_LABELS, ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS,
+  TIPO_FINANCIACION_LABELS, ESTADO_CUOTA_LABELS,
 } from '../../types/prestamo.types';
+import { cuotaEstadoSx } from './cuotaEstadoRole';
 import type { PrestamoPersonalDTO, TipoFinanciacion } from '../../types/prestamo.types';
 import type {
   RefinanciacionRequest, RefinanciacionPreviewResponse,
@@ -558,8 +559,7 @@ export const RefinanciacionPage: React.FC = () => {
                               label={ESTADO_CUOTA_LABELS[c.estado] ?? c.estado}
                               size="small"
                               sx={{
-                                bgcolor: ESTADO_CUOTA_COLORS[c.estado] ?? '#9E9E9E',
-                                color: 'white',
+                                ...cuotaEstadoSx(c.estado),
                                 fontSize: '0.7rem',
                               }}
                             />

@@ -160,30 +160,9 @@ export const TIPO_EVENTO_LABELS: Record<TipoEventoCobranza, string> = {
 };
 
 // ==================== COLORS ====================
-
-export const ESTADO_GESTION_COBRANZA_COLORS: Record<EstadoGestionCobranza, string> = {
-  PRIMER_CONTACTO: '#26A69A',
-  NUEVA: '#2196F3',
-  EN_GESTION: '#FF9800',
-  PROMETIO_PAGO: '#9C27B0',
-  ACUERDO_CUOTAS: '#00BCD4',
-  EN_LEGAL: '#F44336',
-  RECUPERADA: '#4CAF50',
-  INCOBRABLE: '#9E9E9E',
-};
-
-export const PRIORIDAD_COBRANZA_COLORS: Record<PrioridadCobranza, string> = {
-  ALTA: '#F44336',
-  MEDIA: '#FF9800',
-  BAJA: '#9CA3AF',
-};
-
-export const ESTADO_PROMESA_COLORS: Record<EstadoPromesaPago, string> = {
-  VIGENTE: '#2196F3',
-  CUMPLIDA: '#4CAF50',
-  INCUMPLIDA: '#F44336',
-  CANCELADA: '#9E9E9E',
-};
+// Los mapas estado→hex (ESTADO_GESTION_COBRANZA_COLORS, PRIORIDAD_COBRANZA_COLORS,
+// ESTADO_PROMESA_COLORS) se eliminaron: no tenían consumidores y los estados de
+// cobranza ya están cubiertos por DOMAIN_STATUS_ROLE (src/theme/statusRoles.ts).
 
 // ==================== ESTADOS DE CIERRE ====================
 

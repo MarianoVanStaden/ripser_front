@@ -150,7 +150,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
           )}
 
           {/* Check Information Card */}
-          <Card variant="outlined" sx={{ mb: 3, bgcolor: '#f5f5f5' }}>
+          <Card variant="outlined" sx={{ mb: 3, bgcolor: 'background.default' }}>
             <CardContent>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Información del Cheque

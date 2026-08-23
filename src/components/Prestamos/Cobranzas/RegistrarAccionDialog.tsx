@@ -97,7 +97,7 @@ export const RegistrarAccionDialog: React.FC<RegistrarAccionDialogProps> = ({
       <DialogTitle>
         Registrar Acción de Cobranza
         <br />
-        <span style={{ fontSize: '0.875rem', color: '#666' }}>{clienteNombre}</span>
+        <span style={{ fontSize: '0.875rem', color: 'var(--mui-palette-text-secondary)' }}>{clienteNombre}</span>
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} mt={0.5}>

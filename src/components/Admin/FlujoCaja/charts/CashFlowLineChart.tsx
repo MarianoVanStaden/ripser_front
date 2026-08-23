@@ -24,6 +24,7 @@ import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import type { TimeSeriesData } from '../../../../types';
 import { chartColors, formatARS } from '../../../../config/chartConfig';
+import { CHART_AXIS, CHART_GRID, CHART_TOOLTIP_BG, CHART_TOOLTIP_TEXT } from '../../../../theme/chartTokens';
 
 dayjs.extend(weekOfYear);
 
@@ -142,10 +143,13 @@ const CashFlowLineChart: React.FC<CashFlowLineChartProps> = ({
       <Box sx={{ height: { xs: 300, sm: 340 }, mt: 2, width: '100%' }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-            <YAxis tickFormatter={formatARS} tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(value) => formatARS(value as number)} />
+            <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+            <YAxis tickFormatter={formatARS} tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+            <Tooltip
+              formatter={(value) => formatARS(value as number)}
+              contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT, border: 'none' }}
+            />
             <Legend />
             {/* Área bajo el flujo neto — da sensación de volumen */}
             <Area

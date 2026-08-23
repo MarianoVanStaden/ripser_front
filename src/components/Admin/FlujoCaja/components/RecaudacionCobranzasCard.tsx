@@ -77,10 +77,10 @@ export const RecaudacionCobranzasCard: React.FC<Props> = ({ fechaDesde, fechaHas
   );
 
   return (
-    <Card sx={{ borderLeft: '4px solid #FFC107', mt: 2 }}>
+    <Card sx={{ borderLeft: '4px solid var(--mui-palette-status-warning-fg)', mt: 2 }}>
       <CardContent>
         <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-          <ReceiptLong sx={{ color: '#FFC107' }} />
+          <ReceiptLong sx={{ color: 'status.warning.fg' }} />
           <Typography variant="h6">Cobranza de préstamos personales</Typography>
         </Stack>
 
@@ -102,7 +102,7 @@ export const RecaudacionCobranzasCard: React.FC<Props> = ({ fechaDesde, fechaHas
             <Stack direction="row" spacing={4} sx={{ mb: 1.5 }}>
               <Box>
                 <Typography variant="caption" color="text.secondary">Total pendiente</Typography>
-                <Typography variant="h6" sx={{ color: '#FFC107' }}>{formatPrice(totalPendiente)}</Typography>
+                <Typography variant="h6" sx={{ color: 'status.warning.fg' }}>{formatPrice(totalPendiente)}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">Cantidad de pagos</Typography>

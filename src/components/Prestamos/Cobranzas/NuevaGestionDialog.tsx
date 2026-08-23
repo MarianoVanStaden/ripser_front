@@ -223,6 +223,7 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
               </FormControl>
               <TextField
                 label="Descripción del origen"
+                // eslint-disable-next-line ripser/no-literal-colors -- "#1234" es un número de cheque en el placeholder, no un color
                 placeholder='Ej: "Cheque #1234 rechazado el 05/07"'
                 fullWidth size="small"
                 value={descripcionOrigen}

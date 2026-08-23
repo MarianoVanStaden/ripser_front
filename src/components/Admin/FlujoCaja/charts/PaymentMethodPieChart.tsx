@@ -11,6 +11,7 @@ import {
 import type { PaymentMethodAggregation } from '../../../../types';
 import { getPaymentMethodLabel, getPaymentMethodColor } from '../../../../utils/flujoCajaUtils';
 import { formatARS } from '../../../../config/chartConfig';
+import { CHART_TOOLTIP_BG, CHART_TOOLTIP_TEXT } from '../../../../theme/chartTokens';
 
 interface PaymentMethodPieChartProps {
   data: PaymentMethodAggregation[];
@@ -68,7 +69,7 @@ const PaymentMethodPieChart: React.FC<PaymentMethodPieChartProps> = ({
               innerRadius={60}
               outerRadius={110}
               paddingAngle={2}
-              stroke="#fff"
+              stroke="var(--mui-palette-background-paper)"
               strokeWidth={2}
               onClick={(slice: any) => {
                 if (onSliceClick && slice?.payload?.metodoPago) {
@@ -88,6 +89,7 @@ const PaymentMethodPieChart: React.FC<PaymentMethodPieChartProps> = ({
                 const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0.0';
                 return [`${formatARS(v)} (${pct}%)`, props?.payload?.name ?? ''];
               }}
+              contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT, border: 'none' }}
             />
             <Legend verticalAlign="bottom" align="center" layout="horizontal" iconType="circle" />
           </PieChart>

@@ -23,14 +23,15 @@ import { clienteApi } from '../../api/services/clienteApi';
 import NivelFidelizacionChip from '../common/NivelFidelizacionChip';
 import { documentoApi } from '../../api/services/documentoApi';
 import {
-  ESTADO_PRESTAMO_LABELS, ESTADO_PRESTAMO_COLORS,
-  CATEGORIA_PRESTAMO_LABELS, CATEGORIA_PRESTAMO_COLORS,
-  ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS,
+  ESTADO_PRESTAMO_LABELS,
+  CATEGORIA_PRESTAMO_LABELS,
+  ESTADO_CUOTA_LABELS,
   ESTADO_PAGO_INFORMADO_LABELS,
   TIPO_FINANCIACION_LABELS,
   TIPO_INTERACCION_PRESTAMO_LABELS,
   EstadoPrestamo, CategoriaPrestamo,
 } from '../../types/prestamo.types';
+import { cuotaEstadoSx, prestamoEstadoSx, CATEGORIA_ROLE } from './cuotaEstadoRole';
 import type {
   CuotaPrestamoDTO, RecordatorioCuotaDTO,
   PagoInformadoDTO,
@@ -399,7 +400,7 @@ export const PrestamoDetailPage: React.FC = () => {
               <Box sx={{ mt: 0.5 }}>
                 <Chip
                   label={ESTADO_PRESTAMO_LABELS[prestamo.estado]}
-                  sx={{ bgcolor: ESTADO_PRESTAMO_COLORS[prestamo.estado], color: 'white', cursor: 'pointer' }}
+                  sx={{ ...prestamoEstadoSx(prestamo.estado), cursor: 'pointer' }}
                   onClick={(e) => setEstadoAnchor(e.currentTarget)}
                 />
               </Box>
@@ -411,8 +412,8 @@ export const PrestamoDetailPage: React.FC = () => {
                   label={CATEGORIA_PRESTAMO_LABELS[prestamo.categoria]}
                   variant="outlined"
                   sx={{
-                    borderColor: CATEGORIA_PRESTAMO_COLORS[prestamo.categoria],
-                    color: CATEGORIA_PRESTAMO_COLORS[prestamo.categoria],
+                    borderColor: `status.${CATEGORIA_ROLE[prestamo.categoria]}.fg`,
+                    color: `status.${CATEGORIA_ROLE[prestamo.categoria]}.fg`,
                     cursor: 'pointer',
                   }}
                   onClick={(e) => setCategoriaAnchor(e.currentTarget)}
@@ -654,7 +655,7 @@ export const PrestamoDetailPage: React.FC = () => {
                       <Chip
                         label={ESTADO_CUOTA_LABELS[c.estado]}
                         size="small"
-                        sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
+                        sx={cuotaEstadoSx(c.estado)}
                       />
                       {rechazadoPorCuota.has(c.id) && c.estado !== 'PAGADA' && c.estado !== 'PAGO_INFORMADO' && (
                         <Tooltip
@@ -888,7 +889,7 @@ export const PrestamoDetailPage: React.FC = () => {
       <Menu anchorEl={estadoAnchor} open={Boolean(estadoAnchor)} onClose={() => setEstadoAnchor(null)}>
         {Object.entries(ESTADO_PRESTAMO_LABELS).map(([key, label]) => (
           <MenuItem key={key} onClick={() => handleEstadoChange(key as EstadoPrestamo)} disabled={prestamo.estado === key}>
-            <Chip label={label} size="small" sx={{ bgcolor: ESTADO_PRESTAMO_COLORS[key as EstadoPrestamo], color: 'white' }} />
+            <Chip label={label} size="small" sx={prestamoEstadoSx(key as EstadoPrestamo)} />
           </MenuItem>
         ))}
       </Menu>
@@ -897,7 +898,7 @@ export const PrestamoDetailPage: React.FC = () => {
       <Menu anchorEl={categoriaAnchor} open={Boolean(categoriaAnchor)} onClose={() => setCategoriaAnchor(null)}>
         {Object.entries(CATEGORIA_PRESTAMO_LABELS).map(([key, label]) => (
           <MenuItem key={key} onClick={() => handleCategoriaChange(key as CategoriaPrestamo)} disabled={prestamo.categoria === key}>
-            <Chip label={label} size="small" variant="outlined" sx={{ borderColor: CATEGORIA_PRESTAMO_COLORS[key as CategoriaPrestamo], color: CATEGORIA_PRESTAMO_COLORS[key as CategoriaPrestamo] }} />
+            <Chip label={label} size="small" variant="outlined" sx={{ borderColor: `status.${CATEGORIA_ROLE[key as CategoriaPrestamo]}.fg`, color: `status.${CATEGORIA_ROLE[key as CategoriaPrestamo]}.fg` }} />
           </MenuItem>
         ))}
       </Menu>

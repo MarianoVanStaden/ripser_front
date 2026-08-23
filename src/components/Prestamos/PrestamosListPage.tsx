@@ -13,10 +13,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import type { PrestamoListParams } from '../../api/services/prestamoPersonalApi';
 import {
-  EstadoPrestamo, ESTADO_PRESTAMO_LABELS, ESTADO_PRESTAMO_COLORS,
-  CategoriaPrestamo, CATEGORIA_PRESTAMO_LABELS, CATEGORIA_PRESTAMO_COLORS,
+  EstadoPrestamo, ESTADO_PRESTAMO_LABELS,
+  CategoriaPrestamo, CATEGORIA_PRESTAMO_LABELS,
   TIPO_FINANCIACION_LABELS,
 } from '../../types/prestamo.types';
+import { PRESTAMO_ROLE, CATEGORIA_ROLE, prestamoEstadoSx } from './cuotaEstadoRole';
 import type { PrestamoPersonalDTO } from '../../types/prestamo.types';
 import { formatPrice } from '../../utils/priceCalculations';
 import { PrestamoFormDialog } from './PrestamoFormDialog';
@@ -229,9 +230,9 @@ export const PrestamosListPage: React.FC = () => {
                   variant={selected ? 'filled' : 'outlined'}
                   onClick={() => toggleEstado(key)}
                   sx={{
-                    bgcolor: selected ? ESTADO_PRESTAMO_COLORS[key] : 'transparent',
-                    color: selected ? 'white' : ESTADO_PRESTAMO_COLORS[key],
-                    borderColor: ESTADO_PRESTAMO_COLORS[key],
+                    bgcolor: selected ? `status.${PRESTAMO_ROLE[key]}.bg` : 'transparent',
+                    color: `status.${PRESTAMO_ROLE[key]}.fg`,
+                    borderColor: `status.${PRESTAMO_ROLE[key]}.fg`,
                   }}
                 />
               );
@@ -249,9 +250,9 @@ export const PrestamosListPage: React.FC = () => {
                   variant={selected ? 'filled' : 'outlined'}
                   onClick={() => toggleCategoria(key)}
                   sx={{
-                    bgcolor: selected ? CATEGORIA_PRESTAMO_COLORS[key] : 'transparent',
-                    color: selected ? 'white' : CATEGORIA_PRESTAMO_COLORS[key],
-                    borderColor: CATEGORIA_PRESTAMO_COLORS[key],
+                    bgcolor: selected ? `status.${CATEGORIA_ROLE[key]}.bg` : 'transparent',
+                    color: `status.${CATEGORIA_ROLE[key]}.fg`,
+                    borderColor: `status.${CATEGORIA_ROLE[key]}.fg`,
                   }}
                 />
               );
@@ -330,7 +331,7 @@ export const PrestamosListPage: React.FC = () => {
                       <Chip
                         label={ESTADO_PRESTAMO_LABELS[p.estado]}
                         size="small"
-                        sx={{ bgcolor: ESTADO_PRESTAMO_COLORS[p.estado], color: 'white', cursor: 'pointer' }}
+                        sx={{ ...prestamoEstadoSx(p.estado), cursor: 'pointer' }}
                         onClick={(e) => { setEstadoMenuAnchor(e.currentTarget); setEstadoMenuPrestamo(p); }}
                       />
                     </TableCell>
@@ -339,7 +340,7 @@ export const PrestamosListPage: React.FC = () => {
                         label={CATEGORIA_PRESTAMO_LABELS[p.categoria]}
                         size="small"
                         variant="outlined"
-                        sx={{ borderColor: CATEGORIA_PRESTAMO_COLORS[p.categoria], color: CATEGORIA_PRESTAMO_COLORS[p.categoria] }}
+                        sx={{ borderColor: `status.${CATEGORIA_ROLE[p.categoria]}.fg`, color: `status.${CATEGORIA_ROLE[p.categoria]}.fg` }}
                       />
                     </TableCell>
                     <TableCell align="right">
@@ -398,7 +399,7 @@ export const PrestamosListPage: React.FC = () => {
         {(Object.keys(ESTADO_PRESTAMO_LABELS) as EstadoPrestamo[]).map((key) => (
           <MenuItem key={key} onClick={() => handleEstadoChange(key)} disabled={estadoMenuPrestamo?.estado === key}>
             <Chip label={ESTADO_PRESTAMO_LABELS[key]} size="small"
-              sx={{ bgcolor: ESTADO_PRESTAMO_COLORS[key], color: 'white', mr: 1 }} />
+              sx={{ ...prestamoEstadoSx(key), mr: 1 }} />
           </MenuItem>
         ))}
       </Menu>

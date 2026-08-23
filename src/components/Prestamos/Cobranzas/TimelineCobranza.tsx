@@ -8,6 +8,7 @@ import type { EventoCobranzaDTO } from '../../../types/cobranza.types';
 import { TIPO_EVENTO_LABELS, TipoEventoCobranza } from '../../../types/cobranza.types';
 import { formatPrice } from '../../../utils/priceCalculations';
 import LoadingOverlay from '../../common/LoadingOverlay';
+import type { StatusRole } from '../../../theme/statusRoles';
 
 interface TimelineCobranzaProps {
   eventos: EventoCobranzaDTO[];
@@ -17,25 +18,24 @@ interface TimelineCobranzaProps {
 
 interface EventoConfig {
   icon: React.ReactElement;
-  color: string;
-  bgColor: string;
+  role: StatusRole;
 }
 
 const EVENTO_CONFIG: Record<TipoEventoCobranza, EventoConfig> = {
-  GESTION_ABIERTA:            { icon: <FolderOpen />,     color: '#1976D2', bgColor: '#E3F2FD' },
-  CUOTA_VENCIDA:              { icon: <Warning />,         color: '#F44336', bgColor: '#FFEBEE' },
-  CUOTAS_EN_MORA_ACTUALIZADO: { icon: <WarningAmber />,    color: '#FF9800', bgColor: '#FFF3E0' },
-  PROMESA_REGISTRADA:         { icon: <Handshake />,       color: '#9C27B0', bgColor: '#F3E5F5' },
-  PROMESA_INCUMPLIDA:         { icon: <Cancel />,          color: '#F44336', bgColor: '#FFEBEE' },
-  PROMESA_CUMPLIDA:           { icon: <CheckCircle />,     color: '#4CAF50', bgColor: '#E8F5E9' },
-  PROMESA_CANCELADA:          { icon: <Cancel />,          color: '#9E9E9E', bgColor: '#F5F5F5' },
-  PAGO_PARCIAL_REGISTRADO:    { icon: <AttachMoney />,     color: '#FF9800', bgColor: '#FFF3E0' },
-  PAGO_TOTAL_REGISTRADO:      { icon: <CheckCircle />,     color: '#4CAF50', bgColor: '#E8F5E9' },
-  PRIORIDAD_ESCALADA:         { icon: <TrendingUp />,      color: '#F44336', bgColor: '#FFEBEE' },
-  AGENTE_ASIGNADO:            { icon: <FolderOpen />,      color: '#1976D2', bgColor: '#E3F2FD' },
-  ACUERDO_CUOTAS_CREADO:      { icon: <Handshake />,       color: '#00BCD4', bgColor: '#E0F7FA' },
-  DERIVADO_LEGAL:             { icon: <Gavel />,           color: '#F44336', bgColor: '#FFEBEE' },
-  GESTION_CERRADA:            { icon: <Lock />,            color: '#9E9E9E', bgColor: '#F5F5F5' },
+  GESTION_ABIERTA:            { icon: <FolderOpen />,      role: 'info' },
+  CUOTA_VENCIDA:              { icon: <Warning />,         role: 'danger' },
+  CUOTAS_EN_MORA_ACTUALIZADO: { icon: <WarningAmber />,    role: 'warning' },
+  PROMESA_REGISTRADA:         { icon: <Handshake />,       role: 'process' },
+  PROMESA_INCUMPLIDA:         { icon: <Cancel />,          role: 'danger' },
+  PROMESA_CUMPLIDA:           { icon: <CheckCircle />,     role: 'success' },
+  PROMESA_CANCELADA:          { icon: <Cancel />,          role: 'neutral' },
+  PAGO_PARCIAL_REGISTRADO:    { icon: <AttachMoney />,     role: 'warning' },
+  PAGO_TOTAL_REGISTRADO:      { icon: <CheckCircle />,     role: 'success' },
+  PRIORIDAD_ESCALADA:         { icon: <TrendingUp />,      role: 'danger' },
+  AGENTE_ASIGNADO:            { icon: <FolderOpen />,      role: 'info' },
+  ACUERDO_CUOTAS_CREADO:      { icon: <Handshake />,       role: 'info' },
+  DERIVADO_LEGAL:             { icon: <Gavel />,           role: 'danger' },
+  GESTION_CERRADA:            { icon: <Lock />,            role: 'neutral' },
 };
 
 export const TimelineCobranza: React.FC<TimelineCobranzaProps> = ({
@@ -81,9 +81,9 @@ export const TimelineCobranza: React.FC<TimelineCobranzaProps> = ({
       {eventos.map((evento, idx) => {
         const cfg = EVENTO_CONFIG[evento.tipo] ?? {
           icon: <FolderOpen />,
-          color: '#9E9E9E',
-          bgColor: '#F5F5F5',
+          role: 'neutral' as StatusRole,
         };
+        const fgVar = `var(--mui-palette-status-${cfg.role}-fg)`;
 
         return (
           <Box
@@ -101,14 +101,14 @@ export const TimelineCobranza: React.FC<TimelineCobranzaProps> = ({
                 width: 36,
                 height: 36,
                 borderRadius: '50%',
-                bgcolor: cfg.bgColor,
-                border: `2px solid ${cfg.color}`,
+                bgcolor: `status.${cfg.role}.bg`,
+                border: `2px solid ${fgVar}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
                 zIndex: 1,
-                '& svg': { fontSize: 18, color: cfg.color },
+                '& svg': { fontSize: 18, color: `status.${cfg.role}.fg` },
               }}
             >
               {cfg.icon}
@@ -121,11 +121,11 @@ export const TimelineCobranza: React.FC<TimelineCobranzaProps> = ({
                   label={TIPO_EVENTO_LABELS[evento.tipo]}
                   size="small"
                   sx={{
-                    bgcolor: cfg.bgColor,
-                    color: cfg.color,
+                    bgcolor: `status.${cfg.role}.bg`,
+                    color: `status.${cfg.role}.fg`,
                     fontWeight: 700,
                     fontSize: '0.7rem',
-                    border: `1px solid ${cfg.color}40`,
+                    border: `1px solid color-mix(in srgb, ${fgVar} 25%, transparent)`,
                   }}
                 />
                 {evento.monto != null && (

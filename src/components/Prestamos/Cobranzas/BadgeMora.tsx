@@ -1,4 +1,5 @@
 import { Chip } from '@mui/material';
+import { statusSx, type StatusRole } from '../../../theme/statusRoles';
 
 interface BadgeMoraProps {
   dias: number;
@@ -10,17 +11,17 @@ export const BadgeMora: React.FC<BadgeMoraProps> = ({ dias, size = 'small' }) =>
     return <Chip label="Al día" color="success" size={size} />;
   }
 
-  const { label, color } = (() => {
-    if (dias <= 30) return { label: `${dias} días mora`, color: '#FF9800' };
-    if (dias <= 60) return { label: `${dias} días mora`, color: '#FF5722' };
-    return { label: `${dias} días mora`, color: '#F44336' };
+  const { label, role } = (() => {
+    if (dias <= 30) return { label: `${dias} días mora`, role: 'warning' as StatusRole };
+    if (dias <= 60) return { label: `${dias} días mora`, role: 'danger' as StatusRole };
+    return { label: `${dias} días mora`, role: 'danger' as StatusRole };
   })();
 
   return (
     <Chip
       label={label}
       size={size}
-      sx={{ bgcolor: color, color: 'white', fontWeight: 700 }}
+      sx={{ ...statusSx(role), fontWeight: 700 }}
     />
   );
 };

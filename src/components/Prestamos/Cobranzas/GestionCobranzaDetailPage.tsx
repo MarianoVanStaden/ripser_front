@@ -18,16 +18,16 @@ import dayjs from 'dayjs';
 import { gestionCobranzaApi } from '../../../api/services/gestionCobranzaApi';
 import {
   ESTADO_GESTION_COBRANZA_LABELS,
-  ESTADO_GESTION_COBRANZA_COLORS,
   PRIORIDAD_COBRANZA_LABELS,
-  PRIORIDAD_COBRANZA_COLORS,
+  PrioridadCobranza,
+  EstadoPromesaPago,
   TIPO_ACCION_COBRANZA_LABELS,
   RESULTADO_ACCION_COBRANZA_LABELS,
   TIPO_RECORDATORIO_COBRANZA_LABELS,
   TIPO_ORIGEN_COBRANZA_LABELS,
-  PRIORIDAD_COBRANZA_COLORS as PRIO_COLORS,
   ESTADOS_CIERRE,
 } from '../../../types/cobranza.types';
+import { roleForEstado, statusSx, type StatusRole } from '../../../theme/statusRoles';
 import type {
   EstadoGestionCobranza,
 } from '../../../types/cobranza.types';
@@ -41,14 +41,28 @@ import { InformarCobroLibreDialog } from './InformarCobroLibreDialog';
 import { BadgeMora } from './BadgeMora';
 import {
   ESTADO_PROMESA_LABELS,
-  ESTADO_PROMESA_COLORS,
 } from '../../../types/cobranza.types';
 import LoadingOverlay from '../../common/LoadingOverlay';
 import TabPanel from '../../common/TabPanel';
 
+// Roles visuales locales: los mapas de colores literales viven en cobranza.types;
+// acá se resuelve cada estado/prioridad a su token semántico.
+const PRIORIDAD_ROLE: Record<PrioridadCobranza, StatusRole> = {
+  [PrioridadCobranza.ALTA]: 'danger',
+  [PrioridadCobranza.MEDIA]: 'warning',
+  [PrioridadCobranza.BAJA]: 'neutral',
+};
+const PROMESA_ROLE: Record<EstadoPromesaPago, StatusRole> = {
+  [EstadoPromesaPago.VIGENTE]: 'info',
+  [EstadoPromesaPago.CUMPLIDA]: 'success',
+  [EstadoPromesaPago.INCUMPLIDA]: 'danger',
+  [EstadoPromesaPago.CANCELADA]: 'neutral',
+};
+
 // ── Icons per tipo acción ─────────────────────────────────────────────────────
 const TIPO_ACCION_ICONS: Record<string, React.ReactElement> = {
   LLAMADA: <PhoneCallback fontSize="small" />,
+  // eslint-disable-next-line ripser/no-literal-colors -- verde identidad de WhatsApp
   WHATSAPP: <WhatsAppIcon fontSize="small" sx={{ color: '#25D366' }} />,
   SMS: <Sms fontSize="small" />,
   EMAIL: <Email fontSize="small" />,
@@ -64,6 +78,7 @@ const TIPO_RECORDATORIO_ICONS: Record<string, React.ReactElement> = {
   SMS: <Sms fontSize="small" />,
   TAREA: <Task fontSize="small" />,
   NOTIFICACION: <Notifications fontSize="small" />,
+  // eslint-disable-next-line ripser/no-literal-colors -- verde identidad de WhatsApp
   WHATSAPP: <WhatsAppIcon fontSize="small" sx={{ color: '#25D366' }} />,
   LLAMADA: <Phone fontSize="small" />,
 };
@@ -217,7 +232,6 @@ export const GestionCobranzaDetailPage: React.FC = () => {
     );
   }
 
-  const estadoColor = ESTADO_GESTION_COBRANZA_COLORS[gestion.estado];
   const pendientesCount = recordatorios.filter((r) => !r.completado).length;
 
   return (
@@ -306,8 +320,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
               label={ESTADO_GESTION_COBRANZA_LABELS[estado]}
               size="small"
               sx={{
-                bgcolor: ESTADO_GESTION_COBRANZA_COLORS[estado],
-                color: 'white',
+                ...statusSx(roleForEstado(estado)),
                 mr: 1,
               }}
             />
@@ -325,7 +338,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
               <Box mt={0.5}>
                 <Chip
                   label={ESTADO_GESTION_COBRANZA_LABELS[gestion.estado]}
-                  sx={{ bgcolor: estadoColor, color: 'white', fontWeight: 700 }}
+                  sx={{ ...statusSx(roleForEstado(gestion.estado)), fontWeight: 700 }}
                 />
               </Box>
             </Grid>
@@ -336,8 +349,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                   <Chip
                     label={PRIORIDAD_COBRANZA_LABELS[gestion.prioridad]}
                     sx={{
-                      bgcolor: PRIORIDAD_COBRANZA_COLORS[gestion.prioridad],
-                      color: 'white',
+                      ...statusSx(PRIORIDAD_ROLE[gestion.prioridad]),
                       fontWeight: 700,
                     }}
                   />
@@ -508,7 +520,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                           variant="body2"
                           sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}
                         >
-                          {a.descripcion || <span style={{ color: '#aaa' }}>-</span>}
+                          {a.descripcion || <span style={{ color: 'var(--mui-palette-text-disabled)' }}>-</span>}
                         </Typography>
                       </Tooltip>
                     </TableCell>
@@ -594,8 +606,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                         label={PRIORIDAD_COBRANZA_LABELS[r.prioridad]}
                         size="small"
                         sx={{
-                          bgcolor: PRIO_COLORS[r.prioridad],
-                          color: 'white',
+                          ...statusSx(PRIORIDAD_ROLE[r.prioridad]),
                           fontSize: '0.68rem',
                           height: 18,
                         }}
@@ -607,7 +618,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                           variant="body2"
                           sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}
                         >
-                          {r.mensaje || <span style={{ color: '#aaa' }}>-</span>}
+                          {r.mensaje || <span style={{ color: 'var(--mui-palette-text-disabled)' }}>-</span>}
                         </Typography>
                       </Tooltip>
                     </TableCell>
@@ -676,8 +687,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                       label={ESTADO_PROMESA_LABELS[p.estado]}
                       size="small"
                       sx={{
-                        bgcolor: ESTADO_PROMESA_COLORS[p.estado],
-                        color: 'white',
+                        ...statusSx(PROMESA_ROLE[p.estado]),
                         fontWeight: 700,
                       }}
                     />

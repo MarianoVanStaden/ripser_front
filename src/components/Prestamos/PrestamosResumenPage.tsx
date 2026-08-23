@@ -14,14 +14,15 @@ import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import { gestionCobranzaApi } from '../../api/services/gestionCobranzaApi';
 import type { ResumenPrestamosDTO } from '../../types/prestamo.types';
 import {
-  CategoriaPrestamo, CATEGORIA_PRESTAMO_LABELS, CATEGORIA_PRESTAMO_COLORS,
+  CategoriaPrestamo, CATEGORIA_PRESTAMO_LABELS,
 } from '../../types/prestamo.types';
 import type { ResumenCobranzaDTO } from '../../types/cobranza.types';
 import {
   ESTADO_GESTION_COBRANZA_LABELS,
-  ESTADO_GESTION_COBRANZA_COLORS,
   EstadoGestionCobranza,
 } from '../../types/cobranza.types';
+import { roleForEstado, statusSx, type StatusRole } from '../../theme/statusRoles';
+import { CATEGORIA_ROLE } from './cuotaEstadoRole';
 import { formatPrice } from '../../utils/priceCalculations';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { useAuth } from '../../context/AuthContext';
@@ -73,7 +74,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon, color, subtitle, 
             <Typography variant="h5" fontWeight="bold">{value}</Typography>
             {subtitle && <Typography variant="caption" color="text.secondary">{subtitle}</Typography>}
           </Box>
-          <Box sx={{ bgcolor: `${color}15`, borderRadius: '50%', p: 1.5, display: 'flex' }}>
+          <Box sx={{ bgcolor: `color-mix(in srgb, ${color} 8%, transparent)`, borderRadius: '50%', p: 1.5, display: 'flex' }}>
             {icon}
           </Box>
         </Box>
@@ -123,12 +124,12 @@ interface FocoItemProps {
   icon: React.ReactElement;
   label: string;
   value: number;
-  color: string;
+  role: StatusRole;
   hint: string;
   to: string;
 }
 
-const FocoItem: React.FC<FocoItemProps> = ({ icon, label, value, color, hint, to }) => (
+const FocoItem: React.FC<FocoItemProps> = ({ icon, label, value, role, hint, to }) => (
   <Box
     component={RouterLink}
     to={to}
@@ -144,12 +145,12 @@ const FocoItem: React.FC<FocoItemProps> = ({ icon, label, value, color, hint, to
       borderColor: 'divider',
       bgcolor: 'background.paper',
       transition: 'all 0.2s ease-in-out',
-      '&:hover': { boxShadow: 3, borderColor: color, transform: 'translateX(4px)' },
+      '&:hover': { boxShadow: 3, borderColor: `status.${role}.fg`, transform: 'translateX(4px)' },
     }}
   >
     <Box
       sx={{
-        bgcolor: `${color}20`, color, borderRadius: '50%', p: 1.25,
+        bgcolor: `status.${role}.bg`, color: `status.${role}.fg`, borderRadius: '50%', p: 1.25,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
@@ -160,7 +161,7 @@ const FocoItem: React.FC<FocoItemProps> = ({ icon, label, value, color, hint, to
       <Typography variant="caption" color="text.secondary">{hint}</Typography>
     </Box>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      <Chip label={value} size="small" sx={{ bgcolor: color, color: '#fff', fontWeight: 700, minWidth: 40 }} />
+      <Chip label={value} size="small" sx={{ ...statusSx(role), fontWeight: 700, minWidth: 40 }} />
       <ArrowForward sx={{ color: 'text.secondary', fontSize: 18 }} />
     </Box>
   </Box>
@@ -300,6 +301,7 @@ export const PrestamosResumenPage: React.FC = () => {
             fontWeight="bold"
             sx={{
               fontSize: { xs: '1.75rem', sm: '2rem', md: '2.25rem' },
+              // eslint-disable-next-line ripser/no-literal-colors -- gradiente decorativo de marca del saludo (texto con background-clip)
               background: 'linear-gradient(135deg, #1976d2 0%, #00B8A9 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -352,13 +354,14 @@ export const PrestamosResumenPage: React.FC = () => {
             p: { xs: 2, sm: 3 },
             mb: 4,
             borderRadius: 3,
+            // eslint-disable-next-line ripser/no-literal-colors -- velo degradado decorativo de marca al 6%, legible en ambos esquemas
             background: 'linear-gradient(135deg, rgba(25,118,210,0.06) 0%, rgba(0,184,169,0.06) 100%)',
             border: '1px solid',
             borderColor: 'divider',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-            <Box sx={{ bgcolor: '#1976d2', color: '#fff', borderRadius: 2, p: 1, display: 'flex' }}>
+            <Box sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 2, p: 1, display: 'flex' }}>
               <NotificationsActive />
             </Box>
             <Box sx={{ flex: 1 }}>
@@ -370,26 +373,26 @@ export const PrestamosResumenPage: React.FC = () => {
               </Typography>
             </Box>
             {totalFoco > 0 && (
-              <Chip label={totalFoco} sx={{ bgcolor: '#1976d2', color: '#fff', fontWeight: 700 }} />
+              <Chip label={totalFoco} sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }} />
             )}
           </Box>
 
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <FocoItem icon={<Schedule />} label="Vencidas hoy" value={resumenCob.gestionesVencidasHoy}
-                color="#E91E63" hint="Gestiones sin acción registrada hoy" to={linkVencidasHoy} />
+                role="danger" hint="Gestiones sin acción registrada hoy" to={linkVencidasHoy} />
             </Grid>
             <Grid item xs={12} md={6}>
               <FocoItem icon={<Handshake />} label="Promesas vencen hoy" value={resumenCob.promesasVigentesHoy}
-                color="#9C27B0" hint="Verificar si el cliente cumplió" to={linkPromesasVencenHoy} />
+                role="process" hint="Verificar si el cliente cumplió" to={linkPromesasVencenHoy} />
             </Grid>
             <Grid item xs={12} md={6}>
               <FocoItem icon={<Warning />} label="Promesas incumplidas" value={resumenCob.promesasIncumplidas}
-                color="#F44336" hint="Re-contactar al cliente" to={linkPromesasIncumplidas} />
+                role="danger" hint="Re-contactar al cliente" to={linkPromesasIncumplidas} />
             </Grid>
             <Grid item xs={12} md={6}>
               <FocoItem icon={<Gavel />} label="Recordatorios pendientes" value={resumenCob.recordatoriosPendientesAgente}
-                color="#FF9800" hint="Tareas asignadas a tu agenda" to={linkRecordatoriosPendientes} />
+                role="warning" hint="Tareas asignadas a tu agenda" to={linkRecordatoriosPendientes} />
             </Grid>
           </Grid>
         </Paper>
@@ -402,22 +405,22 @@ export const PrestamosResumenPage: React.FC = () => {
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} sm={6} md={3}>
               <KpiCard title="Activos" value={resumen.prestamosActivos}
-                icon={<TrendingUp sx={{ color: '#4CAF50', fontSize: 28 }} />} color="#4CAF50"
+                icon={<TrendingUp sx={{ color: 'status.success.fg', fontSize: 28 }} />} color="var(--mui-palette-status-success-fg)"
                 to={`${LISTA}?estados=ACTIVO`} />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <KpiCard title="En Mora" value={resumen.prestamosEnMora}
-                icon={<Warning sx={{ color: '#FF9800', fontSize: 28 }} />} color="#FF9800"
+                icon={<Warning sx={{ color: 'status.warning.fg', fontSize: 28 }} />} color="var(--mui-palette-status-warning-fg)"
                 to={`${LISTA}?estados=EN_MORA`} />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <KpiCard title="En Legal" value={resumen.prestamosEnLegal}
-                icon={<Gavel sx={{ color: '#F44336', fontSize: 28 }} />} color="#F44336"
+                icon={<Gavel sx={{ color: 'status.danger.fg', fontSize: 28 }} />} color="var(--mui-palette-status-danger-fg)"
                 to={`${LISTA}?estados=EN_LEGAL`} />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <KpiCard title="Próximas a Vencer" value={resumen.cuotasProximasAVencer}
-                icon={<Schedule sx={{ color: '#FF9800', fontSize: 28 }} />} color="#FF9800"
+                icon={<Schedule sx={{ color: 'status.warning.fg', fontSize: 28 }} />} color="var(--mui-palette-status-warning-fg)"
                 subtitle="Cuotas próx. días" />
             </Grid>
           </Grid>
@@ -431,24 +434,24 @@ export const PrestamosResumenPage: React.FC = () => {
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} sm={6} md={3}>
               <KpiCard title="Gestiones Activas" value={resumenCob.totalGestionesActivas}
-                icon={<PhoneCallback sx={{ color: '#1976d2', fontSize: 28 }} />} color="#1976d2"
+                icon={<PhoneCallback sx={{ color: 'primary.main', fontSize: 28 }} />} color="var(--mui-palette-primary-main)"
                 to={linkActivas} />
             </Grid>
             {puedeVerMontos && (
               <Grid item xs={12} sm={6} md={3}>
                 <KpiCard title="Monto en Gestión" value={formatPrice(resumenCob.totalMontoPendiente)}
-                  icon={<AttachMoney sx={{ color: '#FF9800', fontSize: 28 }} />} color="#FF9800"
+                  icon={<AttachMoney sx={{ color: 'status.warning.fg', fontSize: 28 }} />} color="var(--mui-palette-status-warning-fg)"
                   to={linkActivasOrdenadoPorMonto} subtitle="Ordenadas por monto" />
               </Grid>
             )}
             <Grid item xs={12} sm={6} md={3}>
               <KpiCard title="Sin Gestión con Mora" value={resumenCob.sinGestionConMora}
-                icon={<Warning sx={{ color: '#FF5722', fontSize: 28 }} />} color="#FF5722"
+                icon={<Warning sx={{ color: 'status.danger.fg', fontSize: 28 }} />} color="var(--mui-palette-status-danger-fg)"
                 subtitle="Necesitan apertura de gestión" to={linkActivas} />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <KpiCard title="Cuotas Vencidas" value={resumenCob.cuotasVencidasTotal}
-                icon={<Schedule sx={{ color: '#795548', fontSize: 28 }} />} color="#795548"
+                icon={<Schedule sx={{ color: 'status.neutral.fg', fontSize: 28 }} />} color="var(--mui-palette-status-neutral-fg)"
                 subtitle="En toda la empresa" to={linkConMora} />
             </Grid>
           </Grid>
@@ -462,41 +465,41 @@ export const PrestamosResumenPage: React.FC = () => {
           <Grid item xs={12} md={5}>
             <Paper sx={{ p: 3, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <AttachMoney sx={{ color: '#1976d2' }} />
+                <AttachMoney sx={{ color: 'primary.main' }} />
                 <Typography variant="h6" fontWeight={700}>Cartera</Typography>
               </Box>
               <Typography variant="caption" color="text.secondary">Cobrado sobre prestado</Typography>
-              <Typography variant="h3" fontWeight={700} color="#4CAF50" sx={{ mb: 1 }}>{pctCobrado}%</Typography>
+              <Typography variant="h3" fontWeight={700} color="status.success.fg" sx={{ mb: 1 }}>{pctCobrado}%</Typography>
               <LinearProgress
                 variant="determinate"
                 value={pctCobrado}
                 sx={{
-                  height: 10, borderRadius: 5, bgcolor: 'rgba(76,175,80,0.15)',
-                  '& .MuiLinearProgress-bar': { bgcolor: '#4CAF50' },
+                  height: 10, borderRadius: 5, bgcolor: 'status.success.bg',
+                  '& .MuiLinearProgress-bar': { bgcolor: 'status.success.fg' },
                 }}
               />
               <Divider sx={{ my: 2 }} />
               <Stack spacing={1.5}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
-                    <AttachMoney sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: '#1976d2' }} />
+                    <AttachMoney sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: 'primary.main' }} />
                     Prestado
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>{formatPrice(resumen.montoTotalPrestado)}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
-                    <CheckCircle sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: '#4CAF50' }} />
+                    <CheckCircle sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: 'status.success.fg' }} />
                     Cobrado
                   </Typography>
-                  <Typography variant="body2" fontWeight={600} color="#4CAF50">{formatPrice(resumen.montoTotalCobrado)}</Typography>
+                  <Typography variant="body2" fontWeight={600} color="status.success.fg">{formatPrice(resumen.montoTotalCobrado)}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
-                    <MoneyOff sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: '#FF9800' }} />
+                    <MoneyOff sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: 'status.warning.fg' }} />
                     Pendiente
                   </Typography>
-                  <Typography variant="body2" fontWeight={600} color="#FF9800">{formatPrice(resumen.montoTotalPendiente)}</Typography>
+                  <Typography variant="body2" fontWeight={600} color="status.warning.fg">{formatPrice(resumen.montoTotalPendiente)}</Typography>
                 </Box>
               </Stack>
             </Paper>
@@ -511,7 +514,7 @@ export const PrestamosResumenPage: React.FC = () => {
               ) : (
                 <Stack spacing={1.5}>
                   {categoriasCartera.map(({ cat, count, pct }) => {
-                    const color = CATEGORIA_PRESTAMO_COLORS[cat];
+                    const role = CATEGORIA_ROLE[cat];
                     return (
                       <Box
                         key={cat}
@@ -521,7 +524,7 @@ export const PrestamosResumenPage: React.FC = () => {
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
                           <Chip label={CATEGORIA_PRESTAMO_LABELS[cat]} size="small"
-                            sx={{ bgcolor: color, color: '#fff', fontWeight: 600 }} />
+                            sx={{ ...statusSx(role), fontWeight: 600 }} />
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="body2" fontWeight={700}>{count}</Typography>
                             <ArrowForward sx={{ color: 'text.secondary', fontSize: 16 }} />
@@ -531,8 +534,8 @@ export const PrestamosResumenPage: React.FC = () => {
                           variant="determinate"
                           value={pct}
                           sx={{
-                            height: 8, borderRadius: 4, bgcolor: `${color}22`,
-                            '& .MuiLinearProgress-bar': { bgcolor: color },
+                            height: 8, borderRadius: 4, bgcolor: `status.${role}.bg`,
+                            '& .MuiLinearProgress-bar': { bgcolor: `status.${role}.fg` },
                           }}
                         />
                       </Box>
@@ -551,10 +554,10 @@ export const PrestamosResumenPage: React.FC = () => {
           <Grid item xs={12} md={4}>
             <Paper sx={{ p: 3, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <TrendingUp sx={{ color: '#4CAF50' }} />
+                <TrendingUp sx={{ color: 'status.success.fg' }} />
                 <Typography variant="h6" fontWeight={700}>Tasa de Recuperación</Typography>
               </Box>
-              <Typography variant="h3" fontWeight={700} color="#4CAF50" sx={{ mb: 1 }}>{tasaRecuperada}%</Typography>
+              <Typography variant="h3" fontWeight={700} color="status.success.fg" sx={{ mb: 1 }}>{tasaRecuperada}%</Typography>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                 Gestiones recuperadas sobre el total
               </Typography>
@@ -562,15 +565,15 @@ export const PrestamosResumenPage: React.FC = () => {
                 variant="determinate"
                 value={tasaRecuperada}
                 sx={{
-                  height: 10, borderRadius: 5, bgcolor: 'rgba(76,175,80,0.15)',
-                  '& .MuiLinearProgress-bar': { bgcolor: '#4CAF50' },
+                  height: 10, borderRadius: 5, bgcolor: 'status.success.bg',
+                  '& .MuiLinearProgress-bar': { bgcolor: 'status.success.fg' },
                 }}
               />
               <Divider sx={{ my: 2 }} />
               <Stack spacing={1}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
-                    <CheckCircle sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: '#4CAF50' }} />
+                    <CheckCircle sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: 'status.success.fg' }} />
                     Recuperadas
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
@@ -579,7 +582,7 @@ export const PrestamosResumenPage: React.FC = () => {
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
-                    <Gavel sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: '#F44336' }} />
+                    <Gavel sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: 'status.danger.fg' }} />
                     En legal
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
@@ -588,7 +591,7 @@ export const PrestamosResumenPage: React.FC = () => {
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
-                    <Warning sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: '#9E9E9E' }} />
+                    <Warning sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle', color: 'status.neutral.fg' }} />
                     Incobrables
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
@@ -606,14 +609,14 @@ export const PrestamosResumenPage: React.FC = () => {
                 {(Object.keys(EstadoGestionCobranza) as (keyof typeof EstadoGestionCobranza)[]).map((key) => {
                   const estado = EstadoGestionCobranza[key];
                   const count = resumenCob.gestionesPorEstado?.[estado] ?? 0;
-                  const color = ESTADO_GESTION_COBRANZA_COLORS[estado];
+                  const fgVar = `var(--mui-palette-status-${roleForEstado(estado)}-fg)`;
                   return (
                     <Grid item xs={6} sm={4} key={estado}>
                       <KpiCard
                         title={ESTADO_GESTION_COBRANZA_LABELS[estado]}
                         value={count}
-                        icon={<CheckCircle sx={{ color, fontSize: 28 }} />}
-                        color={color}
+                        icon={<CheckCircle sx={{ color: fgVar, fontSize: 28 }} />}
+                        color={fgVar}
                         to={linkEstado(estado)}
                       />
                     </Grid>

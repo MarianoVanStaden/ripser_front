@@ -11,8 +11,9 @@ import { prestamoPersonalApi } from '../../../api/services/prestamoPersonalApi';
 import { clienteApi } from '../../../api/services/clienteApi';
 import { documentoApi } from '../../../api/services/documentoApi';
 import {
-  EstadoCuota, ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS,
+  EstadoCuota, ESTADO_CUOTA_LABELS,
 } from '../../../types/prestamo.types';
+import { cuotaEstadoSx } from '../cuotaEstadoRole';
 import type { CuotaPrestamoDTO, PrestamoPersonalDTO } from '../../../types/prestamo.types';
 import { formatPrice } from '../../../utils/priceCalculations';
 import { generarCreditoPDF } from '../../../services/pdfService';
@@ -215,7 +216,7 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
                             <Chip
                               size="small"
                               label={ESTADO_CUOTA_LABELS[c.estado]}
-                              sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: '#fff', fontWeight: 600 }}
+                              sx={{ ...cuotaEstadoSx(c.estado), fontWeight: 600 }}
                             />
                           </TableCell>
                           <TableCell align="center">

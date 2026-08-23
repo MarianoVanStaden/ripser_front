@@ -12,8 +12,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import {
-  ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS,
+  ESTADO_CUOTA_LABELS,
 } from '../../types/prestamo.types';
+import { cuotaEstadoSx } from './cuotaEstadoRole';
 import type { CuotaPrestamoDTO, PrestamoPersonalDTO } from '../../types/prestamo.types';
 
 interface Props {
@@ -174,7 +175,7 @@ const PreviewSiguientes: React.FC<{ cuotas: CuotaPrestamoDTO[]; deltaDias: numbe
                 <Chip
                   label={ESTADO_CUOTA_LABELS[c.estado]}
                   size="small"
-                  sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
+                  sx={cuotaEstadoSx(c.estado)}
                 />
               </TableCell>
               <TableCell>{dayjs(c.fechaVencimiento).format('DD/MM/YYYY')}</TableCell>

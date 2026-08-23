@@ -119,6 +119,7 @@ const FlujoCajaPage: React.FC = () => {
           origen: 'PAGO_CLIENTE',
           entidad: 'Cliente ABC',
           entidadId: 1,
+          // eslint-disable-next-line ripser/no-literal-colors -- "#001" es un número de factura en texto, no un color
           concepto: 'Pago de factura #001',
           numeroComprobante: 'REC-001',
           importe: 50000,
@@ -132,6 +133,7 @@ const FlujoCajaPage: React.FC = () => {
           origen: 'PAGO_PROVEEDOR',
           entidad: 'Proveedor XYZ',
           entidadId: 2,
+          // eslint-disable-next-line ripser/no-literal-colors -- "#045" es un número de orden en texto, no un color
           concepto: 'Pago de orden de compra #045',
           numeroComprobante: 'PROV-045',
           importe: 25000,

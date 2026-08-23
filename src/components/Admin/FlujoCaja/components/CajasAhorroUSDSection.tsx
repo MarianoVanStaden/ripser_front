@@ -232,11 +232,12 @@ const CajasAhorroUSDSection: React.FC = () => {
         }}
       >
         <Box display="flex" alignItems="center" gap={1.25}>
-          <SavingsIcon sx={{ color: 'white', fontSize: 26 }} />
+          <SavingsIcon sx={{ color: 'common.white', fontSize: 26 }} />
           <Box>
-            <Typography variant="h6" fontWeight={700} color="white" lineHeight={1.2}>
+            <Typography variant="h6" fontWeight={700} color="common.white" lineHeight={1.2}>
               Reservas en USD
             </Typography>
+            {/* eslint-disable-next-line ripser/no-literal-colors -- velo blanco sobre franja de color fija */}
             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
               Cajas de ahorro en dólares
             </Typography>
@@ -247,8 +248,10 @@ const CajasAhorroUSDSection: React.FC = () => {
             size="small"
             onClick={() => navigate('/admin/cajas-ahorro')}
             sx={{
-              color: 'white',
+              color: 'common.white',
+              // eslint-disable-next-line ripser/no-literal-colors -- velo blanco sobre franja de color fija
               bgcolor: 'rgba(255,255,255,0.15)',
+              // eslint-disable-next-line ripser/no-literal-colors -- velo blanco sobre franja de color fija
               '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
             }}
           >

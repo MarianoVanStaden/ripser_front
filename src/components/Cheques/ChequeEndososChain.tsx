@@ -15,6 +15,7 @@ import {
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
 import type { CadenaEndososDTO } from '../../types';
+import { statusSx, type StatusRole } from '../../theme/statusRoles';
 
 dayjs.locale('es');
 
@@ -41,16 +42,16 @@ const ChequeEndososChain: React.FC<Props> = ({ cadenaEndosos, loading }) => {
     );
   }
 
-  const getColorByLevel = (nivel: number): string => {
+  const getRoleByLevel = (nivel: number): StatusRole => {
     switch (nivel) {
       case 1:
-        return '#4caf50'; // Green
+        return 'success';
       case 2:
-        return '#ff9800'; // Orange
+        return 'warning';
       case 3:
-        return '#f44336'; // Red
+        return 'danger';
       default:
-        return '#9c27b0'; // Purple for 4+
+        return 'process'; // 4+
     }
   };
 
@@ -62,8 +63,8 @@ const ChequeEndososChain: React.FC<Props> = ({ cadenaEndosos, loading }) => {
         sx={{
           p: 2,
           mb: 2,
-          borderLeft: '4px solid #1976d2',
-          bgcolor: '#e3f2fd',
+          borderLeft: '4px solid var(--mui-palette-primary-main)',
+          bgcolor: 'status.info.bg',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -98,13 +99,13 @@ const ChequeEndososChain: React.FC<Props> = ({ cadenaEndosos, loading }) => {
             sx={{
               p: 2,
               mb: 2,
-              borderLeft: `4px solid ${getColorByLevel(endoso.nivel)}`,
-              bgcolor: '#fafafa',
+              borderLeft: `4px solid var(--mui-palette-status-${getRoleByLevel(endoso.nivel)}-fg)`,
+              bgcolor: 'background.default',
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <BusinessIcon sx={{ color: getColorByLevel(endoso.nivel) }} />
+                <BusinessIcon sx={{ color: `status.${getRoleByLevel(endoso.nivel)}.fg` }} />
                 <Typography variant="subtitle1" fontWeight="bold">
                   Endoso {endoso.nivel}
                 </Typography>
@@ -113,8 +114,7 @@ const ChequeEndososChain: React.FC<Props> = ({ cadenaEndosos, loading }) => {
                 label={`Nivel ${endoso.nivel}`}
                 size="small"
                 sx={{
-                  bgcolor: getColorByLevel(endoso.nivel),
-                  color: 'white',
+                  ...statusSx(getRoleByLevel(endoso.nivel)),
                   fontWeight: 'bold',
                 }}
               />
@@ -135,7 +135,7 @@ const ChequeEndososChain: React.FC<Props> = ({ cadenaEndosos, loading }) => {
             </Typography>
 
             {endoso.observaciones && (
-              <Box sx={{ mt: 1, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+              <Box sx={{ mt: 1, p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
                 <Typography variant="caption" color="text.secondary">
                   Observaciones:
                 </Typography>
@@ -160,7 +160,7 @@ const ChequeEndososChain: React.FC<Props> = ({ cadenaEndosos, loading }) => {
       ))}
 
       {/* Summary */}
-      <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+      <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
         <Typography variant="caption" color="text.secondary">
           Total de endosos en cadena: <strong>{cadenaEndosos.totalEndosos}</strong>
         </Typography>

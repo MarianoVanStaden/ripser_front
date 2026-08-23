@@ -30,14 +30,13 @@ import type { GestionCobranzaListParams } from '../../../api/services/gestionCob
 import {
   EstadoGestionCobranza,
   ESTADO_GESTION_COBRANZA_LABELS,
-  ESTADO_GESTION_COBRANZA_COLORS,
   PrioridadCobranza,
   PRIORIDAD_COBRANZA_LABELS,
-  PRIORIDAD_COBRANZA_COLORS,
   ESTADOS_CIERRE,
   EstadoPromesaPago,
   TIPO_ORIGEN_COBRANZA_LABELS,
 } from '../../../types/cobranza.types';
+import { roleForEstado, statusSx, type StatusRole } from '../../../theme/statusRoles';
 import type { GestionCobranzaDTO } from '../../../types/cobranza.types';
 import { formatPrice } from '../../../utils/priceCalculations';
 import { openWhatsAppWeb } from '../../../utils/whatsapp';
@@ -59,6 +58,15 @@ type FechaGestionFiltro =
 /** Preset por defecto de la lista: la agenda de gestiones que toca atender hoy. */
 const FECHA_FILTRO_DEFAULT: FechaGestionFiltro = 'HOY_Y_VENCIDAS';
 
+// Rol visual por prioridad (el mapa de colores literales vive en cobranza.types,
+// acá solo se resuelve al token semántico).
+const PRIORIDAD_ROLE: Record<PrioridadCobranza, StatusRole> = {
+  [PrioridadCobranza.ALTA]: 'danger',
+  [PrioridadCobranza.MEDIA]: 'warning',
+  [PrioridadCobranza.BAJA]: 'neutral',
+};
+
+/* eslint-disable ripser/no-literal-colors -- escala categórica propia de 11 filtros de agenda (más granular que los 6 roles de estado); revisar en dark */
 const FECHA_FILTRO_OPTIONS: { value: FechaGestionFiltro; label: string; color: string; tip: string }[] = [
   { value: 'HOY_Y_VENCIDAS', label: 'Agenda de hoy',   color: '#ed6c02', tip: 'Lo que toca gestionar hoy: próxima gestión de hoy o anterior, excluyendo mora prolongada y legales.' },
   { value: 'VENCIDAS',       label: 'Gestión atrasada', color: '#d32f2f', tip: 'Gestiones cuya fecha de PRÓXIMA GESTIÓN ya pasó (es la fecha de contacto, NO la mora del préstamo).' },
@@ -72,6 +80,7 @@ const FECHA_FILTRO_OPTIONS: { value: FechaGestionFiltro; label: string; color: s
   { value: 'SIN_FECHA',      label: 'Sin fecha',        color: '#757575', tip: 'Gestiones sin próxima gestión agendada.' },
   { value: 'TODAS',          label: 'Todas',            color: '#455a64', tip: 'Todas las gestiones activas, sin filtrar por fecha.' },
 ];
+/* eslint-enable ripser/no-literal-colors */
 
 const FECHA_VALUES = new Set<FechaGestionFiltro>(FECHA_FILTRO_OPTIONS.map((o) => o.value));
 const isFechaFiltro = (v: unknown): v is FechaGestionFiltro =>
@@ -466,6 +475,7 @@ export const CobranzasListPage: React.FC = () => {
             {(Object.keys(EstadoGestionCobranza) as (keyof typeof EstadoGestionCobranza)[]).map((key) => {
               const estado = EstadoGestionCobranza[key];
               const selected = selectedEstados.includes(estado);
+              const role = roleForEstado(estado);
               return (
                 <Chip
                   key={estado}
@@ -474,9 +484,9 @@ export const CobranzasListPage: React.FC = () => {
                   onClick={() => toggleEstado(estado)}
                   variant={selected ? 'filled' : 'outlined'}
                   sx={{
-                    borderColor: ESTADO_GESTION_COBRANZA_COLORS[estado],
-                    color: selected ? 'white' : ESTADO_GESTION_COBRANZA_COLORS[estado],
-                    bgcolor: selected ? ESTADO_GESTION_COBRANZA_COLORS[estado] : 'transparent',
+                    borderColor: `status.${role}.fg`,
+                    color: `status.${role}.fg`,
+                    bgcolor: selected ? `status.${role}.bg` : 'transparent',
                   }}
                 />
               );
@@ -508,7 +518,7 @@ export const CobranzasListPage: React.FC = () => {
                     variant={selected ? 'filled' : 'outlined'}
                     sx={{
                       borderColor: color,
-                      color: selected ? 'white' : color,
+                      color: selected ? 'common.white' : color,
                       bgcolor: selected ? color : 'transparent',
                       opacity: hasCustomRange ? 0.45 : 1,
                     }}
@@ -565,6 +575,7 @@ export const CobranzasListPage: React.FC = () => {
             {(Object.keys(PrioridadCobranza) as (keyof typeof PrioridadCobranza)[]).map((key) => {
               const prioridad = PrioridadCobranza[key];
               const selected = selectedPrioridades.includes(prioridad);
+              const role = PRIORIDAD_ROLE[prioridad];
               return (
                 <Chip
                   key={prioridad}
@@ -573,9 +584,9 @@ export const CobranzasListPage: React.FC = () => {
                   onClick={() => togglePrioridad(prioridad)}
                   variant={selected ? 'filled' : 'outlined'}
                   sx={{
-                    borderColor: PRIORIDAD_COBRANZA_COLORS[prioridad],
-                    color: selected ? 'white' : PRIORIDAD_COBRANZA_COLORS[prioridad],
-                    bgcolor: selected ? PRIORIDAD_COBRANZA_COLORS[prioridad] : 'transparent',
+                    borderColor: `status.${role}.fg`,
+                    color: `status.${role}.fg`,
+                    bgcolor: selected ? `status.${role}.bg` : 'transparent',
                   }}
                 />
               );
@@ -635,7 +646,8 @@ export const CobranzasListPage: React.FC = () => {
             zIndex: 2,
             mb: 1,
             bgcolor: 'primary.50',
-            border: (t) => `1px solid ${t.palette.primary.main}`,
+            border: '1px solid',
+            borderColor: 'primary.main',
           }}
         >
           <Toolbar variant="dense" sx={{ gap: 1, flexWrap: 'wrap' }}>
@@ -826,6 +838,7 @@ export const CobranzasListPage: React.FC = () => {
                             <Tooltip title="WhatsApp">
                               <IconButton
                                 size="small"
+                                // eslint-disable-next-line ripser/no-literal-colors -- verde identidad de WhatsApp
                                 sx={{ color: '#25D366', p: 0.25 }}
                                 onClick={() => openWhatsAppWeb(g.clienteTelefono)}
                               >
@@ -856,8 +869,7 @@ export const CobranzasListPage: React.FC = () => {
                           label={ESTADO_GESTION_COBRANZA_LABELS[g.estado]}
                           size="small"
                           sx={{
-                            bgcolor: ESTADO_GESTION_COBRANZA_COLORS[g.estado],
-                            color: 'white',
+                            ...statusSx(roleForEstado(g.estado)),
                             fontWeight: 600,
                             fontSize: '0.7rem',
                           }}
@@ -869,8 +881,7 @@ export const CobranzasListPage: React.FC = () => {
                             label={PRIORIDAD_COBRANZA_LABELS[g.prioridad]}
                             size="small"
                             sx={{
-                              bgcolor: PRIORIDAD_COBRANZA_COLORS[g.prioridad],
-                              color: 'white',
+                              ...statusSx(PRIORIDAD_ROLE[g.prioridad]),
                               fontWeight: 600,
                               fontSize: '0.7rem',
                             }}
@@ -1000,7 +1011,7 @@ export const CobranzasListPage: React.FC = () => {
             <ListItemIcon>
               <CheckCircleOutline
                 fontSize="small"
-                sx={{ color: ESTADO_GESTION_COBRANZA_COLORS[estado] }}
+                sx={{ color: `status.${roleForEstado(estado)}.fg` }}
               />
             </ListItemIcon>
             <ListItemText>{ESTADO_GESTION_COBRANZA_LABELS[estado]}</ListItemText>
@@ -1019,7 +1030,7 @@ export const CobranzasListPage: React.FC = () => {
           return (
             <MenuItem key={prioridad} onClick={() => handleBulkPrioridad(prioridad)}>
               <ListItemIcon>
-                <FlagOutlined fontSize="small" sx={{ color: PRIORIDAD_COBRANZA_COLORS[prioridad] }} />
+                <FlagOutlined fontSize="small" sx={{ color: `status.${PRIORIDAD_ROLE[prioridad]}.fg` }} />
               </ListItemIcon>
               <ListItemText>{PRIORIDAD_COBRANZA_LABELS[prioridad]}</ListItemText>
             </MenuItem>
@@ -1036,7 +1047,7 @@ export const CobranzasListPage: React.FC = () => {
         {ESTADOS_CIERRE.map((estado) => (
           <MenuItem key={estado} onClick={() => handleBulkCierre(estado)}>
             <ListItemIcon>
-              <CheckCircleOutline fontSize="small" sx={{ color: ESTADO_GESTION_COBRANZA_COLORS[estado] }} />
+              <CheckCircleOutline fontSize="small" sx={{ color: `status.${roleForEstado(estado)}.fg` }} />
             </ListItemIcon>
             <ListItemText>{ESTADO_GESTION_COBRANZA_LABELS[estado]}</ListItemText>
           </MenuItem>
@@ -1108,8 +1119,7 @@ export const CobranzasListPage: React.FC = () => {
                 size="small"
                 label={ESTADO_GESTION_COBRANZA_LABELS[confirmCierre.estado]}
                 sx={{
-                  bgcolor: ESTADO_GESTION_COBRANZA_COLORS[confirmCierre.estado],
-                  color: '#fff',
+                  ...statusSx(roleForEstado(confirmCierre.estado)),
                   fontWeight: 600,
                 }}
               />

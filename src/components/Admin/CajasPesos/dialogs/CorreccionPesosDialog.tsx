@@ -147,7 +147,7 @@ const CorreccionPesosDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess
           {delta != null && delta !== 0 && (
             <Typography variant="body2" mt={2}>
               Se registrará un ajuste de{' '}
-              <strong style={{ color: delta > 0 ? '#2e7d32' : '#d32f2f' }}>
+              <strong style={{ color: delta > 0 ? 'var(--mui-palette-status-success-fg)' : 'var(--mui-palette-status-danger-fg)' }}>
                 {delta > 0 ? '+' : '−'} {formatPesos(Math.abs(delta))}
               </strong>{' '}
               → nuevo saldo {formatPesos(objetivoNum)}.

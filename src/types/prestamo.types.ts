@@ -120,36 +120,9 @@ export const TIPO_INTERACCION_PRESTAMO_LABELS: Record<TipoInteraccionPrestamo, s
 };
 
 // ==================== COLORS ====================
-
-export const ESTADO_PRESTAMO_COLORS: Record<EstadoPrestamo, string> = {
-  ACTIVO: '#4CAF50',
-  FINALIZADO: '#2196F3',
-  EN_MORA: '#FF9800',
-  EN_LEGAL: '#F44336',
-  CANCELADO: '#9E9E9E',
-  REFINANCIADO: '#9C27B0',
-};
-
-export const CATEGORIA_PRESTAMO_COLORS: Record<CategoriaPrestamo, string> = {
-  NORMAL: '#4CAF50',
-  LEGALES: '#F44336',
-  PAGO_CON_MORA: '#FF9800',
-  ALTO_RIESGO: '#E91E63',
-  // Gradiente de severidad creciente del motor (0–30 ok → >180 irrecuperable)
-  CON_SEGUIMIENTO: '#FFC107',
-  DUDOSO: '#FF9800',
-  MOROSO: '#F44336',
-  IRRECUPERABLE: '#7B1FA2',
-};
-
-export const ESTADO_CUOTA_COLORS: Record<EstadoCuota, string> = {
-  PENDIENTE: '#2196F3',
-  PAGADA: '#4CAF50',
-  VENCIDA: '#F44336',
-  PARCIAL: '#FF9800',
-  REFINANCIADA: '#9C27B0',
-  PAGO_INFORMADO: '#FFC107',
-};
+// Los mapas estado→hex (ESTADO_PRESTAMO_COLORS, CATEGORIA_PRESTAMO_COLORS,
+// ESTADO_CUOTA_COLORS) se eliminaron: no tenían consumidores y los estados se
+// pintan vía roleForEstado/estadoSx (src/theme/statusRoles.ts).
 
 // ==================== DTOs ====================
 

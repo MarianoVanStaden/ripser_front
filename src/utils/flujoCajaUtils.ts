@@ -76,6 +76,10 @@ export const getPaymentMethodIcon = (metodo: MetodoPago) => {
  * Obtiene el color consistente para un método de pago
  */
 export const getPaymentMethodColor = (metodo: MetodoPago): string => {
+  /* eslint-disable ripser/no-literal-colors -- escala categórica de 12 métodos de
+     pago (> 8 series de chartTokens y > 6 roles de status.*) que además se usa
+     concatenada con alpha hex (`${color}20` en FlujoCajaMovimientosTable), lo que
+     exige hex literales. Revisar contraste en dark al migrar esos consumidores. */
   const colors: Record<MetodoPago, string> = {
     EFECTIVO: '#4CAF50', // verde
     TRANSFERENCIA: '#2196F3', // azul
@@ -91,6 +95,7 @@ export const getPaymentMethodColor = (metodo: MetodoPago): string => {
     DOLARES: '#43A047', // verde dólar
   };
   return colors[metodo] || '#9E9E9E';
+  /* eslint-enable ripser/no-literal-colors */
 };
 
 /**
@@ -113,6 +118,10 @@ export const getChequeEstadoLabel = (estado: EstadoChequeType): string => {
  * Obtiene el color para un estado de cheque
  */
 export const getChequeEstadoColor = (estado: EstadoChequeType): string => {
+  /* eslint-disable ripser/no-literal-colors -- escala de 7 estados de cheque con
+     granularidad que los 6 roles de status.* no cubren (ENDOSADO teal no mapea a
+     ningún rol sin colisionar con COBRADO). Fondo sólido saturado en los
+     consumidores; revisar en dark cuando se migren. */
   const colors: Record<EstadoChequeType, string> = {
     RECIBIDO: '#9C27B0', // púrpura
     EN_CARTERA: '#FFC107', // amarillo
@@ -123,6 +132,7 @@ export const getChequeEstadoColor = (estado: EstadoChequeType): string => {
     ENDOSADO: '#00897B', // teal (entregado a proveedor)
   };
   return colors[estado] || '#9E9E9E';
+  /* eslint-enable ripser/no-literal-colors */
 };
 
 /**
@@ -723,5 +733,7 @@ export const getOrigenLabel = (origen: OrigenMovimiento): string => {
  * Obtiene el color para un tipo de movimiento extra
  */
 export const getCategoriaColor = (tipo: 'GASTO' | 'COBRO'): string => {
-  return tipo === 'GASTO' ? '#f44336' : '#4caf50';
+  return tipo === 'GASTO'
+    ? 'var(--mui-palette-status-danger-fg)'
+    : 'var(--mui-palette-status-success-fg)';
 };

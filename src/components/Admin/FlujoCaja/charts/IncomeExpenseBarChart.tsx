@@ -13,6 +13,7 @@ import {
 import type { PaymentMethodAggregation } from '../../../../types';
 import { getPaymentMethodLabel } from '../../../../utils/flujoCajaUtils';
 import { chartColors, formatARS } from '../../../../config/chartConfig';
+import { CHART_AXIS, CHART_GRID, CHART_TOOLTIP_BG, CHART_TOOLTIP_TEXT } from '../../../../theme/chartTokens';
 
 interface IncomeExpenseBarChartProps {
   data: PaymentMethodAggregation[];
@@ -58,10 +59,13 @@ const IncomeExpenseBarChart: React.FC<IncomeExpenseBarChartProps> = ({
       <Box sx={{ height: 350, mt: 2 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
-            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-            <YAxis tickFormatter={formatARS} tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(value) => formatARS(value as number)} />
+            <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+            <YAxis tickFormatter={formatARS} tick={{ fontSize: 11, fill: CHART_AXIS }} stroke={CHART_AXIS} />
+            <Tooltip
+              formatter={(value) => formatARS(value as number)}
+              contentStyle={{ backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT, border: 'none' }}
+            />
             <Legend />
             <Bar dataKey="Ingresos" fill={chartColors.ingresos} />
             <Bar dataKey="Egresos" fill={chartColors.egresos} />
