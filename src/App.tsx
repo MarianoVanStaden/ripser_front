@@ -21,6 +21,7 @@ import OfflineBanner from './components/common/OfflineBanner';
 import ReloadPrompt from './components/common/ReloadPrompt';
 import { ToastProvider } from './components/common/ToastProvider';
 import ScrollMemory from './components/common/ScrollMemory';
+import GlobalDragScroll from './components/common/GlobalDragScroll';
 
 // ---------------------------------------------------------------------------
 // Lazy route helpers
@@ -333,6 +334,8 @@ function App() {
             <OfflineBanner />
             <ReloadPrompt />
             <ScrollMemory />
+            {/* Arrastre horizontal en cualquier tabla que desborde (delegado). */}
+            <GlobalDragScroll />
             <Suspense fallback={<CenteredFallback />}>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />

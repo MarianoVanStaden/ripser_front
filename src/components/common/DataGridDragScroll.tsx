@@ -2,28 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Box } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material';
 
-const INTERACTIVE_TAGS = new Set([
-  'INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A', 'LABEL', 'SUMMARY',
-]);
-const INTERACTIVE_ROLES = new Set([
-  'button', 'link', 'checkbox', 'radio', 'menuitem', 'menuitemcheckbox',
-  'menuitemradio', 'option', 'tab', 'combobox', 'listbox', 'textbox',
-  'spinbutton', 'slider', 'switch',
-]);
-
-function isInteractiveTarget(target: EventTarget | null, container: HTMLElement): boolean {
-  if (!target || !(target instanceof Element)) return false;
-  let el: Element | null = target;
-  while (el && el !== container) {
-    if (INTERACTIVE_TAGS.has(el.tagName)) return true;
-    const role = el.getAttribute('role');
-    if (role && INTERACTIVE_ROLES.has(role)) return true;
-    if ((el as HTMLElement).contentEditable === 'true') return true;
-    if (el.classList.contains('MuiDataGrid-columnSeparator')) return true;
-    el = el.parentElement;
-  }
-  return false;
-}
+import { isInteractiveTarget } from '../../utils/interactiveTarget';
 
 interface DataGridDragScrollProps {
   /** A single MUI `<DataGrid>` (the wrapper finds its internal scroller). */
@@ -170,6 +149,9 @@ export const DataGridDragScroll: React.FC<DataGridDragScrollProps> = ({ children
   return (
     <Box
       ref={containerRef}
+      // Este subárbol ya trae su propio drag-to-scroll: marca al delegado
+      // global para que no maneje el gesto por segunda vez.
+      data-drag-scroll="self"
       sx={{
         '& .MuiDataGrid-virtualScroller': { cursor: 'grab' },
         '& .MuiDataGrid-virtualScroller:active': { cursor: 'grabbing' },

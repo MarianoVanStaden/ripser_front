@@ -5,27 +5,7 @@ import { useRef, useEffect, useCallback } from 'react';
  * We walk up the DOM tree from the click target to the scroll container,
  * stopping the moment we hit one of these.
  */
-const INTERACTIVE_TAGS = new Set([
-  'INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A', 'LABEL', 'SUMMARY',
-]);
-const INTERACTIVE_ROLES = new Set([
-  'button', 'link', 'checkbox', 'radio', 'menuitem', 'menuitemcheckbox',
-  'menuitemradio', 'option', 'tab', 'combobox', 'listbox', 'textbox',
-  'spinbutton', 'slider', 'switch',
-]);
-
-function isInteractiveTarget(target: EventTarget | null, container: HTMLElement): boolean {
-  if (!target || !(target instanceof Element)) return false;
-  let el: Element | null = target;
-  while (el && el !== container) {
-    if (INTERACTIVE_TAGS.has(el.tagName)) return true;
-    const role = el.getAttribute('role');
-    if (role && INTERACTIVE_ROLES.has(role)) return true;
-    if ((el as HTMLElement).contentEditable === 'true') return true;
-    el = el.parentElement;
-  }
-  return false;
-}
+import { isInteractiveTarget } from '../utils/interactiveTarget';
 
 export interface HorizontalScrollRefs {
   /** Attach to the overflow:auto scroll container (the actual table wrapper). */

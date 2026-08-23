@@ -65,6 +65,9 @@ export const StickyScrollTable: React.FC<StickyScrollTableProps> = ({
       {/* ── Scrollable table area (native scrollbar hidden) ─────────────── */}
       <Box
         ref={tableContainerRef}
+        // Este subárbol ya trae su propio drag-to-scroll (useHorizontalScroll):
+        // marca al delegado global para que no lo maneje por segunda vez.
+        data-drag-scroll="self"
         sx={{
           overflowX: 'auto',
           overflowY: 'visible',
