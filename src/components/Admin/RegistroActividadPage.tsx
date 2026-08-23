@@ -74,6 +74,7 @@ const FAMILIA_COLOR: Record<string, 'default' | 'primary' | 'success' | 'error' 
   pago: 'success',
   anulacion: 'error',
   fallo: 'warning',
+  seguridad: 'warning',
 };
 
 // Resuelve fechas según el preset elegido. "todo" devuelve sin límites.

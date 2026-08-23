@@ -20,7 +20,13 @@ export type TipoAccionActividad =
   | 'AMORTIZACION_EJECUTADA'
   | 'AMORTIZACION_CONVERTIDA'
   | 'LEAD_CREADO'
-  | 'LEADS_REASIGNADOS';
+  | 'LEADS_REASIGNADOS'
+  | 'USUARIO_CREADO'
+  | 'USUARIO_ELIMINADO'
+  | 'USUARIO_ROL_CAMBIADO'
+  | 'USUARIO_DESACTIVADO'
+  | 'USUARIO_REACTIVADO'
+  | 'PASSWORD_RESETEADA';
 
 export const TIPO_ACCION_LABELS: Record<TipoAccionActividad, string> = {
   LOGIN_OK: 'Login',
@@ -42,6 +48,12 @@ export const TIPO_ACCION_LABELS: Record<TipoAccionActividad, string> = {
   LEAD_CREADO: 'Lead creado',
   LEADS_REASIGNADOS: 'Leads reasignados',
   PRESTAMO_ELIMINADO: 'Préstamo eliminado',
+  USUARIO_CREADO: 'Usuario creado',
+  USUARIO_ELIMINADO: 'Usuario eliminado',
+  USUARIO_ROL_CAMBIADO: 'Rol de usuario cambiado',
+  USUARIO_DESACTIVADO: 'Usuario desactivado',
+  USUARIO_REACTIVADO: 'Usuario reactivado',
+  PASSWORD_RESETEADA: 'Contraseña reseteada',
 };
 
 /**
@@ -49,7 +61,7 @@ export const TIPO_ACCION_LABELS: Record<TipoAccionActividad, string> = {
  * con el resto del sistema (verde = monetario / éxito, rojo = anulación / fallo,
  * info = navegación / no destructivo).
  */
-export type AccionFamilia = 'acceso' | 'documento' | 'pago' | 'anulacion' | 'fallo';
+export type AccionFamilia = 'acceso' | 'documento' | 'pago' | 'anulacion' | 'fallo' | 'seguridad';
 
 export const TIPO_ACCION_FAMILIA: Record<TipoAccionActividad, AccionFamilia> = {
   LOGIN_OK: 'acceso',
@@ -71,6 +83,12 @@ export const TIPO_ACCION_FAMILIA: Record<TipoAccionActividad, AccionFamilia> = {
   LEAD_CREADO: 'documento',
   LEADS_REASIGNADOS: 'documento',
   PRESTAMO_ELIMINADO: 'anulacion',
+  USUARIO_CREADO: 'seguridad',
+  USUARIO_ELIMINADO: 'seguridad',
+  USUARIO_ROL_CAMBIADO: 'seguridad',
+  USUARIO_DESACTIVADO: 'seguridad',
+  USUARIO_REACTIVADO: 'seguridad',
+  PASSWORD_RESETEADA: 'seguridad',
 };
 
 /**
@@ -88,6 +106,7 @@ export const MODULO_LABELS: Record<string, string> = {
   PRODUCCION: 'Producción',
   GARANTIAS: 'Garantías',
   RRHH: 'RRHH',
+  ADMINISTRACION: 'Administración',
 };
 
 /** Item de GET /api/admin/actividad/tipos: valor del enum + su módulo. */
