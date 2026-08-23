@@ -212,6 +212,11 @@ const Dashboard: React.FC = () => {
   })();
   const isAdminRole = userRole === 'ADMIN' || userRole === 'GERENTE' || user?.esSuperAdmin;
 
+  // Los perfiles admin no necesitan los metadatos técnicos del header
+  // (empresa activa, atajo de configuración y rol, que ya figura en el sidebar).
+  const ocultarMetadatosHeader =
+    userRole === 'ADMIN' || userRole === 'ADMIN_EMPRESA_LIMITADO';
+
   // Roles que renderizan su propio dashboard especializado y no necesitan
   // los datos del shell (clientes/facturas/stock bajo). Evita 403 ruidosos
   // por endpoints que esos roles no tienen permitidos.
@@ -598,13 +603,15 @@ const Dashboard: React.FC = () => {
               >
                 Bienvenido de vuelta al panel de control
                 {/* 🔍 DEBUG: Show current empresaId */}
-                <Chip
-                  label={`Empresa ID: ${empresaId || 'No seleccionada'}`}
-                  size="small"
-                  color={empresaId === 2 ? 'success' : 'warning'}
-                  sx={{ ml: 1 }}
-                />
-                {user.roles && user.roles.length > 0 && (
+                {!ocultarMetadatosHeader && (
+                  <Chip
+                    label={`Empresa ID: ${empresaId || 'No seleccionada'}`}
+                    size="small"
+                    color={empresaId === 2 ? 'success' : 'warning'}
+                    sx={{ ml: 1 }}
+                  />
+                )}
+                {!ocultarMetadatosHeader && user.roles && user.roles.length > 0 && (
                   <Chip
                     label={user.roles[0] === 'ADMIN_EMPRESA_LIMITADO' ? 'ADMIN_EMPRESA_OFICINA' : user.roles[0]}
                     size="small"
@@ -644,14 +651,16 @@ const Dashboard: React.FC = () => {
             variant="outlined"
             sx={{ height: 32 }}
           />
-          <Button
-            variant="outlined"
-            startIcon={<SettingsIcon />}
-            onClick={() => setSetupDialogOpen(true)}
-            size="small"
-          >
-            Configurar
-          </Button>
+          {!ocultarMetadatosHeader && (
+            <Button
+              variant="outlined"
+              startIcon={<SettingsIcon />}
+              onClick={() => setSetupDialogOpen(true)}
+              size="small"
+            >
+              Configurar
+            </Button>
+          )}
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
