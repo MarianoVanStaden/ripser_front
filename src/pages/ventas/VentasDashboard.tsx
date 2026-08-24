@@ -251,8 +251,12 @@ export const VentasDashboard = () => {
           return [] as RecordatorioConLeadDTO[];
         });
 
-      const [allLeadsResponse, metricasData, recordatoriosData] = await Promise.all([
-        leadApi.getAll({}, params),
+      // Los conteos por estado/prioridad salen de las métricas server-side
+      // (ya agregadas y filtradas por vendedor+fechas) — antes se traía la
+      // lista COMPLETA de leads y se contaba en el cliente con .filter()×8.
+      // De la lista solo se necesitan los 6 más recientes para el widget.
+      const [recentLeadsResponse, metricasData, recordatoriosData] = await Promise.all([
+        leadApi.getAll({ page: 0, size: 6, sort: 'fechaCreacion,desc' }, params),
         leadMetricasApi.obtenerMetricasCompletas({
           fechaInicio: (fechaInicio ?? dayjs().startOf('month')).format('YYYY-MM-DD'),
           fechaFin: (fechaFin ?? dayjs().endOf('month')).format('YYYY-MM-DD'),
@@ -264,24 +268,29 @@ export const VentasDashboard = () => {
         recordatoriosPromise,
       ]);
 
-      const allLeads = allLeadsResponse.content;
+      const embudo = metricasData.embudoVentas ?? [];
+      const prioridades = metricasData.metricasPorPrioridad ?? [];
+      const countEstado = (estado: string) =>
+        embudo.find((e) => e.estadoLead === estado)?.cantidad ?? 0;
+      const countPrioridad = (prioridad: string) =>
+        prioridades.find((p) => p.prioridad === prioridad)?.cantidad ?? 0;
 
       const stats: QuickStats = {
-        totalLeads: allLeads.length,
-        primerContacto: allLeads.filter(l => l.estadoLead === 'PRIMER_CONTACTO').length,
-        mostraronInteres: allLeads.filter(l => l.estadoLead === 'MOSTRO_INTERES').length,
-        clientePotencial: allLeads.filter(l => l.estadoLead === 'CLIENTE_POTENCIAL').length,
-        clientePotencialCalificado: allLeads.filter(l => l.estadoLead === 'CLIENTE_POTENCIAL_CALIFICADO').length,
-        hotLeads: allLeads.filter(l => l.prioridad === 'HOT').length,
-        warmLeads: allLeads.filter(l => l.prioridad === 'WARM').length,
-        coldLeads: allLeads.filter(l => l.prioridad === 'COLD').length,
+        totalLeads: metricasData.tasaConversion?.totalLeads ?? 0,
+        primerContacto: countEstado('PRIMER_CONTACTO'),
+        mostraronInteres: countEstado('MOSTRO_INTERES'),
+        clientePotencial: countEstado('CLIENTE_POTENCIAL'),
+        clientePotencialCalificado: countEstado('CLIENTE_POTENCIAL_CALIFICADO'),
+        hotLeads: countPrioridad('HOT'),
+        warmLeads: countPrioridad('WARM'),
+        coldLeads: countPrioridad('COLD'),
         recordatoriosVencidos: 0,
         recordatoriosHoy: 0,
         recordatoriosEstaSemana: 0,
         recordatoriosProximos: 0,
-        leadsActivePipeline: allLeads.filter(l =>
-          !['CONVERTIDO', 'PERDIDO', 'DESCARTADO'].includes(l.estadoLead)
-        ).length,
+        leadsActivePipeline: embudo
+          .filter((e) => !['CONVERTIDO', 'PERDIDO', 'DESCARTADO'].includes(e.estadoLead))
+          .reduce((sum, e) => sum + (e.cantidad ?? 0), 0),
       };
 
       const reminders: ReminderItem[] = recordatoriosData.map((r) => {
@@ -322,7 +331,7 @@ export const VentasDashboard = () => {
       return {
         quickStats: stats,
         metricas: metricasData,
-        recentLeads: allLeads.slice(0, 6),
+        recentLeads: recentLeadsResponse.content.slice(0, 6),
         allReminders: reminders.slice(0, 15),
         lastRefresh: new Date(),
       };
