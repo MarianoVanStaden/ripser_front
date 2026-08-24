@@ -270,7 +270,9 @@ export const LeadsTablePage = () => {
     initialPageParam: 0,
     queryFn: ({ pageParam = 0 }) =>
       leadApi.getAll({ page: pageParam, size: PAGE_SIZE, sort }, filters),
-    getNextPageParam: (last) => (last.last ? undefined : last.number + 1)
+    getNextPageParam: (last) => (last.last ? undefined : last.number + 1),
+    // Evita refetch de todas las páginas ya scrolleadas al remontar/enfocar.
+    staleTime: 60_000,
   });
 
   const leads: LeadListItemDTO[] = useMemo(

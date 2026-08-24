@@ -328,6 +328,12 @@ export const VentasDashboard = () => {
       };
     },
     refetchInterval: 5 * 60 * 1000,
+    // Sin staleTime, la query se refetcheaba en cada mount y en cada foco de
+    // ventana (encima del intervalo de 5 min) — carga pesada porque agrega
+    // toda la lista de leads en el cliente. Con staleTime alineado al intervalo
+    // y sin refetch-on-focus, entrar/volver a la página usa el cache.
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
   const loading = dashboardQuery.isPending;
   const error = dashboardQuery.error

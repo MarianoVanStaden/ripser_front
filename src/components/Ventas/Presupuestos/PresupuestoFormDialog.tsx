@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLeadSearch } from "../../../hooks/useLeadSearch";
+import { useTenant } from "../../../context/TenantContext";
 import { CANAL_LABELS, type CanalEnum } from "../../../types/lead.types";
 import {
   Box,
@@ -105,8 +107,7 @@ export default function PresupuestoFormDialog({
 
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [destinatarioMode, setDestinatarioMode] = useState<'CLIENTE' | 'LEAD'>('CLIENTE');
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
+  const { empresaId } = useTenant();
   const { getPrecioEfectivo, getOferta } = useOfertasVigentes();
   const [tipoEquipoFiltro, setTipoEquipoFiltro] = useState<'' | 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO'>('');
   const [formLoading, setFormLoading] = useState(false);
@@ -138,26 +139,38 @@ export default function PresupuestoFormDialog({
   // Typeahead server-side de leads para el Autocomplete del form.
   const leadSearch = useLeadSearch({ excludeEstados: ['CONVERTIDO'], size: 20 });
 
-  // Catálogos del form (productos + recetas): se cargan una sola vez, al
-  // primer open. Antes la página los traía en el mount aunque nadie abriera
-  // el form.
-  const [catalogosCargados, setCatalogosCargados] = useState(false);
+  // Catálogos del form (productos + recetas): se cargan lazy al primer open y
+  // se cachean vía react-query (staleTime largo) para no re-fetchear el catálogo
+  // completo cada vez que se reabre el diálogo. Scopeados por empresa.
+  const productosQuery = useQuery({
+    queryKey: ['presupuesto-form-productos', empresaId],
+    queryFn: () => productApi.getAll({ page: 0, size: 10000 }),
+    enabled: open,
+    staleTime: 10 * 60 * 1000,
+  });
+  const recetasQuery = useQuery({
+    queryKey: ['presupuesto-form-recetas', empresaId],
+    queryFn: () => recetaFabricacionApi.findDisponiblesParaVenta(),
+    enabled: open,
+    staleTime: 10 * 60 * 1000,
+  });
+  const productos: Producto[] = useMemo(
+    () => (Array.isArray(productosQuery.data?.content) ? productosQuery.data!.content : []),
+    [productosQuery.data]
+  );
+  const recetas: RecetaFabricacionDTO[] = useMemo(
+    () => (Array.isArray(recetasQuery.data) ? recetasQuery.data : []),
+    [recetasQuery.data]
+  );
   useEffect(() => {
-    if (!open || catalogosCargados) return;
-    setCatalogosCargados(true);
-    productApi.getAll({ page: 0, size: 10000 })
-      .then((res) => setProductos(Array.isArray(res.content) ? res.content : []))
-      .catch((err) => {
-        console.error("Error fetching productos:", err);
-        setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
-      });
-    recetaFabricacionApi.findDisponiblesParaVenta()
-      .then((res) => setRecetas(Array.isArray(res) ? res : []))
-      .catch((err) => {
-        console.error("Error fetching recetas:", err);
-        setError("Error al cargar recetas de equipos: " + (err.response?.data?.message || err.message));
-      });
-  }, [open, catalogosCargados]);
+    if (productosQuery.error) {
+      const err = productosQuery.error as { response?: { data?: { message?: string } }; message?: string };
+      setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
+    } else if (recetasQuery.error) {
+      const err = recetasQuery.error as { response?: { data?: { message?: string } }; message?: string };
+      setError("Error al cargar recetas de equipos: " + (err.response?.data?.message || err.message));
+    }
+  }, [productosQuery.error, recetasQuery.error]);
 
   // Población al abrir (reemplaza el handleOpenDialog de la página): edición
   // hidrata desde el presupuesto; alta resetea, con lead preseleccionado si

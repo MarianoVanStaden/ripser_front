@@ -424,6 +424,9 @@ const NotasPedidoPage: React.FC = () => {
       { estado: 'PENDIENTE' }
     ),
     staleTime: 60_000,
+    // Solo se necesita al abrir el diálogo de conversión — no en el mount de la
+    // página. Evita traer hasta 200 presupuestos que casi nadie mira.
+    enabled: convertDialogOpen,
   });
   useEffect(() => {
     const data = presupuestosPendientesQuery.data?.content ?? [];
