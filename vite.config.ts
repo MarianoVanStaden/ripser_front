@@ -80,23 +80,17 @@ export default defineConfig({
         // El SW nunca debe responder navegaciones/requests de la API con el
         // index.html cacheado.
         navigateFallbackDenylist: [/^\/api\//],
-        // Cache runtime SOLO de GETs de la API (NetworkFirst): con señal se
-        // usa la red; sin señal el operario ve los últimos datos en vez de
-        // una pantalla de error. Las escrituras (POST/PUT/...) nunca se
-        // cachean — este bloque no las toca.
-        runtimeCaching: [
-          {
-            urlPattern: ({ url, request }) =>
-              request.method === 'GET' && url.pathname.startsWith('/api/'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-get',
-              networkTimeoutSeconds: 8,
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 12 },
-              cacheableResponse: { statuses: [200] },
-            },
-          },
-        ],
+        // El SW NO cachea llamadas a la API. Un NetworkFirst sobre `/api/`
+        // rompía dos cosas:
+        //  1) Interceptaba el SSE `/api/eventos/stream` (GET, text/event-stream)
+        //     e intentaba Cache.put() sobre un stream interminable → floodeaba
+        //     la consola con "Cache.put() encountered a network error".
+        //  2) Con red lenta, el networkTimeoutSeconds convertía un GET lento en
+        //     un `no-response` duro (sin fallback cacheado) → la app no podía
+        //     terminar de cargar la sesión / login desde links degradados.
+        // Además, es un ERP de dinero: servir saldos/caja stale desde el SW es
+        // peligroso. React Query ya maneja el caching en memoria. Solo se
+        // precachea el app-shell (globPatterns).
       },
     }),
     analyzePlugin,
