@@ -1528,7 +1528,7 @@ const NotasPedidoPage: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleOpenConvertDialog}
-          disabled={loading || presupuestos.length === 0}
+          disabled={loading}
         >
           Convertir Presupuesto
         </Button>
@@ -1540,7 +1540,7 @@ const NotasPedidoPage: React.FC = () => {
         </Alert>
       )}
 
-      {presupuestos.length === 0 && (
+      {presupuestosPendientesQuery.isFetched && presupuestos.length === 0 && (
         <Alert severity="info" sx={{ mb: 3 }}>
           No hay presupuestos pendientes disponibles para convertir en Nota de Pedido.
         </Alert>
@@ -1822,7 +1822,6 @@ const NotasPedidoPage: React.FC = () => {
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={handleOpenConvertDialog}
-                disabled={presupuestos.length === 0}
               >
                 Convertir Presupuesto
               </Button>
