@@ -7,6 +7,9 @@ vi.mock('../authApi', () => ({
 
 import api, { setAuthToken } from '../config';
 import { authApi } from '../authApi';
+// appPath hace los asserts independientes del `base` de Vite ('/' hoy,
+// '/ripser/' post-cutover): la suite queda verde en ambos deploys.
+import { appPath } from '../../utils/navigation';
 
 const mockedRefresh = vi.mocked(authApi.refresh);
 
@@ -44,7 +47,7 @@ describe('api config', () => {
     Object.defineProperty(window, 'location', {
       configurable: true,
       writable: true,
-      value: { href: '', pathname: '/dashboard' },
+      value: { href: '', pathname: appPath('/dashboard') },
     });
   });
 
@@ -122,7 +125,7 @@ describe('api config', () => {
       expect(mockedRefresh).not.toHaveBeenCalled();
       expect(localStorage.getItem('auth_token')).toBeNull();
       expect(localStorage.getItem('auth_refresh_token')).toBeNull();
-      expect(window.location.href).toBe('/login');
+      expect(window.location.href).toBe(appPath('/login'));
       expect(adapterMock).not.toHaveBeenCalled();
     });
 
@@ -134,7 +137,7 @@ describe('api config', () => {
       await expect(resRejected()(tokenExpiredError())).rejects.toBeTruthy();
 
       expect(localStorage.getItem('auth_token')).toBeNull();
-      expect(window.location.href).toBe('/login');
+      expect(window.location.href).toBe(appPath('/login'));
     });
 
     it('preserva empresaId/sucursalId al fallar el refresh (contexto de SuperAdmin)', async () => {
@@ -169,14 +172,14 @@ describe('api config', () => {
 
       expect(mockedRefresh).not.toHaveBeenCalled();
       expect(localStorage.getItem('auth_token')).toBeNull();
-      expect(window.location.href).toBe('/login');
+      expect(window.location.href).toBe(appPath('/login'));
     });
 
     it('no redirige si ya está en /login (evita el loop de login)', async () => {
       Object.defineProperty(window, 'location', {
         configurable: true,
         writable: true,
-        value: { href: '', pathname: '/login' },
+        value: { href: '', pathname: appPath('/login') },
       });
       const error = { config: { url: '/api/x' }, response: { status: 401, data: {} } };
 

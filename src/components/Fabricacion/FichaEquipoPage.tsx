@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -350,9 +350,9 @@ const FichaEquipoPage: React.FC = () => {
                 {data.equipo.tipo} / {data.equipo.modelo}
               </strong>
               . Cargá los datos en{' '}
-              <a href="/admin/especificaciones-tecnicas">
+              <RouterLink to="/admin/especificaciones-tecnicas">
                 Catálogo de fichas técnicas
-              </a>{' '}
+              </RouterLink>{' '}
               para que aparezcan en la impresión.
             </Alert>
           )}

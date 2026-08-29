@@ -83,7 +83,7 @@ const DevKPIs: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('/kpis/kpis-latest.json', { cache: 'no-cache' });
+        const res = await fetch(`${import.meta.env.BASE_URL}kpis/kpis-latest.json`, { cache: 'no-cache' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = (await res.json()) as KpiReport;
         if (mounted) setData(json);

@@ -2,6 +2,7 @@ import axios from 'axios';
 import { authApi } from './authApi';
 import { logger } from '../utils/logger';
 import { safeLocal, safeSession } from '../utils/safeStorage';
+import { hardRedirect, isAtPath } from '../utils/navigation';
 
 // In-memory token reference (faster than hitting localStorage every time)
 let authToken: string | null = null;
@@ -176,9 +177,9 @@ api.interceptors.response.use(
         // ❌ DON'T clear empresaId/sucursalId/esSuperAdmin on refresh failure!
         // Let the user re-login and preserve their context selection
 
-        if (window.location.pathname !== '/login') {
+        if (!isAtPath('/login')) {
           logger.log('🚪 Redirecting to login page...');
-          window.location.href = '/login';
+          hardRedirect('/login');
         }
 
         return Promise.reject(refreshErr);
@@ -202,8 +203,8 @@ api.interceptors.response.use(
       // ❌ DON'T clear empresaId/sucursalId/esSuperAdmin here!
       // Let the user re-login and preserve their context selection
 
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      if (!isAtPath('/login')) {
+        hardRedirect('/login');
       }
     }
 

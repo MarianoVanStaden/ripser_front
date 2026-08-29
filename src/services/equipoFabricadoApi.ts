@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { hardRedirect } from '../utils/navigation';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -47,7 +48,7 @@ apiClient.interceptors.response.use(
       if (error.response.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        hardRedirect('/login');
       }
     } else if (error.request) {
       console.error('❌ Network error:', error.message);

@@ -42,9 +42,11 @@ const ModernSidebar: React.FC = () => {
       showProfile={true}
       userimg={userAvatar}
     >
+      {/* Logo de react-mui-sidebar pasa `to={href}` al component (default '/'):
+          con component={Link} el destino lo resuelve react-router (basename-aware),
+          por eso no lleva href literal. */}
       <Logo
         component={Link}
-        href="/"
         img="https://adminmart.com/wp-content/uploads/2024/03/logo-admin-mart-news.png"
       >
         Ripser

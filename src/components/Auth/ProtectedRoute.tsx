@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { usePermisos } from '../../hooks/usePermisos';
 import type { TipoRol, Modulo } from '../../types';
@@ -82,7 +82,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <Typography variant="body1" color="text.secondary">
           No tienes permisos para acceder a este módulo.
         </Typography>
-        <Button variant="contained" href="/">
+        <Button variant="contained" component={RouterLink} to="/">
           Volver al Dashboard
         </Button>
       </Box>
@@ -109,7 +109,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <Typography variant="body1" color="text.secondary">
           Tu rol no tiene permisos para acceder a esta página.
         </Typography>
-        <Button variant="contained" href="/">
+        <Button variant="contained" component={RouterLink} to="/">
           Volver al Dashboard
         </Button>
       </Box>
@@ -136,7 +136,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <Typography variant="body1" color="text.secondary">
           Esta página requiere permisos de Super Administrador.
         </Typography>
-        <Button variant="contained" href="/">
+        <Button variant="contained" component={RouterLink} to="/">
           Volver al Dashboard
         </Button>
       </Box>
@@ -162,7 +162,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <Typography variant="body1" color="text.secondary">
           Esta página requiere permisos de Administrador de Empresa.
         </Typography>
-        <Button variant="contained" href="/">
+        <Button variant="contained" component={RouterLink} to="/">
           Volver al Dashboard
         </Button>
       </Box>
@@ -192,7 +192,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <Typography variant="body1" color="text.secondary">
           Esta página requiere permisos de Gerente de Sucursal o superior.
         </Typography>
-        <Button variant="contained" href="/">
+        <Button variant="contained" component={RouterLink} to="/">
           Volver al Dashboard
         </Button>
       </Box>

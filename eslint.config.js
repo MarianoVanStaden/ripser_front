@@ -63,4 +63,28 @@ export default tseslint.config([
       'ripser/no-literal-colors': 'error',
     },
   },
+  // Cutover / → /ripser: toda navegación con URL absoluta pasa por
+  // src/utils/navigation.ts (appPath/hardRedirect/isAtPath), que respeta
+  // import.meta.env.BASE_URL. Un literal '/...' en window.location.href o en
+  // href= ignora el base de Vite y rompe la app cuando se sirve bajo subpath.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/utils/navigation.ts', 'src/**/*.test.{ts,tsx}', 'src/test/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "AssignmentExpression[left.object.object.name='window'][left.object.property.name='location'][left.property.name='href'][right.value=/^\\u002F/]",
+          message:
+            "No asignes window.location.href con una ruta absoluta: usá hardRedirect() de src/utils/navigation.ts (respeta BASE_URL).",
+        },
+        {
+          selector: "JSXAttribute[name.name='href'] Literal[value=/^\\u002F/]",
+          message:
+            'href="/..." ignora el base de Vite: usá <Link to> de react-router o appPath() de src/utils/navigation.ts.',
+        },
+      ],
+    },
+  },
 ])

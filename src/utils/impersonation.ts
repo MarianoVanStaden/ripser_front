@@ -1,5 +1,6 @@
 import type { PlatformImpersonateResponse } from '../api/services/platformApi';
 import { safeLocal, safeSession } from './safeStorage';
+import { hardRedirect } from './navigation';
 
 /**
  * Impersonación del platform owner: intercambia la sesión actual (owner) por la
@@ -106,7 +107,7 @@ export const startImpersonation = (res: PlatformImpersonateResponse): void => {
 
   // Reload completo: AuthContext y TenantContext se rehidratan desde el storage,
   // sin estados a medias.
-  window.location.href = '/';
+  hardRedirect('/');
 };
 
 /** Restaura la sesión del owner desde el backup y recarga en el panel de plataforma. */
@@ -115,7 +116,7 @@ export const exitImpersonation = (): void => {
   safeSession.removeItem(BACKUP_KEY);
   safeSession.removeItem(INFO_KEY);
   if (!raw) {
-    window.location.href = '/login';
+    hardRedirect('/login');
     return;
   }
   const backup = JSON.parse(raw) as ImpersonationBackup;
@@ -133,5 +134,5 @@ export const exitImpersonation = (): void => {
   restore('esSuperAdmin', backup.ownerEsSuperAdmin);
   restore('esPlatformOwner', backup.ownerEsPlatformOwner);
 
-  window.location.href = '/platform/ops';
+  hardRedirect('/platform/ops');
 };

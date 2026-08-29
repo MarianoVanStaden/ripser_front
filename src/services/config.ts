@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { hardRedirect } from '../utils/navigation';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -59,7 +60,7 @@ apiClient.interceptors.response.use(
           localStorage.removeItem('auth_refresh_token');
           localStorage.removeItem('auth_user');
           // ❌ DON'T clear empresaId/sucursalId/esSuperAdmin here!
-          window.location.href = '/login';
+          hardRedirect('/login');
           break;
         case 409:
           console.warn('⚠️ Conflicto de negocio:', data.message || 'Operación rechazada por el servidor');

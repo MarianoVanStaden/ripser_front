@@ -5,6 +5,7 @@ import { empresaService } from '../../services/empresaService';
 import { sucursalService } from '../../services/sucursalService';
 import { usuarioEmpresaService } from '../../services/usuarioEmpresaService';
 import type { Empresa, Sucursal, UsuarioEmpresa } from '../../types';
+import { hardRedirect } from '../../utils/navigation';
 import './TenantSelector.css';
 
 interface EmpresaConRol extends Empresa {
@@ -115,7 +116,7 @@ export const TenantSelector: React.FC = () => {
           case 401:
             setError('Su sesión ha expirado. Por favor, inicie sesión nuevamente.');
             setTimeout(() => {
-              window.location.href = '/login';
+              hardRedirect('/login');
             }, 2000);
             break;
           case 403:
