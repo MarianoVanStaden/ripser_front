@@ -103,7 +103,7 @@ test.describe('Leads', () => {
     });
 
     const formPage = new LeadFormPage(page);
-    await page.goto('/leads/nuevo');
+    await page.goto('./leads/nuevo');
     await formPage.assertOnPage();
 
     await formPage.fillMinimo('Test Duplicate', TELEFONO);
@@ -139,7 +139,7 @@ test.describe('Leads', () => {
     });
 
     const formPage = new LeadFormPage(page);
-    await page.goto('/leads/nuevo');
+    await page.goto('./leads/nuevo');
     await formPage.fillMinimo('Test Cancel', '9998887777');
     await formPage.submitButton.click();
 

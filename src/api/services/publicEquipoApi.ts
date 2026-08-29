@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosError, AxiosInstance } from 'axios';
+import { appPath } from '../../utils/navigation';
 
 /**
  * DTO PÚBLICO - Tiposcrip correspondence con FichaEquipoPublicDTO de backend.
@@ -51,7 +52,9 @@ export interface FichaEquipoPublicDTO {
  * garantizar que no se exponen secretos en llamadas públicas.
  */
 const publicClient: AxiosInstance = axios.create({
-  baseURL: `${window.location.origin}/api/public`,
+  // appPath antepone el base de Vite: /ripser/api/public bajo subpath.
+  // Es el endpoint de las fichas públicas por QR — no romper.
+  baseURL: `${window.location.origin}${appPath('/api/public')}`,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',

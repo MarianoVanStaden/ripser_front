@@ -13,7 +13,7 @@ import { test, expect } from '../../fixtures/darkMode';
 
 test.describe('Modo oscuro — infraestructura', () => {
   test('resuelve el esquema oscuro antes del primer paint', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('./');
 
     await expect(page.locator('html')).toHaveAttribute(
       'data-mui-color-scheme',
@@ -22,7 +22,7 @@ test.describe('Modo oscuro — infraestructura', () => {
   });
 
   test('el body pinta el fondo oscuro del theme', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('./');
 
     // #121212 — background.default del esquema dark.
     await expect
@@ -33,7 +33,7 @@ test.describe('Modo oscuro — infraestructura', () => {
   });
 
   test('meta theme-color sigue al esquema', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('./');
 
     await expect
       .poll(async () =>

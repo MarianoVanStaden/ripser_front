@@ -5,10 +5,16 @@ on:
     branches:
       - main
 
+# Layout post-cutover /ripser (ver DEPLOY_VPS.md):
+#   /var/www/app/releases/<run_number>/ripser/   ← dist de la SPA
+#   /var/www/app/current  → symlink al release activo
+#   /var/www/landing/current                     ← landing + sw.js kill-switch (manual)
+# El dist va DENTRO de ripser/ para que nginx sirva /ripser/* con
+# `root /var/www/app/current` sin alias.
 env:
   RELEASE: ${{ github.run_number }}
-  RELEASES_DIR: /var/www/frontend/releases
-  CURRENT_LINK: /var/www/frontend/current
+  RELEASES_DIR: /var/www/app/releases
+  CURRENT_LINK: /var/www/app/current
 
 jobs:
   build-and-deploy:
@@ -30,6 +36,17 @@ jobs:
       - name: Build project
         run: npm run build
 
+      # El build DEBE salir compilado para subpath: si index.html referencia
+      # /assets/ (base '/'), la app rompería detrás de /ripser/.
+      - name: Verify dist is built for /ripser base
+        run: |
+          if grep -qE '(src|href)="/assets/' dist/index.html; then
+            echo "::error::dist/index.html referencia /assets/ — el build no usa base '/ripser/'"
+            exit 1
+          fi
+          grep -q '"scope":"/ripser/"' dist/manifest.webmanifest || {
+            echo "::error::manifest sin scope /ripser/"; exit 1; }
+
       # Crea la carpeta del release en el VPS antes de copiar
       - name: Create release directory on VPS
         uses: appleboy/ssh-action@v1.0.3
@@ -37,9 +54,9 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: mkdir -p ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}
+          script: mkdir -p ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}/ripser
 
-      # Copia dist/ a releases/<run_number>/ en el VPS
+      # Copia dist/ a releases/<run_number>/ripser/ en el VPS
       - name: Copy dist to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -47,10 +64,10 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           source: dist/
-          target: ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}
+          target: ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}/ripser
           strip_components: 1
 
-      # Swap atómico del symlink + limpieza de releases viejos
+      # Swap atómico del symlink + verificación post-swap + limpieza
       - name: Activate release (atomic symlink swap)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -58,7 +75,14 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -e
+            # Pre-check: el release copiado tiene que estar completo ANTES del swap.
+            test -f ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}/ripser/index.html || {
+              echo "::error::release ${{ env.RELEASE }} sin ripser/index.html — NO se activa"; exit 1; }
             ln -sfn ${{ env.RELEASES_DIR }}/${{ env.RELEASE }} ${{ env.CURRENT_LINK }}
+            # Post-swap: si current/ripser/index.html no existe, TODO es 404.
+            test -f ${{ env.CURRENT_LINK }}/ripser/index.html || {
+              echo "::error::post-swap: current/ripser/index.html no existe"; exit 1; }
             sudo systemctl reload nginx || sudo systemctl reload apache2 || true
             echo "Release ${{ env.RELEASE }} activado."
             # Mantiene solo los últimos 5 releases
@@ -66,7 +90,10 @@ jobs:
             echo "Releases disponibles:"
             ls -1t ${{ env.RELEASES_DIR }}/
 
-      # Rollback: solo corre si algún paso anterior falló
+      # Rollback: solo corre si algún paso anterior falló.
+      # SOLO rollbackea a releases con layout ripser/ — un release pre-cutover
+      # (dist en la raíz, base '/') dejaría current/ripser/ inexistente y
+      # TODA la app en 404, incluido el index.
       - name: Rollback on failure
         if: failure()
         uses: appleboy/ssh-action@v1.0.3
@@ -78,12 +105,16 @@ jobs:
             echo "Deploy fallido. Iniciando rollback..."
             # Elimina el release incompleto
             rm -rf ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}
-            # Apunta el symlink al release anterior más reciente
-            PREV=$(ls -1dt ${{ env.RELEASES_DIR }}/*/ 2>/dev/null | head -1)
+            # Candidato: el release más reciente CON ripser/index.html
+            PREV=""
+            for d in $(ls -1dt ${{ env.RELEASES_DIR }}/*/ 2>/dev/null); do
+              if [ -f "$d/ripser/index.html" ]; then PREV="$d"; break; fi
+            done
             if [ -n "$PREV" ]; then
               ln -sfn "$PREV" ${{ env.CURRENT_LINK }}
               sudo systemctl reload nginx || sudo systemctl reload apache2 || true
               echo "Rollback exitoso. Sirviendo: $PREV"
             else
-              echo "Sin release previo disponible para rollback."
+              echo "::error::Sin release post-migración para rollback — current queda como estaba. Intervención manual."
+              exit 1
             fi

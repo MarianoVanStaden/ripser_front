@@ -70,7 +70,7 @@ setup('authenticate as default user', async ({ page }) => {
 
   // Navigate to dashboard — addInitScript fires BEFORE React initialises,
   // so AuthContext will find the token in localStorage on first mount.
-  await page.goto('/dashboard');
+  await page.goto('./dashboard');
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
   // Persist storage state — localStorage now contains FAKE_JWT.

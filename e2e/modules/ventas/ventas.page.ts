@@ -43,22 +43,22 @@ export class PresupuestosPage extends BasePage {
   // ─── Navigation helpers for sibling pages ────────────────────────────────
 
   async gotoPresupuestos(): Promise<void> {
-    await this.page.goto('/ventas/presupuestos');
+    await this.page.goto('./ventas/presupuestos');
     await this.page.waitForLoadState('networkidle');
   }
 
   async gotoNotasPedido(): Promise<void> {
-    await this.page.goto('/ventas/notas-pedido');
+    await this.page.goto('./ventas/notas-pedido');
     await this.page.waitForLoadState('networkidle');
   }
 
   async gotoFacturacion(): Promise<void> {
-    await this.page.goto('/ventas/facturacion');
+    await this.page.goto('./ventas/facturacion');
     await this.page.waitForLoadState('networkidle');
   }
 
   async gotoNotasCredito(): Promise<void> {
-    await this.page.goto('/ventas/notas-credito');
+    await this.page.goto('./ventas/notas-credito');
     await this.page.waitForLoadState('networkidle');
   }
 

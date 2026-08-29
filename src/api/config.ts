@@ -27,8 +27,10 @@ export const setAuthToken = (token: string | null) => {
 // Create axios instance with default configuration
 // Resolve base URL: empty string for relative URLs (works with Nginx proxy)
 // In production with Nginx, requests to /api/* are proxied to the backend
+// In dev the vite proxy listens on `${BASE_URL}api` (same prefix as prod's
+// nginx: /ripser/api), so the base is derived from BASE_URL instead of ''.
 const rawBase = import.meta.env.DEV
-  ? ''
+  ? import.meta.env.BASE_URL.replace(/\/$/, '')
   : (import.meta.env.VITE_API_BASE_URL ?? '');
 const normalizedBase = /^https?:\/\//.test(rawBase)
   ? rawBase.replace(/\/$/, '')

@@ -60,7 +60,7 @@ class FatalSSEError extends Error {
 // Base URL — mirrors the resolution logic in src/api/config.ts
 // ---------------------------------------------------------------------------
 const rawBase = import.meta.env.DEV
-  ? ''
+  ? import.meta.env.BASE_URL.replace(/\/$/, '')
   : (import.meta.env.VITE_API_BASE_URL ?? '');
 const BASE_URL = /^https?:\/\//.test(rawBase)
   ? rawBase.replace(/\/$/, '')

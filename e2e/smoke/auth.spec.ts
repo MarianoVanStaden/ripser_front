@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Login page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login');
+    await page.goto('./login');
   });
 
   test('renders branding and form', async ({ page }) => {
@@ -115,22 +115,22 @@ test.describe('Login page', () => {
 
 test.describe('Protected routes', () => {
   test('redirects unauthenticated user from /dashboard to /login', async ({ page }) => {
-    await page.goto('/dashboard');
+    await page.goto('./dashboard');
     await expect(page).toHaveURL(/\/login/);
   });
 
   test('redirects unauthenticated user from / to /login', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('./');
     await expect(page).toHaveURL(/\/login/);
   });
 
   test('redirects unauthenticated user from /clientes/gestion to /login', async ({ page }) => {
-    await page.goto('/clientes/gestion');
+    await page.goto('./clientes/gestion');
     await expect(page).toHaveURL(/\/login/);
   });
 
   test('redirects unauthenticated user from /admin/users to /login', async ({ page }) => {
-    await page.goto('/admin/users');
+    await page.goto('./admin/users');
     await expect(page).toHaveURL(/\/login/);
   });
 });

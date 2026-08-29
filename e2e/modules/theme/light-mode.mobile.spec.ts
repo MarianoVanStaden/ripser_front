@@ -34,7 +34,7 @@ const test = base.extend({
 
 test.describe('Modo claro sobre SO oscuro — infraestructura', () => {
   test('el atributo de esquema queda en light', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('./');
 
     await expect(page.locator('html')).toHaveAttribute(
       'data-mui-color-scheme',
@@ -43,7 +43,7 @@ test.describe('Modo claro sobre SO oscuro — infraestructura', () => {
   });
 
   test('el body pinta el fondo claro del theme', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('./');
 
     // #f5f5f5 — background.default del esquema light.
     await expect

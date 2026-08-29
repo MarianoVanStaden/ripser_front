@@ -14,7 +14,11 @@ dotenv.config({
   override: true,
 });
 
-const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173';
+// La SPA vive bajo /ripser (base de vite.config.ts): el baseURL incluye el
+// subpath. OJO: los specs navegan con rutas RELATIVAS — page.goto('./x') —
+// porque una ruta con barra inicial ('/x') resuelve contra el origin y
+// pierde el subpath (semántica de new URL()).
+const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173/ripser/';
 
 // Config ÚNICA de E2E (antes había una segunda en la raíz para smoke sin auth;
 // ahora ese smoke vive en e2e/smoke/ como el proyecto `smoke`).
