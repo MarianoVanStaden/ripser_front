@@ -35,35 +35,36 @@ test.describe('Authenticated navigation', () => {
   });
 
   test.describe('Client-side navigation via sidebar', () => {
-    test('clicking "Gestión Clientes" navigates to /clientes/gestion', async ({ page }) => {
+    // El sidebar es un acordeón: las secciones arrancan colapsadas y el ítem
+    // hoja NO está en el DOM hasta expandir su sección. Expandir primero.
+    const clickSidebarItem = async (
+      page: import('@playwright/test').Page,
+      section: string,
+      item: string,
+    ) => {
       await page.goto('./dashboard');
       await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
+      await page.getByText(section, { exact: true }).first().click();
+      await page.getByText(item).first().click();
+    };
 
-      await page.getByText('Gestión Clientes').click();
+    test('clicking "Gestión Clientes" navigates to /clientes/gestion', async ({ page }) => {
+      await clickSidebarItem(page, 'CLIENTES', 'Gestión Clientes');
       await expect(page).toHaveURL(/\/clientes\/gestion/);
     });
 
     test('clicking "Dashboard de Ventas" navigates to /ventas/dashboard', async ({ page }) => {
-      await page.goto('./dashboard');
-      await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
-
-      await page.getByText('Dashboard de Ventas').click();
+      await clickSidebarItem(page, 'VENTAS', 'Dashboard de Ventas');
       await expect(page).toHaveURL(/\/ventas\/dashboard/);
     });
 
     test('clicking "Gestión Proveedores" navigates to /proveedores/gestion', async ({ page }) => {
-      await page.goto('./dashboard');
-      await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
-
-      await page.getByText('Gestión Proveedores').click();
+      await clickSidebarItem(page, 'PROVEEDORES', 'Gestión Proveedores');
       await expect(page).toHaveURL(/\/proveedores\/gestion/);
     });
 
     test('clicking "Órdenes Servicio" navigates to /taller/ordenes', async ({ page }) => {
-      await page.goto('./dashboard');
-      await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
-
-      await page.getByText('Órdenes Servicio').click();
+      await clickSidebarItem(page, 'POSTVENTA', 'Órdenes Servicio');
       await expect(page).toHaveURL(/\/taller\/ordenes/);
     });
   });
