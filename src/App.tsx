@@ -89,6 +89,7 @@ const lazyNamed = <T extends ComponentType<any>>(
 // ---------------------------------------------------------------------------
 // Dashboard / dev
 const DevKPIs = lazy(() => import('./components/Dashboard/DevKPIs'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const TransporteDashboard = lazy(() => import('./pages/transporte/TransporteDashboard'));
 const ComprasDashboard = lazy(() => import('./pages/compras/ComprasDashboard'));
 const PostVentaDashboard = lazy(() => import('./pages/post-venta/PostVentaDashboard'));
@@ -521,6 +522,10 @@ function App() {
                   <Route path="fabricacion/reportes-estados" element={priv(<ReportesEstadosPage />)} />
                   <Route path="fabricacion/stock-planificacion" element={priv(<StockPlanificacionPage />)} />
                   <Route path="fabricacion/requerimientos-stock" element={priv(<RequerimientosStockPage />)} />
+                  {/* Catch-all: URL sin match dentro de la app (bookmark
+                      inválido, typo) — antes quedaba el Layout con outlet
+                      vacío y un warning de react-router en consola. */}
+                  <Route path="*" element={priv(<NotFoundPage />)} />
                 </Route>
               </Routes>
             </Suspense>

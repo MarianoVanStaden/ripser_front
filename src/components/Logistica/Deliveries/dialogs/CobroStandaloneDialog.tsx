@@ -2,7 +2,8 @@ import React from 'react';
 import { Box, Button, Stack, SwipeableDrawer, Typography } from '@mui/material';
 import { AttachMoney as AttachMoneyIcon } from '@mui/icons-material';
 import BottomSheet from '../components/BottomSheet';
-import CobroSection, { hasMontoValido } from '../components/CobroSection';
+import CobroSection from '../components/CobroSection';
+import { hasMontoValido } from '../components/cobroHelpers';
 import { useResponsive } from '../useResponsive';
 import type { CobroData } from '../types';
 

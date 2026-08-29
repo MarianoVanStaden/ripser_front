@@ -63,7 +63,7 @@ import { useResponsive } from './Deliveries/useResponsive';
 import { usePermisos } from '../../hooks/usePermisos';
 import type { CobroData, DeliveryFormData } from './Deliveries/types';
 import { compressImageFile } from './Deliveries/utils';
-import { hasMontoValido, initialCobroData, toDetalleCobroDTOs } from './Deliveries/components/CobroSection';
+import { hasMontoValido, initialCobroData, toDetalleCobroDTOs } from './Deliveries/components/cobroHelpers';
 import LightboxDialog from './Deliveries/dialogs/LightboxDialog';
 import RejectDeliveryDialog from './Deliveries/dialogs/RejectDeliveryDialog';
 import ConfirmDeliveryDialog from './Deliveries/dialogs/ConfirmDeliveryDialog';

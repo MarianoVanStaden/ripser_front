@@ -32,12 +32,13 @@ import type { RendicionViajeDTO, RendicionEntregaDTO } from '../../types/logisti
 import { viajeApi } from '../../api/services/viajeApi';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import type { CobroData } from './Deliveries/types';
-import CobroSection, {
+import CobroSection from './Deliveries/components/CobroSection';
+import {
   fromDetalleCobroDTOs,
   toDetalleCobroDTOs,
   sumaCobro,
   hasMontoValido,
-} from './Deliveries/components/CobroSection';
+} from './Deliveries/components/cobroHelpers';
 import RendicionConfirmar, { type RendicionConfirmarPayload } from './RendicionConfirmar';
 
 const fmt = (n?: number | null) =>

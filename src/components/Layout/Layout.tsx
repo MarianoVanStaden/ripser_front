@@ -8,7 +8,8 @@ import {
 } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import FieldBottomNav, { useHasFieldNav } from './FieldBottomNav';
+import FieldBottomNav from './FieldBottomNav';
+import { useHasFieldNav } from './useHasFieldNav';
 import { TenantRequiredRoute } from '../Tenant';
 import { useFinancialEvents } from '../../hooks/useFinancialEvents';
 import RoleScopeGuard from './RoleScopeGuard';

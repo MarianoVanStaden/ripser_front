@@ -1,4 +1,4 @@
-import { BottomNavigation, BottomNavigationAction, Paper, useMediaQuery, useTheme } from '@mui/material';
+import { BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
 import {
   Home as HomeIcon,
   LocalShipping as DeliveryIcon,
@@ -10,14 +10,13 @@ import {
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { TRANSPORTE_ROLES, useHasFieldNav } from './useHasFieldNav';
 
 interface NavItem {
   label: string;
   path: string;
   icon: React.ReactElement;
 }
-
-const TRANSPORTE_ROLES = ['TRANSPORTE', 'LOGISTICO', 'COORDINADORA_LOGISTICA', 'CONDUCTOR'];
 
 const TRANSPORTE_ITEMS: NavItem[] = [
   { label: 'Inicio', path: '/dashboard', icon: <HomeIcon /> },
@@ -37,21 +36,6 @@ const itemsForRoles = (roles: string[]): NavItem[] | null => {
   if (roles.some((r) => TRANSPORTE_ROLES.includes(r))) return TRANSPORTE_ITEMS;
   if (roles.includes('POST_VENTA')) return POSTVENTA_ITEMS;
   return null;
-};
-
-/**
- * true si este usuario/viewport muestra la bottom nav de campo — el Layout
- * lo usa para reservar el padding inferior del contenido.
- */
-export const useHasFieldNav = (): boolean => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { user, esSuperAdmin } = useAuth();
-  if (!isMobile || esSuperAdmin) return false;
-  const roles = user?.roles ?? [];
-  // Admin-like navega todo el ERP: la bottom nav de 4 destinos le queda corta.
-  if (roles.includes('ADMIN')) return false;
-  return itemsForRoles(roles) !== null;
 };
 
 /**

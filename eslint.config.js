@@ -63,6 +63,12 @@ export default tseslint.config([
       'ripser/no-literal-colors': 'error',
     },
   },
+  // react-refresh no aplica a infra de test: esos archivos no participan del
+  // HMR de Vite y sus re-exports (`export *` de testing-library) son legítimos.
+  {
+    files: ['src/test/**', 'src/**/*.test.{ts,tsx}'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
   // Cutover / → /ripser: toda navegación con URL absoluta pasa por
   // src/utils/navigation.ts (appPath/hardRedirect/isAtPath), que respeta
   // import.meta.env.BASE_URL. Un literal '/...' en window.location.href o en
