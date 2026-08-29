@@ -34,12 +34,12 @@ export class ClientesPage extends BasePage {
 
   /** Navigate to the new cliente form. */
   async gotoForm(): Promise<void> {
-    await this.page.goto('/clientes/nuevo');
+    await this.page.goto('./clientes/nuevo');
   }
 
   /** Navigate to the edit form for a specific cliente by id. */
   async gotoEdit(id: number): Promise<void> {
-    await this.page.goto(`/clientes/editar/${id}`);
+    await this.page.goto(`./clientes/editar/${id}`);
   }
 
   // ─── Actions ───────────────────────────────────────────────────────────────

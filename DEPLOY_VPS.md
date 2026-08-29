@@ -5,6 +5,48 @@ Guía paso a paso para dejar configurado el VPS y que el workflow de GitHub Acti
 
 ---
 
+## ⚠️ Cutover a /ripser (ago 2026) — layout vigente
+
+La SPA se movió de `/` a **`/ripser`** para liberar la raíz del dominio a la
+landing de ysysoftware.com. Este layout REEMPLAZA los paths
+`/var/www/frontend/*` que aparecen más abajo en la guía histórica.
+
+```
+/var/www/app/
+├── releases/<run_number>/ripser/   ← dist de la SPA (el dist va DENTRO de ripser/)
+└── current -> releases/<N>         ← symlink al release activo
+/var/www/landing/
+└── current/                        ← landing estática + sw.js (kill-switch)
+```
+
+- **nginx**: server block completo en `deploy/nginx-ysysoftware.conf`. La raíz
+  sirve lo que exista físicamente en la landing y 302 el resto a `/ripser$uri`.
+  La API quedó en `/ripser/api/` (el `proxy_pass` al backend NO cambió).
+- **Kill-switch del SW viejo**: `deploy/sw-killswitch.js` se copia a
+  `/var/www/landing/current/sw.js` (nombre EXACTO del SW pre-cutover —
+  verificar con `ls` en el dist que corría). Desregistra el SW de scope `/`,
+  borra caches y recarga los clients. Sin esto, los browsers con la PWA vieja
+  instalada siguen sirviendo la app zombie desde el precache.
+- **QRs impresos** (`/public/equipos/<n>/ficha`): excepción **PERMANENTE** —
+  hay fichas físicas pegadas en equipos que no se pueden reimprimir; nginx las
+  301-redirige a `/ripser/public/equipos/...`. **NO es candidata a limpieza.**
+
+### Rollback post-cutover — REGLA CRÍTICA
+
+Un release pre-cutover tiene el dist en la RAÍZ del release (base `/`); si
+`current` apunta ahí, `current/ripser/` no existe y **toda la app es 404**.
+Por eso:
+
+1. El workflow verifica post-swap que `current/ripser/index.html` exista y
+   solo rollbackea a releases que tengan `ripser/index.html`.
+2. En el cutover, **purgar los releases viejos** dejando solo el nuevo
+   (`ls -1dt /var/www/app/releases/*/ | tail -n +2 | xargs -r rm -rf`), para
+   que ni un rollback manual apurado pueda aterrizar en un release base-`/`.
+3. Rollback manual: elegir SIEMPRE un release con `ripser/index.html`:
+   `ln -sfn /var/www/app/releases/<N> /var/www/app/current && sudo systemctl reload nginx`
+
+---
+
 ## Índice
 
 1. [Requisitos previos](#1-requisitos-previos)

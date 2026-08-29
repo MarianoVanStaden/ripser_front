@@ -43,7 +43,7 @@ export function makeFakeJwt(): string {
  *
  * Usage:
  *   await loginAs(page);
- *   await page.goto('/dashboard');  // ← navigate directly — no need for /login
+ *   await page.goto('./dashboard');  // ← navigate directly — no need for /login
  */
 export async function loginAs(page: Page, user = FAKE_USER): Promise<void> {
   // ── 1. Inject storage state before React initialises ──────────────────────

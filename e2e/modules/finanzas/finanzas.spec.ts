@@ -45,7 +45,7 @@ test.describe('Finanzas', () => {
   // ── Amortizaciones ────────────────────────────────────────────────────────
 
   test('should render the amortizaciones page without crashing', async ({ page }) => {
-    await page.goto('/admin/amortizaciones');
+    await page.goto('./admin/amortizaciones');
     await expect(page).toHaveURL(/\/admin\/amortizaciones/, { timeout: 10_000 });
     await expect(page.locator('body')).not.toContainText('Error: ');
   });
@@ -53,7 +53,7 @@ test.describe('Finanzas', () => {
   // ── Posición Patrimonial ──────────────────────────────────────────────────
 
   test('should render the posición patrimonial page without crashing', async ({ page }) => {
-    await page.goto('/admin/patrimonio');
+    await page.goto('./admin/patrimonio');
     await expect(page).toHaveURL(/\/admin\/patrimonio/, { timeout: 10_000 });
     await expect(page.locator('body')).not.toContainText('Error: ');
   });

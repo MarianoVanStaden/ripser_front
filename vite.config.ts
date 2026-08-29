@@ -40,6 +40,12 @@ const analyzePlugin = analyze
   : null
 
 export default defineConfig({
+  // La SPA vive bajo /ripser (la raíz del dominio es de la landing). Aplica a
+  // dev y build: dev sirve en http://localhost:5173/ripser/ para que el
+  // prefijo no diverja entre entornos. La app lee esto vía
+  // import.meta.env.BASE_URL (ver src/utils/navigation.ts y el basename del
+  // Router en App.tsx).
+  base: '/ripser/',
   plugins: [
     react(),
     VitePWA({
@@ -56,15 +62,17 @@ export default defineConfig({
         description: 'Sistema ERP Ripser',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
+        start_url: '/ripser/',
+        scope: '/ripser/',
         theme_color: '#1976d2', // primary.main del theme MUI
         background_color: '#ffffff',
+        // Los icon src NO se reescriben con `base` (verificado contra el dist:
+        // Vite solo reescribe start_url/scope) — el prefijo va a mano.
         icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/ripser/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/ripser/icon-512.png', sizes: '512x512', type: 'image/png' },
           {
-            src: '/maskable-512.png',
+            src: '/ripser/maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
@@ -79,7 +87,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // El SW nunca debe responder navegaciones/requests de la API con el
         // index.html cacheado.
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/ripser\/api\//],
         // El SW NO cachea llamadas a la API. Un NetworkFirst sobre `/api/`
         // rompía dos cosas:
         //  1) Interceptaba el SSE `/api/eventos/stream` (GET, text/event-stream)
@@ -106,10 +114,12 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': {
+      // Mismo prefijo que prod (nginx: /ripser/api → backend /RipserApp/api)
+      // para que dev y prod no diverjan.
+      '/ripser/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
-        rewrite: (path) => `/RipserApp${path}`,
+        rewrite: (path) => path.replace(/^\/ripser/, '/RipserApp'),
       },
     },
   },

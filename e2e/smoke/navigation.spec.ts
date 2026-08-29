@@ -12,20 +12,20 @@ test.describe('Authenticated navigation', () => {
 
   test.describe('Layout', () => {
     test('AppBar is visible on dashboard', async ({ page }) => {
-      await page.goto('/dashboard');
+      await page.goto('./dashboard');
       // MUI AppBar renders as <header> → implicit role="banner"
       await expect(page.getByRole('banner')).toBeVisible({ timeout: 10_000 });
     });
 
     test('sidebar renders with logged-in username', async ({ page }) => {
-      await page.goto('/dashboard');
+      await page.goto('./dashboard');
       // Sidebar always shows the authenticated user's username in the profile section.
       // Use exact match to avoid colliding with the dashboard greeting "¡Hola, testadmin! 👋".
       await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
     });
 
     test('sidebar contains section headers', async ({ page }) => {
-      await page.goto('/dashboard');
+      await page.goto('./dashboard');
       await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
 
       // These section headers are ListSubheaders in the sidebar
@@ -36,7 +36,7 @@ test.describe('Authenticated navigation', () => {
 
   test.describe('Client-side navigation via sidebar', () => {
     test('clicking "Gestión Clientes" navigates to /clientes/gestion', async ({ page }) => {
-      await page.goto('/dashboard');
+      await page.goto('./dashboard');
       await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
 
       await page.getByText('Gestión Clientes').click();
@@ -44,7 +44,7 @@ test.describe('Authenticated navigation', () => {
     });
 
     test('clicking "Dashboard de Ventas" navigates to /ventas/dashboard', async ({ page }) => {
-      await page.goto('/dashboard');
+      await page.goto('./dashboard');
       await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
 
       await page.getByText('Dashboard de Ventas').click();
@@ -52,7 +52,7 @@ test.describe('Authenticated navigation', () => {
     });
 
     test('clicking "Gestión Proveedores" navigates to /proveedores/gestion', async ({ page }) => {
-      await page.goto('/dashboard');
+      await page.goto('./dashboard');
       await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
 
       await page.getByText('Gestión Proveedores').click();
@@ -60,7 +60,7 @@ test.describe('Authenticated navigation', () => {
     });
 
     test('clicking "Órdenes Servicio" navigates to /taller/ordenes', async ({ page }) => {
-      await page.goto('/dashboard');
+      await page.goto('./dashboard');
       await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
 
       await page.getByText('Órdenes Servicio').click();
@@ -89,7 +89,7 @@ test.describe('Authenticated navigation', () => {
 
   test.describe('Logout', () => {
     test('clicking logout opens confirmation dialog', async ({ page }) => {
-      await page.goto('/dashboard');
+      await page.goto('./dashboard');
       await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
 
       // The logout button is CSS-translated out of its container (opacity:0,
@@ -102,7 +102,7 @@ test.describe('Authenticated navigation', () => {
     });
 
     test('confirming logout redirects to /login', async ({ page }) => {
-      await page.goto('/dashboard');
+      await page.goto('./dashboard');
       await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
 
       // The logout button is CSS-translated out of its container (opacity:0,
@@ -118,7 +118,7 @@ test.describe('Authenticated navigation', () => {
     });
 
     test('cancelling logout keeps the user on the page', async ({ page }) => {
-      await page.goto('/dashboard');
+      await page.goto('./dashboard');
       await expect(page.getByText('testadmin', { exact: true })).toBeVisible({ timeout: 10_000 });
 
       // The logout button is CSS-translated out of its container (opacity:0,

@@ -57,7 +57,7 @@ test.describe('Postventa - Control de Calidad', () => {
       }),
     }));
 
-    await page.goto('/postventa/comunicaciones-iniciales');
+    await page.goto('./postventa/comunicaciones-iniciales');
     await expect(page.getByText('León Antonio Mellado')).toBeVisible({ timeout: 20_000 });
 
     // Al clickear el ícono NO debe descargarse ningún PDF.
@@ -119,7 +119,7 @@ test.describe('Postventa - Control de Calidad', () => {
       });
     });
 
-    await page.goto('/postventa/comunicaciones-iniciales');
+    await page.goto('./postventa/comunicaciones-iniciales');
 
     // Estado inicial: 1 fila; la nueva todavía NO está.
     await expect(page.getByText('León Antonio Mellado')).toBeVisible({ timeout: 20_000 });

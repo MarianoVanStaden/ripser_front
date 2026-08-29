@@ -66,7 +66,7 @@ test.describe('Login flow', () => {
       })
     );
 
-    await page.goto('/login');
+    await page.goto('./login');
     await page.getByLabel('Usuario o Correo').fill('testadmin');
     await page.getByLabel('Contraseña').fill('password123');
     await page.getByRole('button', { name: 'Ingresar' }).click();
@@ -80,7 +80,7 @@ test.describe('Login flow', () => {
       await route.fulfill({ status: 401, body: '{"error":"bad"}' });
     });
 
-    await page.goto('/login');
+    await page.goto('./login');
     await page.getByLabel('Usuario o Correo').fill('testadmin');
     await page.getByLabel('Contraseña').fill('password');
     await page.getByRole('button', { name: 'Ingresar' }).click();
@@ -94,7 +94,7 @@ test.describe('Login flow', () => {
       route.fulfill({ status: 401, body: '{"error":"bad"}' })
     );
 
-    await page.goto('/login');
+    await page.goto('./login');
     await page.getByLabel('Usuario o Correo').fill('bad');
     await page.getByLabel('Contraseña').fill('bad');
     await page.getByRole('button', { name: 'Ingresar' }).click();
@@ -130,7 +130,7 @@ test.describe('Login flow', () => {
       });
     });
 
-    await page.goto('/login');
+    await page.goto('./login');
     await page.getByLabel('Usuario o Correo').fill('admin');
     await page.getByLabel('Contraseña').fill('wrongpass');
     await page.getByRole('button', { name: 'Ingresar' }).click();
@@ -173,7 +173,7 @@ test.describe('Login flow', () => {
     );
 
     // Navigate directly — AuthContext sees the token on first mount and redirects
-    await page.goto('/login');
+    await page.goto('./login');
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
   });
 
@@ -182,7 +182,7 @@ test.describe('Login flow', () => {
       route.fulfill({ status: 500, body: '{}' })
     );
 
-    await page.goto('/login');
+    await page.goto('./login');
     await page.getByLabel('Usuario o Correo').fill('admin');
     await page.getByLabel('Contraseña').fill('pass');
     await page.getByRole('button', { name: 'Ingresar' }).click();
@@ -209,7 +209,7 @@ test.describe('Login flow', () => {
         body: JSON.stringify(MOCK_LOGIN_RESPONSE) })
     );
 
-    await page.goto('/login');
+    await page.goto('./login');
     await page.getByLabel('Usuario o Correo').fill('testadmin');
     await page.getByLabel('Contraseña').fill('password123');
     await page.getByRole('button', { name: 'Ingresar' }).click();
@@ -223,7 +223,7 @@ test.describe('Login flow', () => {
     });
 
     // Navigate to a protected route — no token → should redirect to /login
-    await page.goto('/dashboard');
+    await page.goto('./dashboard');
     await expect(page).toHaveURL(/\/login/, { timeout: 5_000 });
   });
 });

@@ -185,13 +185,13 @@ test.describe('Session management', () => {
     // Navigate back to /login — full reload means AuthContext re-validates the token.
     // The fixture-level auth/validate mock (fixtures/index.ts) returns 200, so
     // AuthContext keeps the user authenticated and LoginPage redirects to /dashboard.
-    await page.goto('/login');
+    await page.goto('./login');
 
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
   });
 
   test('should redirect unauthenticated user from /dashboard to /login', async ({ page }) => {
-    await page.goto('/dashboard');
+    await page.goto('./dashboard');
     await expect(page).toHaveURL(/\/login/);
   });
 

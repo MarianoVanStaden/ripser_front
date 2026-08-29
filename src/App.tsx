@@ -328,7 +328,9 @@ function App() {
           <CssBaseline />
           <SidebarProvider>
           <ToastProvider>
-          <Router>
+          {/* basename derivado del `base` de vite.config.ts ('/ripser/' → '/ripser').
+              Así router, assets y navigation.ts comparten UNA fuente de verdad. */}
+          <Router basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
             {/* Banner rojo global de impersonación (se autooculta si no aplica) */}
             <ImpersonationBanner />
             <OfflineBanner />

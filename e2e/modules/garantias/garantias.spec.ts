@@ -59,7 +59,7 @@ test.describe('Garantías', () => {
   // ── 4. Reclamos page renders ──────────────────────────────────────────────
 
   test('should render the reclamos page without crashing', async ({ page }) => {
-    await page.goto('/garantias/reclamos');
+    await page.goto('./garantias/reclamos');
     await expect(page).toHaveURL(/\/garantias\/reclamos/, { timeout: 10_000 });
     await expect(page.locator('body')).not.toContainText('Error: ');
   });
@@ -67,7 +67,7 @@ test.describe('Garantías', () => {
   // ── 5. Reporte page renders ───────────────────────────────────────────────
 
   test('should render the garantías reporte page without crashing', async ({ page }) => {
-    await page.goto('/garantias/reporte');
+    await page.goto('./garantias/reporte');
     await expect(page).toHaveURL(/\/garantias\/reporte/, { timeout: 10_000 });
     await expect(page.locator('body')).not.toContainText('Error: ');
   });

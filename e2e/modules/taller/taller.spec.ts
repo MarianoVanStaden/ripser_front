@@ -53,25 +53,25 @@ test.describe('Taller', () => {
   // ── 4. Sub-pages render without crashing ─────────────────────────────────
 
   test('should render /taller/materiales without crashing', async ({ page }) => {
-    await page.goto('/taller/materiales');
+    await page.goto('./taller/materiales');
     await expect(page).toHaveURL(/\/taller\/materiales/, { timeout: 10_000 });
     await expect(page.locator('body')).not.toContainText('Error: ');
   });
 
   test('should render /taller/tareas without crashing', async ({ page }) => {
-    await page.goto('/taller/tareas');
+    await page.goto('./taller/tareas');
     await expect(page).toHaveURL(/\/taller\/tareas/, { timeout: 10_000 });
     await expect(page.locator('body')).not.toContainText('Error: ');
   });
 
   test('should render /taller/trabajos without crashing', async ({ page }) => {
-    await page.goto('/taller/trabajos');
+    await page.goto('./taller/trabajos');
     await expect(page).toHaveURL(/\/taller\/trabajos/, { timeout: 10_000 });
     await expect(page.locator('body')).not.toContainText('Error: ');
   });
 
   test('should render /taller/configuracion without crashing', async ({ page }) => {
-    await page.goto('/taller/configuracion');
+    await page.goto('./taller/configuracion');
     await expect(page).toHaveURL(/\/taller\/configuracion/, { timeout: 10_000 });
     await expect(page.locator('body')).not.toContainText('Error: ');
   });
