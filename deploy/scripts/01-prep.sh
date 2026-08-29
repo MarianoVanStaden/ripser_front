@@ -5,7 +5,8 @@
 # Uso: sudo bash ~/ripser-cutover/01-prep.sh
 # =============================================================================
 set -euo pipefail
-SRC=~/ripser-cutover
+# Bajo sudo, ~ es /root: resolver la carpeta del propio script.
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "== Directorios del layout nuevo =="
 mkdir -p /var/www/app/releases
