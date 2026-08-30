@@ -146,7 +146,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       console.log('⚠️ canSelectSucursal: rolActual es undefined/null');
       return false;
     }
-    const result = rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO' || rolActual === 'GERENTE_SUCURSAL' || rolActual === 'SUPERVISOR' || rolActual === 'POST_VENTA';
+    const result = rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO' || rolActual === 'GERENTE_SUCURSAL' || rolActual === 'SUPERVISOR' || rolActual === 'POST_VENTA' || rolActual === 'COORDINADORA_LOGISTICA';
     console.log('🔍 canSelectSucursal evaluation:', { rolActual, result, esSuperAdmin, systemRole });
     return result;
   }, [esSuperAdmin, rolActual, user]);
@@ -194,7 +194,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             // que fuerza null en cada carga). Sólo se saltea el auto-pick de sucursal
             // (asignada/defecto/principal); la validación de la sucursal guardada sigue
             // aplicando, así que una selección manual sobrevive al reload.
-            const ROLES_DEFAULT_TODAS: RolEmpresa[] = ['ADMIN_EMPRESA', 'ADMIN_EMPRESA_LIMITADO', 'SUPER_ADMIN'];
+            const ROLES_DEFAULT_TODAS: RolEmpresa[] = ['ADMIN_EMPRESA', 'ADMIN_EMPRESA_LIMITADO', 'SUPER_ADMIN', 'COORDINADORA_LOGISTICA'];
             const defaultTodas = esSuperAdmin || ROLES_DEFAULT_TODAS.includes(relacionActual.rol);
 
             if (veTodasSucursales) {
