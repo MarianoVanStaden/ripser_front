@@ -1036,16 +1036,12 @@ export const VentasDashboard = () => {
       )}
 
       {/* ── UNIDADES POR VENDEDOR — mismo reporte del Registro (NP aprobadas,
-           NC/rechazos restan en su mes), para que gestión vea el real acá ── */}
+           NC/rechazos restan en su mes), para que gestión vea el real acá.
+           El componente trae su propio Card, título y rango de meses. ── */}
       {!isVendedor && (
-        <Card sx={{ mb: 2 }}>
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-              Unidades por Vendedor
-            </Typography>
-            <VentasEquiposVendedorTab />
-          </CardContent>
-        </Card>
+        <Box sx={{ mb: 2 }}>
+          <VentasEquiposVendedorTab />
+        </Box>
       )}
 
       {/* ── ACCIONES RÁPIDAS ── */}

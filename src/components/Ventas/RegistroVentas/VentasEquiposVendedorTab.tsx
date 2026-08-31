@@ -7,6 +7,7 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Paper,
   Table,
   TableBody,
   TableCell,
@@ -213,6 +214,22 @@ const VentasEquiposVendedorTab: React.FC = () => {
     return { filas: ordenadas, totalPorMes: totales };
   }, [data]);
 
+  // Totales del rango completo: brutas (lo que cuenta la líder en su panel),
+  // anuladas (NC + rechazos) y neto. Misma fuente que la tabla — no pueden divergir.
+  const totalesRango = useMemo(() => {
+    let vendidas = 0;
+    let anuladas = 0;
+    let neto = 0;
+    for (const item of data ?? []) {
+      vendidas += item.heladerasVendidas + item.coolboxesVendidas;
+      anuladas +=
+        item.heladerasAnuladasNc + item.heladerasAnuladasRechazo +
+        item.coolboxesAnuladasNc + item.coolboxesAnuladasRechazo;
+      neto += item.totalNeto;
+    }
+    return { vendidas, anuladas, neto };
+  }, [data]);
+
   const renderCelda = (
     celda: CeldaMes | undefined,
     meta?: number,
@@ -314,6 +331,32 @@ const VentasEquiposVendedorTab: React.FC = () => {
 
         {!isLoading && rangoValido && !isError && (
           <>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(3, minmax(0, 220px))' },
+                gap: 1.5,
+                mb: 2,
+              }}
+            >
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                <Typography variant="h5" fontWeight={700}>{totalesRango.vendidas}</Typography>
+                <Typography variant="body2" color="text.secondary">Unidades vendidas</Typography>
+                <Typography variant="caption" color="text.secondary">brutas, sin descontar anulaciones</Typography>
+              </Paper>
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                <Typography variant="h5" fontWeight={700} color={totalesRango.anuladas > 0 ? 'error.main' : undefined}>
+                  {totalesRango.anuladas > 0 ? `−${totalesRango.anuladas}` : 0}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Anuladas</Typography>
+                <Typography variant="caption" color="text.secondary">NC + rechazos del rango</Typography>
+              </Paper>
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                <Typography variant="h5" fontWeight={700}>{totalesRango.neto}</Typography>
+                <Typography variant="body2" color="text.secondary">Neto</Typography>
+                <Typography variant="caption" color="text.secondary">vendidas − anuladas</Typography>
+              </Paper>
+            </Box>
             <TableContainer sx={{ overflowX: 'auto' }}>
               <Table size="small">
                 <TableHead>
