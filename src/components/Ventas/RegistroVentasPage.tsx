@@ -715,6 +715,9 @@ const RegistroVentasPage: React.FC = () => {
                   <Typography variant="body2" color="text.secondary">
                     Ingresos Totales
                   </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    facturas vigentes (sin NC ni anuladas)
+                  </Typography>
                 </Box>
               </Box>
             </CardContent>
@@ -730,6 +733,9 @@ const RegistroVentasPage: React.FC = () => {
                   <Typography variant="body2" color="text.secondary">
                     Total Ventas
                   </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    facturas vigentes (sin NC ni anuladas)
+                  </Typography>
                 </Box>
               </Box>
             </CardContent>
@@ -741,7 +747,7 @@ const RegistroVentasPage: React.FC = () => {
               <Box display="flex" alignItems="center" gap={2}>
                 <TrendingUpIcon color="warning" />
                 <Box>
-                  <Typography variant="h6">${averageOrderValue.toFixed(2)}</Typography>
+                  <Typography variant="h6">${Math.round(averageOrderValue).toLocaleString()}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     Valor Promedio
                   </Typography>
