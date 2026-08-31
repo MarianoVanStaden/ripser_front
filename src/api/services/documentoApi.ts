@@ -139,8 +139,8 @@ function serializeDocumentoFilters(
 // Solo cantidades, sin montos. "Venta" = FACTURA no anulada del período.
 export interface VentasDashboardDTO {
   totalVentas: number;
-  /** Saldo real cero: CC del documento neteada, o préstamo finalizado si es financiada. */
-  ventasCobradasTotal: number;
+  /** Ventas con método de pago EFECTIVO (por método, sin importar si el cobro se registró). */
+  ventasEfectivo: number;
   ventasFinanciadas: number;
   financiadasPorPlan: { plan: string; cantidad: number }[];
   /** Unidades por modelo (receta), orden descendente. No netea NC. */

@@ -108,11 +108,11 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuar
                 color="primary.main"
               />
               <StatCard
-                title="Con cobro total"
-                value={data.ventasCobradasTotal}
+                title="Efectivo"
+                value={data.ventasEfectivo}
                 subtitle={
                   data.totalVentas > 0
-                    ? `${Math.round((data.ventasCobradasTotal / data.totalVentas) * 100)}% de las ventas`
+                    ? `${Math.round((data.ventasEfectivo / data.totalVentas) * 100)}% de las ventas`
                     : undefined
                 }
                 icon={<PaidIcon fontSize="large" />}
