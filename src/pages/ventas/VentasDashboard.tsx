@@ -63,7 +63,6 @@ import { EmbudoVentasChart } from '../../components/metricas/EmbudoVentasChart';
 import { MetricasCanalChart } from '../../components/metricas/MetricasCanalChart';
 import { MetricasPrioridadChart } from '../../components/metricas/MetricasPrioridadChart';
 import { VentasMesSection } from '../../components/metricas/ventasMes/VentasMesSection';
-import VentasEquiposVendedorTab from '../../components/Ventas/RegistroVentas/VentasEquiposVendedorTab';
 
 dayjs.locale('es');
 
@@ -1033,15 +1032,6 @@ export const VentasDashboard = () => {
           desde={(fechaInicio ?? dayjs().startOf('month')).format('YYYY-MM-DD')}
           hasta={(fechaFin ?? dayjs().endOf('month')).format('YYYY-MM-DD')}
         />
-      )}
-
-      {/* ── UNIDADES POR VENDEDOR — mismo reporte del Registro (NP aprobadas,
-           NC/rechazos restan en su mes), para que gestión vea el real acá.
-           El componente trae su propio Card, título y rango de meses. ── */}
-      {!isVendedor && (
-        <Box sx={{ mb: 2 }}>
-          <VentasEquiposVendedorTab />
-        </Box>
       )}
 
       {/* ── ACCIONES RÁPIDAS ── */}

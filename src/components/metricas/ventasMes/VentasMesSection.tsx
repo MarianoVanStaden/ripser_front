@@ -14,7 +14,12 @@ import {
   Paid as PaidIcon,
   CreditScore as CreditScoreIcon,
   Cancel as CancelIcon,
+  Inventory2 as Inventory2Icon,
+  RemoveCircleOutline as RemoveCircleOutlineIcon,
+  DoneAll as DoneAllIcon,
 } from '@mui/icons-material';
+import { useMemo } from 'react';
+import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
 import { documentoApi } from '../../../api/services/documentoApi';
 import { FinanciadasPorPlanChart } from './FinanciadasPorPlanChart';
@@ -69,6 +74,31 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuar
       documentoApi.getDashboardVentas(desde, hasta, sucursalId ?? undefined, usuarioId ?? undefined),
     refetchInterval: 5 * 60_000,
   });
+
+  // Unidades HELADERA/COOLBOX del período (mismo reporte que "Unidades por
+  // Vendedor" del Registro, granularidad mensual): acá solo totales en cards —
+  // el desglose por vendedor queda en el Registro para roles superiores.
+  const desdeMes = dayjs(desde).format('YYYY-MM');
+  const hastaMes = dayjs(hasta).format('YYYY-MM');
+  const unidadesQuery = useQuery({
+    queryKey: ['ventas-equipos-vendedores', { empresaId, desdeMes, hastaMes }],
+    queryFn: () => documentoApi.getVentasEquiposPorVendedor(desdeMes, hastaMes),
+    refetchInterval: 5 * 60_000,
+  });
+  const unidades = useMemo(() => {
+    let vendidas = 0;
+    let anuladas = 0;
+    let neto = 0;
+    for (const item of unidadesQuery.data ?? []) {
+      if (usuarioId != null && item.usuarioId !== usuarioId) continue;
+      vendidas += item.heladerasVendidas + item.coolboxesVendidas;
+      anuladas +=
+        item.heladerasAnuladasNc + item.heladerasAnuladasRechazo +
+        item.coolboxesAnuladasNc + item.coolboxesAnuladasRechazo;
+      neto += item.totalNeto;
+    }
+    return { vendidas, anuladas, neto };
+  }, [unidadesQuery.data, usuarioId]);
 
   return (
     <Card sx={{ mb: 2 }}>
@@ -138,6 +168,40 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuar
                 color="status.danger.fg"
               />
             </Box>
+
+            {/* Unidades (heladeras + coolboxes) por mes calendario del rango */}
+            {unidadesQuery.data && (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+                  gap: 1.5,
+                  mb: 2,
+                }}
+              >
+                <StatCard
+                  title="Unidades vendidas"
+                  value={unidades.vendidas}
+                  subtitle="brutas, sin descontar anulaciones"
+                  icon={<Inventory2Icon fontSize="large" />}
+                  color="primary.main"
+                />
+                <StatCard
+                  title="Unidades anuladas"
+                  value={unidades.anuladas}
+                  subtitle="NC + rechazos del período"
+                  icon={<RemoveCircleOutlineIcon fontSize="large" />}
+                  color="status.danger.fg"
+                />
+                <StatCard
+                  title="Unidades netas"
+                  value={unidades.neto}
+                  subtitle="vendidas − anuladas"
+                  icon={<DoneAllIcon fontSize="large" />}
+                  color="status.success.fg"
+                />
+              </Box>
+            )}
 
             <Box
               sx={{
