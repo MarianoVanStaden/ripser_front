@@ -105,7 +105,7 @@ const RegistroVentasPage: React.FC = () => {
     clienteId: '',
     usuarioId: '',
     estado: '',
-    metodoPago: 'CASH' as PaymentMethod,
+    metodoPago: 'EFECTIVO',
     fechaVenta: '',
     notas: '',
     total: 0,
@@ -362,7 +362,7 @@ const RegistroVentasPage: React.FC = () => {
       clienteId: sale.cliente?.id?.toString() || '',
       usuarioId: sale.usuario?.id?.toString() || sale.empleado?.id?.toString() || '',
       estado: sale.estado || 'PENDIENTE',
-      metodoPago: sale.metodoPago as PaymentMethod || 'CASH',
+      metodoPago: (sale.metodoPago as string) || 'EFECTIVO',
       fechaVenta: sale.fechaVenta ? new Date(sale.fechaVenta).toISOString().split('T')[0] : '',
       notas: sale.observaciones || '',
       total: sale.total || 0,
@@ -439,13 +439,18 @@ const RegistroVentasPage: React.FC = () => {
     return statusColors[status] || 'default';
   };
 
-  const getPaymentMethodLabel = (method: PaymentMethod): string => {
-    const methods: Record<PaymentMethod, string> = {
-      CASH: 'Efectivo',
-      CREDIT_CARD: 'Tarjeta de Crédito',
-      DEBIT_CARD: 'Tarjeta de Débito',
-      BANK_TRANSFER: 'Transferencia',
-      CHECK: 'Cheque',
+  const getPaymentMethodLabel = (method: string): string => {
+    const methods: Record<string, string> = {
+      EFECTIVO: 'Efectivo',
+      TARJETA_CREDITO: 'Tarjeta de Crédito',
+      TARJETA_DEBITO: 'Tarjeta de Débito',
+      TRANSFERENCIA_BANCARIA: 'Transferencia',
+      CUENTA_CORRIENTE: 'Cuenta Corriente',
+      CHEQUE: 'Cheque',
+      MERCADO_PAGO: 'Mercado Pago',
+      FINANCIACION_PROPIA: 'Financiación Propia',
+      PAGARE: 'Pagaré',
+      DOLARES: 'Dólares',
     };
     return methods[method] || method;
   };
@@ -812,11 +817,16 @@ const RegistroVentasPage: React.FC = () => {
                   onChange={(e) => setPaymentMethodFilter(e.target.value)}
                 >
                   <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="CASH">Efectivo</MenuItem>
-                  <MenuItem value="CREDIT_CARD">Tarjeta de Crédito</MenuItem>
-                  <MenuItem value="DEBIT_CARD">Tarjeta de Débito</MenuItem>
-                  <MenuItem value="BANK_TRANSFER">Transferencia</MenuItem>
-                  <MenuItem value="CHECK">Cheque</MenuItem>
+                  <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+                  <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+                  <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+                  <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
+                  <MenuItem value="CHEQUE">Cheque</MenuItem>
+                  <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
+                  <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
+                  <MenuItem value="FINANCIACION_PROPIA">Financiación Propia</MenuItem>
+                  <MenuItem value="PAGARE">Pagaré</MenuItem>
+                  <MenuItem value="DOLARES">Dólares</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -1042,7 +1052,7 @@ const RegistroVentasPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={getPaymentMethodLabel(sale.metodoPago as PaymentMethod || 'CASH')}
+                        label={getPaymentMethodLabel(sale.metodoPago || 'EFECTIVO')}
                         size="small"
                         color="primary"
                         variant="outlined"
@@ -1209,7 +1219,7 @@ const RegistroVentasPage: React.FC = () => {
                     <Typography><strong>Número:</strong> {viewingSale.ventaNumero || 'N/A'}</Typography>
                     <Typography><strong>Fecha:</strong> {new Date(viewingSale.fechaVenta).toLocaleDateString()}</Typography>
                     <Typography><strong>Estado:</strong> {getStatusLabel(viewingSale.estado)}</Typography>
-                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago as PaymentMethod || 'CASH')}</Typography>
+                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago || 'EFECTIVO')}</Typography>
                     {(viewingSale as any).clienteProvincia && (
                       <Typography><strong>Provincia:</strong> {PROVINCIA_LABELS[(viewingSale as any).clienteProvincia as keyof typeof PROVINCIA_LABELS] || (viewingSale as any).clienteProvincia}</Typography>
                     )}
