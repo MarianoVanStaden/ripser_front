@@ -128,6 +128,12 @@ export interface NotaCreditoPreviewDTO {
   capacidadRestante: number;
   totalACreditar: number;
   fallbackLegacy: boolean;
+  /** true = con esta NC el acumulado alcanza el total: la factura se anulará (y el préstamo se cancelará). */
+  anularaFactura: boolean;
+  /** true = la factura tiene un préstamo personal asociado no cancelado. */
+  tienePrestamoActivo: boolean;
+  /** Lo que quedará sin acreditar en CC después de esta NC. */
+  residualCc: number;
   creditos: NotaCreditoPreviewCreditoDTO[];
 }
 // En types/index.ts agregar:

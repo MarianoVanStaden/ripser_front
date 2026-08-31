@@ -1050,6 +1050,23 @@ const NotasCreditoPage: React.FC = () => {
                         Ya acreditado por NC anteriores: {formatCurrency(preview.creditosPrevios)} — restante: {formatCurrency(preview.capacidadRestante)}
                       </Typography>
                     )}
+                    {preview.anularaFactura && (
+                      <Typography variant="body2" fontWeight={600} sx={{ mt: 1 }}>
+                        Esta NC completa el total de la factura: quedará ANULADA
+                        {preview.tienePrestamoActivo && ' y el préstamo asociado se CANCELARÁ'}.
+                      </Typography>
+                    )}
+                  </Alert>
+                )}
+
+                {preview && !preview.fallbackLegacy && !preview.anularaFactura && (
+                  <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+                    <Typography variant="body2">
+                      <strong>Nota de Crédito parcial:</strong> quedarán {formatCurrency(preview.residualCc)} sin
+                      acreditar en la cuenta corriente por esta factura. La factura NO se anulará
+                      {preview.tienePrestamoActivo && ' y el préstamo asociado NO se cancelará (seguirá activo con su saldo completo)'}.
+                      {' '}Si buscás anular la factura completa, acreditá todos los ítems restantes.
+                    </Typography>
                   </Alert>
                 )}
 
