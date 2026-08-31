@@ -104,6 +104,7 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuar
               <StatCard
                 title="Ventas totales"
                 value={data.totalVentas}
+                subtitle="no incluye anuladas"
                 icon={<PointOfSaleIcon fontSize="large" />}
                 color="primary.main"
               />
@@ -112,8 +113,8 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuar
                 value={data.ventasEfectivo}
                 subtitle={
                   data.totalVentas > 0
-                    ? `${Math.round((data.ventasEfectivo / data.totalVentas) * 100)}% de las ventas`
-                    : undefined
+                    ? `${Math.round((data.ventasEfectivo / data.totalVentas) * 100)}% de las ventas · sin anuladas`
+                    : 'sin anuladas'
                 }
                 icon={<PaidIcon fontSize="large" />}
                 color="status.success.fg"
@@ -123,8 +124,8 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuar
                 value={data.ventasFinanciadas}
                 subtitle={
                   data.totalVentas > 0
-                    ? `${Math.round((data.ventasFinanciadas / data.totalVentas) * 100)}% de las ventas`
-                    : undefined
+                    ? `${Math.round((data.ventasFinanciadas / data.totalVentas) * 100)}% de las ventas · sin anuladas`
+                    : 'sin anuladas'
                 }
                 icon={<CreditScoreIcon fontSize="large" />}
                 color="status.warning.fg"
@@ -132,6 +133,7 @@ export const VentasMesSection: React.FC<Props> = ({ empresaId, sucursalId, usuar
               <StatCard
                 title="Anulaciones"
                 value={data.totalAnulaciones}
+                subtitle="NC emitidas en el período"
                 icon={<CancelIcon fontSize="large" />}
                 color="status.danger.fg"
               />
