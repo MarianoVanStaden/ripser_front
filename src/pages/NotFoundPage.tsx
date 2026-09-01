@@ -1,48 +1,51 @@
 import React from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
-import { Box, Button, Typography } from '@mui/material';
-import Ripser404Illustration from '../components/common/Ripser404Illustration';
+import heladera404 from '../assets/heladera-404.png';
+import ripserLogo from '../assets/ripser-404-logo.png';
+import './NotFoundPage.css';
 
 /**
  * Catch-all interno de la app (Route path="*"): URL sin match (bookmark
- * inválido, link viejo, typo). Ilustración de la heladera Ripser perdida
- * (handoff de diseño hi-fi) + mensaje.
+ * inválido, link viejo, typo). Diseño "heladera humanizada" del handoff
+ * (export estático HTML/CSS) portado a React; estilos en NotFoundPage.css.
  */
 const NotFoundPage: React.FC = () => {
   const location = useLocation();
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '70vh',
-        gap: 1.5,
-        px: 2,
-        py: 4,
-        textAlign: 'center',
-      }}
-    >
-      <Box sx={{ width: '100%', maxWidth: 560 }}>
-        <Ripser404Illustration />
-      </Box>
-      <Typography variant="h4" component="h1">
-        ¡Ups! No encontramos esta página.
-      </Typography>
-      <Typography variant="body1" color="text.secondary">
-        Parece que se perdió por el camino.
-      </Typography>
-      <Typography variant="caption" color="text.disabled">
-        La ruta <code>{location.pathname}</code> no existe en el sistema.
-      </Typography>
-      {/* `/` cae en DashboardEntry, que manda a cada rol a SU pantalla de
-          inicio (RRHH, cobranzas, transporte, etc.) — no siempre al Dashboard. */}
-      <Button variant="contained" size="large" component={RouterLink} to="/" sx={{ mt: 1 }}>
-        Volver al inicio
-      </Button>
-    </Box>
+    <main className="r404">
+      <div className="r404__art">
+        <img src={heladera404} alt="Vitrina Ripser sosteniendo un cartel de 404" />
+      </div>
+
+      <div className="r404__panel">
+        <div className="r404__blob" />
+        <div className="r404__content">
+          <img className="r404__logo" src={ripserLogo} alt="Ripser Instalaciones Comerciales" />
+          <div className="r404__num">404</div>
+          <h1 className="r404__title">Página no encontrada</h1>
+          <div className="r404__rule" />
+          <p className="r404__text">Ups… la página que buscás no existe o fue movida.</p>
+          <p className="r404__text">Volvé al inicio y seguimos encontrando lo que necesitás.</p>
+
+          <div className="r404__actions">
+            {/* `/` cae en DashboardEntry, que manda a cada rol a SU pantalla de
+                inicio (RRHH, cobranzas, transporte, etc.) — no siempre al Dashboard. */}
+            <RouterLink className="r404__btn" to="/">
+              <span className="r404__home">
+                <i />
+                <i />
+              </span>
+              Ir al inicio
+            </RouterLink>
+          </div>
+
+          <p className="r404__help">
+            La ruta <code>{location.pathname}</code> no existe en el sistema.
+          </p>
+        </div>
+      </div>
+    </main>
   );
 };
 

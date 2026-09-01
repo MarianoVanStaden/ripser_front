@@ -1,0 +1,210 @@
+/* 404 "heladera humanizada" — port del handoff de diseño (HTML/CSS puro).
+   Colores finales de la pieza, no siguen el theme (igual criterio que la
+   ilustración anterior). Prefijo .r404__* para evitar colisiones.
+   Ajuste vs. handoff: el original era height:100vh full-page; acá vive dentro
+   del Layout (appbar + padding), así que usa min-height calc() y bordes
+   redondeados para asentarse como panel del área de contenido. */
+
+.r404 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  align-content: stretch;
+  min-height: max(480px, calc(100vh - 140px));
+  overflow: hidden;
+  border-radius: 16px;
+  color: #14528e;
+  font-family: Poppins, Roboto, 'Helvetica Neue', Helvetica, sans-serif;
+  background: linear-gradient(
+    180deg,
+    #fdfeff 0%,
+    #fafcfe 12%,
+    #e5f1fd 36%,
+    #dcecfc 62%,
+    #d9e9fa 86%,
+    #e9eff8 100%
+  );
+}
+.r404 a {
+  color: #0e4c8b;
+  text-decoration: none;
+}
+
+.r404__art {
+  position: relative;
+  flex: 1 1 44%;
+  min-width: 0;
+  min-height: 46vh;
+  overflow: hidden;
+}
+.r404__art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 100%;
+  animation: r404-bob 6.5s ease-in-out infinite;
+}
+
+.r404__panel {
+  position: relative;
+  flex: 1 1 380px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.r404__blob {
+  position: absolute;
+  right: -20%;
+  top: -26%;
+  width: 96%;
+  height: 92%;
+  pointer-events: none;
+  border-radius: 52% 48% 60% 40% / 58% 42% 58% 42%;
+  background: radial-gradient(
+    60% 60% at 42% 42%,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0) 72%
+  );
+}
+.r404__content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 620px;
+  padding: clamp(20px, 3vh, 48px) clamp(20px, 3vw, 48px);
+}
+.r404__logo {
+  width: auto;
+  height: clamp(74px, 9.5vh, 124px);
+  max-width: 82%;
+  object-fit: contain;
+}
+.r404__num {
+  margin-top: clamp(14px, 3vh, 34px);
+  font-weight: 800;
+  font-size: clamp(58px, 9vw, 124px);
+  line-height: 0.86;
+  letter-spacing: -0.03em;
+  color: #14528e;
+}
+.r404__title {
+  margin: clamp(6px, 1.4vh, 14px) 0 0;
+  font-weight: 700;
+  font-size: clamp(26px, 3.5vw, 52px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: #14528e;
+  text-wrap: balance;
+}
+.r404__rule {
+  width: 64px;
+  height: 5px;
+  border-radius: 999px;
+  background: #2e6fae;
+  margin: clamp(14px, 2.6vh, 26px) 0 clamp(16px, 2.8vh, 28px);
+}
+.r404__text {
+  margin: 0;
+  font-size: clamp(15px, 1.7vw, 21px);
+  line-height: 1.5;
+  color: #42607c;
+  max-width: 24ch;
+  text-wrap: pretty;
+}
+.r404__text + .r404__text {
+  margin-top: clamp(10px, 1.8vh, 20px);
+  max-width: 26ch;
+}
+.r404__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: clamp(20px, 3.6vh, 40px);
+}
+.r404__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: clamp(12px, 1.6vh, 17px) clamp(26px, 2.6vw, 40px) clamp(12px, 1.6vh, 17px)
+    clamp(20px, 2vw, 30px);
+  border-radius: 999px;
+  background: #0e4c8b;
+  color: #fff;
+  font-weight: 600;
+  font-size: clamp(16px, 1.7vw, 21px);
+  box-shadow: 0 16px 30px -14px rgba(14, 76, 139, 0.75);
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease;
+}
+.r404 a.r404__btn {
+  color: #fff;
+}
+.r404__btn:hover {
+  background: #0a3a6b;
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+.r404__home {
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 23px;
+  flex: 0 0 auto;
+}
+.r404__home i {
+  position: absolute;
+  left: 50%;
+  display: block;
+}
+.r404__home i:first-child {
+  top: 0;
+  margin-left: -13px;
+  width: 0;
+  height: 0;
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-bottom: 12px solid #fff;
+}
+.r404__home i:last-child {
+  bottom: 0;
+  margin-left: -8px;
+  width: 17px;
+  height: 12px;
+  border-radius: 1px 1px 3px 3px;
+  background: #fff;
+}
+.r404__help {
+  margin: clamp(16px, 2.8vh, 30px) 0 0;
+  font-size: clamp(13px, 1.2vw, 16px);
+  color: #7c93a8;
+}
+.r404__help code {
+  color: #42607c;
+  word-break: break-all;
+}
+
+@keyframes r404-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.35deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(0.45deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .r404__art img {
+    animation: none;
+  }
+}

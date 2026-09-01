@@ -52,9 +52,6 @@ export default tseslint.config([
       // Ficha pública (QR, la ven terceros) y su versión interna imprimible.
       'src/components/Public/**',
       'src/components/Fabricacion/FichaEquipoPage.tsx',
-      // Ilustración 404 (handoff hi-fi): colores finales de la pieza, no
-      // siguen el theme.
-      'src/components/common/Ripser404Illustration.tsx',
       // Tests: fixtures con strings arbitrarios.
       'src/**/*.test.{ts,tsx}',
       'src/test/**',
