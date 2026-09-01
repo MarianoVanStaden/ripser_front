@@ -36,13 +36,23 @@
   min-width: 0;
   min-height: 46vh;
   overflow: hidden;
+  /* gradiente tomado de los bordes del PNG: rellena el letterbox sin costura */
+  background: linear-gradient(
+    180deg,
+    #fefdfd 0%,
+    #dcedfd 11%,
+    #d6eafc 30%,
+    #d2e7fb 52%,
+    #d3e4f8 78%,
+    #e2e8f1 100%
+  );
 }
 .r404__art img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: 50% 100%;
   animation: r404-bob 6.5s ease-in-out infinite;
 }
