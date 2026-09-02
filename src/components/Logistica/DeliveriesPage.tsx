@@ -791,6 +791,7 @@ const DeliveriesPage2: React.FC = () => {
   };
 
   // Nombre de fantasía ("nombre de local") del cliente, para la card de Dirección.
+  // Fallback a razón social si no tiene fantasía cargada.
   // Resuelve el cliente desde la factura o la orden de servicio.
   const getClientFantasia = (delivery: EntregaViaje): string | null => {
     let cliente: Cliente | undefined;
@@ -802,7 +803,7 @@ const DeliveriesPage2: React.FC = () => {
       const orden = getOrdenByDelivery(delivery);
       if (orden?.clienteId) cliente = clients.find(c => c.id === orden.clienteId);
     }
-    return cliente?.nombreFantasia?.trim() || null;
+    return cliente?.nombreFantasia?.trim() || cliente?.razonSocial?.trim() || null;
   };
 
   // Teléfono del cliente para abrir WhatsApp. Prioriza el campo whatsapp; cae al
