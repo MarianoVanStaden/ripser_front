@@ -444,6 +444,12 @@ const ClientesPage: React.FC = () => {
                     <Typography><strong>Apellido:</strong> {selectedCliente.apellido}</Typography>
                   )}
                   <Typography><strong>Tipo:</strong> {selectedCliente.tipo}</Typography>
+                  {(selectedCliente.tipo === 'PERSONA_JURIDICA' || selectedCliente.razonSocial) && (
+                    <Typography><strong>Razón Social:</strong> {selectedCliente.razonSocial || 'No especificada'}</Typography>
+                  )}
+                  {(selectedCliente.tipo === 'PERSONA_JURIDICA' || selectedCliente.nombreFantasia) && (
+                    <Typography><strong>Nombre de Fantasía:</strong> {selectedCliente.nombreFantasia || 'No especificado'}</Typography>
+                  )}
                   <Typography><strong>CUIT:</strong> {selectedCliente.cuit || 'N/A'}</Typography>
                   <Typography><strong>Estado:</strong> {selectedCliente.estado}</Typography>
                 </Box>

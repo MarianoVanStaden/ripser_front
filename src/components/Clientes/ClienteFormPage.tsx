@@ -53,6 +53,7 @@ const ClienteFormPage: React.FC = () => {
     nombre: '',
     apellido: '',
     razonSocial: '',
+    nombreFantasia: '',
     cuit: '',
     email: '',
     telefono: '',
@@ -109,6 +110,7 @@ const ClienteFormPage: React.FC = () => {
         nombre: cliente.nombre,
         apellido: cliente.apellido || '',
         razonSocial: cliente.razonSocial || '',
+        nombreFantasia: cliente.nombreFantasia || (cliente.tipo === 'PERSONA_JURIDICA' ? cliente.nombre : ''),
         cuit: cliente.cuit || '',
         email: cliente.email || '',
         telefono: cliente.telefono || '',
@@ -169,8 +171,12 @@ const ClienteFormPage: React.FC = () => {
     setError(null);
     setSuccess(null);
 
-    if (!formData.nombre.trim()) {
+    if (formData.tipo === 'PERSONA_FISICA' && !formData.nombre.trim()) {
       setError('El nombre es obligatorio');
+      return;
+    }
+    if (formData.tipo === 'PERSONA_JURIDICA' && !formData.nombreFantasia.trim()) {
+      setError('El nombre de fantasía es obligatorio para personas jurídicas');
       return;
     }
     if (formData.tipo === 'PERSONA_FISICA' && !formData.apellido.trim()) {
@@ -195,6 +201,12 @@ const ClienteFormPage: React.FC = () => {
       // For PERSONA_JURIDICA, ensure apellido is empty or set a default if needed
       if (submitData.tipo === 'PERSONA_JURIDICA' && !submitData.apellido) {
         submitData.apellido = '';
+      }
+
+      // Legacy: muchos listados muestran cliente.nombre — para PJ se mantiene
+      // sincronizado con el nombre de fantasía (convención previa a la columna).
+      if (submitData.tipo === 'PERSONA_JURIDICA') {
+        submitData.nombre = formData.nombreFantasia;
       }
 
       // Item comprado: solo lo mandamos si el usuario tocó algo (selección
@@ -227,6 +239,7 @@ const ClienteFormPage: React.FC = () => {
           nombre: '',
           apellido: '',
           razonSocial: '',
+          nombreFantasia: '',
           cuit: '',
           email: '',
           telefono: '',
@@ -366,9 +379,9 @@ const ClienteFormPage: React.FC = () => {
                     fullWidth
                     size="small"
                     label="Nombre Fantasía"
-                    value={formData.nombre}
+                    value={formData.nombreFantasia}
                     onChange={handleFormChange}
-                    name="nombre"
+                    name="nombreFantasia"
                     required
                   />
                 </Grid>

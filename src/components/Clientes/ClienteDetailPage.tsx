@@ -199,9 +199,14 @@ const ClienteDetailPage: React.FC = () => {
                   <strong>{cliente.tipo === 'PERSONA_FISICA' ? 'DNI/CUIL:' : 'CUIT:'}</strong> {cliente.cuit}
                 </Typography>
               )}
-              {cliente.razonSocial && (
+              {(cliente.tipo === 'PERSONA_JURIDICA' || cliente.razonSocial) && (
                 <Typography>
-                  <strong>Razón Social:</strong> {cliente.razonSocial}
+                  <strong>Razón Social:</strong> {cliente.razonSocial || 'No especificada'}
+                </Typography>
+              )}
+              {(cliente.tipo === 'PERSONA_JURIDICA' || cliente.nombreFantasia) && (
+                <Typography>
+                  <strong>Nombre de Fantasía:</strong> {cliente.nombreFantasia || 'No especificado'}
                 </Typography>
               )}
               <Typography>
@@ -322,8 +327,11 @@ const ClienteDetailPage: React.FC = () => {
                   {cliente.apellido && (
                     <Typography><strong>Apellido:</strong> {cliente.apellido}</Typography>
                   )}
-                  {cliente.razonSocial && (
-                    <Typography><strong>Razón Social:</strong> {cliente.razonSocial}</Typography>
+                  {(cliente.tipo === 'PERSONA_JURIDICA' || cliente.razonSocial) && (
+                    <Typography><strong>Razón Social:</strong> {cliente.razonSocial || 'No especificada'}</Typography>
+                  )}
+                  {(cliente.tipo === 'PERSONA_JURIDICA' || cliente.nombreFantasia) && (
+                    <Typography><strong>Nombre de Fantasía:</strong> {cliente.nombreFantasia || 'No especificado'}</Typography>
                   )}
                   {cliente.cuit && (
                     <Typography>

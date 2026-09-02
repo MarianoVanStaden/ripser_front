@@ -12,6 +12,7 @@ export interface Cliente {
   nombre: string;
   apellido?: string;
   razonSocial?: string;
+  nombreFantasia?: string;
   cuit?: string;
   email?: string;
   telefono?: string;
@@ -140,6 +141,7 @@ export interface CreateClienteRequest {
   nombre: string;
   apellido?: string;
   razonSocial?: string;
+  nombreFantasia?: string;
   cuit?: string;
   email?: string;
   telefono?: string;
