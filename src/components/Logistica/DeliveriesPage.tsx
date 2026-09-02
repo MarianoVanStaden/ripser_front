@@ -790,6 +790,21 @@ const DeliveriesPage2: React.FC = () => {
     return 'Sin Factura';
   };
 
+  // Nombre de fantasía ("nombre de local") del cliente, para la card de Dirección.
+  // Resuelve el cliente desde la factura o la orden de servicio.
+  const getClientFantasia = (delivery: EntregaViaje): string | null => {
+    let cliente: Cliente | undefined;
+    const factura = getFacturaByDelivery(delivery);
+    if (factura?.clienteId) {
+      cliente = clients.find(c => c.id === factura.clienteId);
+    }
+    if (!cliente) {
+      const orden = getOrdenByDelivery(delivery);
+      if (orden?.clienteId) cliente = clients.find(c => c.id === orden.clienteId);
+    }
+    return cliente?.nombreFantasia?.trim() || null;
+  };
+
   // Teléfono del cliente para abrir WhatsApp. Prioriza el campo whatsapp; cae al
   // teléfono principal. Resuelve el cliente desde la factura o la orden de servicio.
   const getClientPhone = (delivery: EntregaViaje): string | undefined => {
@@ -1533,6 +1548,7 @@ const DeliveriesPage2: React.FC = () => {
         getMontoACobrar={getMontoACobrar}
         getStatusChip={getStatusChip}
         getClientPhone={getClientPhone}
+        getClientFantasia={getClientFantasia}
         openConfirmDialog={openConfirmDialog}
         openRejectDialog={openRejectDialog}
         openCobroStandalone={openCobroStandalone}

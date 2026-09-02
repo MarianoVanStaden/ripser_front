@@ -33,6 +33,7 @@ interface DeliveryDetailsPanelProps {
   getMontoACobrar: (d: EntregaViaje) => number | null | undefined;
   getStatusChip: (estado: EntregaViaje['estado']) => React.ReactNode;
   getClientPhone: (d: EntregaViaje) => string | null | undefined;
+  getClientFantasia: (d: EntregaViaje) => string | null;
   openConfirmDialog: (id: number) => void;
   openRejectDialog: (id: number) => void;
   openCobroStandalone: (id: number) => void;
@@ -64,6 +65,7 @@ export default function DeliveryDetailsPanel({
   getMontoACobrar,
   getStatusChip,
   getClientPhone,
+  getClientFantasia,
   openConfirmDialog,
   openRejectDialog,
   openCobroStandalone,
@@ -238,6 +240,9 @@ export default function DeliveryDetailsPanel({
 
                   <Card variant="outlined">
                     <CardContent>
+                      <Typography variant="body2" mb={1}>
+                        <strong>Nombre de local:</strong> {getClientFantasia(selectedDelivery) || '-'}
+                      </Typography>
                       <Box display="flex" alignItems="flex-start" gap={1} mb={2}>
                         <LocationIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
                         <Typography variant="body2">{selectedDelivery.direccionEntrega}</Typography>
@@ -402,6 +407,9 @@ export default function DeliveryDetailsPanel({
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom>Direccion</Typography>
+                      <Typography variant="body2" mb={1}>
+                        <strong>Nombre de local:</strong> {getClientFantasia(selectedDelivery) || '-'}
+                      </Typography>
                       <Box display="flex" alignItems="flex-start" gap={1} mb={2}>
                         <LocationIcon sx={{ fontSize: 18, mt: 0.3, color: 'text.secondary' }} />
                         <Typography variant="body2">{selectedDelivery.direccionEntrega}</Typography>
