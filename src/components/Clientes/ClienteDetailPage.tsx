@@ -192,7 +192,7 @@ const ClienteDetailPage: React.FC = () => {
             </Typography>
             <Box display="flex" flexDirection="column" gap={1}>
               <Typography>
-                <strong>Tipo:</strong> {cliente.tipo === 'PERSONA_FISICA' ? 'Persona Física' : 'Persona Jurídica'}
+                <strong>Tipo:</strong> {cliente.tipo === 'PERSONA_FISICA' ? 'Persona Física' : cliente.tipo === 'PERSONA_JURIDICA' ? 'Persona Jurídica' : 'Sin definir'}
               </Typography>
               {cliente.cuit && (
                 <Typography>
@@ -340,7 +340,7 @@ const ClienteDetailPage: React.FC = () => {
                   )}
                 </Box>
                 <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
-                  <Typography><strong>Tipo:</strong> {cliente.tipo === 'PERSONA_FISICA' ? 'Persona Física' : 'Persona Jurídica'}</Typography>
+                  <Typography><strong>Tipo:</strong> {cliente.tipo === 'PERSONA_FISICA' ? 'Persona Física' : cliente.tipo === 'PERSONA_JURIDICA' ? 'Persona Jurídica' : 'Sin definir'}</Typography>
                   <Typography><strong>Estado:</strong> {cliente.estado}</Typography>
                   <Typography><strong>Fecha de Alta:</strong> {new Date(cliente.fechaAlta).toLocaleDateString()}</Typography>
                   <Typography><strong>Última Actualización:</strong> {cliente.fechaActualizacion ? new Date(cliente.fechaActualizacion).toLocaleDateString() : 'N/A'}</Typography>
