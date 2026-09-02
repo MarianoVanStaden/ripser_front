@@ -406,10 +406,10 @@ export default function DeliveryDetailsPanel({
                 <Grid item xs={12} md={6}>
                   <Card variant="outlined">
                     <CardContent>
-                      <Typography variant="subtitle2" gutterBottom>Direccion</Typography>
                       <Typography variant="body2" mb={1}>
                         <strong>Nombre de local:</strong> {getClientFantasia(selectedDelivery) || '-'}
                       </Typography>
+                      <Typography variant="subtitle2" gutterBottom>Direccion</Typography>
                       <Box display="flex" alignItems="flex-start" gap={1} mb={2}>
                         <LocationIcon sx={{ fontSize: 18, mt: 0.3, color: 'text.secondary' }} />
                         <Typography variant="body2">{selectedDelivery.direccionEntrega}</Typography>
