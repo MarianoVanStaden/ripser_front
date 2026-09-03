@@ -39,9 +39,10 @@ import SueldoFormDialog from './Sueldos/SueldoFormDialog';
 import PagoSueldoDialog from './Sueldos/PagoSueldoDialog';
 import LiquidacionMasivaPage from './Sueldos/LiquidacionMasivaPage';
 import PagoMasivoSueldosPage from './Sueldos/PagoMasivoSueldosPage';
+import LiquidacionesFinalesPage from './LiquidacionesFinales/LiquidacionesFinalesPage';
 import { generarReciboHaberesPDF } from '../../services/pdfService';
 
-type TabKey = 'sueldos' | 'liquidar' | 'pagar';
+type TabKey = 'sueldos' | 'liquidar' | 'pagar' | 'finales';
 
 /**
  * Mapea la ruta al tab activo. Mantenemos las rutas existentes
@@ -51,6 +52,7 @@ type TabKey = 'sueldos' | 'liquidar' | 'pagar';
 const pathToTab = (pathname: string): TabKey => {
   if (pathname.endsWith('/liquidacion-masiva')) return 'liquidar';
   if (pathname.endsWith('/pago-masivo')) return 'pagar';
+  if (pathname.endsWith('/liquidaciones-finales')) return 'finales';
   return 'sueldos';
 };
 
@@ -58,6 +60,7 @@ const tabToPath = (tab: TabKey): string => {
   switch (tab) {
     case 'liquidar': return '/rrhh/sueldos/liquidacion-masiva';
     case 'pagar':    return '/rrhh/sueldos/pago-masivo';
+    case 'finales':  return '/rrhh/liquidaciones-finales';
     default:         return '/rrhh/sueldos';
   }
 };
@@ -232,6 +235,7 @@ const SueldosPage: React.FC = () => {
           <Tab icon={<ReceiptIcon />} iconPosition="start" label="Sueldos" value="sueldos" />
           <Tab icon={<PlaylistAddCheckIcon />} iconPosition="start" label="Liquidar mes (masivo)" value="liquidar" />
           <Tab icon={<PaymentsIcon />} iconPosition="start" label="Pago masivo" value="pagar" />
+          <Tab icon={<PersonIcon />} iconPosition="start" label="Liquidaciones finales" value="finales" />
         </Tabs>
       </Paper>
 
@@ -239,6 +243,7 @@ const SueldosPage: React.FC = () => {
           state interno no se mezcle entre vistas. */}
       {tab === 'liquidar' && <LiquidacionMasivaPage embedded />}
       {tab === 'pagar' && <PagoMasivoSueldosPage embedded />}
+      {tab === 'finales' && <LiquidacionesFinalesPage embedded />}
       {/* === Grilla principal del tab "Sueldos" === */}
       {tab === 'sueldos' && (<>
 

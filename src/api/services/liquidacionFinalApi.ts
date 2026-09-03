@@ -59,7 +59,7 @@ export interface LiquidacionFinal {
   empleadoDni: string | null;
   empleadoFechaIngreso: string | null;
   fechaEgreso: string;
-  motivoEgreso: MotivoEgreso;
+  motivoEgreso: MotivoEgreso | null;
   estado: EstadoLiquidacionFinal;
   totalHaberes: number;
   totalDescuentos: number;
@@ -91,7 +91,7 @@ export interface LiquidacionFinalCreateRequest {
   empleadoId: number;
   sucursalId?: number | null;
   fechaEgreso: string;
-  motivoEgreso: MotivoEgreso;
+  motivoEgreso?: MotivoEgreso;
   observaciones?: string;
   items?: LiquidacionFinalItemRequest[];
 }

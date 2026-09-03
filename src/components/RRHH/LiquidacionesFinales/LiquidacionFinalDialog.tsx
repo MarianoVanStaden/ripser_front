@@ -6,7 +6,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
+  Alert, Autocomplete, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, MenuItem, Stack, TextField, Typography,
   useMediaQuery, useTheme,
 } from '@mui/material';
@@ -16,12 +16,14 @@ import {
   Payment as PaymentIcon,
   Block as BlockIcon,
   PictureAsPdf as PdfIcon,
+  PlaylistAdd as PlaylistAddIcon,
   Save as SaveIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import {
   liquidacionFinalApi,
   MOTIVOS_EGRESO,
+  type ConceptoLiquidacion,
   type LiquidacionFinal,
   type LiquidacionFinalItemRequest,
   type MotivoEgreso,
@@ -47,6 +49,15 @@ const ESTADO_COLOR: Record<string, 'default' | 'info' | 'success' | 'error' | 'w
 const fmt = (n: number | undefined | null) =>
   `$${Number(n ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
+// Conceptos que corresponden en (casi) todo egreso: proporcionales del mes,
+// SAC y vacaciones no gozadas (arts. 123 y 156 LCT).
+const CODIGOS_SIEMPRE = ['DIAS_TRABAJADOS', 'SAC_PROPORCIONAL', 'VACACIONES_PROP', 'SAC_VACACIONES'];
+// Rubros indemnizatorios que se suman en un despido sin causa
+// (arts. 233, 245, 231/232 LCT).
+const CODIGOS_DESPIDO_SIN_CAUSA = [
+  'INTEGRACION_MES', 'SAC_INTEGRACION', 'INDEM_ANTIGUEDAD', 'INDEM_PREAVISO', 'SAC_PREAVISO',
+];
+
 const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -57,7 +68,8 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
   const [error, setError] = useState<string | null>(null);
   const [empleadoId, setEmpleadoId] = useState<number | ''>('');
   const [fechaEgreso, setFechaEgreso] = useState<string>(dayjs().format('YYYY-MM-DD'));
-  const [motivoEgreso, setMotivoEgreso] = useState<MotivoEgreso>('RENUNCIA');
+  // '' = sin especificar: el motivo es opcional y editable mientras esté en BORRADOR.
+  const [motivoEgreso, setMotivoEgreso] = useState<MotivoEgreso | ''>('');
   const [observaciones, setObservaciones] = useState('');
   const [drafts, setDrafts] = useState<ItemDraft[]>([]);
   const [pagoOpen, setPagoOpen] = useState(false);
@@ -89,12 +101,12 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
     if (isCreate) {
       setEmpleadoId('');
       setFechaEgreso(dayjs().format('YYYY-MM-DD'));
-      setMotivoEgreso('RENUNCIA');
+      setMotivoEgreso('');
       setObservaciones('');
       setDrafts([]);
     } else if (liquidacion) {
       setFechaEgreso(liquidacion.fechaEgreso ?? '');
-      setMotivoEgreso(liquidacion.motivoEgreso);
+      setMotivoEgreso(liquidacion.motivoEgreso ?? '');
       setObservaciones(liquidacion.observaciones ?? '');
     }
   }, [open, isCreate, liquidacion]);
@@ -118,7 +130,7 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
 
   const updateMutation = useMutation({
     mutationFn: () => liquidacionFinalApi.update(liquidacionId as number, {
-      fechaEgreso, motivoEgreso, observaciones,
+      fechaEgreso, motivoEgreso: motivoEgreso || undefined, observaciones,
     }),
     onSuccess: invalidate,
     onError,
@@ -193,7 +205,7 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
     createMutation.mutate({
       empleadoId: empleadoId as number,
       fechaEgreso,
-      motivoEgreso,
+      motivoEgreso: motivoEgreso || undefined,
       observaciones: observaciones.trim() || undefined,
       items: drafts,
     });
@@ -211,6 +223,43 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
   const handleEliminar = () => {
     if (!window.confirm('¿Eliminar este borrador de liquidación? Esta acción no se puede deshacer.')) return;
     deleteMutation.mutate();
+  };
+
+  // Precarga los conceptos habituales del finiquito con monto $0 para que
+  // RRHH solo complete importes. Con despido sin causa suma los rubros
+  // indemnizatorios; el resto de los motivos precarga solo los proporcionales.
+  const precargarConceptos = async () => {
+    const codigos = motivoEgreso === 'DESPIDO_SIN_CAUSA'
+      ? [...CODIGOS_SIEMPRE, ...CODIGOS_DESPIDO_SIN_CAUSA]
+      : CODIGOS_SIEMPRE;
+    const seleccion = codigos
+      .map(cod => conceptos.find(c => c.codigo === cod))
+      .filter((c): c is ConceptoLiquidacion => Boolean(c));
+    if (seleccion.length === 0) {
+      setError('No se encontraron conceptos habituales en el catálogo');
+      return;
+    }
+    const nuevos: LiquidacionFinalItemRequest[] = seleccion.map((c, i) => ({
+      conceptoId: c.id,
+      descripcion: c.nombre,
+      signo: c.signo,
+      monto: 0,
+      orden: (i + 1) * 10,
+    }));
+    if (isCreate) {
+      setDrafts(prev => [...prev, ...nuevos]);
+      return;
+    }
+    try {
+      for (const item of nuevos) {
+        await liquidacionFinalApi.addItem(liquidacionId as number, item);
+      }
+    } catch (err: any) {
+      onError(err);
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ['liquidacion-final', liquidacionId] });
+      queryClient.invalidateQueries({ queryKey: ['liquidaciones-finales'] });
+    }
   };
 
   const handlePdf = async () => {
@@ -265,15 +314,18 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
             {/* ── Cabecera ── */}
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={2}>
               {isCreate ? (
-                <TextField
-                  select size="small" label="Empleado" sx={{ minWidth: 260 }}
-                  value={empleadoId}
-                  onChange={(e) => setEmpleadoId(e.target.value === '' ? '' : Number(e.target.value))}
-                >
-                  {empleadosActivos.map(e => (
-                    <MenuItem key={e.id} value={e.id}>{e.apellido}, {e.nombre}</MenuItem>
-                  ))}
-                </TextField>
+                <Autocomplete
+                  size="small" sx={{ minWidth: 280 }}
+                  options={empleadosActivos}
+                  getOptionLabel={(e) => `${e.apellido ?? ''}, ${e.nombre ?? ''}${e.dni ? ` — DNI ${e.dni}` : ''}`}
+                  isOptionEqualToValue={(o, v) => o.id === v.id}
+                  value={empleadosActivos.find(e => e.id === empleadoId) ?? null}
+                  onChange={(_, v) => setEmpleadoId(v?.id ?? '')}
+                  renderInput={(p) => (
+                    <TextField {...p} label="Empleado" placeholder="Escribí nombre o apellido..." />
+                  )}
+                  noOptionsText="Sin empleados activos que coincidan"
+                />
               ) : (
                 <Box sx={{ minWidth: 260 }}>
                   <Typography variant="caption" color="textSecondary" display="block">Empleado</Typography>
@@ -298,11 +350,12 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
                 sx={{ minWidth: 180 }}
               />
               <TextField
-                select size="small" label="Motivo de egreso" sx={{ minWidth: 240 }}
+                select size="small" label="Motivo de egreso (opcional)" sx={{ minWidth: 240 }}
                 value={motivoEgreso}
-                onChange={(e) => setMotivoEgreso(e.target.value as MotivoEgreso)}
+                onChange={(e) => setMotivoEgreso(e.target.value as MotivoEgreso | '')}
                 disabled={!esBorrador}
               >
+                <MenuItem value=""><em>Sin especificar</em></MenuItem>
                 {MOTIVOS_EGRESO.map(m => (
                   <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
                 ))}
@@ -335,6 +388,20 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
             <Divider sx={{ mb: 2 }} />
 
             {/* ── Ítems ── */}
+            {esBorrador && (isCreate ? drafts : (liquidacion?.items ?? [])).length === 0 && (
+              <Box mb={1.5}>
+                <Button
+                  size="small" variant="outlined" startIcon={<PlaylistAddIcon />}
+                  onClick={precargarConceptos}
+                >
+                  Precargar conceptos habituales
+                  {motivoEgreso === 'DESPIDO_SIN_CAUSA' ? ' (incluye indemnizaciones)' : ''}
+                </Button>
+                <Typography variant="caption" color="textSecondary" display="block" mt={0.5}>
+                  Agrega los rubros típicos del finiquito en $0 para completar los importes a mano.
+                </Typography>
+              </Box>
+            )}
             <ItemsLiquidacionTable
               items={isCreate ? drafts : (liquidacion?.items ?? [])}
               conceptos={conceptos}

@@ -28,10 +28,15 @@ const ESTADO_COLOR: Record<string, 'default' | 'info' | 'success' | 'error' | 'w
 const fmt = (n: number | undefined | null) =>
   `$${Number(n ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
-const motivoLabel = (value: string) =>
-  MOTIVOS_EGRESO.find(m => m.value === value)?.label ?? value;
+const motivoLabel = (value: string | null) =>
+  value ? (MOTIVOS_EGRESO.find(m => m.value === value)?.label ?? value) : '—';
 
-const LiquidacionesFinalesPage: React.FC = () => {
+interface Props {
+  /** true cuando se renderiza como tab dentro de SueldosPage (sin padding ni título propio). */
+  embedded?: boolean;
+}
+
+const LiquidacionesFinalesPage: React.FC<Props> = ({ embedded = false }) => {
   const [estado, setEstado] = useState<EstadoLiquidacionFinal | ''>('');
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
@@ -61,13 +66,15 @@ const LiquidacionesFinalesPage: React.FC = () => {
   };
 
   return (
-    <Box p={{ xs: 1.5, md: 3 }}>
+    <Box p={embedded ? 0 : { xs: 1.5, md: 3 }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between"
         alignItems={{ sm: 'center' }} spacing={2} mb={2}>
-        <Stack direction="row" alignItems="center" spacing={1.5}>
-          <ReceiptLongIcon color="primary" />
-          <Typography variant="h5" fontWeight={700}>Liquidaciones finales</Typography>
-        </Stack>
+        {embedded ? <Box /> : (
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <ReceiptLongIcon color="primary" />
+            <Typography variant="h5" fontWeight={700}>Liquidaciones finales</Typography>
+          </Stack>
+        )}
         <Stack direction="row" spacing={2}>
           <TextField
             select size="small" label="Estado" sx={{ minWidth: 170 }}
