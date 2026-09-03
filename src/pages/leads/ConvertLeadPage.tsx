@@ -70,6 +70,8 @@ export const ConvertLeadPage = () => {
     rubroCliente: undefined,
     rubroDetalleCliente: '',
     apellidoCliente: '',
+    razonSocialCliente: '',
+    nombreFantasiaCliente: '',
     cuitCliente: '',
     observacionesCliente: ''
   });
@@ -214,6 +216,7 @@ export const ConvertLeadPage = () => {
       const primerItem = selectedItems[0];
       const payload: ConversionLeadRequest = {
         ...conversionData,
+        tipoCliente: conversionData.tipoCliente || 'PERSONA_FISICA',
         productoCompradoId: primerItem ? primerItem.id : undefined,
         tipoItemComprado: primerItem
           ? (primerItem.type === 'receta' ? 'RECETA' : 'PRODUCTO')
@@ -542,6 +545,40 @@ export const ConvertLeadPage = () => {
 
               <form onSubmit={handleSubmit}>
                 <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Tipo de Cliente"
+                      name="tipoCliente"
+                      value={conversionData.tipoCliente || 'PERSONA_FISICA'}
+                      onChange={handleChange('tipoCliente')}
+                    >
+                      <MenuItem value="PERSONA_FISICA">Persona Física</MenuItem>
+                      <MenuItem value="PERSONA_JURIDICA">Persona Jurídica</MenuItem>
+                    </TextField>
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Razón Social"
+                      value={conversionData.razonSocialCliente || ''}
+                      onChange={handleChange('razonSocialCliente')}
+                      helperText="Opcional"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Nombre de Fantasía"
+                      value={conversionData.nombreFantasiaCliente || ''}
+                      onChange={handleChange('nombreFantasiaCliente')}
+                      helperText="Nombre del local (opcional)"
+                    />
+                  </Grid>
+
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth

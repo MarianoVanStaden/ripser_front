@@ -170,6 +170,8 @@ export interface ConversionLeadRequest {
   rubroCliente?: RubroEnum;
   rubroDetalleCliente?: string;
   apellidoCliente?: string;
+  razonSocialCliente?: string;
+  nombreFantasiaCliente?: string;
   cuitCliente?: string;
   observacionesCliente?: string;
 }
