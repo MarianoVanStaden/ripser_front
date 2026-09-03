@@ -112,6 +112,8 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/rrhh/licencias',
       '/rrhh/disciplina',
       '/rrhh/sueldos',
+      // Deep-link al tab "Liquidaciones finales" de SueldosPage.
+      '/rrhh/liquidaciones-finales',
       '/rrhh/adelantos',
       '/rrhh/config-sueldos',
       '/rrhh/organigrama',
