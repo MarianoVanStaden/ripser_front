@@ -68,13 +68,24 @@ const formatFecha = (iso: string | null): string => {
   return `${d}/${m}/${y}`;
 };
 
-const AtrasoChip: React.FC<{ diasAtraso: number | null }> = ({ diasAtraso }) => {
-  if (diasAtraso === null) return <Typography variant="body2" color="text.secondary">—</Typography>;
-  if (diasAtraso > 0) {
-    return <Chip size="small" color="error" label={`${diasAtraso} ${diasAtraso === 1 ? 'día' : 'días'} de atraso`} />;
-  }
-  if (diasAtraso === 0) return <Chip size="small" color="warning" label="Vence hoy" />;
-  return <Chip size="small" variant="outlined" label={`En ${-diasAtraso} ${diasAtraso === -1 ? 'día' : 'días'}`} />;
+// El atraso del chip se mide contra la fecha ESTIMADA (editable/reanclable); el
+// tooltip agrega los días desde la facturación, que no se pueden maquillar.
+const AtrasoChip: React.FC<{ diasAtraso: number | null; fechaEmision: string | null }> = ({ diasAtraso, fechaEmision }) => {
+  const diasDesdeEmision = fechaEmision
+    ? Math.floor((Date.now() - new Date(`${fechaEmision}T00:00:00`).getTime()) / 86_400_000)
+    : null;
+  const tooltip = [
+    diasAtraso !== null ? `${diasAtraso} ${Math.abs(diasAtraso) === 1 ? 'día' : 'días'} vs. fecha estimada` : 'Sin fecha estimada',
+    diasDesdeEmision !== null ? `${diasDesdeEmision} ${diasDesdeEmision === 1 ? 'día' : 'días'} desde la facturación` : null,
+  ].filter(Boolean).join(' · ');
+
+  const chip =
+    diasAtraso === null ? <Typography variant="body2" color="text.secondary">—</Typography>
+    : diasAtraso > 0 ? <Chip size="small" color="error" label={`${diasAtraso} ${diasAtraso === 1 ? 'día' : 'días'} de atraso`} />
+    : diasAtraso === 0 ? <Chip size="small" color="warning" label="Vence hoy" />
+    : <Chip size="small" variant="outlined" label={`En ${-diasAtraso} ${diasAtraso === -1 ? 'día' : 'días'}`} />;
+
+  return <Tooltip title={tooltip}><span>{chip}</span></Tooltip>;
 };
 
 // ── Página ───────────────────────────────────────────────────────────────────
@@ -592,7 +603,7 @@ const TableroArmadoViajesPage: React.FC = () => {
                         </Box>
                       </TableCell>
                       <TableCell>
-                        <AtrasoChip diasAtraso={row.diasAtraso} />
+                        <AtrasoChip diasAtraso={row.diasAtraso} fechaEmision={row.fechaEmision} />
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
