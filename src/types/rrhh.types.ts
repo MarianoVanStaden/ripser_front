@@ -591,6 +591,8 @@ export interface Empleado {
   fechaIngreso?: string;
   fechaEgreso?: string;
   estado: EstadoEmpleado;
+  /** True si ya tiene su liquidación final (no puede liquidarse de nuevo). */
+  liquidado?: boolean;
   // El backend (EmpleadoDTO) devuelve sólo `puestoId` + `puestoNombre` flat,
   // no el objeto anidado `puesto`. Lo dejamos opcional por compat con código
   // que lo lee como fallback (ej. `e.puesto?.nombre ?? puestoNombre`), pero

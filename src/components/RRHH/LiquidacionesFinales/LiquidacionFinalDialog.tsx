@@ -88,9 +88,15 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
     enabled: open,
   });
 
-  const { data: empleadosActivos = [] } = useQuery({
-    queryKey: ['empleados', 'estado', 'ACTIVO'],
-    queryFn: () => employeeApi.getByEstado('ACTIVO'),
+  // Liquidables = todo empleado sin finiquito previo (flag empleado.liquidado):
+  // activos, en licencia, e INACTIVOS dados de baja sin liquidación (los
+  // históricos ya liquidados en papel vienen con liquidado=true del backfill).
+  const { data: empleadosLiquidables = [] } = useQuery({
+    queryKey: ['empleados', 'liquidables'],
+    queryFn: async () => {
+      const todos = await employeeApi.getAllList();
+      return (Array.isArray(todos) ? todos : []).filter(e => !e.liquidado);
+    },
     enabled: open && isCreate,
   });
 
@@ -316,15 +322,17 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
               {isCreate ? (
                 <Autocomplete
                   size="small" sx={{ minWidth: 280 }}
-                  options={empleadosActivos}
-                  getOptionLabel={(e) => `${e.apellido ?? ''}, ${e.nombre ?? ''}${e.dni ? ` — DNI ${e.dni}` : ''}`}
+                  options={empleadosLiquidables}
+                  getOptionLabel={(e) => `${e.apellido ?? ''}, ${e.nombre ?? ''}`
+                    + `${e.dni ? ` — DNI ${e.dni}` : ''}`
+                    + `${e.estado === 'INACTIVO' ? ' (dado de baja)' : ''}`}
                   isOptionEqualToValue={(o, v) => o.id === v.id}
-                  value={empleadosActivos.find(e => e.id === empleadoId) ?? null}
+                  value={empleadosLiquidables.find(e => e.id === empleadoId) ?? null}
                   onChange={(_, v) => setEmpleadoId(v?.id ?? '')}
                   renderInput={(p) => (
                     <TextField {...p} label="Empleado" placeholder="Escribí nombre o apellido..." />
                   )}
-                  noOptionsText="Sin empleados activos que coincidan"
+                  noOptionsText="Sin empleados liquidables que coincidan"
                 />
               ) : (
                 <Box sx={{ minWidth: 260 }}>
