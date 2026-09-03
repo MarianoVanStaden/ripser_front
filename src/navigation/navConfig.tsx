@@ -221,7 +221,6 @@ export const navigation: NavModule[] = [
       { text: 'Dashboard RRHH', icon: <SpaceDashboardIcon />, path: '/rrhh/dashboard' },
       { text: 'Empleados', icon: <BadgeIcon />, path: '/rrhh/empleados' },
       { text: 'Sueldos', icon: <PaidIcon />, path: '/rrhh/sueldos' },
-      { text: 'Liquidaciones finales', icon: <PaymentsIcon />, path: '/rrhh/liquidaciones-finales' },
       { text: 'Adelantos', icon: <PaymentsIcon />, path: '/rrhh/adelantos' },
       { text: 'Config. Sueldos', icon: <TuneIcon />, path: '/rrhh/config-sueldos' },
       { text: 'Asistencia', icon: <EventAvailableIcon />, path: '/rrhh/asistencia' },
