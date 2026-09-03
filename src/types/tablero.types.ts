@@ -23,6 +23,8 @@ export interface TableroPendienteRow {
   ordenServicioId: number | null;
   /** numeroDocumento de la factura o numeroOrden de la OS. */
   numeroDocumento: string;
+  /** ISO yyyy-mm-dd de emisión de la factura; null para OS. */
+  fechaEmision: string | null;
 
   clienteId: number | null;
   clienteNombre: string | null;

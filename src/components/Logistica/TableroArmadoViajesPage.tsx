@@ -466,14 +466,17 @@ const TableroArmadoViajesPage: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                          <Chip
-                            size="small"
-                            variant="outlined"
-                            color={row.tipoOrigen === 'FACTURA' ? 'primary' : 'secondary'}
-                            label={row.tipoOrigen === 'FACTURA' ? 'FAC' : 'OS'}
-                          />
+                          {/* El número de factura ya lleva prefijo FAC-; el chip solo aporta para OS. */}
+                          {row.tipoOrigen !== 'FACTURA' && (
+                            <Chip size="small" variant="outlined" color="secondary" label="OS" />
+                          )}
                           <Typography variant="body2" fontWeight={500}>{row.numeroDocumento}</Typography>
                         </Box>
+                        {row.fechaEmision && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {formatFecha(row.fechaEmision)}
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell sx={{ maxWidth: 220 }}>
                         {row.equipos.length === 0 ? (
