@@ -80,6 +80,13 @@ export default function CierreMensualDialog({ open, anio, mes, onClose, onSucces
 
   const activosKm = activos.filter((a) => a.metodo === 'POR_KILOMETROS');
 
+  // El flujo de caja se pre-llena con lo acumulado hasta hoy: cerrar un mes que
+  // todavía no terminó calcula PORCENTAJE_FIJO sobre un flujo parcial.
+  const hoy = new Date();
+  const mesIncompleto =
+    anio > hoy.getFullYear() ||
+    (anio === hoy.getFullYear() && mes >= hoy.getMonth() + 1);
+
   useEffect(() => {
     if (!open) return;
 
@@ -207,6 +214,15 @@ export default function CierreMensualDialog({ open, anio, mes, onClose, onSucces
           </Box>
         ) : (
           <>
+            {mesIncompleto && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {MESES[mes]} {anio} todavía no terminó: el flujo de caja pre-llenado
+                cubre solo hasta hoy, y los activos por porcentaje fijo se calculan
+                sobre ese flujo parcial. Se recomienda ejecutar el cierre a partir
+                del 1° del mes siguiente (se puede re-ejecutar: pisa los montos ya
+                registrados del mes).
+              </Alert>
+            )}
             {/* FORMULARIO */}
             <Typography variant="subtitle2" fontWeight={700} gutterBottom>
               Datos del cierre
