@@ -27,6 +27,12 @@ import { cajasPesosApi } from '../../../api/services/cajasPesosApi';
 import type { CajaPesos, Sueldo } from '../../../types';
 import type { MetodoPago } from '../../../types/prestamo.types';
 import LoadingOverlay from '../../common/LoadingOverlay';
+import {
+  liquidacionFinalApi,
+  MOTIVOS_EGRESO,
+  type LiquidacionFinal,
+} from '../../../api/services/liquidacionFinalApi';
+import PagoLiquidacionDialog from '../LiquidacionesFinales/PagoLiquidacionDialog';
 
 const metodoDefaultDeCaja = (caja: CajaPesos | undefined): MetodoPago => {
   if (!caja) return 'EFECTIVO';
@@ -61,6 +67,9 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
 
   // Selección de empleados a pagar
   const [seleccion, setSeleccion] = useState<Record<number, boolean>>({});
+
+  // Liquidación final elegida para pagar (diálogo multi-caja individual).
+  const [liquidacionAPagar, setLiquidacionAPagar] = useState<LiquidacionFinal | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -128,6 +137,14 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
   }, [sueldosRaw]);
 
   const loadPeriodo = () => queryClient.invalidateQueries({ queryKey: ['sueldos-periodo', periodo] });
+
+  // Liquidaciones finales CONFIRMADAS (pendientes de pago). Se pagan de a una
+  // con el diálogo multi-caja: un finiquito se revisa caso por caso.
+  const liquidacionesQuery = useQuery({
+    queryKey: ['liquidaciones-finales', { estado: 'CONFIRMADA', page: 0, size: 100 }],
+    queryFn: () => liquidacionFinalApi.getAll({ estado: 'CONFIRMADA', page: 0, size: 100 }),
+  });
+  const liquidacionesPendientes = liquidacionesQuery.data?.content ?? [];
 
   const pendientes = useMemo(() => sueldos.filter(s => !s.fechaPago), [sueldos]);
   const seleccionados = useMemo(
@@ -483,6 +500,100 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
             : `Pagar ${seleccionados.length} sueldo(s) ($${totalSeleccionado.toLocaleString('es-AR')})`}
         </Button>
       </Box>
+
+      {/* ── Liquidaciones finales pendientes de pago ─────────────────────────
+          Sección aparte del lote masivo: los finiquitos se pagan de a uno con
+          el diálogo multi-caja, para revisar cada caso antes de mover plata. */}
+      <Card sx={{ boxShadow: 3, mt: 4 }}>
+        <CardContent sx={{ p: 0 }}>
+          <Box px={2} py={1.5} display="flex" alignItems="center" gap={2} flexWrap="wrap">
+            <Typography variant="subtitle1" fontWeight={600}>
+              Liquidaciones finales pendientes de pago
+            </Typography>
+            <Chip
+              label={`${liquidacionesPendientes.length} confirmada(s)`}
+              size="small"
+              color={liquidacionesPendientes.length > 0 ? 'warning' : 'default'}
+            />
+          </Box>
+          <TableContainer component={Paper} elevation={0} sx={{ overflowX: 'auto' }}>
+            <Table size="small" sx={{ minWidth: 700 }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Empleado</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Fecha egreso</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Motivo</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Haberes</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Descuentos</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Neto a pagar</TableCell>
+                  <TableCell align="right" />
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {liquidacionesPendientes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                      <Typography variant="body2" color="textSecondary">
+                        No hay liquidaciones finales confirmadas sin pagar.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : liquidacionesPendientes.map(l => (
+                  <TableRow key={l.id} hover>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={600}>
+                        {l.empleadoApellido}, {l.empleadoNombre}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{l.fechaEgreso ? dayjs(l.fechaEgreso).format('DD/MM/YYYY') : '—'}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="textSecondary">
+                        {l.motivoEgreso
+                          ? (MOTIVOS_EGRESO.find(m => m.value === l.motivoEgreso)?.label ?? l.motivoEgreso)
+                          : '—'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" color="primary.main">
+                        ${Number(l.totalHaberes || 0).toLocaleString('es-AR')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" color="error.main">
+                        ${Number(l.totalDescuentos || 0).toLocaleString('es-AR')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight={700} color="success.main">
+                        ${Number(l.totalNeto || 0).toLocaleString('es-AR')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small" variant="contained" startIcon={<PaymentsIcon />}
+                        onClick={() => setLiquidacionAPagar(l)}
+                      >
+                        Pagar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+
+      <PagoLiquidacionDialog
+        open={liquidacionAPagar != null}
+        liquidacion={liquidacionAPagar}
+        onClose={() => setLiquidacionAPagar(null)}
+        onSuccess={() => {
+          setLiquidacionAPagar(null);
+          setSuccess('Liquidación final pagada correctamente.');
+          queryClient.invalidateQueries({ queryKey: ['liquidaciones-finales'] });
+        }}
+      />
     </Box>
   );
 };
