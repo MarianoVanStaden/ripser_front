@@ -300,6 +300,8 @@ export interface EquipoFabricadoUpdateDTO {
   equipo?: string;
   medidaId?: number | null;
   colorId?: number | null;
+  /** Borra el color (vuelve a base); si estaba COMPLETADO el backend lo pasa a FABRICADO_SIN_TERMINACION. */
+  quitarColor?: boolean;
   observaciones?: string;
   cantidad?: number;
   asignado?: boolean;

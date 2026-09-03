@@ -166,6 +166,9 @@ const StockEquiposPage: React.FC = () => {
       await equipoFabricadoApi.update(selectedEquipo.id, {
         modelo: editForm.modelo,
         colorId: editForm.colorId,
+        // El backend ignora colorId null (PATCH-like); la señal explícita borra el color
+        // y, si estaba COMPLETADO, lo devuelve a Sin Terminación.
+        quitarColor: editForm.colorId == null && selectedEquipo.color != null,
         observaciones: editForm.observaciones,
         estado: editForm.estado,
       });

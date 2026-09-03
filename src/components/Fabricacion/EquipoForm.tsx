@@ -301,6 +301,9 @@ const EquipoForm: React.FC = () => {
           equipo: data.equipo,
           medidaId: data.medidaId ?? null,
           colorId: data.colorId ?? null,
+          // El backend ignora colorId null (PATCH-like); para borrar el color hay que
+          // mandar la señal explícita. Si estaba COMPLETADO vuelve a Sin Terminación.
+          quitarColor: data.colorId == null && equipoEditQuery.data?.color != null,
           cantidad: data.cantidad,
           observaciones: data.observaciones,
           estado,
