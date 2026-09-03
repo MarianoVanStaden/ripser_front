@@ -42,6 +42,17 @@ export interface TableroPendienteRow {
 
   equipos: EquipoEntregaTablero[];
 
+  /** true = factura sin ningún equipo asignado hoy (nunca se asignó o se desasignó). */
+  sinEquiposAsignados: boolean;
+  /** true = descartada a mano del tablero (solo llega con filtro soloDescartadas). */
+  entregaDescartada: boolean;
+  motivoDescarteEntrega: string | null;
+  /** true = superó DIAS_ENTREGA_ESTIMADA desde la emisión y el precio de lista de sus equipos subió. */
+  alertaPrecioDesactualizado: boolean;
+  /** Solo cuando hay alerta de precio: suma de líneas EQUIPO a precio facturado vs precio actual. */
+  montoEquiposFacturado: number | null;
+  montoEquiposActual: number | null;
+
   /** true = ya tiene entrega en un viaje PLANIFICADO (no seleccionable). */
   asignadoAViaje: boolean;
   viajeId: number | null;

@@ -362,6 +362,22 @@ export const documentoApi = {
     );
     return response.data;
   },
+  // Descarta la factura del Tablero de Pendientes de Entrega (motivo obligatorio,
+  // reversible con restaurarEntrega). Solo FACTURA.
+  descartarEntrega: async (id: number, motivo: string): Promise<DocumentoComercial> => {
+    const response = await api.patch<DocumentoComercial>(
+      `/api/documentos/${id}/descartar-entrega`,
+      { motivo }
+    );
+    return response.data;
+  },
+  restaurarEntrega: async (id: number): Promise<DocumentoComercial> => {
+    const response = await api.patch<DocumentoComercial>(
+      `/api/documentos/${id}/restaurar-entrega`,
+      {}
+    );
+    return response.data;
+  },
   updateDescuento: async (
     id: number,
     descuentoTipo: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO',

@@ -14,6 +14,8 @@ export interface TableroFilterParams {
   soloAtrasados?: boolean;
   conObservaciones?: boolean;
   estadoTablero?: EstadoTablero;
+  /** true = ver SOLO facturas descartadas del tablero (auditar/restaurar). */
+  soloDescartadas?: boolean;
 }
 
 export const tableroViajesApi = {

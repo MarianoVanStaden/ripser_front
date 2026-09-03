@@ -34,6 +34,9 @@ import {
   Typography,
 } from '@mui/material';
 import EditCalendarIcon from '@mui/icons-material/EditCalendar';
+import PriceChangeIcon from '@mui/icons-material/PriceChange';
+import PlaylistRemoveIcon from '@mui/icons-material/PlaylistRemove';
+import RestoreIcon from '@mui/icons-material/Restore';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -46,6 +49,7 @@ import { documentoApi } from '../../api/services/documentoApi';
 import type { TableroPendienteRow, EstadoTablero, TipoOrigenTablero } from '../../types/tablero.types';
 import { PROVINCIA_LABELS, type ProvinciaEnum } from '../../types/shared.enums';
 import type { Cliente } from '../../types';
+import { formatCurrencyARS } from '../../utils/financiamiento';
 import { useTripWizard, type DeliveryPrefill } from './tripWizard/useTripWizard';
 import TripWizardDialog from './tripWizard/TripWizardDialog';
 
@@ -84,6 +88,7 @@ const FILTER_SCHEMA = {
   soloAtrasados: 'boolean',
   conObservaciones: 'string', // 'SI' | 'NO' | ausente
   estadoTablero: 'string',
+  descartadas: 'boolean', // true = ver solo facturas descartadas del tablero
 } as const;
 
 const TableroArmadoViajesPage: React.FC = () => {
@@ -104,6 +109,10 @@ const TableroArmadoViajesPage: React.FC = () => {
   const [fechaDialog, setFechaDialog] = useState<{ row: TableroPendienteRow; value: string } | null>(null);
   const [savingFecha, setSavingFecha] = useState(false);
 
+  // Descarte del tablero (facturas resueltas por fuera del sistema).
+  const [descarteDialog, setDescarteDialog] = useState<{ row: TableroPendienteRow; motivo: string } | null>(null);
+  const [savingDescarte, setSavingDescarte] = useState(false);
+
   const apiFilters: TableroFilterParams = useMemo(() => ({
     provincias: urlFilters.provincias.length ? urlFilters.provincias : undefined,
     clienteId: urlFilters.clienteId,
@@ -114,6 +123,7 @@ const TableroArmadoViajesPage: React.FC = () => {
     conObservaciones:
       urlFilters.conObservaciones === 'SI' ? true : urlFilters.conObservaciones === 'NO' ? false : undefined,
     estadoTablero: urlFilters.estadoTablero as EstadoTablero | undefined,
+    soloDescartadas: urlFilters.descartadas || undefined,
   }), [urlFilters]);
 
   const pagination = usePagination<TableroPendienteRow, TableroFilterParams>({
@@ -152,7 +162,7 @@ const TableroArmadoViajesPage: React.FC = () => {
     onError: (msg) => setSnackbar({ severity: 'error', message: msg }),
   });
 
-  const selectableRows = pagination.data.filter((r) => !r.asignadoAViaje);
+  const selectableRows = pagination.data.filter((r) => !r.asignadoAViaje && !r.entregaDescartada);
   const selectedRows = Array.from(selectedMap.values());
 
   const toggleRow = (row: TableroPendienteRow) => {
@@ -194,6 +204,32 @@ const TableroArmadoViajesPage: React.FC = () => {
     }));
     wizard.startCreate(prefill);
     setWizardOpen(true);
+  };
+
+  const handleDescartar = async () => {
+    if (!descarteDialog?.row.documentoComercialId || !descarteDialog.motivo.trim()) return;
+    setSavingDescarte(true);
+    try {
+      await documentoApi.descartarEntrega(descarteDialog.row.documentoComercialId, descarteDialog.motivo.trim());
+      setDescarteDialog(null);
+      setSnackbar({ severity: 'success', message: 'Factura descartada del tablero (reversible desde "Ver descartadas")' });
+      pagination.refresh();
+    } catch {
+      setSnackbar({ severity: 'error', message: 'No se pudo descartar la factura del tablero' });
+    } finally {
+      setSavingDescarte(false);
+    }
+  };
+
+  const handleRestaurar = async (row: TableroPendienteRow) => {
+    if (!row.documentoComercialId) return;
+    try {
+      await documentoApi.restaurarEntrega(row.documentoComercialId);
+      setSnackbar({ severity: 'success', message: 'Factura restaurada al tablero' });
+      pagination.refresh();
+    } catch {
+      setSnackbar({ severity: 'error', message: 'No se pudo restaurar la factura' });
+    }
   };
 
   const handleSaveFecha = async () => {
@@ -370,6 +406,17 @@ const TableroArmadoViajesPage: React.FC = () => {
               label="Solo atrasados"
             />
           </Grid>
+          <Grid item xs={12} sm={6} md={2.5}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={urlFilters.descartadas ?? false}
+                  onChange={(e) => setFilter('descartadas', e.target.checked || undefined)}
+                />
+              }
+              label="Ver descartadas"
+            />
+          </Grid>
           <Grid item xs={12} sm={6} md={2}>
             <Button
               startIcon={<FilterAltOffIcon />}
@@ -460,7 +507,7 @@ const TableroArmadoViajesPage: React.FC = () => {
                       <TableCell padding="checkbox">
                         <Checkbox
                           checked={selectedMap.has(key)}
-                          disabled={row.asignadoAViaje}
+                          disabled={row.asignadoAViaje || row.entregaDescartada}
                           onChange={() => toggleRow(row)}
                         />
                       </TableCell>
@@ -471,6 +518,13 @@ const TableroArmadoViajesPage: React.FC = () => {
                             <Chip size="small" variant="outlined" color="secondary" label="OS" />
                           )}
                           <Typography variant="body2" fontWeight={500}>{row.numeroDocumento}</Typography>
+                          {row.alertaPrecioDesactualizado && (
+                            <Tooltip
+                              title={`Superó los días de entrega estimados y el precio de lista subió. Facturado ${formatCurrencyARS(row.montoEquiposFacturado)} · Hoy ${formatCurrencyARS(row.montoEquiposActual)} — evaluar NC + refacturación.`}
+                            >
+                              <PriceChangeIcon color="warning" fontSize="small" />
+                            </Tooltip>
+                          )}
                         </Box>
                         {row.fechaEmision && (
                           <Typography variant="caption" color="text.secondary" display="block">
@@ -480,7 +534,13 @@ const TableroArmadoViajesPage: React.FC = () => {
                       </TableCell>
                       <TableCell sx={{ maxWidth: 220 }}>
                         {row.equipos.length === 0 ? (
-                          <Typography variant="body2" color="text.secondary">—</Typography>
+                          row.sinEquiposAsignados ? (
+                            <Tooltip title="La factura no tiene equipos asignados (no se asignaron o se desasignaron) — sigue pendiente de entrega.">
+                              <Chip size="small" color="warning" variant="outlined" label="Sin asignar" />
+                            </Tooltip>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">—</Typography>
+                          )
                         ) : (
                           <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                             {row.equipos.map((eq) => (
@@ -535,13 +595,35 @@ const TableroArmadoViajesPage: React.FC = () => {
                         <AtrasoChip diasAtraso={row.diasAtraso} />
                       </TableCell>
                       <TableCell>
-                        {row.asignadoAViaje ? (
-                          <Tooltip title="Ya asignado a un viaje planificado (no despachado)">
-                            <Chip size="small" color="info" label={`En viaje ${row.numeroViaje ?? ''}`} />
-                          </Tooltip>
-                        ) : (
-                          <Chip size="small" variant="outlined" label="Pendiente" />
-                        )}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          {row.entregaDescartada ? (
+                            <>
+                              <Tooltip title={row.motivoDescarteEntrega ?? 'Descartada del tablero'}>
+                                <Chip size="small" color="default" label="Descartada" />
+                              </Tooltip>
+                              <Tooltip title="Restaurar al tablero">
+                                <IconButton size="small" onClick={() => handleRestaurar(row)}>
+                                  <RestoreIcon fontSize="inherit" />
+                                </IconButton>
+                              </Tooltip>
+                            </>
+                          ) : row.asignadoAViaje ? (
+                            <Tooltip title="Ya asignado a un viaje planificado (no despachado)">
+                              <Chip size="small" color="info" label={`En viaje ${row.numeroViaje ?? ''}`} />
+                            </Tooltip>
+                          ) : (
+                            <>
+                              <Chip size="small" variant="outlined" label="Pendiente" />
+                              {row.tipoOrigen === 'FACTURA' && (
+                                <Tooltip title="Descartar del tablero (ej: entregada por fuera del sistema)">
+                                  <IconButton size="small" onClick={() => setDescarteDialog({ row, motivo: '' })}>
+                                    <PlaylistRemoveIcon fontSize="inherit" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </>
+                          )}
+                        </Box>
                       </TableCell>
                     </TableRow>
                   );
@@ -591,6 +673,36 @@ const TableroArmadoViajesPage: React.FC = () => {
           <Button onClick={() => setFechaDialog(null)}>Cancelar</Button>
           <Button variant="contained" onClick={handleSaveFecha} disabled={savingFecha}>
             {savingFecha ? 'Guardando…' : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Descartar factura del tablero (motivo obligatorio, reversible) ──── */}
+      <Dialog open={descarteDialog !== null} onClose={() => setDescarteDialog(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Descartar del tablero</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {descarteDialog?.row.numeroDocumento} — {descarteDialog?.row.clienteNombre}
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            minRows={2}
+            label="Motivo"
+            value={descarteDialog?.motivo ?? ''}
+            onChange={(e) => setDescarteDialog((prev) => (prev ? { ...prev, motivo: e.target.value } : prev))}
+            helperText='Obligatorio. Ej: "entregada por fuera del sistema". Reversible desde "Ver descartadas".'
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDescarteDialog(null)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleDescartar}
+            disabled={savingDescarte || !descarteDialog?.motivo.trim()}
+          >
+            {savingDescarte ? 'Descartando…' : 'Descartar'}
           </Button>
         </DialogActions>
       </Dialog>
