@@ -27,6 +27,7 @@ import { PROVINCIA_LABELS } from '../../types/lead.types';
 import { RUBRO_LABELS, RUBRO_OPTIONS } from '../../types/rubro.types';
 import type { RubroEnum } from '../../types/rubro.types';
 import type { Producto } from '../../types';
+import type { TipoCliente } from '../../types/cliente.types';
 import type {
   LeadDTO,
   ConversionLeadRequest,
@@ -57,6 +58,7 @@ export const ConvertLeadPage = () => {
   const [cantidadActual, setCantidadActual] = useState<number>(1);
 
   const [conversionData, setConversionData] = useState<ConversionLeadRequest>({
+    tipoCliente: 'PERSONA_FISICA' as TipoCliente,
     productoCompradoId: undefined,
     tipoItemComprado: undefined,
     cantidadComprada: undefined,

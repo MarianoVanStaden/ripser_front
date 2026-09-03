@@ -1,6 +1,7 @@
 // Import shared enums
 import type { ProvinciaEnum } from './shared.enums';
 import type { RubroEnum } from './rubro.types';
+import type { TipoCliente } from './cliente.types';
 export { ProvinciaEnum, PROVINCIA_LABELS } from './shared.enums';
 
 // Enums as const objects (compatible with erasableSyntaxOnly)
@@ -152,6 +153,7 @@ export interface LeadDTO {
 }
 
 export interface ConversionLeadRequest {
+  tipoCliente?: TipoCliente;
   productoCompradoId?: number;
   /**
    * Discrimina si productoCompradoId apunta a `productos` o a
