@@ -26,7 +26,16 @@ export type TipoAccionActividad =
   | 'USUARIO_ROL_CAMBIADO'
   | 'USUARIO_DESACTIVADO'
   | 'USUARIO_REACTIVADO'
-  | 'PASSWORD_RESETEADA';
+  | 'PASSWORD_RESETEADA'
+  | 'LIQUIDACION_FINAL_CREADA'
+  | 'LIQUIDACION_FINAL_ACTUALIZADA'
+  | 'LIQUIDACION_FINAL_ELIMINADA'
+  | 'LIQUIDACION_FINAL_CONFIRMADA'
+  | 'LIQUIDACION_FINAL_PAGADA'
+  | 'LIQUIDACION_FINAL_ANULADA'
+  | 'CONCEPTO_LIQUIDACION_CREADO'
+  | 'CONCEPTO_LIQUIDACION_ACTUALIZADO'
+  | 'CONCEPTO_LIQUIDACION_DESACTIVADO';
 
 export const TIPO_ACCION_LABELS: Record<TipoAccionActividad, string> = {
   LOGIN_OK: 'Login',
@@ -54,6 +63,15 @@ export const TIPO_ACCION_LABELS: Record<TipoAccionActividad, string> = {
   USUARIO_DESACTIVADO: 'Usuario desactivado',
   USUARIO_REACTIVADO: 'Usuario reactivado',
   PASSWORD_RESETEADA: 'Contraseña reseteada',
+  LIQUIDACION_FINAL_CREADA: 'Liquidación final creada',
+  LIQUIDACION_FINAL_ACTUALIZADA: 'Liquidación final actualizada',
+  LIQUIDACION_FINAL_ELIMINADA: 'Liquidación final eliminada',
+  LIQUIDACION_FINAL_CONFIRMADA: 'Liquidación final confirmada',
+  LIQUIDACION_FINAL_PAGADA: 'Liquidación final pagada',
+  LIQUIDACION_FINAL_ANULADA: 'Liquidación final anulada',
+  CONCEPTO_LIQUIDACION_CREADO: 'Concepto de liquidación creado',
+  CONCEPTO_LIQUIDACION_ACTUALIZADO: 'Concepto de liquidación actualizado',
+  CONCEPTO_LIQUIDACION_DESACTIVADO: 'Concepto de liquidación desactivado',
 };
 
 /**
@@ -89,6 +107,15 @@ export const TIPO_ACCION_FAMILIA: Record<TipoAccionActividad, AccionFamilia> = {
   USUARIO_DESACTIVADO: 'seguridad',
   USUARIO_REACTIVADO: 'seguridad',
   PASSWORD_RESETEADA: 'seguridad',
+  LIQUIDACION_FINAL_CREADA: 'documento',
+  LIQUIDACION_FINAL_ACTUALIZADA: 'documento',
+  LIQUIDACION_FINAL_ELIMINADA: 'anulacion',
+  LIQUIDACION_FINAL_CONFIRMADA: 'documento',
+  LIQUIDACION_FINAL_PAGADA: 'pago',
+  LIQUIDACION_FINAL_ANULADA: 'anulacion',
+  CONCEPTO_LIQUIDACION_CREADO: 'documento',
+  CONCEPTO_LIQUIDACION_ACTUALIZADO: 'documento',
+  CONCEPTO_LIQUIDACION_DESACTIVADO: 'anulacion',
 };
 
 /**
