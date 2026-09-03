@@ -20,6 +20,7 @@ import {
   TIPO_FINANCIACION_LABELS,
 } from '../types/prestamo.types';
 import { addCorporateHeader, addCorporateFooter } from '../utils/pdfExportUtils';
+import type { LiquidacionFinal as LiquidacionFinalPdfData } from '../api/services/liquidacionFinalApi';
 import { diasDelMes } from '../utils/remuneracionesCalc';
 import { RIPSER_LOGO_DATA_URL, RIPSER_LOGO_ASPECT } from './ripserLogo';
 import {
@@ -2209,4 +2210,265 @@ export const generarReciboHaberesPDF = ({ sueldo, empleado, categoria }: ReciboH
   const apellido = (empleado.apellido ?? 'Empleado').replace(/\s+/g, '_');
   const archivo = `Recibo_${apellido}_${sueldo.periodo || 'sin-periodo'}.pdf`;
   doc.save(archivo);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIQUIDACIÓN FINAL (finiquito) — mismo formato corporativo que el Recibo de
+// Haberes: header/footer azul, fondo celeste, tabla HABERES/DESCUENTOS y firmas.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Motivos de egreso — labels legibles para el PDF (espejo de MOTIVOS_EGRESO). */
+const MOTIVO_EGRESO_PDF_LABELS: Record<string, string> = {
+  RENUNCIA: 'Renuncia',
+  DESPIDO_SIN_CAUSA: 'Despido sin causa',
+  DESPIDO_CON_CAUSA: 'Despido con causa',
+  MUTUO_ACUERDO: 'Mutuo acuerdo (art. 241)',
+  FIN_CONTRATO_PLAZO_FIJO: 'Fin contrato a plazo fijo',
+  PERIODO_PRUEBA: 'Período de prueba',
+  JUBILACION: 'Jubilación',
+  FALLECIMIENTO: 'Fallecimiento',
+  ABANDONO_TRABAJO: 'Abandono de trabajo',
+};
+
+export const generarLiquidacionFinalPDF = (liquidacion: LiquidacionFinalPdfData): void => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 10;
+  let y = margin;
+
+  // ===== Header azul (igual que recibo de haberes) =====
+  doc.setFillColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
+  doc.rect(margin, y, pageWidth - margin * 2, 25, 'F');
+
+  doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+  doc.setFontSize(24);
+  doc.setFont('times', 'italic');
+  doc.text('Ripser', margin + 5, y + 12);
+
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('INSTALACIONES', margin + 5, y + 16);
+  doc.text('COMERCIALES', margin + 5, y + 19);
+
+  const contactX = pageWidth - margin - 5;
+  doc.text('@RipserInstalacionesComerciales', contactX, y + 10, { align: 'right' });
+  doc.text('www.ripser.com.ar', contactX, y + 14, { align: 'right' });
+  doc.text('+54 2235332796', contactX, y + 18, { align: 'right' });
+
+  // Fondo celeste claro para el cuerpo
+  doc.setFillColor(COLORS.lightBlue[0], COLORS.lightBlue[1], COLORS.lightBlue[2]);
+  doc.rect(margin, y + 25, pageWidth - margin * 2, pageHeight - y - 35, 'F');
+
+  y += 30;
+
+  // ===== Título =====
+  doc.setFillColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+  doc.rect(margin + 1, y, pageWidth - margin * 2 - 2, 8, 'F');
+  doc.setTextColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('LIQUIDACIÓN FINAL', pageWidth / 2, y + 5.5, { align: 'center' });
+
+  y += 10;
+
+  // ===== Datos del empleado / documento =====
+  const nombreCompleto = `${liquidacion.empleadoApellido ?? ''}, ${liquidacion.empleadoNombre ?? ''}`
+    .replace(/^,\s*/, '').trim();
+  const motivoLabel = liquidacion.motivoEgreso
+    ? (MOTIVO_EGRESO_PDF_LABELS[liquidacion.motivoEgreso] ?? liquidacion.motivoEgreso)
+    : 'Sin especificar';
+  const antiguedad = (() => {
+    if (!liquidacion.empleadoFechaIngreso || !liquidacion.fechaEgreso) return '-';
+    const ingreso = new Date(`${liquidacion.empleadoFechaIngreso}T00:00:00`);
+    const egreso = new Date(`${liquidacion.fechaEgreso}T00:00:00`);
+    let anos = egreso.getFullYear() - ingreso.getFullYear();
+    let meses = egreso.getMonth() - ingreso.getMonth();
+    if (egreso.getDate() < ingreso.getDate()) meses -= 1;
+    if (meses < 0) { anos -= 1; meses += 12; }
+    if (anos < 0) return '-';
+    return `${anos} año${anos === 1 ? '' : 's'}, ${meses} mes${meses === 1 ? '' : 'es'}`;
+  })();
+
+  autoTable(doc, {
+    startY: y,
+    body: [
+      [
+        { content: 'Empleado:',       styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: nombreCompleto,     styles: { fillColor: COLORS.white } },
+        { content: 'N° Liquidación:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: liquidacion.id ? String(liquidacion.id) : '-', styles: { fillColor: COLORS.white } },
+      ],
+      [
+        { content: 'DNI:',            styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: liquidacion.empleadoDni ?? '-', styles: { fillColor: COLORS.white } },
+        { content: 'Motivo egreso:',  styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: motivoLabel,        styles: { fillColor: COLORS.white } },
+      ],
+      [
+        { content: 'Fecha ingreso:',  styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: liquidacion.empleadoFechaIngreso ? formatDate(liquidacion.empleadoFechaIngreso) : '-', styles: { fillColor: COLORS.white } },
+        { content: 'Fecha egreso:',   styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: liquidacion.fechaEgreso ? formatDate(liquidacion.fechaEgreso) : '-', styles: { fillColor: COLORS.white } },
+      ],
+      [
+        { content: 'Antigüedad:',     styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: antiguedad,         styles: { fillColor: COLORS.white } },
+        { content: 'Fecha pago:',     styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: liquidacion.fechaPago ? formatDate(liquidacion.fechaPago) : 'Pendiente', styles: { fillColor: COLORS.white } },
+      ],
+    ],
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+      textColor: COLORS.black,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.1,
+    },
+    columnStyles: {
+      0: { cellWidth: 28 },
+      1: { cellWidth: 62 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 'auto' },
+    },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 5;
+
+  // ===== Tabla de conceptos (HABERES / DESCUENTOS) =====
+  // Se omiten los renglones en $0 (precargas sin completar) para un documento limpio.
+  const items = (liquidacion.items ?? []).filter(i => Number(i.monto) > 0);
+
+  autoTable(doc, {
+    startY: y,
+    head: [[
+      { content: 'Concepto',   styles: { halign: 'center' as const, fillColor: COLORS.darkGray, textColor: COLORS.white } },
+      { content: 'Cantidad',   styles: { halign: 'center' as const, fillColor: COLORS.darkGray, textColor: COLORS.white } },
+      { content: 'HABERES',    styles: { halign: 'center' as const, fillColor: COLORS.darkGray, textColor: COLORS.white } },
+      { content: 'DESCUENTOS', styles: { halign: 'center' as const, fillColor: COLORS.darkGray, textColor: COLORS.white } },
+    ]],
+    body: items.length === 0
+      ? [[{ content: 'Sin conceptos con importe cargado', colSpan: 4, styles: { halign: 'center' as const, fontStyle: 'italic' as const } }]]
+      : items.map(i => [
+          { content: i.descripcion + (i.observacion ? ` — ${i.observacion}` : ''), styles: { halign: 'left' as const } },
+          { content: i.cantidad != null ? String(i.cantidad) : '-', styles: { halign: 'center' as const } },
+          { content: i.signo === 'HABER' ? formatCurrency(Number(i.monto)) : '', styles: { halign: 'right' as const } },
+          { content: i.signo === 'DESCUENTO' ? formatCurrency(Number(i.monto)) : '', styles: { halign: 'right' as const } },
+        ]),
+    theme: 'grid',
+    styles: {
+      fontSize: 9,
+      cellPadding: 2,
+      textColor: COLORS.black,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.1,
+      fillColor: COLORS.white,
+    },
+    headStyles: { fontStyle: 'bold' as const, fontSize: 9 },
+    alternateRowStyles: { fillColor: [245, 248, 250] as [number, number, number] },
+    columnStyles: {
+      0: { cellWidth: 104 },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 30 },
+    },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 2;
+
+  // ===== Bloque de totales =====
+  autoTable(doc, {
+    startY: y,
+    body: [
+      [
+        { content: 'TOTAL HABERES', styles: { ...TOTAL_LABEL_STYLE, fontStyle: 'normal' as const } },
+        { content: formatCurrency(Number(liquidacion.totalHaberes)), styles: { ...TOTAL_ROW_STYLE, fontStyle: 'normal' as const } },
+      ],
+      [
+        { content: 'TOTAL DESCUENTOS', styles: { ...TOTAL_LABEL_STYLE, fontStyle: 'normal' as const } },
+        { content: `- ${formatCurrency(Number(liquidacion.totalDescuentos))}`, styles: { ...TOTAL_ROW_STYLE, fontStyle: 'normal' as const } },
+      ],
+      [
+        { content: 'NETO A PAGAR', styles: { ...TOTAL_LABEL_STYLE, fontSize: 11 } },
+        { content: formatCurrency(Number(liquidacion.totalNeto)), styles: { ...TOTAL_ROW_STYLE, fontSize: 11 } },
+      ],
+    ],
+    theme: 'grid',
+    styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+    columnStyles: { 0: { cellWidth: 154 }, 1: { cellWidth: 30 } },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 4;
+
+  // ===== Observaciones / anulación =====
+  const notas: string[] = [];
+  if (liquidacion.observaciones && liquidacion.observaciones.trim().length > 0) {
+    notas.push(`Observaciones: ${liquidacion.observaciones}`);
+  }
+  if (liquidacion.estado === 'ANULADA' && liquidacion.motivoAnulacion) {
+    notas.push(`DOCUMENTO ANULADO — Motivo: ${liquidacion.motivoAnulacion}`);
+  }
+  if (notas.length > 0) {
+    autoTable(doc, {
+      startY: y,
+      body: notas.map(n => [{
+        content: n,
+        styles: {
+          halign: 'left' as const,
+          fontSize: 8,
+          fontStyle: 'italic' as const,
+          fillColor: COLORS.white,
+          textColor: COLORS.darkGray,
+          cellPadding: 2,
+        },
+      }]),
+      theme: 'grid',
+      styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+      margin: { left: margin + 1, right: margin + 1 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 4;
+  }
+
+  // ===== Bloque de firmas =====
+  const minFirmasY = pageHeight - 45;
+  const firmasY = Math.max(y + 12, minFirmasY);
+  const colWidth = (pageWidth - margin * 2 - 10) / 2;
+
+  doc.setDrawColor(COLORS.black[0], COLORS.black[1], COLORS.black[2]);
+  doc.setLineWidth(0.2);
+
+  doc.line(margin + 10, firmasY, margin + 10 + colWidth - 20, firmasY);
+  doc.setTextColor(COLORS.black[0], COLORS.black[1], COLORS.black[2]);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Firma del Empleado', margin + 10 + (colWidth - 20) / 2, firmasY + 4, { align: 'center' });
+  doc.text(`Aclaración: ${nombreCompleto}`, margin + 10 + (colWidth - 20) / 2, firmasY + 8, { align: 'center' });
+
+  const respX = margin + 10 + colWidth + 10;
+  doc.line(respX, firmasY, respX + colWidth - 20, firmasY);
+  doc.text('Firma del Responsable', respX + (colWidth - 20) / 2, firmasY + 4, { align: 'center' });
+  doc.text('Ripser Instalaciones Comerciales', respX + (colWidth - 20) / 2, firmasY + 8, { align: 'center' });
+
+  // ===== Pie azul =====
+  const footerY = pageHeight - 15;
+  doc.setFillColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
+  doc.rect(margin, footerY, pageWidth - margin * 2, 10, 'F');
+
+  doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(
+    'Recibí conforme la liquidación final detallada. Importes en pesos argentinos. Ripser Instalaciones Comerciales.',
+    pageWidth / 2,
+    footerY + 6,
+    { align: 'center' },
+  );
+
+  // ===== Descarga =====
+  const apellidoLiq = (liquidacion.empleadoApellido ?? 'Empleado').replace(/\s+/g, '_');
+  doc.save(`Liquidacion_Final_${apellidoLiq}_${liquidacion.id}.pdf`);
 };

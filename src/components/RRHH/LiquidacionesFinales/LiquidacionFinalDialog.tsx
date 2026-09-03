@@ -31,6 +31,7 @@ import {
 import { employeeApi } from '../../../api/services/employeeApi';
 import ItemsLiquidacionTable, { type ItemDraft } from './ItemsLiquidacionTable';
 import PagoLiquidacionDialog from './PagoLiquidacionDialog';
+import { generarLiquidacionFinalPDF } from '../../../services/pdfService';
 
 interface Props {
   open: boolean;
@@ -75,6 +76,8 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
   const [pagoOpen, setPagoOpen] = useState(false);
   const [anularOpen, setAnularOpen] = useState(false);
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
+  const [confirmarOpen, setConfirmarOpen] = useState(false);
+  const [eliminarOpen, setEliminarOpen] = useState(false);
 
   const { data: liquidacion, isLoading } = useQuery({
     queryKey: ['liquidacion-final', liquidacionId],
@@ -165,8 +168,8 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
 
   const confirmarMutation = useMutation({
     mutationFn: () => liquidacionFinalApi.confirmar(liquidacionId as number),
-    onSuccess: invalidate,
-    onError,
+    onSuccess: (updated) => { invalidate(updated); setConfirmarOpen(false); },
+    onError: (err: any) => { setConfirmarOpen(false); onError(err); },
   });
 
   const anularMutation = useMutation({
@@ -217,19 +220,7 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
     });
   };
 
-  const handleConfirmar = () => {
-    if (!window.confirm(
-      'Confirmar la liquidación la vuelve inmutable y DA DE BAJA al empleado '
-      + '(INACTIVO, con la fecha de egreso del documento y desactivación de accesos). ¿Continuar?')) {
-      return;
-    }
-    confirmarMutation.mutate();
-  };
-
-  const handleEliminar = () => {
-    if (!window.confirm('¿Eliminar este borrador de liquidación? Esta acción no se puede deshacer.')) return;
-    deleteMutation.mutate();
-  };
+  const empleadoYaInactivo = liquidacion?.empleadoEstado === 'INACTIVO';
 
   // Precarga los conceptos habituales del finiquito con monto $0 para que
   // RRHH solo complete importes. Con despido sin causa suma los rubros
@@ -268,18 +259,13 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
     }
   };
 
-  const handlePdf = async () => {
+  const handlePdf = () => {
     if (!liquidacion) return;
     try {
-      const blob = await liquidacionFinalApi.downloadPdf(liquidacion.id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `liquidacion-final-${liquidacion.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // Formato corporativo Ripser (mismo estilo que el Recibo de Haberes).
+      generarLiquidacionFinalPDF(liquidacion);
     } catch {
-      setError('No se pudo descargar el PDF');
+      setError('No se pudo generar el PDF');
     }
   };
 
@@ -477,13 +463,13 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
           <>
             <Button
               color="error" startIcon={<DeleteIcon />}
-              onClick={handleEliminar} disabled={busy}
+              onClick={() => setEliminarOpen(true)} disabled={busy}
             >
               Eliminar
             </Button>
             <Button
               variant="contained" color="success" startIcon={<CheckCircleIcon />}
-              onClick={handleConfirmar}
+              onClick={() => setConfirmarOpen(true)}
               disabled={busy || (liquidacion.items?.length ?? 0) === 0}
             >
               {confirmarMutation.isPending ? 'Confirmando...' : 'Confirmar y dar de baja'}
@@ -529,6 +515,67 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
           queryClient.invalidateQueries({ queryKey: ['liquidaciones-finales'] });
         }}
       />
+
+      {/* ── Confirmar (modal con aviso adaptado al estado del empleado) ── */}
+      <Dialog open={confirmarOpen} onClose={() => setConfirmarOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirmar liquidación final</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" gutterBottom>
+            Al confirmar, la liquidación queda <strong>inmutable</strong>: no se puede editar,
+            solo anular.
+          </Typography>
+          {empleadoYaInactivo ? (
+            <Alert severity="info" sx={{ mt: 1.5 }}>
+              El empleado <strong>ya está dado de baja</strong>. No se vuelve a desactivar nada:
+              solo se actualiza su ficha con la fecha de egreso
+              {liquidacion?.motivoEgreso ? ' y el motivo' : ''} de este documento, y queda
+              marcado como liquidado.
+            </Alert>
+          ) : (
+            <Alert severity="warning" sx={{ mt: 1.5 }}>
+              El empleado será <strong>dado de baja</strong>: pasa a INACTIVO con la fecha de
+              egreso del documento, se desactivan sus accesos al sistema y se cierra su legajo.
+            </Alert>
+          )}
+          <Typography variant="body2" mt={1.5}>
+            Neto a pagar: <strong>{fmt(liquidacion?.totalNeto)}</strong>
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmarOpen(false)} disabled={confirmarMutation.isPending}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained" color="success" startIcon={<CheckCircleIcon />}
+            disabled={confirmarMutation.isPending}
+            onClick={() => confirmarMutation.mutate()}
+          >
+            {confirmarMutation.isPending ? 'Confirmando...' : 'Confirmar liquidación'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Eliminar borrador ── */}
+      <Dialog open={eliminarOpen} onClose={() => setEliminarOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Eliminar borrador</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Se elimina el borrador y sus ítems. Esta acción no se puede deshacer.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEliminarOpen(false)} disabled={deleteMutation.isPending}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained" color="error" startIcon={<DeleteIcon />}
+            disabled={deleteMutation.isPending}
+            onClick={() => deleteMutation.mutate()}
+          >
+            {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ── Anular (motivo obligatorio) ── */}
       <Dialog open={anularOpen} onClose={() => setAnularOpen(false)} maxWidth="sm" fullWidth>

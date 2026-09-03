@@ -58,6 +58,8 @@ export interface LiquidacionFinal {
   empleadoApellido: string;
   empleadoDni: string | null;
   empleadoFechaIngreso: string | null;
+  /** Estado actual del empleado (ACTIVO/INACTIVO/LICENCIA) para adaptar avisos. */
+  empleadoEstado: string | null;
   fechaEgreso: string;
   motivoEgreso: MotivoEgreso | null;
   estado: EstadoLiquidacionFinal;

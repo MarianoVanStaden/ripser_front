@@ -3,20 +3,32 @@
 // totales server-side, estados y el pago por cajas.
 
 import React, { useState } from 'react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Box, Button, Chip, CircularProgress, MenuItem, Paper, Stack, Table,
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
+  DialogContent, DialogTitle, IconButton, MenuItem, Paper, Stack, Table,
   TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow,
-  TextField, Typography,
+  TextField, Tooltip, Typography,
 } from '@mui/material';
-import { Add as AddIcon, ReceiptLong as ReceiptLongIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Payment as PaymentIcon,
+  PictureAsPdf as PdfIcon,
+  ReceiptLong as ReceiptLongIcon,
+  Visibility as ViewIcon,
+} from '@mui/icons-material';
 import dayjs from 'dayjs';
 import {
   liquidacionFinalApi,
   MOTIVOS_EGRESO,
   type EstadoLiquidacionFinal,
+  type LiquidacionFinal,
 } from '../../../api/services/liquidacionFinalApi';
 import LiquidacionFinalDialog from './LiquidacionFinalDialog';
+import PagoLiquidacionDialog from './PagoLiquidacionDialog';
+import { generarLiquidacionFinalPDF } from '../../../services/pdfService';
 
 const ESTADO_COLOR: Record<string, 'default' | 'info' | 'success' | 'error' | 'warning'> = {
   BORRADOR: 'info',
@@ -42,6 +54,11 @@ const LiquidacionesFinalesPage: React.FC<Props> = ({ embedded = false }) => {
   const [size, setSize] = useState(20);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [pagoTarget, setPagoTarget] = useState<LiquidacionFinal | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LiquidacionFinal | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['liquidaciones-finales', { estado: estado || undefined, page, size }],
@@ -63,6 +80,26 @@ const LiquidacionesFinalesPage: React.FC<Props> = ({ embedded = false }) => {
   const openCreate = () => {
     setSelectedId(null);
     setDialogOpen(true);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => liquidacionFinalApi.delete(id),
+    onSuccess: () => {
+      setDeleteTarget(null);
+      queryClient.invalidateQueries({ queryKey: ['liquidaciones-finales'] });
+    },
+    onError: (err: any) => {
+      setDeleteTarget(null);
+      setActionError(err?.response?.data?.message || 'No se pudo eliminar el borrador');
+    },
+  });
+
+  const handlePdf = (l: LiquidacionFinal) => {
+    try {
+      generarLiquidacionFinalPDF(l);
+    } catch {
+      setActionError('No se pudo generar el PDF');
+    }
   };
 
   return (
@@ -113,12 +150,13 @@ const LiquidacionesFinalesPage: React.FC<Props> = ({ embedded = false }) => {
                     <TableCell align="right">Descuentos</TableCell>
                     <TableCell align="right">Neto</TableCell>
                     <TableCell>Fecha pago</TableCell>
+                    <TableCell align="right">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {rows.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={9}>
+                      <TableCell colSpan={10}>
                         <Typography variant="body2" color="textSecondary" align="center" py={3}>
                           No hay liquidaciones finales{estado ? ' con ese estado' : ''} — creá la primera con “Nueva liquidación”.
                         </Typography>
@@ -141,6 +179,39 @@ const LiquidacionesFinalesPage: React.FC<Props> = ({ embedded = false }) => {
                       <TableCell align="right">{fmt(l.totalDescuentos)}</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700 }}>{fmt(l.totalNeto)}</TableCell>
                       <TableCell>{l.fechaPago ? dayjs(l.fechaPago).format('DD/MM/YYYY') : '—'}</TableCell>
+                      <TableCell align="right" onClick={(e) => e.stopPropagation()} sx={{ whiteSpace: 'nowrap' }}>
+                        <Tooltip title="Ver detalle">
+                          <IconButton size="small" onClick={() => openDetail(l.id)}>
+                            <ViewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {l.estado === 'BORRADOR' && (
+                          <Tooltip title="Editar">
+                            <IconButton size="small" color="primary" onClick={() => openDetail(l.id)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {l.estado === 'CONFIRMADA' && (
+                          <Tooltip title="Registrar pago">
+                            <IconButton size="small" color="success" onClick={() => setPagoTarget(l)}>
+                              <PaymentIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        <Tooltip title="Descargar PDF">
+                          <IconButton size="small" onClick={() => handlePdf(l)}>
+                            <PdfIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {l.estado === 'BORRADOR' && (
+                          <Tooltip title="Eliminar borrador">
+                            <IconButton size="small" color="error" onClick={() => setDeleteTarget(l)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -160,11 +231,49 @@ const LiquidacionesFinalesPage: React.FC<Props> = ({ embedded = false }) => {
         )}
       </Paper>
 
+      {actionError && (
+        <Alert severity="error" onClose={() => setActionError(null)} sx={{ mt: 2 }}>
+          {actionError}
+        </Alert>
+      )}
+
       <LiquidacionFinalDialog
         open={dialogOpen}
         liquidacionId={selectedId}
         onClose={() => setDialogOpen(false)}
       />
+
+      {/* Pago directo desde la grilla (misma acción que dentro del detalle) */}
+      <PagoLiquidacionDialog
+        open={pagoTarget != null}
+        liquidacion={pagoTarget}
+        onClose={() => setPagoTarget(null)}
+        onSuccess={() => {
+          setPagoTarget(null);
+          queryClient.invalidateQueries({ queryKey: ['liquidaciones-finales'] });
+        }}
+      />
+
+      {/* Confirmación de borrado */}
+      <Dialog open={deleteTarget != null} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Eliminar borrador</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Se elimina el borrador de {deleteTarget ? `${deleteTarget.empleadoApellido}, ${deleteTarget.empleadoNombre}` : ''} y
+            sus ítems. Esta acción no se puede deshacer.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}>Cancelar</Button>
+          <Button
+            variant="contained" color="error" startIcon={<DeleteIcon />}
+            disabled={deleteMutation.isPending}
+            onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+          >
+            {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
