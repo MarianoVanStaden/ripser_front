@@ -22,6 +22,21 @@ const PASOS = [1000, 5000, 10000, 50000, 100000];
 const fmt = (n: number | null | undefined) =>
   n == null ? '—' : `$${Number(n).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
 
+// Traduce el error del backend a algo accionable. La validación por línea
+// ({ details.fields: { "lineas[16].precioNuevo": "..." } }) llega como "Validation
+// failed" genérico; acá lo desglosamos para que el usuario sepa qué corregir.
+const formatApiError = (e: any): string => {
+  const data = e?.response?.data;
+  const fields = data?.details?.fields as Record<string, string> | undefined;
+  if (fields && Object.keys(fields).length > 0) {
+    const conteo = Object.keys(fields).length;
+    const ejemplo = Object.values(fields)[0];
+    return `El ajuste no se aplicó: ${conteo} producto(s) con precio final inválido (${ejemplo}). `
+      + 'Suele pasar con ajustes negativos que dejan el precio en $0 o menos: revisá el monto o desmarcá esos productos.';
+  }
+  return data?.message || e?.message || 'No se pudo aplicar el ajuste';
+};
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -58,10 +73,12 @@ export default function AjusteMasivoReventaDialog({ open, onClose, productos, ca
     mutationFn: (req: AjusteMasivoReventaPreviewRequest) => precioProductoTerminadoApi.previewAjusteMasivo(req),
     onSuccess: (data) => {
       setRows(data);
-      setSeleccion(Object.fromEntries(data.map((r) => [r.productoId, true])));
+      // Solo se preseleccionan las filas con precio final válido (> 0): las de precio
+      // ≤ 0 no se pueden aplicar (el backend las rechaza) y quedan desmarcadas.
+      setSeleccion(Object.fromEntries(data.map((r) => [r.productoId, r.precioNuevo > 0])));
       setError(data.length === 0 ? 'Ningún producto de reventa con precio en el alcance elegido' : null);
     },
-    onError: (e: any) => setError(e.response?.data?.message || e.message),
+    onError: (e: any) => setError(formatApiError(e)),
   });
 
   const aplicarMutation = useMutation({
@@ -81,7 +98,7 @@ export default function AjusteMasivoReventaDialog({ open, onClose, productos, ca
       setRows(null);
       setMotivo('');
     },
-    onError: (e: any) => setError(e.response?.data?.message || e.message),
+    onError: (e: any) => setError(formatApiError(e)),
   });
 
   const handleClose = () => {
@@ -107,8 +124,12 @@ export default function AjusteMasivoReventaDialog({ open, onClose, productos, ca
     });
   };
 
-  const seleccionadas = (rows ?? []).filter((r) => seleccion[r.productoId]);
-  const todasSeleccionadas = rows != null && rows.length > 0 && seleccionadas.length === rows.length;
+  // Una fila es aplicable solo si su precio final es > 0 (el backend valida > 0.01).
+  const esAplicable = (r: AjusteMasivoReventaPreviewRow) => r.precioNuevo > 0;
+  const aplicables = (rows ?? []).filter(esAplicable);
+  const noAplicables = (rows ?? []).length - aplicables.length;
+  const seleccionadas = (rows ?? []).filter((r) => seleccion[r.productoId] && esAplicable(r));
+  const todasSeleccionadas = aplicables.length > 0 && seleccionadas.length === aplicables.length;
   const conAlerta = seleccionadas.filter((r) => r.alertaMargen).length;
   const valorInvalido = valor === '' || Number.isNaN(Number(valor)) || Number(valor) === 0;
 
@@ -195,9 +216,15 @@ export default function AjusteMasivoReventaDialog({ open, onClose, productos, ca
         ) : (
           <>
             <Alert severity={conAlerta > 0 ? 'warning' : 'info'} sx={{ mb: 2 }}>
-              {seleccionadas.length} de {rows.length} productos seleccionados · {parametrosAjuste}
+              {seleccionadas.length} de {aplicables.length} productos seleccionados · {parametrosAjuste}
               {conAlerta > 0 && ` · ${conAlerta} con alerta de margen`}
             </Alert>
+            {noAplicables > 0 && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {noAplicables} producto(s) quedan con precio final ≤ $0 con este ajuste y no se pueden
+                aplicar (aparecen deshabilitados). Ajustá el monto/porcentaje si querés incluirlos.
+              </Alert>
+            )}
             <TableContainer sx={{ maxHeight: 420 }}>
               <Table size="small" stickyHeader>
                 <TableHead>
@@ -207,7 +234,9 @@ export default function AjusteMasivoReventaDialog({ open, onClose, productos, ca
                         checked={todasSeleccionadas}
                         indeterminate={seleccionadas.length > 0 && !todasSeleccionadas}
                         onChange={(e) =>
-                          setSeleccion(Object.fromEntries(rows.map((r) => [r.productoId, e.target.checked])))
+                          setSeleccion(Object.fromEntries(
+                            rows.map((r) => [r.productoId, e.target.checked && esAplicable(r)]),
+                          ))
                         }
                       />
                     </TableCell>
@@ -229,7 +258,8 @@ export default function AjusteMasivoReventaDialog({ open, onClose, productos, ca
                     >
                       <TableCell padding="checkbox">
                         <Checkbox
-                          checked={!!seleccion[r.productoId]}
+                          checked={!!seleccion[r.productoId] && esAplicable(r)}
+                          disabled={!esAplicable(r)}
                           onChange={(e) => setSeleccion((s) => ({ ...s, [r.productoId]: e.target.checked }))}
                         />
                       </TableCell>
