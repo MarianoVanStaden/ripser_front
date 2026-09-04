@@ -55,6 +55,7 @@ import {
 } from '../../api/services/productoRouting';
 import type { ProductoUnificado } from '../../api/services/productoRouting';
 import { productApi } from '../../api/services/productApi';
+import { precioProductoTerminadoApi } from '../../api/services/precioProductoTerminadoApi';
 import type { MovimientoStock, CategoriaProducto, DesgloseStockProductoDTO } from '../../types';
 import {
   ComposicionDialog,
@@ -164,6 +165,9 @@ const StockPage: React.FC = () => {
   });
   const priceParams: PriceCalculationParams | null = priceParamsQuery.data ?? null;
   const [suggestedPrice, setSuggestedPrice] = useState<number | null>(null);
+  // Inputs numéricos como string para permitir tipeo fluido (decimales, borrar/reescribir).
+  const [precioInput, setPrecioInput] = useState('');
+  const [costoInput, setCostoInput] = useState('');
 
   // Filter states for Inventory tab
   const [searchTerm, setSearchTerm] = useState('');
@@ -185,13 +189,14 @@ const StockPage: React.FC = () => {
 
   // Calculate suggested price when costo changes
   useEffect(() => {
-    if (editForm.costo != null && editForm.costo > 0 && priceParams) {
-      const calculated = calculateSellingPrice(editForm.costo, priceParams.porcentajeGanancia, priceParams.redondeo);
+    const costoNum = costoInput ? parseFloat(costoInput) : NaN;
+    if (!Number.isNaN(costoNum) && costoNum > 0 && priceParams) {
+      const calculated = calculateSellingPrice(costoNum, priceParams.porcentajeGanancia, priceParams.redondeo);
       setSuggestedPrice(calculated);
     } else {
       setSuggestedPrice(null);
     }
-  }, [editForm.costo, priceParams]);
+  }, [costoInput, priceParams]);
 
   const loadData = async () => {
     await queryClient.invalidateQueries({ queryKey: ['stock'] });
@@ -216,6 +221,8 @@ const StockPage: React.FC = () => {
       _ancho: null,
       _largo: null,
     });
+    setPrecioInput(product.precio != null ? String(product.precio) : '');
+    setCostoInput(product.costo != null ? String(product.costo) : '');
     setSuggestedPrice(null);
     setEditDialogOpen(true);
   };
@@ -223,32 +230,64 @@ const StockPage: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!selectedProduct) return;
 
+    const precioNum = precioInput ? parseFloat(precioInput) : 0;
+    const costoNum = costoInput ? parseFloat(costoInput) : null;
+    const esReventa = selectedProduct.tipoEntidad === TipoEntidadProducto.PRODUCTO_TERMINADO;
+
     try {
       setSaving(true);
-      // Rutea al endpoint correcto según si el producto es material o reventa.
-      await updateProducto(
-        selectedProduct.id,
-        {
-          nombre: editForm.nombre,
-          descripcion: editForm.descripcion,
-          precio: editForm.precio,
-          costo: editForm.costo,
-          stockMinimo: editForm.stockMinimo,
-          categoriaProductoId: editForm.categoriaProductoId,
-          activo: editForm.activo,
-          unidadMedida: editForm.unidadMedida === 'UNIDAD' ? undefined : editForm.unidadMedida,
-          unidadInventario: editForm.unidadMedida === 'UNIDAD' ? undefined : (editForm.unidadInventario || undefined),
-          factorConversion: editForm.unidadMedida === 'UNIDAD' ? null : editForm.factorConversion,
-        },
-        selectedProduct.tipoEntidad,
-      );
+
+      if (esReventa) {
+        // El precio de reventa solo se cambia por el path auditado (queda en el historial
+        // del tab de Precios y Ofertas). El PUT genérico ya no toca el precio.
+        const precioCambio = precioNum > 0 && precioNum !== selectedProduct.precio;
+        if (precioCambio) {
+          await precioProductoTerminadoApi.cambiarPrecio(selectedProduct.id, {
+            precioNuevo: precioNum,
+            motivo: 'Ajuste desde Gestión de Stock',
+            version: selectedProduct.version ?? 0,
+          });
+        }
+        // Resto de campos de catálogo. Mando categoriaProducto como objeto {id} (el backend
+        // resuelve la categoría); no mando precio (lo ignora igual).
+        await updateProducto(
+          selectedProduct.id,
+          {
+            nombre: editForm.nombre,
+            descripcion: editForm.descripcion,
+            costo: costoNum,
+            stockMinimo: editForm.stockMinimo,
+            categoriaProducto: { id: editForm.categoriaProductoId } as any,
+            activo: editForm.activo,
+          },
+          selectedProduct.tipoEntidad,
+        );
+      } else {
+        // Material: comportamiento previo (el precio de materiales no está auditado).
+        await updateProducto(
+          selectedProduct.id,
+          {
+            nombre: editForm.nombre,
+            descripcion: editForm.descripcion,
+            precio: precioNum,
+            costo: costoNum,
+            stockMinimo: editForm.stockMinimo,
+            categoriaProductoId: editForm.categoriaProductoId,
+            activo: editForm.activo,
+            unidadMedida: editForm.unidadMedida === 'UNIDAD' ? undefined : editForm.unidadMedida,
+            unidadInventario: editForm.unidadMedida === 'UNIDAD' ? undefined : (editForm.unidadInventario || undefined),
+            factorConversion: editForm.unidadMedida === 'UNIDAD' ? null : editForm.factorConversion,
+          },
+          selectedProduct.tipoEntidad,
+        );
+      }
 
       await loadData();
       setEditDialogOpen(false);
       setSelectedProduct(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating product:', err);
-      setError('Error al actualizar el producto');
+      setError(err?.response?.data?.message || 'Error al actualizar el producto');
     } finally {
       setSaving(false);
     }
@@ -1069,11 +1108,8 @@ const StockPage: React.FC = () => {
               <TextField
                 label="Costo (Precio de Compra)"
                 type="number"
-                value={editForm.costo ?? ''}
-                onChange={(e) => setEditForm({
-                  ...editForm,
-                  costo: e.target.value ? parseFloat(e.target.value) : null
-                })}
+                value={costoInput}
+                onChange={(e) => setCostoInput(e.target.value)}
                 fullWidth
                 inputProps={{ step: '0.01', min: '0' }}
                 helperText="Costo de adquisicion del producto"
@@ -1093,7 +1129,7 @@ const StockPage: React.FC = () => {
                 <Button
                   size="small"
                   variant="outlined"
-                  onClick={() => setEditForm({ ...editForm, precio: suggestedPrice })}
+                  onClick={() => setPrecioInput(String(suggestedPrice))}
                   sx={{ color: 'info.contrastText', borderColor: 'info.contrastText' }}
                 >
                   Aplicar
@@ -1105,11 +1141,14 @@ const StockPage: React.FC = () => {
               <TextField
                 label="Precio de Venta"
                 type="number"
-                value={editForm.precio}
-                onChange={(e) => setEditForm({ ...editForm, precio: parseFloat(e.target.value) || 0 })}
+                value={precioInput}
+                onChange={(e) => setPrecioInput(e.target.value)}
                 fullWidth
                 required
                 inputProps={{ step: '0.01', min: '0' }}
+                helperText={selectedProduct?.tipoEntidad === TipoEntidadProducto.PRODUCTO_TERMINADO
+                  ? 'El cambio de precio queda registrado en el historial de Precios y Ofertas'
+                  : undefined}
               />
             )}
 

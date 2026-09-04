@@ -81,6 +81,8 @@ export interface ProductoTerminado {
   activo: boolean;
   fechaCreacion: string;
   tipoEntidad?: TipoEntidadProducto;
+  /** Optimistic locking; requerido al hacer PUT tras agregar @Version en el backend. */
+  version?: number;
 }
 
 export interface MaterialUtilizado {

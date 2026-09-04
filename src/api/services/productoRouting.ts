@@ -93,6 +93,7 @@ export const fetchProductosUnificados = async (): Promise<ProductoUnificado[]> =
     categoriaProductoNombre: p.categoriaProductoNombre ?? p.categoriaProducto?.nombre,
     activo: p.activo,
     fechaCreacion: p.fechaCreacion,
+    version: p.version,
     tipoEntidad: TipoEntidadProducto.PRODUCTO_TERMINADO,
   }));
 

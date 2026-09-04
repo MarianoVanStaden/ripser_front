@@ -68,6 +68,8 @@ export interface Producto {
   activo: boolean;
   fechaCreacion?: string; // ISO string
   tipoEntidad?: TipoEntidadProducto;
+  /** Optimistic locking de productos terminados (reventa); ausente en materiales. */
+  version?: number;
   /** Unidad física del stock: MT2 | METROS | KILOS | UNIDAD */
   unidadMedida?: string;
   /** Unidad de inventario/compra en la que se cuenta el stock (Rollo, Bolsa, Garrafa). */

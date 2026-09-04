@@ -21,6 +21,11 @@ export const QUERY_KEYS = {
   HISTORIAL_PRECIOS: (filters?: Record<string, unknown>) =>
     ['historialPreciosRecetas', filters ?? {}] as const,
 
+  PRECIOS_REVENTA: () => ['preciosReventa'] as const,
+
+  HISTORIAL_PRECIOS_REVENTA: (filters?: Record<string, unknown>) =>
+    ['historialPreciosReventa', filters ?? {}] as const,
+
   COMUNICACIONES_POSTVENTA: (filters?: Record<string, unknown>) =>
     ['comunicacionesPostventa', filters ?? {}] as const,
 } as const;

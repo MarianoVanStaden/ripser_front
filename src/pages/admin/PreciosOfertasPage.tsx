@@ -9,9 +9,10 @@ const OfertasPrecioPage = lazy(() => import('./OfertasPrecioPage'));
 const ImportadorPreciosPage = lazy(() => import('./ImportadorPreciosPage'));
 const CostosEnvioPage = lazy(() => import('./CostosEnvioPage'));
 const PreciosEquiposPage = lazy(() => import('./PreciosEquiposPage'));
+const PreciosReventaPage = lazy(() => import('./PreciosReventaPage'));
 const NivelesFidelizacionPage = lazy(() => import('./NivelesFidelizacionPage'));
 
-type TabKey = 'precios-equipos' | 'ofertas' | 'importador' | 'costos-envio' | 'fidelizacion';
+type TabKey = 'precios-equipos' | 'precios-reventa' | 'ofertas' | 'importador' | 'costos-envio' | 'fidelizacion';
 
 // Cambiar precios de equipos es solo para admins (el backend rechaza igual con 403);
 // COORDINADORA_COMPRAS/LOGISTICA ven la página pero no esta tab.
@@ -36,7 +37,10 @@ export default function PreciosOfertasPage() {
   const tabDefs: Array<{ key: TabKey; label: string }> = useMemo(
     () => [
       ...(puedeGestionarPrecios
-        ? [{ key: 'precios-equipos' as TabKey, label: 'Precios de Equipos' }]
+        ? [
+            { key: 'precios-equipos' as TabKey, label: 'Precios de Equipos' },
+            { key: 'precios-reventa' as TabKey, label: 'Precios de Reventa' },
+          ]
         : []),
       { key: 'ofertas', label: 'Ofertas Mensuales' },
       { key: 'importador', label: 'Importador de Precios' },
@@ -70,6 +74,7 @@ export default function PreciosOfertasPage() {
 
       <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}><CircularProgress /></Box>}>
         {tab === 'precios-equipos' && puedeGestionarPrecios && <PreciosEquiposPage />}
+        {tab === 'precios-reventa' && puedeGestionarPrecios && <PreciosReventaPage />}
         {tab === 'ofertas' && <OfertasPrecioPage />}
         {tab === 'importador' && <ImportadorPreciosPage />}
         {tab === 'costos-envio' && <CostosEnvioPage />}
