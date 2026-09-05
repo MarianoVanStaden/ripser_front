@@ -121,17 +121,29 @@ const TOTAL_LABEL_STYLE = {
   halign: 'center' as const,
 };
 
+// Tasa de IVA por tipo de documento, para desglosar el IVA por línea en la
+// tabla de productos. El monto de IVA a nivel documento vive en `documento.iva`.
+const IVA_RATE_POR_TIPO: Record<string, number> = {
+  IVA_21: 0.21,
+  IVA_10_5: 0.105,
+  EXENTO: 0,
+};
+const getIvaRate = (tipoIva: string | undefined): number =>
+  IVA_RATE_POR_TIPO[tipoIva ?? 'EXENTO'] ?? 0;
+
 // Devuelve las filas a insertar en el bloque de totales del PDF.
-// Si el documento tiene un descuento aplicado, se agregan filas Subtotal y
-// Descuento antes del total final; si no, se conserva una sola fila como antes.
+// Muestra el desglose Subtotal (neto) / IVA / Total siempre que haya descuento
+// o IVA; si el documento es exento y sin descuento, conserva una sola fila.
 const buildTotalsRows = (documento: DocumentoComercial, totalLabel: string): any[][] => {
   const subtotalBruto = Number(documento.subtotal ?? 0);
   const descuentoTipo = documento.descuentoTipo ?? 'NONE';
   const descuentoMonto = Number(documento.descuentoMonto ?? 0);
   const descuentoValor = Number(documento.descuentoValor ?? 0);
   const tieneDescuento = descuentoTipo !== 'NONE' && descuentoMonto > 0;
+  const iva = Number(documento.iva ?? 0);
 
-  if (!tieneDescuento) {
+  // Documento exento y sin descuento: una sola fila con el total (= bruto).
+  if (!tieneDescuento && iva === 0) {
     return [[
       { content: totalLabel, styles: TOTAL_LABEL_STYLE },
       { content: formatCurrency(subtotalBruto), styles: TOTAL_ROW_STYLE },
@@ -142,7 +154,6 @@ const buildTotalsRows = (documento: DocumentoComercial, totalLabel: string): any
   // El descuento (bonificación) reduce la base imponible ANTES del IVA; el IVA
   // se liquida sobre el neto ya descontado. Total = neto + IVA.
   const subtotalNeto = Math.max(0, subtotalBruto - descuentoMonto);
-  const iva = Number(documento.iva ?? 0);
   const total = subtotalNeto + iva;
   const descuentoLabel = descuentoTipo === 'PORCENTAJE'
     ? `Descuento (${descuentoValor}%)`
@@ -150,28 +161,34 @@ const buildTotalsRows = (documento: DocumentoComercial, totalLabel: string): any
   const normalLabel = { ...TOTAL_LABEL_STYLE, fontStyle: 'normal' as const };
   const normalRow = { ...TOTAL_ROW_STYLE, fontStyle: 'normal' as const };
 
-  return [
-    [
-      { content: 'Subtotal (bruto)', styles: normalLabel },
-      { content: formatCurrency(subtotalBruto), styles: normalRow },
-    ],
-    [
-      { content: descuentoLabel, styles: normalLabel },
-      { content: `- ${formatCurrency(descuentoMonto)}`, styles: normalRow },
-    ],
-    [
-      { content: 'Subtotal (neto)', styles: normalLabel },
-      { content: formatCurrency(subtotalNeto), styles: normalRow },
-    ],
-    [
+  const rows: any[][] = [];
+  if (tieneDescuento) {
+    rows.push(
+      [
+        { content: 'Subtotal (bruto)', styles: normalLabel },
+        { content: formatCurrency(subtotalBruto), styles: normalRow },
+      ],
+      [
+        { content: descuentoLabel, styles: normalLabel },
+        { content: `- ${formatCurrency(descuentoMonto)}`, styles: normalRow },
+      ],
+    );
+  }
+  rows.push([
+    { content: 'Subtotal (neto)', styles: normalLabel },
+    { content: formatCurrency(subtotalNeto), styles: normalRow },
+  ]);
+  if (iva > 0) {
+    rows.push([
       { content: 'IVA', styles: normalLabel },
       { content: formatCurrency(iva), styles: normalRow },
-    ],
-    [
-      { content: totalLabel, styles: TOTAL_LABEL_STYLE },
-      { content: formatCurrency(total), styles: TOTAL_ROW_STYLE },
-    ],
-  ];
+    ]);
+  }
+  rows.push([
+    { content: totalLabel, styles: TOTAL_LABEL_STYLE },
+    { content: formatCurrency(total), styles: TOTAL_ROW_STYLE },
+  ]);
+  return rows;
 };
 
 // Leyenda aclaratoria para documentos exentos de IVA, debajo del bloque de totales.
@@ -530,13 +547,15 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
       descripcionCompleta += `\nN° Heladera: ${detalleConEquipos.equiposNumerosHeladera.join(', ')}`;
     }
 
+    const ivaLinea = detalle.subtotal * getIvaRate(presupuesto.tipoIva);
+
     return [
       { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
       { content: descripcionCompleta, styles: { halign: 'left', fontStyle: 'bold' as const } },
       { content: detalle.cantidad.toString(), styles: { halign: 'center' } },
       { content: formatCurrency(detalle.precioUnitario), styles: { halign: 'right' } },
-      { content: '$0', styles: { halign: 'right' } },
-      { content: formatCurrency(detalle.subtotal), styles: { halign: 'right' } }
+      { content: formatCurrency(ivaLinea), styles: { halign: 'right' } },
+      { content: formatCurrency(detalle.subtotal + ivaLinea), styles: { halign: 'right' } }
     ];
   });
 
@@ -841,14 +860,15 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
   const maxRows = 10;
   const productosData: any[] = documento.detalles.map(detalle => {
     const descripcionCompleta = detalle.descripcion || '';
+    const ivaLinea = detalle.subtotal * getIvaRate(documento.tipoIva);
 
     return [
       { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
       { content: descripcionCompleta, styles: { halign: 'left', fontStyle: 'bold' as const } },
       { content: detalle.cantidad.toString(), styles: { halign: 'center' } },
       { content: formatCurrency(detalle.precioUnitario), styles: { halign: 'right' } },
-      { content: '$0', styles: { halign: 'right' } },
-      { content: formatCurrency(detalle.subtotal), styles: { halign: 'right' } }
+      { content: formatCurrency(ivaLinea), styles: { halign: 'right' } },
+      { content: formatCurrency(detalle.subtotal + ivaLinea), styles: { halign: 'right' } }
     ];
   });
 
