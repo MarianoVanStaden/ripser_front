@@ -27,6 +27,7 @@ import GarantiaVigenciaBar from './GarantiaVigenciaBar';
 import ReclamoFormDialog from './ReclamoFormDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
+import FechaField from '../common/FechaField';
 
 const GarantiasPage: React.FC = () => {
   const [garantias, setGarantias] = useState<GarantiaDTO[]>([]);
@@ -42,6 +43,9 @@ const GarantiasPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
+  // Rango sobre fechaCompra (alta/emisión). ISO yyyy-mm-dd; '' = sin límite.
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
 
   // Pagination
   const [page, setPage] = useState(0);
@@ -69,7 +73,7 @@ const GarantiasPage: React.FC = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, rowsPerPage, estadoFilter, debouncedSearch]);
+  }, [page, rowsPerPage, estadoFilter, debouncedSearch, fechaDesde, fechaHasta]);
 
   // Estadísticas (totales por estado) — independientes del paginado
   useEffect(() => {
@@ -82,6 +86,8 @@ const GarantiasPage: React.FC = () => {
     sort: 'fechaCompra,desc',
     estado: estadoFilter !== 'TODOS' ? estadoFilter : undefined,
     search: debouncedSearch || undefined,
+    fechaDesde: fechaDesde || undefined,
+    fechaHasta: fechaHasta || undefined,
   });
 
   const loadData = async () => {
@@ -310,7 +316,7 @@ const GarantiasPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 label="Buscar por modelo, serie"
@@ -326,7 +332,7 @@ const GarantiasPage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={2}>
               <FormControl fullWidth>
                 <InputLabel>Estado</InputLabel>
                 <Select
@@ -342,6 +348,26 @@ const GarantiasPage: React.FC = () => {
               </FormControl>
             </Grid>
 
+            <Grid item xs={6} md={2}>
+              <FechaField
+                label="Alta desde"
+                value={fechaDesde}
+                onChange={(iso) => { setFechaDesde(iso); setPage(0); }}
+                maxDate={fechaHasta || undefined}
+                size="medium"
+              />
+            </Grid>
+
+            <Grid item xs={6} md={2}>
+              <FechaField
+                label="Alta hasta"
+                value={fechaHasta}
+                onChange={(iso) => { setFechaHasta(iso); setPage(0); }}
+                minDate={fechaDesde || undefined}
+                size="medium"
+              />
+            </Grid>
+
             <Grid item xs={12} md={2}>
               <Button
                 fullWidth
@@ -355,7 +381,7 @@ const GarantiasPage: React.FC = () => {
           </Grid>
 
           {/* Active Filters */}
-          {(estadoFilter !== 'TODOS' || search) && (
+          {(estadoFilter !== 'TODOS' || search || fechaDesde || fechaHasta) && (
             <Stack direction="row" spacing={1} mt={2} flexWrap="wrap">
               {search && (
                 <Chip
@@ -372,11 +398,21 @@ const GarantiasPage: React.FC = () => {
                   color="primary"
                 />
               )}
+              {(fechaDesde || fechaHasta) && (
+                <Chip
+                  label={`Alta: ${fechaDesde ? dayjs(fechaDesde).format('DD/MM/YYYY') : '…'} – ${fechaHasta ? dayjs(fechaHasta).format('DD/MM/YYYY') : '…'}`}
+                  onDelete={() => { setFechaDesde(''); setFechaHasta(''); setPage(0); }}
+                  size="small"
+                  color="primary"
+                />
+              )}
               <Button
                 size="small"
                 onClick={() => {
                   setSearch('');
                   setEstadoFilter('TODOS');
+                  setFechaDesde('');
+                  setFechaHasta('');
                   setPage(0);
                 }}
               >

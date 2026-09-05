@@ -53,9 +53,15 @@ export interface GarantiaCreateDTO {
 
 // ==================== GARANTIAS API ====================
 export const garantiaApi = {
-  // GET /api/garantias — paginado server-side con filtros opcionales (estado, search)
+  // GET /api/garantias — paginado server-side con filtros opcionales
+  // (estado, search, rango de fechaCompra = alta/emisión: fechaDesde/fechaHasta en ISO date)
   findAll: async (
-    pagination: PaginationParams & { estado?: string; search?: string } = {}
+    pagination: PaginationParams & {
+      estado?: string;
+      search?: string;
+      fechaDesde?: string;
+      fechaHasta?: string;
+    } = {}
   ): Promise<PageResponse<GarantiaDTO>> => {
     const response = await api.get<PageResponse<GarantiaDTO>>('/api/garantias', {
       params: { ...pagination },
