@@ -144,11 +144,23 @@ export interface TipoAccionMeta {
 }
 
 /**
+ * Fallback para tipos que el front todavía no mapea en {@link TIPO_ACCION_LABELS}
+ * (el backend agrega valores sin migración): SNAKE_CASE → "Mayúscula primera letra
+ * + palabras separadas por espacio" (ej. EQUIPO_FABRICACION_INICIADA →
+ * "Equipo fabricacion iniciada"), consistente con el estilo del mapa curado.
+ */
+const formatTipoFallback = (t: string): string => {
+  const s = t.replace(/_/g, ' ').trim().toLowerCase();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : t;
+};
+
+/**
  * Lookups tolerantes: un tipo/categoría que el backend agregó y el front aún no
- * conoce NO rompe el render — cae al valor crudo (label) o color neutro (familia).
+ * conoce NO rompe el render — cae a un label auto-formateado (no al valor crudo
+ * en MAYÚSCULAS_CON_GUIONES) o color neutro (familia).
  */
 export const labelForTipo = (t: string): string =>
-  TIPO_ACCION_LABELS[t as TipoAccionActividad] ?? t;
+  TIPO_ACCION_LABELS[t as TipoAccionActividad] ?? formatTipoFallback(t);
 
 export const familiaForTipo = (t: string): AccionFamilia | undefined =>
   TIPO_ACCION_FAMILIA[t as TipoAccionActividad];
