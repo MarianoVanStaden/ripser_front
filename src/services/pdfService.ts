@@ -202,12 +202,13 @@ const buildTotalsRows = (documento: DocumentoComercial, totalLabel: string): any
     { content: 'Subtotal (neto)', styles: normalLabel },
     { content: formatCurrency(subtotalNeto), styles: normalRow },
   ]);
-  if (iva > 0) {
-    rows.push([
-      { content: 'IVA', styles: normalLabel },
-      { content: formatCurrency(iva), styles: normalRow },
-    ]);
-  }
+  // Fila IVA siempre presente en el desglose (aunque dé $0, ej. descuento 100%):
+  // el early-return de arriba ya cubrió el único caso sin fila IVA (exento sin
+  // descuento → fila única), así que acá completamos bruto→descuento→neto→IVA→total.
+  rows.push([
+    { content: 'IVA', styles: normalLabel },
+    { content: formatCurrency(iva), styles: normalRow },
+  ]);
   rows.push([
     { content: totalLabel, styles: TOTAL_LABEL_STYLE },
     { content: formatCurrency(total), styles: TOTAL_ROW_STYLE },
