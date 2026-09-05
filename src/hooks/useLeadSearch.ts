@@ -40,6 +40,11 @@ export function useLeadSearch(options: UseLeadSearchOptions = {}): UseLeadSearch
   const debouncedInput = useDebounce(inputValue, 300);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Clave primitiva estable: los consumers pasan `excludeEstados` como literal
+  // inline (referencia nueva cada render). Si el array entrara directo a las
+  // deps del effect, se dispararía en loop infinito (fetch → setState → render).
+  const excludeKey = excludeEstados?.join(',') ?? '';
+
   useEffect(() => {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -74,7 +79,9 @@ export function useLeadSearch(options: UseLeadSearchOptions = {}): UseLeadSearch
     loadLeads();
 
     return () => abortRef.current?.abort();
-  }, [debouncedInput, size, excludeEstados]);
+    // excludeKey (string) en lugar de excludeEstados (array) para estabilidad de referencia.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedInput, size, excludeKey]);
 
   return { options: items, loading, inputValue, setInputValue };
 }
