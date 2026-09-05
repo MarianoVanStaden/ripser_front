@@ -134,6 +134,27 @@ const IVA_RATE_POR_TIPO: Record<string, number> = {
 const getIvaRate = (tipoIva: string | undefined): number =>
   IVA_RATE_POR_TIPO[tipoIva ?? 'EXENTO'] ?? 0;
 
+// IVA por línea con redondeo acumulado: cada línea es la diferencia entre el IVA
+// acumulado redondeado hasta esa línea y el de la anterior. Así la suma de la
+// columna coincide exactamente con round(Σ subtotales × tasa) —sin el desfasaje
+// de ±$ que produce redondear cada línea por separado— y el residual se reparte
+// de forma natural en vez de amontonarse en la última.
+const calcularIvaPorLinea = (
+  detalles: { subtotal: number }[],
+  rate: number,
+): number[] => {
+  if (rate === 0) return detalles.map(() => 0);
+  let acumBase = 0;
+  let acumIva = 0;
+  return detalles.map((d) => {
+    acumBase += Number(d.subtotal ?? 0);
+    const ivaAcum = Math.round(acumBase * rate);
+    const ivaLinea = ivaAcum - acumIva;
+    acumIva = ivaAcum;
+    return ivaLinea;
+  });
+};
+
 // Devuelve las filas a insertar en el bloque de totales del PDF.
 // Muestra el desglose Subtotal (neto) / IVA / Total siempre que haya descuento
 // o IVA; si el documento es exento y sin descuento, conserva una sola fila.
@@ -542,7 +563,8 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
   // ===== TABLA DE PRODUCTOS =====
   // Agregar filas vacías hasta completar 10 filas (como en el original)
   const maxRows = 10;
-  const productosData: any[] = presupuesto.detalles.map(detalle => {
+  const ivaPorLinea = calcularIvaPorLinea(presupuesto.detalles, getIvaRate(presupuesto.tipoIva));
+  const productosData: any[] = presupuesto.detalles.map((detalle, idx) => {
     // Construir la descripción con el número de heladera si existe
     let descripcionCompleta = detalle.descripcion || '';
     const detalleConEquipos = detalle as any;
@@ -550,7 +572,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
       descripcionCompleta += `\nN° Heladera: ${detalleConEquipos.equiposNumerosHeladera.join(', ')}`;
     }
 
-    const ivaLinea = detalle.subtotal * getIvaRate(presupuesto.tipoIva);
+    const ivaLinea = ivaPorLinea[idx];
 
     return [
       { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
@@ -873,9 +895,10 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
 
   // ===== TABLA DE PRODUCTOS =====
   const maxRows = 10;
-  const productosData: any[] = documento.detalles.map(detalle => {
+  const ivaPorLinea = calcularIvaPorLinea(documento.detalles, getIvaRate(documento.tipoIva));
+  const productosData: any[] = documento.detalles.map((detalle, idx) => {
     const descripcionCompleta = detalle.descripcion || '';
-    const ivaLinea = detalle.subtotal * getIvaRate(documento.tipoIva);
+    const ivaLinea = ivaPorLinea[idx];
 
     return [
       { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
