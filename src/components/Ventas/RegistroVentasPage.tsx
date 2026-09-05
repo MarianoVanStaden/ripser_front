@@ -62,7 +62,7 @@ import EditarColorDetalleDialog from './NotasPedido/dialogs/EditarColorDetalleDi
 import AsignarEquiposDialog from './AsignarEquiposDialog';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, DetalleDocumento, OpcionFinanciamientoDTO } from '../../types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
-import { generarVentaPDF } from '../../services/pdfService';
+import { generarVentaPDF, generarNotaCreditoPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
 import { useClienteSearch } from '../../hooks/useClienteSearch';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -596,12 +596,16 @@ const RegistroVentasPage: React.FC = () => {
         fechaEmision: venta.fechaVenta,
         fechaVencimiento: venta.fechaVenta,
         subtotal: venta.subtotal || 0,
-        iva: venta.impuesto || 0,
+        // El objeto viene de un DocumentoComercial (spread `...sale`): trae `iva`
+        // y `tipoIva` reales. `venta.impuesto` no existe en el DTO → no usarlo como
+        // fuente. Sin esto, el IVA por línea (tipoIva) y el del bloque de totales
+        // (iva) no cuadran, y las facturas/NC no-21% quedan mal.
+        iva: (venta as any).iva ?? venta.impuesto ?? 0,
         total: venta.total,
         descuentoTipo: (venta as any).descuentoTipo ?? 'NONE',
         descuentoMonto: (venta as any).descuentoMonto ?? 0,
         descuentoValor: (venta as any).descuentoValor ?? 0,
-        tipoIva: 'IVA_21',
+        tipoIva: (venta as any).tipoIva ?? 'IVA_21',
         estado: 'CONFIRMADA' as any,
         metodoPago: (venta.metodoPago || 'EFECTIVO') as any,
         detalles: (venta.detalleVentas || []).map(detalle => ({
@@ -636,14 +640,14 @@ const RegistroVentasPage: React.FC = () => {
         console.warn('No se pudo cargar la opción de financiamiento:', e);
       }
 
-      // Generar el PDF
-      console.log('Llamando a generarVentaPDF...');
-      generarVentaPDF({
+      // Generar el PDF: las NC se exportan con título/nombre propios.
+      const esNotaCredito = (venta as any).tipoDocumento === 'NOTA_CREDITO';
+      const generar = esNotaCredito ? generarNotaCreditoPDF : generarVentaPDF;
+      generar({
         documento,
         cliente,
         opcionSeleccionada
       });
-      console.log('PDF generado exitosamente');
     } catch (error) {
       console.error('Error detallado al generar PDF:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';

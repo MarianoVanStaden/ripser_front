@@ -744,10 +744,22 @@ export const generarVentaPDF = (data: DocumentoPDFData): void => {
 };
 
 /**
+ * Genera y descarga un PDF de Nota de Crédito
+ */
+export const generarNotaCreditoPDF = (data: DocumentoPDFData): void => {
+  generarDocumentoComercialPDF({
+    ...data,
+    tipoDocumento: 'NOTA DE CRÉDITO',
+    nombreArchivo: 'NotaCredito'
+  });
+};
+
+/**
  * Función genérica para generar PDFs de documentos comerciales
  */
 const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: string; nombreArchivo: string }): void => {
   const { documento, cliente, opcionSeleccionada, tipoDocumento, nombreArchivo } = data;
+  const esNotaCredito = tipoDocumento === 'NOTA DE CRÉDITO';
 
   // Crear documento PDF (A4)
   const doc = new jsPDF({
@@ -799,7 +811,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
     [
       { content: 'Cliente:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: documento.clienteNombre || cliente.nombre || '', styles: { fillColor: COLORS.white } },
-      { content: `N°${tipoDocumento === 'FACTURA' ? 'Factura' : tipoDocumento === 'NOTA DE PEDIDO' ? 'Pedido' : 'Documento'}:`, styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+      { content: `N°${tipoDocumento === 'FACTURA' ? 'Factura' : tipoDocumento === 'NOTA DE PEDIDO' ? 'Pedido' : esNotaCredito ? 'N. Crédito' : 'Documento'}:`, styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: documento.numeroDocumento || '', styles: { fillColor: COLORS.white } }
     ],
     [
@@ -944,11 +956,17 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
 
   const leyendaIvaExento = tipoDocumento === 'FACTURA'
     ? 'Esta factura no contiene IVA.'
+    : esNotaCredito
+    ? 'Esta nota de crédito no contiene IVA.'
     : 'Esta nota de pedido no contiene IVA.';
   yPosition = renderLeyendaIvaExento(doc, documento, leyendaIvaExento, yPosition, margin);
 
   // ===== FORMA DE PAGO / OPCIÓN DE FINANCIAMIENTO SELECCIONADA =====
-  if (opcionSeleccionada) {
+  // Una NC es un crédito documental, no un cobro: no corresponde mostrar
+  // método de pago ni opción de financiamiento.
+  if (esNotaCredito) {
+    // no-op: sin bloque de forma de pago para notas de crédito
+  } else if (opcionSeleccionada) {
     autoTable(doc, {
       startY: yPosition,
       body: [[
@@ -1077,6 +1095,8 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
   doc.setFont('helvetica', 'normal');
   const notaText = tipoDocumento === 'FACTURA'
     ? 'Gracias por su compra. El precio está congelado según el acuerdo.'
+    : esNotaCredito
+    ? 'Nota de crédito emitida sobre la factura de referencia.'
     : 'Pedido sujeto a confirmación de stock. El precio se congela una vez confirmado el pedido.';
   doc.text(notaText, pageWidth / 2, footerY + 6, { align: 'center' });
 
