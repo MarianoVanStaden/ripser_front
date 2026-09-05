@@ -74,7 +74,10 @@ const drawHeaderLogo = (doc: jsPDF, margin: number, barTopY: number): void => {
  * Formatea un número como moneda argentina
  */
 const formatCurrency = (value: number | null | undefined): string => {
-  return `$${Number(value ?? 0).toLocaleString('es-AR', {
+  // Signo antes del símbolo para importes negativos: "-$1.000", no "$-1.000".
+  const n = Number(value ?? 0);
+  const signo = n < 0 ? '-' : '';
+  return `${signo}$${Math.abs(n).toLocaleString('es-AR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   })}`;
