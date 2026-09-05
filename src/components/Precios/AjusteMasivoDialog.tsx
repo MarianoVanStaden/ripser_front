@@ -23,6 +23,21 @@ const PASOS = [1000, 5000, 10000, 50000, 100000];
 const fmt = (n: number | null | undefined) =>
   n == null ? '—' : `$${Number(n).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
 
+// Traduce el error del backend a algo accionable. La validación por línea
+// ({ details.fields: { "lineas[16].precioNuevo": "..." } }) llega como "Validation
+// failed" genérico; acá lo desglosamos para que el usuario sepa qué corregir.
+const formatApiError = (e: any): string => {
+  const data = e?.response?.data;
+  const fields = data?.details?.fields as Record<string, string> | undefined;
+  if (fields && Object.keys(fields).length > 0) {
+    const conteo = Object.keys(fields).length;
+    const ejemplo = Object.values(fields)[0];
+    return `El ajuste no se aplicó: ${conteo} equipo(s) con precio final inválido (${ejemplo}). `
+      + 'Suele pasar con ajustes negativos que dejan el precio en $0 o menos: revisá el monto o desmarcá esos equipos.';
+  }
+  return data?.message || e?.message || 'No se pudo aplicar el ajuste';
+};
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -58,10 +73,12 @@ export default function AjusteMasivoDialog({ open, onClose, recetas }: Props) {
     mutationFn: (req: AjusteMasivoPreviewRequest) => precioRecetaApi.previewAjusteMasivo(req),
     onSuccess: (data) => {
       setRows(data);
-      setSeleccion(Object.fromEntries(data.map((r) => [r.recetaId, true])));
+      // Solo se preseleccionan las filas con precio final válido (> 0): las de precio
+      // ≤ 0 no se pueden aplicar (el backend las rechaza) y quedan desmarcadas.
+      setSeleccion(Object.fromEntries(data.map((r) => [r.recetaId, r.precioNuevo > 0])));
       setError(data.length === 0 ? 'Ningún equipo con precio de lista en el alcance elegido' : null);
     },
-    onError: (e: any) => setError(e.response?.data?.message || e.message),
+    onError: (e: any) => setError(formatApiError(e)),
   });
 
   const aplicarMutation = useMutation({
@@ -81,7 +98,7 @@ export default function AjusteMasivoDialog({ open, onClose, recetas }: Props) {
       setRows(null);
       setMotivo('');
     },
-    onError: (e: any) => setError(e.response?.data?.message || e.message),
+    onError: (e: any) => setError(formatApiError(e)),
   });
 
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -109,8 +126,12 @@ export default function AjusteMasivoDialog({ open, onClose, recetas }: Props) {
     });
   };
 
-  const seleccionadas = (rows ?? []).filter((r) => seleccion[r.recetaId]);
-  const todasSeleccionadas = rows != null && rows.length > 0 && seleccionadas.length === rows.length;
+  // Una fila es aplicable solo si su precio final es > 0 (el backend valida > 0.01).
+  const esAplicable = (r: AjusteMasivoPreviewRow) => r.precioNuevo > 0;
+  const aplicables = (rows ?? []).filter(esAplicable);
+  const noAplicables = (rows ?? []).length - aplicables.length;
+  const seleccionadas = (rows ?? []).filter((r) => seleccion[r.recetaId] && esAplicable(r));
+  const todasSeleccionadas = aplicables.length > 0 && seleccionadas.length === aplicables.length;
   const conAlerta = seleccionadas.filter((r) => r.alertaMargen).length;
   const valorInvalido = valor === '' || Number.isNaN(Number(valor)) || Number(valor) === 0;
 
@@ -197,9 +218,15 @@ export default function AjusteMasivoDialog({ open, onClose, recetas }: Props) {
         ) : (
           <>
             <Alert severity={conAlerta > 0 ? 'warning' : 'info'} sx={{ mb: 2 }}>
-              {seleccionadas.length} de {rows.length} equipos seleccionados · {parametrosAjuste}
+              {seleccionadas.length} de {aplicables.length} equipos seleccionados · {parametrosAjuste}
               {conAlerta > 0 && ` · ${conAlerta} con alerta de margen`}
             </Alert>
+            {noAplicables > 0 && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {noAplicables} equipo(s) quedan con precio final ≤ $0 con este ajuste y no se pueden
+                aplicar (aparecen deshabilitados). Ajustá el monto/porcentaje si querés incluirlos.
+              </Alert>
+            )}
             <TableContainer sx={{ maxHeight: 420 }}>
               <Table size="small" stickyHeader>
                 <TableHead>
@@ -209,7 +236,9 @@ export default function AjusteMasivoDialog({ open, onClose, recetas }: Props) {
                         checked={todasSeleccionadas}
                         indeterminate={seleccionadas.length > 0 && !todasSeleccionadas}
                         onChange={(e) =>
-                          setSeleccion(Object.fromEntries(rows.map((r) => [r.recetaId, e.target.checked])))
+                          setSeleccion(Object.fromEntries(
+                            rows.map((r) => [r.recetaId, e.target.checked && esAplicable(r)]),
+                          ))
                         }
                       />
                     </TableCell>
@@ -231,7 +260,8 @@ export default function AjusteMasivoDialog({ open, onClose, recetas }: Props) {
                     >
                       <TableCell padding="checkbox">
                         <Checkbox
-                          checked={!!seleccion[r.recetaId]}
+                          checked={!!seleccion[r.recetaId] && esAplicable(r)}
+                          disabled={!esAplicable(r)}
                           onChange={(e) => setSeleccion((s) => ({ ...s, [r.recetaId]: e.target.checked }))}
                         />
                       </TableCell>
