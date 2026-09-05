@@ -600,10 +600,10 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
     },
     columnStyles: {
       0: { cellWidth: 15 },   // Codigo
-      1: { cellWidth: 80 },   // Descripción
+      1: { cellWidth: 67 },   // Descripción
       2: { cellWidth: 18 },   // Cantidad
       3: { cellWidth: 28 },   // Precio Unitario
-      4: { cellWidth: 15 },   // IVA
+      4: { cellWidth: 28 },   // IVA
       5: { cellWidth: 28 }    // Precio Total
     },
     margin: { left: margin + 1, right: margin + 1 },
@@ -913,10 +913,10 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
     },
     columnStyles: {
       0: { cellWidth: 15 },
-      1: { cellWidth: 80 },
+      1: { cellWidth: 67 },
       2: { cellWidth: 18 },
       3: { cellWidth: 28 },
-      4: { cellWidth: 15 },
+      4: { cellWidth: 28 },
       5: { cellWidth: 28 }
     },
     margin: { left: margin + 1, right: margin + 1 },
