@@ -203,16 +203,17 @@ export const RegistroActividadPage = () => {
   }, [metas, modulosSel, moduloDeTipo, moduloOrden]);
 
   // backendFilters: se reconstruye solo cuando cambia algún filtro real.
-  // Regla: si hay tipos puntuales elegidos, mandamos esos (y NO el módulo, para
-  // no interseccionar de forma sorpresiva). Si no, mandamos los módulos elegidos
-  // (trae todas sus acciones). El backend acota siempre a lo visible por rol.
+  // Módulo y tipos se INTERSECAN en el backend (efectivos = visibles ∩ módulos ∩
+  // tipos): elegir módulo VENTAS + tipo FACTURA_CREADA trae solo esa acción; solo
+  // módulo → todo el módulo; solo tipos → esos tipos. El backend acota siempre a
+  // lo visible por rol.
   const backendFilters = useMemo<ActividadFilters>(() => {
     const dates = resolveDatePreset(datePreset, { desde: customDesde, hasta: customHasta });
     return {
       ...dates,
       usuarioId: usuarioSel?.id,
       tiposAccion: tiposSel.length ? tiposSel : undefined,
-      modulos: tiposSel.length ? undefined : (modulosSel.length ? modulosSel : undefined),
+      modulos: modulosSel.length ? modulosSel : undefined,
       fueraHorario: soloFueraHorario || undefined,
     };
   }, [datePreset, customDesde, customHasta, usuarioSel, tiposSel, modulosSel, soloFueraHorario]);
@@ -322,15 +323,21 @@ export const RegistroActividadPage = () => {
                 sx={{ width: { xs: '100%', md: 320 } }}
                 options={modulosDisponibles}
                 value={modulosSel}
-                onChange={(_, val) => setModulosSel(val)}
+                onChange={(_, val) => {
+                  setModulosSel(val);
+                  // Al acotar por módulo, descarto los tipos elegidos que quedan
+                  // fuera (evita una intersección vacía sorpresiva).
+                  if (val.length) {
+                    setTiposSel((prev) => prev.filter((t) => val.includes(moduloDeTipo.get(t) ?? '')));
+                  }
+                }}
                 getOptionLabel={(m) => MODULO_LABELS[m] ?? m}
-                disabled={tiposSel.length > 0}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     label="Módulo"
                     placeholder={modulosSel.length ? '' : 'Todos'}
-                    helperText={tiposSel.length ? 'Ignorado: hay tipos elegidos' : 'Trae todas las acciones del módulo'}
+                    helperText="Se combina con el tipo de acción"
                   />
                 )}
               />
