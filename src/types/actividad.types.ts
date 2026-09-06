@@ -193,6 +193,9 @@ export interface ActividadFilters {
   fechaDesde?: string;     // ISO LocalDateTime
   fechaHasta?: string;
   usuarioId?: number;
-  tipoAccion?: string; // un value de TipoAccionMeta (tolerante a tipos nuevos)
+  /** Tipos de acción puntuales (multi). Valores de TipoAccionMeta (tolerante a tipos nuevos). */
+  tiposAccion?: string[];
+  /** Módulos (Modulo del backend): trae todas las acciones de esos módulos. */
+  modulos?: string[];
   fueraHorario?: boolean;
 }

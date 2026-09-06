@@ -145,6 +145,7 @@ export const RegistroActividadPage = () => {
   const [datePreset, setDatePreset] = useState<DatePreset>('hoy');
   const [customDesde, setCustomDesde] = useState<Dayjs | null>(null);
   const [customHasta, setCustomHasta] = useState<Dayjs | null>(null);
+  const [modulosSel, setModulosSel] = useState<string[]>([]);
   const [tiposSel, setTiposSel] = useState<string[]>([]);
   const [soloFueraHorario, setSoloFueraHorario] = useState(false);
   const [usuarioSel, setUsuarioSel] = useState<Usuario | null>(null);
@@ -168,33 +169,53 @@ export const RegistroActividadPage = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Agrupados por módulo, en un orden estable, para el filtro.
-  const tiposPorModulo = useMemo<[string, string[]][]>(() => {
-    const grupos = new Map<string, string[]>();
-    for (const meta of tiposQuery.data ?? []) {
-      const arr = grupos.get(meta.categoria) ?? [];
-      arr.push(meta.value);
-      grupos.set(meta.categoria, arr);
-    }
-    return [...grupos.entries()].sort((a, b) => {
-      const ia = MODULO_ORDEN.indexOf(a[0]);
-      const ib = MODULO_ORDEN.indexOf(b[0]);
-      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-    });
-  }, [tiposQuery.data]);
+  const metas = useMemo(() => tiposQuery.data ?? [], [tiposQuery.data]);
+  const moduloOrden = useCallback(
+    (m: string) => { const i = MODULO_ORDEN.indexOf(m); return i === -1 ? 99 : i; },
+    []
+  );
+
+  // Módulos presentes (para el selector de módulo), en orden estable.
+  const modulosDisponibles = useMemo<string[]>(() => {
+    const set = new Set(metas.map((m) => m.categoria));
+    return [...set].sort((a, b) => moduloOrden(a) - moduloOrden(b));
+  }, [metas, moduloOrden]);
+
+  // value → módulo, para agrupar los tipos en el Autocomplete.
+  const moduloDeTipo = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const x of metas) m.set(x.value, x.categoria);
+    return m;
+  }, [metas]);
+
+  // Opciones de tipo, acotadas a los módulos elegidos (si hay). Ordenadas por
+  // módulo y luego por label para que el groupBy del Autocomplete quede prolijo.
+  const tipoOptions = useMemo<string[]>(() => {
+    const base = modulosSel.length
+      ? metas.filter((x) => modulosSel.includes(x.categoria))
+      : metas;
+    return base
+      .map((x) => x.value)
+      .sort((a, b) => {
+        const dm = moduloOrden(moduloDeTipo.get(a) ?? '') - moduloOrden(moduloDeTipo.get(b) ?? '');
+        return dm !== 0 ? dm : labelForTipo(a).localeCompare(labelForTipo(b));
+      });
+  }, [metas, modulosSel, moduloDeTipo, moduloOrden]);
 
   // backendFilters: se reconstruye solo cuando cambia algún filtro real.
-  // El switch a múltiples tipos es client-side via 1 query por tipo (raro);
-  // por ahora solo permitimos 1 tipo a la vez en el server.
+  // Regla: si hay tipos puntuales elegidos, mandamos esos (y NO el módulo, para
+  // no interseccionar de forma sorpresiva). Si no, mandamos los módulos elegidos
+  // (trae todas sus acciones). El backend acota siempre a lo visible por rol.
   const backendFilters = useMemo<ActividadFilters>(() => {
     const dates = resolveDatePreset(datePreset, { desde: customDesde, hasta: customHasta });
     return {
       ...dates,
       usuarioId: usuarioSel?.id,
-      tipoAccion: tiposSel.length === 1 ? tiposSel[0] : undefined,
+      tiposAccion: tiposSel.length ? tiposSel : undefined,
+      modulos: tiposSel.length ? undefined : (modulosSel.length ? modulosSel : undefined),
       fueraHorario: soloFueraHorario || undefined,
     };
-  }, [datePreset, customDesde, customHasta, usuarioSel, tiposSel, soloFueraHorario]);
+  }, [datePreset, customDesde, customHasta, usuarioSel, tiposSel, modulosSel, soloFueraHorario]);
 
   const fetchActividad = useCallback(
     (page: number, size: number, _sort: string, filters: ActividadFilters) => {
@@ -294,47 +315,48 @@ export const RegistroActividadPage = () => {
               )}
             </Box>
 
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                Tipo de acción (elegí uno para filtrar):
-              </Typography>
-              <Stack spacing={1}>
-                {tiposPorModulo.map(([modulo, tipos]) => (
-                  <Box key={modulo}>
-                    <Typography
-                      variant="overline"
-                      color="text.secondary"
-                      sx={{ display: 'block', lineHeight: 1.6 }}
-                    >
-                      {MODULO_LABELS[modulo] ?? modulo}
-                    </Typography>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                      {tipos.map((t) => {
-                        const fam = familiaForTipo(t);
-                        const selected = tiposSel[0] === t;
-                        return (
-                          <Chip
-                            key={t}
-                            label={labelForTipo(t)}
-                            size="small"
-                            // Solo 1 a la vez (el backend acepta uno). Click sobre
-                            // el seleccionado lo limpia.
-                            onClick={() => setTiposSel((prev) => (prev[0] === t ? [] : [t]))}
-                            color={selected ? (fam ? FAMILIA_COLOR[fam] : 'default') : 'default'}
-                            variant={selected ? 'filled' : 'outlined'}
-                          />
-                        );
-                      })}
-                    </Stack>
-                  </Box>
-                ))}
-                {tiposPorModulo.length === 0 && (
-                  <Typography variant="caption" color="text.secondary">
-                    {tiposQuery.isLoading ? 'Cargando tipos…' : 'No se pudieron cargar los tipos de acción.'}
-                  </Typography>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <Autocomplete
+                multiple
+                size="small"
+                sx={{ width: { xs: '100%', md: 320 } }}
+                options={modulosDisponibles}
+                value={modulosSel}
+                onChange={(_, val) => setModulosSel(val)}
+                getOptionLabel={(m) => MODULO_LABELS[m] ?? m}
+                disabled={tiposSel.length > 0}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Módulo"
+                    placeholder={modulosSel.length ? '' : 'Todos'}
+                    helperText={tiposSel.length ? 'Ignorado: hay tipos elegidos' : 'Trae todas las acciones del módulo'}
+                  />
                 )}
-              </Stack>
-            </Box>
+              />
+              <Autocomplete
+                multiple
+                size="small"
+                sx={{ width: { xs: '100%', md: 480 } }}
+                options={tipoOptions}
+                value={tiposSel}
+                onChange={(_, val) => setTiposSel(val)}
+                getOptionLabel={(t) => labelForTipo(t)}
+                groupBy={(t) => {
+                  const m = moduloDeTipo.get(t) ?? '';
+                  return MODULO_LABELS[m] ?? m;
+                }}
+                loading={tiposQuery.isLoading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Tipo de acción"
+                    placeholder={tiposSel.length ? '' : 'Buscar acción…'}
+                    helperText="Acciones puntuales (podés elegir varias)"
+                  />
+                )}
+              />
+            </Stack>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
               <Autocomplete
@@ -359,7 +381,7 @@ export const RegistroActividadPage = () => {
                 }
                 label="Solo fuera de horario laboral"
               />
-              {(usuarioSel || tiposSel.length > 0 || soloFueraHorario || datePreset !== 'hoy') && (
+              {(usuarioSel || tiposSel.length > 0 || modulosSel.length > 0 || soloFueraHorario || datePreset !== 'hoy') && (
                 <Button
                   size="small"
                   onClick={() => {
@@ -367,6 +389,7 @@ export const RegistroActividadPage = () => {
                     setCustomDesde(null);
                     setCustomHasta(null);
                     setTiposSel([]);
+                    setModulosSel([]);
                     setUsuarioSel(null);
                     setSoloFueraHorario(false);
                   }}

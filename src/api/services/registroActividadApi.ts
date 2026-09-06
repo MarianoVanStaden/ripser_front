@@ -19,6 +19,9 @@ export const registroActividadApi = {
     size: number,
     filters: ActividadFilters = {}
   ): Promise<PageResponse<RegistroActividadDTO>> => {
+    // Arrays van como CSV en un solo query param: Spring bindea "A,B" a List<Enum>.
+    // (axios por defecto serializa arrays como key[]=... que Spring no bindea.)
+    const csv = (arr?: string[]) => (arr && arr.length ? arr.join(',') : undefined);
     const res = await api.get<PageResponse<RegistroActividadDTO>>(BASE, {
       params: {
         page,
@@ -26,7 +29,8 @@ export const registroActividadApi = {
         fechaDesde: filters.fechaDesde,
         fechaHasta: filters.fechaHasta,
         usuarioId: filters.usuarioId,
-        tipoAccion: filters.tipoAccion,
+        tipoAccion: csv(filters.tiposAccion),
+        modulo: csv(filters.modulos),
         fueraHorario: filters.fueraHorario,
       },
     });
