@@ -83,6 +83,21 @@ const formatCurrency = (value: number | null | undefined): string => {
   })}`;
 };
 
+// Provincia legible para los PDFs: usa el catálogo con acentos (RIO_NEGRO → "Río
+// Negro", TIERRA_DEL_FUEGO → "Tierra del Fuego"). Fallback defensivo para valores
+// fuera del enum: reemplaza guiones bajos y capitaliza salvo conectores.
+const CONECTORES_PROVINCIA = ['de', 'del', 'la', 'las', 'los', 'y'];
+const formatProvincia = (p?: string | null): string => {
+  if (!p) return '';
+  const mapped = PROVINCIA_LABELS[p as keyof typeof PROVINCIA_LABELS];
+  if (mapped) return mapped;
+  return p
+    .toLowerCase()
+    .split('_')
+    .map((w) => (CONECTORES_PROVINCIA.includes(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(' ');
+};
+
 /**
  * Formatea una fecha en formato DD/MM/YYYY
  */
@@ -529,7 +544,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
     ],
     [
       { content: 'Provincia:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
-      { content: contacto.provincia, styles: { fillColor: COLORS.white } },
+      { content: formatProvincia(contacto.provincia), styles: { fillColor: COLORS.white } },
       { content: '', styles: { fillColor: COLORS.lightBlue } },
       { content: '', styles: { fillColor: COLORS.white } }
     ],
@@ -740,9 +755,9 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
   doc.text(notaText, pageWidth / 2, footerY + 6, { align: 'center' });
 
   // --- DESCARGAR PDF ---
-  const nombreCliente = presupuesto.clienteNombre?.replace(/\s+/g, '_') || 'Cliente';
+  const nombreContacto = (presupuesto.clienteNombre || presupuesto.leadNombre || 'Cliente').replace(/\s+/g, '_');
   const fecha = formatDate(presupuesto.fechaEmision).replace(/\//g, '-');
-  const nombreArchivo = `Presupuesto_${nombreCliente}_${fecha}.pdf`;
+  const nombreArchivo = `Presupuesto_${nombreContacto}_${fecha}.pdf`;
 
   doc.save(nombreArchivo);
 };
@@ -862,7 +877,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
     ],
     [
       { content: 'Provincia:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
-      { content: cliente.provincia || '', styles: { fillColor: COLORS.white } },
+      { content: formatProvincia(cliente.provincia), styles: { fillColor: COLORS.white } },
       { content: '', styles: { fillColor: COLORS.lightBlue } },
       { content: '', styles: { fillColor: COLORS.white } }
     ],
@@ -1192,7 +1207,7 @@ export const generarCreditoPDF = (
   const telefono = cliente?.telefono?.trim() || cliente?.telefonoAlternativo?.trim()
     || cliente?.whatsapp?.trim() || null;
   const localidad = cliente?.ciudad?.trim() || null;
-  const provincia = cliente?.provincia ? (PROVINCIA_LABELS[cliente.provincia] || cliente.provincia) : null;
+  const provincia = cliente?.provincia ? formatProvincia(cliente.provincia) : null;
 
   const CLIENTE_BOX_H = 34;
   doc.setDrawColor(...COLORS.mediumGray);
@@ -1633,7 +1648,7 @@ export const generarFichaTecnicaPDF = ({
       ],
       [
         { content: 'PROVINCIA', styles: labelStyle },
-        { content: cliente?.provincia ?? '', styles: valueStyle },
+        { content: formatProvincia(cliente?.provincia), styles: valueStyle },
         { content: 'MEDIDA', styles: labelStyle },
         { content: e.medida?.nombre ?? '', styles: valueStyle },
       ],
