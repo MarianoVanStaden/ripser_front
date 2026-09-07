@@ -792,10 +792,17 @@ export interface Sueldo {
   totalDescuentos: number;
   sueldoNeto: number;
 
+  // Pago (server-side): montoPagado acumulado, saldoPendiente y estadoPago derivados.
+  montoPagado?: number;
+  saldoPendiente?: number;
+  estadoPago?: EstadoPagoSueldo;
+
   fechaPago?: string;
   historial?: boolean;
   observaciones?: string;
 }
+
+export type EstadoPagoSueldo = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
 
 export interface Legajo {
   id: number;

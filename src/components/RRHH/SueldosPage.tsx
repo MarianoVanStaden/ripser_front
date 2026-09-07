@@ -31,7 +31,7 @@ import { getNombreCompleto } from '../../utils/userDisplay';
 import { categoriaSalarialApi } from '../../api/services/categoriaSalarialApi';
 import { bonoProduccionApi } from '../../api/services/bonoProduccionApi';
 import type {
-  Sueldo, Empleado, CategoriaSalarial, BonoProduccionTabla,
+  Sueldo, Empleado, CategoriaSalarial, BonoProduccionTabla, EstadoPagoSueldo,
 } from '../../types';
 import { CONCEPTO_SUELDO_LABELS } from '../../types/remuneraciones.types';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -367,6 +367,7 @@ const SueldosPage: React.FC = () => {
                   <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Bruto</TableCell>
                   <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Descuentos</TableCell>
                   <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Neto</TableCell>
+                  <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="right">Saldo</TableCell>
                   <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Estado Pago</TableCell>
                   <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }} align="center">Acciones</TableCell>
                 </TableRow>
@@ -374,7 +375,7 @@ const SueldosPage: React.FC = () => {
               <TableBody>
                 {filteredSueldos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
+                    <TableCell colSpan={9} align="center">
                       <Typography variant="body2" color="textSecondary">No hay sueldos registrados</Typography>
                     </TableCell>
                   </TableRow>
@@ -407,14 +408,21 @@ const SueldosPage: React.FC = () => {
                         ${Number(sueldo.sueldoNeto || 0).toLocaleString('es-AR')}
                       </Typography>
                     </TableCell>
-                    <TableCell align="center">
-                      {sueldo.fechaPago ? (
-                        <Chip icon={<PaymentIcon />} label={`Pagado ${dayjs(sueldo.fechaPago).format('DD/MM/YYYY')}`}
-                          size="small" color="success" />
-                      ) : (
-                        <Chip label="Pendiente" size="small" color="warning" variant="outlined" />
-                      )}
+                    <TableCell align="right">
+                      {(() => {
+                        const saldo = Number(
+                          sueldo.saldoPendiente
+                            ?? Math.max(0, Number(sueldo.sueldoNeto || 0) - Number(sueldo.montoPagado || 0)),
+                        );
+                        return (
+                          <Typography variant="body2" fontWeight={600}
+                            color={saldo > 0 ? 'warning.main' : 'text.disabled'}>
+                            ${saldo.toLocaleString('es-AR')}
+                          </Typography>
+                        );
+                      })()}
                     </TableCell>
+                    <TableCell align="center">{renderEstadoPago(sueldo)}</TableCell>
                     <TableCell align="center">
                       <Stack direction="row" spacing={0.5} justifyContent="center">
                         <Tooltip title="Ver Detalle">
@@ -422,7 +430,7 @@ const SueldosPage: React.FC = () => {
                             <ViewIcon />
                           </IconButton>
                         </Tooltip>
-                        {!sueldo.fechaPago && (
+                        {estadoPagoDe(sueldo) !== 'PAGADO' && (
                           <Tooltip title="Registrar pago (multi-cuenta)">
                             <IconButton size="small" color="success" onClick={() => { setPagoTarget(sueldo); setOpenPago(true); }}>
                               <PaymentsIcon />
@@ -538,6 +546,20 @@ const SueldosPage: React.FC = () => {
                             ${Number(selected.sueldoNeto || 0).toLocaleString('es-AR')}
                           </Typography>
                         </Box>
+                        {estadoPagoDe(selected) !== 'PENDIENTE' && (
+                          <DetailMoney label="Pagado" value={selected.montoPagado ?? 0} bold />
+                        )}
+                        {estadoPagoDe(selected) !== 'PAGADO' && (
+                          <Box display="flex" justifyContent="space-between">
+                            <Typography variant="body2" color="warning.main" fontWeight={700}>Saldo Pendiente</Typography>
+                            <Typography variant="body2" color="warning.main" fontWeight={700}>
+                              ${Number(
+                                selected.saldoPendiente
+                                  ?? Math.max(0, Number(selected.sueldoNeto || 0) - Number(selected.montoPagado || 0)),
+                              ).toLocaleString('es-AR')}
+                            </Typography>
+                          </Box>
+                        )}
                       </Stack>
                     </CardContent>
                   </Card>
@@ -610,6 +632,26 @@ const SueldosPage: React.FC = () => {
       </Dialog>
     </Box>
   );
+};
+
+// Estado de pago: usa el derivado del backend; fallback a fechaPago para
+// registros viejos servidos sin el campo.
+const estadoPagoDe = (s: Sueldo): EstadoPagoSueldo =>
+  s.estadoPago ?? (s.fechaPago ? 'PAGADO' : 'PENDIENTE');
+
+const renderEstadoPago = (s: Sueldo) => {
+  const estado = estadoPagoDe(s);
+  if (estado === 'PAGADO') {
+    return (
+      <Chip icon={<PaymentIcon />}
+        label={s.fechaPago ? `Pagado ${dayjs(s.fechaPago).format('DD/MM/YYYY')}` : 'Pagado'}
+        size="small" color="success" />
+    );
+  }
+  if (estado === 'PARCIAL') {
+    return <Chip icon={<PaymentIcon />} label="Pago parcial" size="small" color="warning" />;
+  }
+  return <Chip label="Pendiente" size="small" color="warning" variant="outlined" />;
 };
 
 const DetailRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (

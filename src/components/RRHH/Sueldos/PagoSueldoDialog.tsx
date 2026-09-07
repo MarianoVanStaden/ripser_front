@@ -80,7 +80,11 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
         const cajaDefault = activas[0];
         setRows([{
           cajaPesosId: cajaDefault?.id ?? null,
-          monto: Number(sueldo?.sueldoNeto ?? 0),
+          // Prefill = saldo pendiente (neto − ya pagado), no el neto completo.
+          monto: Math.max(0, Number(
+            sueldo?.saldoPendiente
+              ?? (Number(sueldo?.sueldoNeto ?? 0) - Number(sueldo?.montoPagado ?? 0)),
+          )),
           metodoPago: metodoDefaultDeCaja(cajaDefault),
           observaciones: '',
         }]);
@@ -90,12 +94,16 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
   }, [open, sueldo]);
 
   const sueldoNeto = Number(sueldo?.sueldoNeto ?? 0);
+  const yaPagado = Number(sueldo?.montoPagado ?? 0);
+  // Base del pago = saldo pendiente (neto − ya pagado). Permite completar un
+  // pago parcial previo sin volver a cargar lo ya pagado.
+  const saldoAPagar = Number(sueldo?.saldoPendiente ?? Math.max(0, sueldoNeto - yaPagado));
 
   const totalRows = useMemo(
     () => rows.reduce((s, r) => s + (Number(r.monto) || 0), 0),
     [rows],
   );
-  const diff = totalRows - sueldoNeto;
+  const diff = totalRows - saldoAPagar;
 
   const updateRow = (idx: number, patch: Partial<PayRow>) => {
     setRows(prev => {
@@ -107,7 +115,7 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
 
   const addRow = () => {
     // Pre-llenar el monto del nuevo renglón con la diferencia faltante.
-    const faltante = Math.max(0, sueldoNeto - totalRows);
+    const faltante = Math.max(0, saldoAPagar - totalRows);
     const cajaDefault = cajas[0];
     setRows(prev => [...prev, {
       cajaPesosId: cajaDefault?.id ?? null,
@@ -123,7 +131,7 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
 
   const ajustarAlNeto = (idx: number) => {
     const otros = rows.reduce((s, r, i) => (i === idx ? s : s + (Number(r.monto) || 0)), 0);
-    const restante = Math.max(0, sueldoNeto - otros);
+    const restante = Math.max(0, saldoAPagar - otros);
     updateRow(idx, { monto: restante });
   };
 
@@ -187,10 +195,17 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
             sx={{ minWidth: 180 }}
           />
           <Box flex={1}>
-            <Typography variant="caption" color="textSecondary" display="block">Sueldo Neto a pagar</Typography>
-            <Typography variant="h6" fontWeight={700} color="success.main">
-              ${sueldoNeto.toLocaleString('es-AR')}
+            <Typography variant="caption" color="textSecondary" display="block">
+              {yaPagado > 0 ? 'Saldo pendiente a pagar' : 'Sueldo Neto a pagar'}
             </Typography>
+            <Typography variant="h6" fontWeight={700} color="success.main">
+              ${saldoAPagar.toLocaleString('es-AR')}
+            </Typography>
+            {yaPagado > 0 && (
+              <Typography variant="caption" color="textSecondary">
+                Ya pagado ${yaPagado.toLocaleString('es-AR')} de ${sueldoNeto.toLocaleString('es-AR')}
+              </Typography>
+            )}
           </Box>
           <Box flex={1}>
             <Typography variant="caption" color="textSecondary" display="block">Total ingresado</Typography>
@@ -346,7 +361,8 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
 
         {diff < 0 && (
           <Alert severity="info" sx={{ mt: 2 }}>
-            Vas a pagar menos que el neto. El sueldo se marca como pagado igual; si querés podés cargar el resto después como otro pago.
+            Vas a pagar menos que el saldo pendiente. El sueldo queda como <strong>Pago parcial</strong> con el resto a cobrar;
+            podés cargar el saldo después como otro pago.
           </Alert>
         )}
       </DialogContent>

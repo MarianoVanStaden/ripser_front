@@ -34,6 +34,12 @@ import {
 } from '../../../api/services/liquidacionFinalApi';
 import PagoLiquidacionDialog from '../LiquidacionesFinales/PagoLiquidacionDialog';
 
+// Saldo pendiente de un sueldo (neto − ya pagado). Fallback para registros
+// servidos sin los campos de pago parcial. Incluye a los PARCIAL (que ya tienen
+// fechaPago) para poder completarlos también desde el pago masivo.
+const saldoPendienteDe = (s: { sueldoNeto?: number; montoPagado?: number; saldoPendiente?: number }): number =>
+  Number(s.saldoPendiente ?? Math.max(0, Number(s.sueldoNeto || 0) - Number(s.montoPagado || 0)));
+
 const metodoDefaultDeCaja = (caja: CajaPesos | undefined): MetodoPago => {
   if (!caja) return 'EFECTIVO';
   if (caja.metodoPagoPrincipal) return caja.metodoPagoPrincipal;
@@ -131,7 +137,7 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
     if (!sueldosRaw) return;
     const next: Record<number, boolean> = {};
     (Array.isArray(sueldosRaw) ? sueldosRaw : []).forEach((s: any) => {
-      if (!s.fechaPago) next[s.id] = true;
+      if (saldoPendienteDe(s) > 0) next[s.id] = true;
     });
     setSeleccion(next);
   }, [sueldosRaw]);
@@ -146,14 +152,14 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
   });
   const liquidacionesPendientes = liquidacionesQuery.data?.content ?? [];
 
-  const pendientes = useMemo(() => sueldos.filter(s => !s.fechaPago), [sueldos]);
+  const pendientes = useMemo(() => sueldos.filter(s => saldoPendienteDe(s) > 0), [sueldos]);
   const seleccionados = useMemo(
     () => pendientes.filter(s => seleccion[s.id]),
     [pendientes, seleccion],
   );
 
   const totalSeleccionado = useMemo(
-    () => seleccionados.reduce((sum, s) => sum + Number(s.sueldoNeto || 0), 0),
+    () => seleccionados.reduce((sum, s) => sum + saldoPendienteDe(s), 0),
     [seleccionados],
   );
 
@@ -189,7 +195,7 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
             fecha,
             items: [{
               cajaPesosId: Number(cajaId),
-              monto: Number(s.sueldoNeto || 0),
+              monto: saldoPendienteDe(s),
               metodoPago,
               observaciones: observaciones?.trim() || undefined,
             }],
@@ -471,8 +477,13 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight={700} color="success.main">
-                        ${Number(s.sueldoNeto || 0).toLocaleString('es-AR')}
+                        ${saldoPendienteDe(s).toLocaleString('es-AR')}
                       </Typography>
+                      {Number(s.montoPagado || 0) > 0 && (
+                        <Typography variant="caption" color="warning.main" display="block">
+                          parcial (neto ${Number(s.sueldoNeto || 0).toLocaleString('es-AR')})
+                        </Typography>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
