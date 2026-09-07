@@ -20,83 +20,89 @@ import {
   Settings as SettingsIcon,
   AttachMoney as MoneyIcon
 } from '@mui/icons-material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { parametroSistemaApi } from '../../api/services/parametroSistemaApi';
 import type { ParametroSistema } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 
+const PARAM_CLAVE = 'VALOR_HORA_MANO_OBRA';
+const PARAM_KEY = ['parametro-sistema', PARAM_CLAVE] as const;
+
 const ConfiguracionTallerPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const queryClient = useQueryClient();
   const [valorHora, setValorHora] = useState<string>('');
   const [parametroId, setParametroId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Read: si el parámetro no existe (404) devolvemos null → se crea al guardar.
+  const paramQuery = useQuery({
+    queryKey: PARAM_KEY,
+    queryFn: async (): Promise<ParametroSistema | null> => {
+      try {
+        return await parametroSistemaApi.getByClave(PARAM_CLAVE);
+      } catch (err: any) {
+        if (err.response?.status === 404) return null;
+        throw err;
+      }
+    },
+  });
+
+  // Siembra el form editable desde el read. La key no está en ningún mapa de SSE
+  // y el QueryClient no refetchea en background → no pisa lo que el usuario tipea.
   useEffect(() => {
-    loadParametro();
-  }, []);
-
-  const loadParametro = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const parametro = await parametroSistemaApi.getByClave('VALOR_HORA_MANO_OBRA');
-      setValorHora(parametro.valor);
-      setParametroId(parametro.id);
-    } catch (err: any) {
-      // Si el parámetro no existe, se creará al guardar
-      if (err.response?.status === 404) {
-        setValorHora('5000'); // Valor por defecto
-      } else {
-        setError('Error al cargar la configuración');
-        console.error('Error loading parametro:', err);
-      }
-    } finally {
-      setLoading(false);
+    if (paramQuery.data) {
+      setValorHora(paramQuery.data.valor);
+      setParametroId(paramQuery.data.id);
+    } else if (paramQuery.data === null) {
+      setValorHora('5000'); // Valor por defecto
+      setParametroId(null);
     }
-  };
+  }, [paramQuery.data]);
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      setError(null);
-      setSuccess(null);
+  const loading = paramQuery.isLoading;
+  const loadError = paramQuery.isError ? 'Error al cargar la configuración' : null;
 
-      // Validar que sea un número válido
-      const valor = parseFloat(valorHora);
-      if (isNaN(valor) || valor < 0) {
-        setError('Por favor ingrese un valor numérico válido mayor o igual a 0');
-        return;
-      }
-
+  const guardarMut = useMutation({
+    mutationFn: async () => {
       const parametroData: ParametroSistema = {
         id: parametroId || 0,
-        clave: 'VALOR_HORA_MANO_OBRA',
+        clave: PARAM_CLAVE,
         valor: valorHora,
         descripcion: 'Valor por hora de mano de obra para el cálculo de costos en órdenes de servicio',
         tipo: 'DECIMAL',
         fechaActualizacion: new Date().toISOString()
       };
-
-      if (parametroId) {
-        // Actualizar parámetro existente
-        await parametroSistemaApi.update(parametroId, parametroData);
-      } else {
-        // Crear nuevo parámetro
-        const created = await parametroSistemaApi.create(parametroData);
-        setParametroId(created.id);
+      return parametroId
+        ? parametroSistemaApi.update(parametroId, parametroData)
+        : parametroSistemaApi.create(parametroData);
+    },
+    onSuccess: (result) => {
+      if (!parametroId && result?.id) {
+        setParametroId(result.id);
       }
-
       setSuccess('Configuración guardada exitosamente');
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
+      queryClient.invalidateQueries({ queryKey: PARAM_KEY });
+    },
+    onError: (err: any) => {
       setError(err.response?.data?.message || 'Error al guardar la configuración');
-      console.error('Error saving parametro:', err);
-    } finally {
-      setSaving(false);
+    },
+  });
+  const saving = guardarMut.isPending;
+
+  const handleSave = () => {
+    setError(null);
+    setSuccess(null);
+    // Validar que sea un número válido
+    const valor = parseFloat(valorHora);
+    if (isNaN(valor) || valor < 0) {
+      setError('Por favor ingrese un valor numérico válido mayor o igual a 0');
+      return;
     }
+    guardarMut.mutate();
   };
 
   return (
@@ -114,9 +120,9 @@ const ConfiguracionTallerPage: React.FC = () => {
         </Box>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-          {error}
+      {(error || loadError) && (
+        <Alert severity="error" sx={{ mb: 3 }} {...(error ? { onClose: () => setError(null) } : {})}>
+          {error || loadError}
         </Alert>
       )}
 
@@ -191,7 +197,7 @@ const ConfiguracionTallerPage: React.FC = () => {
             <Stack direction={{ xs: 'column-reverse', sm: 'row' }} justifyContent="flex-end" spacing={2} mt={2}>
               <Button
                 variant="outlined"
-                onClick={loadParametro}
+                onClick={() => { setError(null); paramQuery.refetch(); }}
                 disabled={saving}
                 fullWidth={isMobile}
               >

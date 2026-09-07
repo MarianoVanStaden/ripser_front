@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
 // (@ts-nocheck removido — ver MUI_V7_GRID_FIX.md si reaparecen errores de Grid)
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -40,6 +40,7 @@ import {
   Build as BuildIcon,
   Person as PersonIcon
 } from '@mui/icons-material';
+import { useQuery } from '@tanstack/react-query';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import type { OrdenServicio } from '../../types';
 import dayjs from 'dayjs';
@@ -49,9 +50,6 @@ import ResponsiveDataView from '../common/ResponsiveDataView';
 const TrabajosRealizadosPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [ordenes, setOrdenes] = useState<OrdenServicio[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<OrdenServicio | null>(null);
   const [open, setOpen] = useState(false);
   
@@ -61,27 +59,19 @@ const TrabajosRealizadosPage: React.FC = () => {
   const [fechaHasta, setFechaHasta] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
 
-  useEffect(() => {
-    loadOrdenes();
-  }, []);
-
-  const loadOrdenes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const ordenesQuery = useQuery({
+    queryKey: ['ordenes-servicio', 'trabajos-realizados'],
+    queryFn: async () => {
       const [finalizadas, canceladas] = await Promise.all([
         ordenServicioApi.getByEstado('FINALIZADA'),
         ordenServicioApi.getByEstado('CANCELADA')
       ]);
-      setOrdenes([...finalizadas, ...canceladas]);
-    } catch (err) {
-      setError('Error al cargar los trabajos realizados');
-      console.error('Error loading ordenes:', err);
-      setOrdenes([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return [...finalizadas, ...canceladas];
+    },
+  });
+  const ordenes = ordenesQuery.data ?? [];
+  const loading = ordenesQuery.isLoading;
+  const error = ordenesQuery.isError ? 'Error al cargar los trabajos realizados' : null;
 
   const getClientName = (orden: OrdenServicio) => {
     if (orden.clienteNombre) {
@@ -151,14 +141,14 @@ const TrabajosRealizadosPage: React.FC = () => {
           Trabajos Realizados
         </Typography>
         <Tooltip title="Recargar">
-          <IconButton onClick={loadOrdenes} color="primary">
+          <IconButton onClick={() => ordenesQuery.refetch()} color="primary">
             <RefreshIcon />
           </IconButton>
         </Tooltip>
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
