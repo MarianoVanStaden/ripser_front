@@ -66,6 +66,10 @@ export interface LiquidacionFinal {
   totalHaberes: number;
   totalDescuentos: number;
   totalNeto: number;
+  /** Pago acumulado (server-side); estadoPago derivado. */
+  montoPagado?: number;
+  saldoPendiente?: number;
+  estadoPago?: 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
   fechaPago: string | null;
   observaciones: string | null;
   motivoAnulacion: string | null;

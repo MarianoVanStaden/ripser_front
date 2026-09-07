@@ -40,6 +40,22 @@ const ESTADO_COLOR: Record<string, 'default' | 'info' | 'success' | 'error' | 'w
 const fmt = (n: number | undefined | null) =>
   `$${Number(n ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
+// Una CONFIRMADA con pago parcial se muestra como "Confirmada · Parcial" para
+// no ocultar que quedó saldo (la CONFIRMADA "pura" aún no tuvo ningún pago).
+const estadoChip = (l: LiquidacionFinal) => {
+  const parcial = l.estado === 'CONFIRMADA'
+    && (l.estadoPago === 'PARCIAL' || Number(l.montoPagado ?? 0) > 0);
+  if (parcial) {
+    const saldo = Number(l.saldoPendiente ?? Math.max(0, Number(l.totalNeto ?? 0) - Number(l.montoPagado ?? 0)));
+    return (
+      <Tooltip title={`Pagado ${fmt(l.montoPagado)} — Saldo ${fmt(saldo)}`}>
+        <Chip label="Confirmada · Parcial" size="small" color="warning" />
+      </Tooltip>
+    );
+  }
+  return <Chip label={l.estado} size="small" color={ESTADO_COLOR[l.estado] ?? 'default'} />;
+};
+
 const motivoLabel = (value: string | null) =>
   value ? (MOTIVOS_EGRESO.find(m => m.value === value)?.label ?? value) : '—';
 
@@ -172,9 +188,7 @@ const LiquidacionesFinalesPage: React.FC<Props> = ({ embedded = false }) => {
                       <TableCell>{l.empleadoApellido}, {l.empleadoNombre}</TableCell>
                       <TableCell>{l.fechaEgreso ? dayjs(l.fechaEgreso).format('DD/MM/YYYY') : '—'}</TableCell>
                       <TableCell>{motivoLabel(l.motivoEgreso)}</TableCell>
-                      <TableCell>
-                        <Chip label={l.estado} size="small" color={ESTADO_COLOR[l.estado] ?? 'default'} />
-                      </TableCell>
+                      <TableCell>{estadoChip(l)}</TableCell>
                       <TableCell align="right">{fmt(l.totalHaberes)}</TableCell>
                       <TableCell align="right">{fmt(l.totalDescuentos)}</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700 }}>{fmt(l.totalNeto)}</TableCell>

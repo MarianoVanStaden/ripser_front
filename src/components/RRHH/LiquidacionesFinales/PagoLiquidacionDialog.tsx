@@ -73,7 +73,11 @@ const PagoLiquidacionDialog: React.FC<Props> = ({ open, liquidacion, onClose, on
         const cajaDefault = activas[0];
         setRows([{
           cajaPesosId: cajaDefault?.id ?? null,
-          monto: Number(liquidacion?.totalNeto ?? 0),
+          // Prefill = saldo pendiente (neto − ya pagado), no el neto completo.
+          monto: Math.max(0, Number(
+            liquidacion?.saldoPendiente
+              ?? (Number(liquidacion?.totalNeto ?? 0) - Number(liquidacion?.montoPagado ?? 0)),
+          )),
           metodoPago: metodoDefaultDeCaja(cajaDefault),
           observaciones: '',
         }]);
@@ -83,12 +87,15 @@ const PagoLiquidacionDialog: React.FC<Props> = ({ open, liquidacion, onClose, on
   }, [open, liquidacion]);
 
   const neto = Number(liquidacion?.totalNeto ?? 0);
+  const yaPagado = Number(liquidacion?.montoPagado ?? 0);
+  // Base del pago = saldo pendiente; permite completar un pago parcial previo.
+  const saldoAPagar = Number(liquidacion?.saldoPendiente ?? Math.max(0, neto - yaPagado));
 
   const totalRows = useMemo(
     () => rows.reduce((s, r) => s + (Number(r.monto) || 0), 0),
     [rows],
   );
-  const diff = totalRows - neto;
+  const diff = totalRows - saldoAPagar;
 
   const updateRow = (idx: number, patch: Partial<PayRow>) => {
     setRows(prev => {
@@ -99,7 +106,7 @@ const PagoLiquidacionDialog: React.FC<Props> = ({ open, liquidacion, onClose, on
   };
 
   const addRow = () => {
-    const faltante = Math.max(0, neto - totalRows);
+    const faltante = Math.max(0, saldoAPagar - totalRows);
     const cajaDefault = cajas[0];
     setRows(prev => [...prev, {
       cajaPesosId: cajaDefault?.id ?? null,
@@ -115,7 +122,7 @@ const PagoLiquidacionDialog: React.FC<Props> = ({ open, liquidacion, onClose, on
 
   const ajustarAlNeto = (idx: number) => {
     const otros = rows.reduce((s, r, i) => (i === idx ? s : s + (Number(r.monto) || 0)), 0);
-    const restante = Math.max(0, neto - otros);
+    const restante = Math.max(0, saldoAPagar - otros);
     updateRow(idx, { monto: restante });
   };
 
@@ -180,10 +187,17 @@ const PagoLiquidacionDialog: React.FC<Props> = ({ open, liquidacion, onClose, on
             sx={{ minWidth: 180 }}
           />
           <Box flex={1}>
-            <Typography variant="caption" color="textSecondary" display="block">Neto a pagar</Typography>
-            <Typography variant="h6" fontWeight={700} color="success.main">
-              ${neto.toLocaleString('es-AR')}
+            <Typography variant="caption" color="textSecondary" display="block">
+              {yaPagado > 0 ? 'Saldo pendiente a pagar' : 'Neto a pagar'}
             </Typography>
+            <Typography variant="h6" fontWeight={700} color="success.main">
+              ${saldoAPagar.toLocaleString('es-AR')}
+            </Typography>
+            {yaPagado > 0 && (
+              <Typography variant="caption" color="textSecondary">
+                Ya pagado ${yaPagado.toLocaleString('es-AR')} de ${neto.toLocaleString('es-AR')}
+              </Typography>
+            )}
           </Box>
           <Box flex={1}>
             <Typography variant="caption" color="textSecondary" display="block">Total ingresado</Typography>
@@ -336,7 +350,8 @@ const PagoLiquidacionDialog: React.FC<Props> = ({ open, liquidacion, onClose, on
 
         {diff < 0 && (
           <Alert severity="info" sx={{ mt: 2 }}>
-            Vas a pagar menos que el neto. La liquidación se marca como pagada igual; el resto se puede cargar como movimiento manual.
+            Vas a pagar menos que el saldo pendiente. La liquidación queda en <strong>CONFIRMADA (pago parcial)</strong> con el
+            resto a cobrar; podés registrar el saldo después como otro pago.
           </Alert>
         )}
       </DialogContent>
