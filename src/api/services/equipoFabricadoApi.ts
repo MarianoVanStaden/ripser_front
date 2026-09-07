@@ -172,6 +172,19 @@ export const equipoFabricadoApi = {
     return response.data;
   },
 
+  /**
+   * Setea/edita/quita el color previsto de un equipo base sin terminación (anotación en
+   * observaciones). NO asigna el color real ni consume stock: el revestimiento definitivo se
+   * aplica en la terminación. `colorId = null` quita el previsto.
+   */
+  updateColorPrevisto: async (id: number, colorId: number | null) => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${id}/color-previsto`,
+      { colorId },
+    );
+    return response.data;
+  },
+
   delete: async (id: number) => {
     await api.delete(`/api/equipos-fabricados/${id}`);
   },

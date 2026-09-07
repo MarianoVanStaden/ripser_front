@@ -12,9 +12,10 @@ import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel } from
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
   Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, PlayArrow, Pending, Brush,
-  QrCode2, AssignmentTurnedIn, SwapHoriz,
+  QrCode2, AssignmentTurnedIn, SwapHoriz, Palette,
 } from '@mui/icons-material';
 import AplicarTerminacionDialog from './AplicarTerminacionDialog';
+import EditarColorPrevistoDialog from './EditarColorPrevistoDialog';
 import ReasignarEquipoDialog from './ReasignarEquipoDialog';
 import AsignarClienteDialog from './Equipos/dialogs/AsignarClienteDialog';
 import CompletarEquipoDialog from './Equipos/dialogs/CompletarEquipoDialog';
@@ -236,6 +237,13 @@ const EquiposList: React.FC = () => {
   }>({ open: false, equipo: null });
 
   const [terminacionDialog, setTerminacionDialog] = useState<{
+    open: boolean;
+    equipo: EquipoFabricadoListDTO | null;
+  }>({ open: false, equipo: null });
+
+  // Elegir color previsto (revestimiento) de una base comprometida cuyo botón Editar está
+  // bloqueado por estar reservada/facturada. Solo anota el color; no lo aplica (eso va en terminación).
+  const [colorPrevistoDialog, setColorPrevistoDialog] = useState<{
     open: boolean;
     equipo: EquipoFabricadoListDTO | null;
   }>({ open: false, equipo: null });
@@ -820,6 +828,12 @@ const EquiposList: React.FC = () => {
         const isFacturadoOrHigher = estadoAsignacion && ['FACTURADO', 'EN_TRANSITO', 'ENTREGADO'].includes(estadoAsignacion);
         const canEdit = !isReservadoOrHigher;
         const canDelete = !isReservadoOrHigher;
+        // Base sin color real y ya comprometida (reservada/facturada): el botón Editar está
+        // bloqueado, pero el revestimiento debe poder elegirse. Solo anota el color previsto.
+        // Se limita a los estados previos a la terminación: en FABRICADO_SIN_TERMINACION ya
+        // aparece "Aplicar Terminación", que es la acción correcta (aplica el color con stock).
+        const canEditColorPrevisto = isReservadoOrHigher && !params.row.color
+          && ['PENDIENTE', 'EN_PROCESO', 'PENDIENTE_CONTROL_CALIDAD'].includes(params.row.estado);
         const canAssign = params.row.estado === 'COMPLETADO' && !params.row.asignado && estadoAsignacion === 'DISPONIBLE';
         const canUnassign = params.row.asignado && !isFacturadoOrHigher;
         const canReassign = params.row.asignado && !!estadoAsignacion
@@ -857,6 +871,17 @@ const EquiposList: React.FC = () => {
                 </IconButton>
               </span>
             </Tooltip>
+            {canEditColorPrevisto && (
+              <Tooltip title="Elegir revestimiento (color previsto)">
+                <IconButton
+                  size="small"
+                  color="secondary"
+                  onClick={() => setColorPrevistoDialog({ open: true, equipo: params.row })}
+                >
+                  <Palette fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
             {params.row.estado === 'PENDIENTE' && (
               <Tooltip title="Iniciar Fabricación">
                 <IconButton
@@ -1539,6 +1564,17 @@ const EquiposList: React.FC = () => {
         onClose={() => setTerminacionDialog({ open: false, equipo: null })}
         onSuccess={() => {
           setTerminacionDialog({ open: false, equipo: null });
+          refrescar();
+        }}
+      />
+
+      <EditarColorPrevistoDialog
+        open={colorPrevistoDialog.open}
+        equipo={colorPrevistoDialog.equipo}
+        onClose={() => setColorPrevistoDialog({ open: false, equipo: null })}
+        onSuccess={() => {
+          setColorPrevistoDialog({ open: false, equipo: null });
+          setSnackbar({ open: true, message: 'Color previsto actualizado', severity: 'success' });
           refrescar();
         }}
       />
