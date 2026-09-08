@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Autocomplete,
@@ -74,6 +75,10 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
   onRechazarEtapas,
   modoRechazo = false,
 }) => {
+  const queryClient = useQueryClient();
+  const invalidarProcesoFabricacion = () =>
+    queryClient.invalidateQueries({ queryKey: ['proceso-fabricacion'] });
+
   const [completarDialog, setCompletarDialog] = useState<{
     open: boolean;
     etapa: EtapaFabricacionDTO | null;
@@ -154,6 +159,7 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
         },
       );
       onEtapaActualizada(actualizada);
+      invalidarProcesoFabricacion();
       setCompletarDialog({ open: false, etapa: null });
     } catch (error) {
       setDialogError(extractErrorMessage(error));
@@ -217,6 +223,7 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
         motivo: motivo.trim() || undefined,
       }));
       await onRechazarEtapas(rechazadas);
+      invalidarProcesoFabricacion();
       setEtapasRechazadas(new Map());
     } catch (error) {
       setDialogError(extractErrorMessage(error));
@@ -235,6 +242,7 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
     try {
       const actualizada = await equipoFabricadoApi.iniciarEtapaProduccion(equipoId, etapa.tipoEtapa);
       onEtapaActualizada(actualizada);
+      invalidarProcesoFabricacion();
     } catch (error) {
       setDialogError(extractErrorMessage(error));
     } finally {
@@ -253,6 +261,7 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
         { completado: false },
       );
       onEtapaActualizada(actualizada);
+      invalidarProcesoFabricacion();
     } catch {
       // Error swallowed here: the user-facing pattern is to keep state and surface
       // errors on the dialog flow. A quick undo failure leaves the row visually unchanged.

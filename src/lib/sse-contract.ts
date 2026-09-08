@@ -33,6 +33,8 @@ export const SSE_EVENTS = {
   LEAD_REASIGNADO: 'crm.lead.reasignado',
   /** A postventa quality-control communication was created (on delivery confirmation). */
   COMUNICACION_POSTVENTA_CREADA: 'postventa.comunicacion.creada',
+  /** A production checklist stage changed (started/completed/undone/rejected). */
+  ETAPA_FABRICACION_ACTUALIZADA: 'produccion.etapaFabricacion.actualizada',
 } as const;
 
 export type SseEventName = (typeof SSE_EVENTS)[keyof typeof SSE_EVENTS];
@@ -102,6 +104,7 @@ export type SsePayloadMap = {
   [SSE_EVENTS.RECORDATORIO_ACTUALIZADO]: BaseEvent<RecordatorioPayload>;
   [SSE_EVENTS.LEAD_REASIGNADO]:          BaseEvent<LeadReasignadoPayload>;
   [SSE_EVENTS.COMUNICACION_POSTVENTA_CREADA]: BaseEvent;
+  [SSE_EVENTS.ETAPA_FABRICACION_ACTUALIZADA]: BaseEvent;
 };
 
 // ---------------------------------------------------------------------------
@@ -121,6 +124,7 @@ export const EVENT_QUERY_MAP: Partial<Record<SseEventName, readonly string[]>> =
   [SSE_EVENTS.RECORDATORIO_ACTUALIZADO]:     ['recordatorios', 'recordatoriosConteos'],
   [SSE_EVENTS.LEAD_REASIGNADO]:              ['leads'],
   [SSE_EVENTS.COMUNICACION_POSTVENTA_CREADA]: ['comunicacionesPostventa'],
+  [SSE_EVENTS.ETAPA_FABRICACION_ACTUALIZADA]: ['proceso-fabricacion'],
 };
 
 // Flat list of every unique query key touched by SSE — used for bulk
