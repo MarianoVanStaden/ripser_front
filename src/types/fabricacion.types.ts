@@ -239,12 +239,21 @@ export interface CuelloBotellaAreaDTO {
   esperaMaxHoras?: number;
 }
 
+export interface TendenciaP50SemanaDTO {
+  semana: string;
+  tipoEtapa: TipoEtapaFabricacion;
+  tipoEtapaLabel: string;
+  p50Horas?: number;
+  muestras: number;
+}
+
 export interface KpisProduccionDTO {
   throughputSemanal: ThroughputSemanaDTO[];
   retrabajoPorArea: RetrabajoAreaDTO[];
   productividadPorResponsable: ProductividadResponsableDTO[];
   duracionPorArea: DuracionAreaDTO[];
   cuellosDeBotella: CuelloBotellaAreaDTO[];
+  tendenciaP50Semanal: TendenciaP50SemanaDTO[];
 }
 
 export interface ActualizarEtapaFabricacionDTO {

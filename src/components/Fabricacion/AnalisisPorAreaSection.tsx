@@ -91,6 +91,21 @@ const AnalisisPorAreaSection: React.FC = () => {
   const cuellosData = kpisQuery.data?.cuellosDeBotella ?? [];
   const duracionData = kpisQuery.data?.duracionPorArea ?? [];
   const hayDuracion = duracionData.some((d) => d.muestras > 0);
+
+  // Pivot de la tendencia: [{semana, AISLACION: p50, ...}] ordenado por semana ISO.
+  const tendenciaData = useMemo(() => {
+    const porSemana = new Map<string, Record<string, number | string>>();
+    (kpisQuery.data?.tendenciaP50Semanal ?? []).forEach((fila) => {
+      const row = porSemana.get(fila.semana) ?? { semana: fila.semana };
+      if (fila.p50Horas !== null && fila.p50Horas !== undefined) {
+        row[fila.tipoEtapa] = fila.p50Horas;
+      }
+      porSemana.set(fila.semana, row);
+    });
+    return Array.from(porSemana.values()).sort((a, b) =>
+      String(a.semana).localeCompare(String(b.semana))
+    );
+  }, [kpisQuery.data]);
   const maxFrenados = Math.max(0, ...cuellosData.map((c) => c.equiposFrenados));
 
   const productividadData = useMemo(() => {
@@ -333,6 +348,41 @@ const AnalisisPorAreaSection: React.FC = () => {
                     Solo etapas con fecha de inicio registrada (dato que se captura desde sep 2026) — el
                     volumen crece a medida que el taller usa el botón Iniciar.
                   </Typography>
+
+                  {tendenciaData.length > 1 && (
+                    <Box mt={3}>
+                      <Typography variant="subtitle1" gutterBottom fontWeight={600}>
+                        Tendencia semanal de la mediana (p50)
+                      </Typography>
+                      <ResponsiveContainer width="100%" height={280}>
+                        <LineChart data={tendenciaData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                          <XAxis dataKey="semana" tick={{ fill: CHART_AXIS, fontSize: 12 }} stroke={CHART_AXIS} />
+                          <YAxis tick={{ fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                          <RechartsTooltip
+                            contentStyle={tooltipStyle}
+                            formatter={(value, name) => [formatHoras(Number(value)), name]}
+                          />
+                          <Legend />
+                          {TIPOS_ETAPA.map((tipo, i) => (
+                            <Line
+                              key={tipo}
+                              type="monotone"
+                              dataKey={tipo}
+                              name={AREA_LABELS[tipo]}
+                              stroke={chartSerie(i)}
+                              strokeWidth={2}
+                              dot={{ r: 3 }}
+                              connectNulls
+                            />
+                          ))}
+                        </LineChart>
+                      </ResponsiveContainer>
+                      <Typography variant="caption" color="text.secondary">
+                        Si la línea de un área sube semana a semana, esa área se está enlenteciendo.
+                      </Typography>
+                    </Box>
+                  )}
                 </>
               ) : (
                 <Alert severity="info">
