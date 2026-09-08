@@ -24,6 +24,7 @@ import { useQuery } from '@tanstack/react-query';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import type {
   EtapaProcesoDTO,
+  ProcesoFabricacionEquipoDTO,
   TipoEtapaFabricacion,
 } from '../../types';
 
@@ -53,6 +54,22 @@ const formatHoras = (horas?: number | null): string => {
 };
 
 const toISODate = (d: Date): string => d.toISOString().slice(0, 10);
+
+/**
+ * Horas que el equipo lleva frenado esperando esta área: etapa PENDIENTE (sin
+ * iniciar) con al menos otra área ya completada. Se cuenta desde la última
+ * etapa completada del equipo. Null si no está frenado.
+ */
+const horasFrenado = (equipo: ProcesoFabricacionEquipoDTO, etapa?: EtapaProcesoDTO): number | null => {
+  if (!etapa || etapa.estado !== 'PENDIENTE') return null;
+  const completadas = equipo.etapas
+    .filter((e) => e.estado === 'COMPLETADO' && e.fechaCompletado)
+    .map((e) => new Date(e.fechaCompletado as string).getTime())
+    .filter((t) => !Number.isNaN(t));
+  if (completadas.length === 0) return null;
+  const horas = (Date.now() - Math.max(...completadas)) / 3_600_000;
+  return horas > 0 ? horas : 0;
+};
 
 const estadoEtapaChip = (etapa?: EtapaProcesoDTO) => {
   if (!etapa) {
@@ -218,10 +235,21 @@ const ProcesoFabricacionTab: React.FC = () => {
                     </TableCell>
                     {TIPOS_ETAPA.map((tipo) => {
                       const etapa = equipo.etapas.find((e) => e.tipoEtapa === tipo);
+                      const espera = horasFrenado(equipo, etapa);
                       return (
                         <TableCell key={tipo}>
                           <Stack spacing={0.5} alignItems="flex-start">
                             {estadoEtapaChip(etapa)}
+                            {espera !== null && (
+                              <Tooltip title="Área sin iniciar con otra ya terminada; espera desde la última área completada del equipo">
+                                <Chip
+                                  size="small"
+                                  color="warning"
+                                  variant="outlined"
+                                  label={`Esperando hace ${formatHoras(espera)}`}
+                                />
+                              </Tooltip>
+                            )}
                             {etapa && (etapa.fechaInicio || etapa.fechaCompletado) && (
                               <Tooltip
                                 title={

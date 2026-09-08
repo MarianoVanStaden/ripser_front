@@ -158,7 +158,9 @@ const AnalisisPorAreaSection: React.FC = () => {
 
       {rangoValido && !kpisQuery.isLoading && !kpisQuery.isError && !sinDatos && (
         <Grid container spacing={3}>
-          {/* Cuellos de botella: frenados entre áreas AHORA (no depende del rango) */}
+          {/* Cuellos de botella: frenados entre áreas AHORA (no depende del rango).
+              cuellosData vacío = backend viejo sin el campo (skew de deploy): ocultar la sección. */}
+          {cuellosData.length > 0 && (
           <Grid item xs={12}>
             <Typography variant="subtitle1" fontWeight={600} mb={1}>
               Frenados entre áreas (ahora)
@@ -203,6 +205,7 @@ const AnalisisPorAreaSection: React.FC = () => {
               se cuenta desde la última área completada.
             </Typography>
           </Grid>
+          )}
 
           {/* Throughput semanal */}
           <Grid item xs={12}>
