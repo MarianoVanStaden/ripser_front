@@ -202,6 +202,33 @@ export interface ResumenAreaProcesoDTO {
   completadasConDatos: number;
 }
 
+export interface ThroughputSemanaDTO {
+  semana: string;
+  tipoEtapa: TipoEtapaFabricacion;
+  tipoEtapaLabel: string;
+  cantidad: number;
+}
+
+export interface RetrabajoAreaDTO {
+  tipoEtapa: TipoEtapaFabricacion;
+  tipoEtapaLabel: string;
+  completadas: number;
+  conRechazo: number;
+  porcentajeRetrabajo: number;
+}
+
+export interface ProductividadResponsableDTO {
+  responsable: string;
+  porArea: Partial<Record<TipoEtapaFabricacion, number>>;
+  total: number;
+}
+
+export interface KpisProduccionDTO {
+  throughputSemanal: ThroughputSemanaDTO[];
+  retrabajoPorArea: RetrabajoAreaDTO[];
+  productividadPorResponsable: ProductividadResponsableDTO[];
+}
+
 export interface ActualizarEtapaFabricacionDTO {
   responsableId?: number;
   observaciones?: string;

@@ -20,6 +20,7 @@ import type {
   ActualizarEtapaFabricacionDTO,
   ProcesoFabricacionEquipoDTO,
   ResumenAreaProcesoDTO,
+  KpisProduccionDTO,
   PageResponse,
   PaginationParams,
   EquipoFabricadoFilterParams,
@@ -551,6 +552,17 @@ export const equipoFabricadoApi = {
   ): Promise<ResumenAreaProcesoDTO[]> => {
     const response = await api.get<ResumenAreaProcesoDTO[]>(
       '/api/equipos-fabricados/proceso-fabricacion/resumen-areas',
+      { params: { desde, hasta } }
+    );
+    return response.data;
+  },
+
+  getKpisProduccion: async (
+    desde: string,
+    hasta: string
+  ): Promise<KpisProduccionDTO> => {
+    const response = await api.get<KpisProduccionDTO>(
+      '/api/equipos-fabricados/kpis-produccion',
       { params: { desde, hasta } }
     );
     return response.data;

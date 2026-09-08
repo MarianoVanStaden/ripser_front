@@ -29,6 +29,7 @@ import DesasignarErrorDialog from './Equipos/dialogs/DesasignarErrorDialog';
 import ChecklistEquipoDialog from './Equipos/dialogs/ChecklistEquipoDialog';
 import EquiposTipoSection from './EquiposTipoSection';
 import ProcesoFabricacionTab from './ProcesoFabricacionTab';
+import AnalisisPorAreaSection from './AnalisisPorAreaSection';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -1495,6 +1496,8 @@ const EquiposList: React.FC = () => {
                 </Paper>
               </Grid>
             </Grid>
+
+            <AnalisisPorAreaSection />
           </Box>
         )}
       </Paper>
