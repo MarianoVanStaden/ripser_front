@@ -2,6 +2,9 @@ import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Box,
+  Card,
+  CardContent,
+  Chip,
   CircularProgress,
   Grid,
   Paper,
@@ -45,6 +48,14 @@ const TOP_RESPONSABLES = 10;
 
 const toISODate = (d: Date): string => d.toISOString().slice(0, 10);
 
+const formatHoras = (horas?: number | null): string => {
+  if (horas === null || horas === undefined) return '—';
+  if (horas < 24) return `${Math.round(horas)} h`;
+  const dias = Math.floor(horas / 24);
+  const resto = Math.round(horas % 24);
+  return resto > 0 ? `${dias}d ${resto}h` : `${dias}d`;
+};
+
 const tooltipStyle = { backgroundColor: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT };
 
 const AnalisisPorAreaSection: React.FC = () => {
@@ -77,6 +88,10 @@ const AnalisisPorAreaSection: React.FC = () => {
   }, [kpisQuery.data]);
 
   const retrabajoData = kpisQuery.data?.retrabajoPorArea ?? [];
+  const cuellosData = kpisQuery.data?.cuellosDeBotella ?? [];
+  const duracionData = kpisQuery.data?.duracionPorArea ?? [];
+  const hayDuracion = duracionData.some((d) => d.muestras > 0);
+  const maxFrenados = Math.max(0, ...cuellosData.map((c) => c.equiposFrenados));
 
   const productividadData = useMemo(() => {
     const todos = kpisQuery.data?.productividadPorResponsable ?? [];
@@ -99,7 +114,8 @@ const AnalisisPorAreaSection: React.FC = () => {
     !kpisQuery.isLoading &&
     !kpisQuery.isError &&
     throughputData.length === 0 &&
-    retrabajoData.every((r) => r.completadas === 0);
+    retrabajoData.every((r) => r.completadas === 0) &&
+    cuellosData.every((c) => c.equiposFrenados === 0);
 
   return (
     <Box mt={4}>
@@ -142,6 +158,52 @@ const AnalisisPorAreaSection: React.FC = () => {
 
       {rangoValido && !kpisQuery.isLoading && !kpisQuery.isError && !sinDatos && (
         <Grid container spacing={3}>
+          {/* Cuellos de botella: frenados entre áreas AHORA (no depende del rango) */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" fontWeight={600} mb={1}>
+              Frenados entre áreas (ahora)
+            </Typography>
+            <Grid container spacing={2}>
+              {cuellosData.map((area) => {
+                const esCuello = maxFrenados > 0 && area.equiposFrenados === maxFrenados;
+                return (
+                  <Grid item xs={12} sm={6} md={3} key={area.tipoEtapa}>
+                    <Card
+                      variant="outlined"
+                      sx={esCuello ? { borderColor: 'warning.main', borderWidth: 2 } : undefined}
+                    >
+                      <CardContent>
+                        <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            {area.tipoEtapaLabel}
+                          </Typography>
+                          {esCuello && (
+                            <Chip size="small" color="warning" label="Cuello de botella" />
+                          )}
+                        </Box>
+                        <Typography variant="h5" fontWeight="bold">
+                          {area.equiposFrenados}
+                          <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.75 }}>
+                            equipo{area.equiposFrenados === 1 ? '' : 's'} esperando
+                          </Typography>
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" mt={0.5}>
+                          {area.equiposFrenados > 0
+                            ? `Espera prom. ${formatHoras(area.esperaPromedioHoras)} · máx. ${formatHoras(area.esperaMaxHoras)}`
+                            : 'Sin equipos frenados'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+            <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+              Equipos en fabricación con al menos un área terminada y esta pendiente sin iniciar; la espera
+              se cuenta desde la última área completada.
+            </Typography>
+          </Grid>
+
           {/* Throughput semanal */}
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
@@ -233,6 +295,48 @@ const AnalisisPorAreaSection: React.FC = () => {
                   ))}
                 </BarChart>
               </ResponsiveContainer>
+            </Paper>
+          </Grid>
+
+          {/* Duración por área p50/p90 */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="subtitle1" gutterBottom fontWeight={600}>
+                Duración por área (p50 / p90, en horas)
+              </Typography>
+              {hayDuracion ? (
+                <>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={duracionData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                      <XAxis dataKey="tipoEtapaLabel" tick={{ fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                      <YAxis tick={{ fill: CHART_AXIS }} stroke={CHART_AXIS} />
+                      <RechartsTooltip
+                        contentStyle={tooltipStyle}
+                        formatter={(value, name, entry) => {
+                          const fila = (entry as { payload?: (typeof duracionData)[number] })?.payload;
+                          return [
+                            `${formatHoras(Number(value))} (${fila?.muestras ?? 0} muestras)`,
+                            name,
+                          ];
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="p50Horas" name="p50 (mediana)" fill={chartSerie(6)} />
+                      <Bar dataKey="p90Horas" name="p90" fill={chartSerie(7)} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <Typography variant="caption" color="text.secondary">
+                    Solo etapas con fecha de inicio registrada (dato que se captura desde sep 2026) — el
+                    volumen crece a medida que el taller usa el botón Iniciar.
+                  </Typography>
+                </>
+              ) : (
+                <Alert severity="info">
+                  Todavía sin muestras de duración en el rango: se necesita que las etapas se inicien con el
+                  botón Iniciar (la fecha de inicio se captura desde sep 2026) y se completen.
+                </Alert>
+              )}
             </Paper>
           </Grid>
         </Grid>

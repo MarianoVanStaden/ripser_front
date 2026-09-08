@@ -223,10 +223,28 @@ export interface ProductividadResponsableDTO {
   total: number;
 }
 
+export interface DuracionAreaDTO {
+  tipoEtapa: TipoEtapaFabricacion;
+  tipoEtapaLabel: string;
+  p50Horas?: number;
+  p90Horas?: number;
+  muestras: number;
+}
+
+export interface CuelloBotellaAreaDTO {
+  tipoEtapa: TipoEtapaFabricacion;
+  tipoEtapaLabel: string;
+  equiposFrenados: number;
+  esperaPromedioHoras?: number;
+  esperaMaxHoras?: number;
+}
+
 export interface KpisProduccionDTO {
   throughputSemanal: ThroughputSemanaDTO[];
   retrabajoPorArea: RetrabajoAreaDTO[];
   productividadPorResponsable: ProductividadResponsableDTO[];
+  duracionPorArea: DuracionAreaDTO[];
+  cuellosDeBotella: CuelloBotellaAreaDTO[];
 }
 
 export interface ActualizarEtapaFabricacionDTO {
