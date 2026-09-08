@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import {
   CheckCircle,
+  PlayArrow,
   RadioButtonUnchecked,
   Undo as UndoIcon,
   TaskAlt,
@@ -228,6 +229,19 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
     setEtapasRechazadas(new Map());
   };
 
+  const handleIniciar = async (etapa: EtapaFabricacionDTO) => {
+    setLoadingTipo(etapa.tipoEtapa);
+    setDialogError(null);
+    try {
+      const actualizada = await equipoFabricadoApi.iniciarEtapaProduccion(equipoId, etapa.tipoEtapa);
+      onEtapaActualizada(actualizada);
+    } catch (error) {
+      setDialogError(extractErrorMessage(error));
+    } finally {
+      setLoadingTipo(null);
+    }
+  };
+
   const handleConfirmUndo = async (etapa: EtapaFabricacionDTO) => {
     clearUndoTimer();
     setConfirmUndoTipo(null);
@@ -267,6 +281,12 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
           sx={{ height: 8, borderRadius: 4 }}
         />
 
+        {dialogError && !completarDialog.open && !modoRechazo && (
+          <Alert severity="error" onClose={() => setDialogError(null)}>
+            {dialogError}
+          </Alert>
+        )}
+
         {etapas.some((e) => e.estado === 'RECHAZADO') && !modoRechazo && (
           <Alert severity="warning">
             Este equipo tiene etapas rechazadas en control de calidad. Corregí las etapas marcadas antes de volver a enviar.
@@ -288,7 +308,7 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                   alignItems: 'flex-start',
                   gap: 2,
                   bgcolor: etapa.estado === 'COMPLETADO' ? 'success.lighter' : etapa.estado === 'RECHAZADO' ? 'error.lighter' : 'background.default',
-                  borderColor: etapa.estado === 'COMPLETADO' ? 'success.light' : etapa.estado === 'RECHAZADO' ? 'error.light' : 'divider',
+                  borderColor: etapa.estado === 'COMPLETADO' ? 'success.light' : etapa.estado === 'RECHAZADO' ? 'error.light' : etapa.estado === 'EN_PROCESO' ? 'info.light' : 'divider',
                   transition: 'background-color 200ms ease, border-color 200ms ease',
                 }}
               >
@@ -297,6 +317,8 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                     <CheckCircle sx={{ color: etapa.estado === 'RECHAZADO' ? 'error.main' : 'success.main', fontSize: 28, mt: 0.25 }} />
                   ) : etapa.estado === 'RECHAZADO' ? (
                     <CheckCircle sx={{ color: 'error.main', fontSize: 28, mt: 0.25 }} />
+                  ) : etapa.estado === 'EN_PROCESO' ? (
+                    <PlayArrow sx={{ color: 'info.main', fontSize: 28, mt: 0.25 }} />
                   ) : (
                     <RadioButtonUnchecked sx={{ color: 'text.disabled', fontSize: 28, mt: 0.25 }} />
                   )}
@@ -310,7 +332,25 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                         — Rechazada
                       </Typography>
                     )}
+                    {etapa.estado === 'EN_PROCESO' && (
+                      <Typography component="span" variant="caption" color="info.main" sx={{ ml: 1 }}>
+                        — En proceso
+                      </Typography>
+                    )}
                   </Typography>
+                  {etapa.estado === 'EN_PROCESO' && etapa.fechaInicio && (
+                    <Stack direction="row" spacing={0.75} mt={0.5} flexWrap="wrap" useFlexGap>
+                      <Chip
+                        size="small"
+                        label={`Desde ${formatFecha(etapa.fechaInicio)}`}
+                        variant="outlined"
+                        color="info"
+                      />
+                      {etapa.usuarioInicio && (
+                        <Chip size="small" label={`Inició: ${etapa.usuarioInicio}`} variant="outlined" />
+                      )}
+                    </Stack>
+                  )}
                   {(etapa.estado === 'COMPLETADO' || etapa.completado) && (etapa.responsableNombre || etapa.fechaCompletado) && (
                     <Stack direction="row" spacing={0.75} mt={0.5} flexWrap="wrap" useFlexGap>
                       {etapa.responsableNombre && (
@@ -414,15 +454,29 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                     {isLoading ? (
                       <CircularProgress size={20} />
                     ) : !etapa.completado || etapa.estado === 'RECHAZADO' ? (
-                      <Button
-                        variant={etapa.estado === 'RECHAZADO' ? 'contained' : 'outlined'}
-                        color={etapa.estado === 'RECHAZADO' ? 'error' : 'primary'}
-                        size="small"
-                        disabled={anyLoading}
-                        onClick={() => openCompletarDialog(etapa)}
-                      >
-                        {etapa.estado === 'RECHAZADO' ? 'Rehacer' : 'Completar'}
-                      </Button>
+                      <>
+                        {(etapa.estado === 'PENDIENTE' || !etapa.estado) && (
+                          <Button
+                            variant="outlined"
+                            color="info"
+                            size="small"
+                            startIcon={<PlayArrow />}
+                            disabled={anyLoading}
+                            onClick={() => handleIniciar(etapa)}
+                          >
+                            Iniciar
+                          </Button>
+                        )}
+                        <Button
+                          variant={etapa.estado === 'RECHAZADO' ? 'contained' : 'outlined'}
+                          color={etapa.estado === 'RECHAZADO' ? 'error' : 'primary'}
+                          size="small"
+                          disabled={anyLoading}
+                          onClick={() => openCompletarDialog(etapa)}
+                        >
+                          {etapa.estado === 'RECHAZADO' ? 'Rehacer' : 'Completar'}
+                        </Button>
+                      </>
                     ) : isUndoConfirm ? (
                       <Stack direction="row" spacing={0.5} alignItems="center">
                         <Typography variant="caption" color="text.secondary">

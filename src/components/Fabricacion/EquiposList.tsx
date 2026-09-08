@@ -12,7 +12,7 @@ import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel } from
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
   Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, PlayArrow, Pending, Brush,
-  QrCode2, AssignmentTurnedIn, SwapHoriz, Palette,
+  QrCode2, AssignmentTurnedIn, SwapHoriz, Palette, PrecisionManufacturing,
 } from '@mui/icons-material';
 import AplicarTerminacionDialog from './AplicarTerminacionDialog';
 import EditarColorPrevistoDialog from './EditarColorPrevistoDialog';
@@ -28,6 +28,7 @@ import DesasignarEquipoDialog from './Equipos/dialogs/DesasignarEquipoDialog';
 import DesasignarErrorDialog from './Equipos/dialogs/DesasignarErrorDialog';
 import ChecklistEquipoDialog from './Equipos/dialogs/ChecklistEquipoDialog';
 import EquiposTipoSection from './EquiposTipoSection';
+import ProcesoFabricacionTab from './ProcesoFabricacionTab';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -1290,6 +1291,7 @@ const EquiposList: React.FC = () => {
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs value={currentTab} onChange={(_, newValue) => setCurrentTab(newValue)}>
             <Tab label="Lista de Equipos" icon={<Inventory />} iconPosition="start" />
+            <Tab label="Proceso de Fabricación" icon={<PrecisionManufacturing />} iconPosition="start" />
             <Tab label="KPIs y Análisis" icon={<TrendingUp />} iconPosition="start" />
           </Tabs>
         </Box>
@@ -1315,8 +1317,11 @@ const EquiposList: React.FC = () => {
           </Box>
         )}
 
+        {/* Proceso de Fabricación Tab */}
+        {currentTab === 1 && <ProcesoFabricacionTab />}
+
         {/* KPIs Tab */}
-        {currentTab === 1 && (
+        {currentTab === 2 && (
           <Box>
             <Grid container spacing={3}>
               {/* Estado de Fabricación */}

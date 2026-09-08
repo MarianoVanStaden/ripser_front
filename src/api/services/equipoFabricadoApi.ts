@@ -18,6 +18,8 @@ import type {
   EtapaFabricacionDTO,
   TipoEtapaFabricacion,
   ActualizarEtapaFabricacionDTO,
+  ProcesoFabricacionEquipoDTO,
+  ResumenAreaProcesoDTO,
   PageResponse,
   PaginationParams,
   EquipoFabricadoFilterParams,
@@ -522,6 +524,34 @@ export const equipoFabricadoApi = {
     const response = await api.patch<EtapaFabricacionDTO>(
       `/api/equipos-fabricados/${equipoId}/etapas-produccion/${tipo}`,
       dto
+    );
+    return response.data;
+  },
+
+  iniciarEtapaProduccion: async (
+    equipoId: number,
+    tipo: TipoEtapaFabricacion
+  ): Promise<EtapaFabricacionDTO> => {
+    const response = await api.patch<EtapaFabricacionDTO>(
+      `/api/equipos-fabricados/${equipoId}/etapas-produccion/${tipo}/iniciar`
+    );
+    return response.data;
+  },
+
+  getProcesoFabricacion: async (): Promise<ProcesoFabricacionEquipoDTO[]> => {
+    const response = await api.get<ProcesoFabricacionEquipoDTO[]>(
+      '/api/equipos-fabricados/proceso-fabricacion'
+    );
+    return response.data;
+  },
+
+  getResumenAreasProceso: async (
+    desde: string,
+    hasta: string
+  ): Promise<ResumenAreaProcesoDTO[]> => {
+    const response = await api.get<ResumenAreaProcesoDTO[]>(
+      '/api/equipos-fabricados/proceso-fabricacion/resumen-areas',
+      { params: { desde, hasta } }
     );
     return response.data;
   },

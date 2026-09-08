@@ -157,7 +157,7 @@ export interface EquipoFabricadoDTO {
 }
 
 export type TipoEtapaFabricacion = 'AISLACION' | 'CHAPA' | 'MOTOR' | 'VIDRIOS';
-export type EtapaFabricacionEstado = 'PENDIENTE' | 'COMPLETADO' | 'RECHAZADO';
+export type EtapaFabricacionEstado = 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADO' | 'RECHAZADO';
 
 export interface EtapaFabricacionDTO {
   id: number;
@@ -171,6 +171,35 @@ export interface EtapaFabricacionDTO {
   motivoRechazo?: string;
   usuarioRechazo?: string;
   fechaCompletado?: string;
+  fechaInicio?: string;
+  usuarioInicio?: string;
+}
+
+export interface EtapaProcesoDTO {
+  tipoEtapa: TipoEtapaFabricacion;
+  tipoEtapaLabel: string;
+  estado: EtapaFabricacionEstado;
+  responsableNombre?: string;
+  fechaInicio?: string;
+  fechaCompletado?: string;
+  duracionHoras?: number;
+}
+
+export interface ProcesoFabricacionEquipoDTO {
+  equipoId: number;
+  numeroHeladera: string;
+  modelo: string;
+  estado: string;
+  progreso: number;
+  etapas: EtapaProcesoDTO[];
+}
+
+export interface ResumenAreaProcesoDTO {
+  tipoEtapa: TipoEtapaFabricacion;
+  tipoEtapaLabel: string;
+  enProcesoAhora: number;
+  promedioHoras?: number;
+  completadasConDatos: number;
 }
 
 export interface ActualizarEtapaFabricacionDTO {
