@@ -328,6 +328,21 @@ const EquipoDetail: React.FC = () => {
     FABRICADO_SIN_TERMINACION: 'info',
   }[equipo.estado] as 'warning' | 'info' | 'success' | 'error';
 
+  // Editar deshabilitado una vez que el equipo está comprometido — mismo criterio que EquiposList
+  // (RESERVADO o superior). Con fallback de inferencia para equipos sin estadoAsignacion explícito,
+  // igual que la lista, para no dejar una "puerta trasera" de edición desde el detalle.
+  const estadoAsignacionEfectivo =
+    equipo.estadoAsignacion ??
+    (equipo.estado === 'COMPLETADO'
+      ? (equipo.asignado ? 'ENTREGADO' : 'DISPONIBLE')
+      : equipo.estado === 'FABRICADO_SIN_TERMINACION'
+        ? (equipo.asignado ? 'RESERVADO' : 'PENDIENTE_TERMINACION')
+        : equipo.asignado ? 'RESERVADO' : null);
+  const puedeEditar = !(
+    estadoAsignacionEfectivo &&
+    ['RESERVADO', 'FACTURADO', 'EN_TRANSITO', 'ENTREGADO'].includes(estadoAsignacionEfectivo)
+  );
+
   return (
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -440,13 +455,20 @@ const EquipoDetail: React.FC = () => {
           >
             Ficha + QR
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<Edit />}
-            onClick={() => navigate(`/fabricacion/equipos/editar/${equipo.id}`)}
-          >
-            Editar
-          </Button>
+          <Tooltip title={puedeEditar ? '' : `No se puede editar (Estado: ${estadoAsignacionEfectivo})`}>
+            <span>
+              <Button
+                variant="contained"
+                startIcon={<Edit />}
+                disabled={!puedeEditar}
+                // La ruta editar/:id usa el param como numeroHeladera (EquipoForm.findByNumeroHeladera),
+                // no la PK: navegar con equipo.id daba "Error al cargar el equipo".
+                onClick={() => navigate(`/fabricacion/equipos/editar/${equipo.numeroHeladera}`)}
+              >
+                Editar
+              </Button>
+            </span>
+          </Tooltip>
         </Stack>
       </Box>
 
