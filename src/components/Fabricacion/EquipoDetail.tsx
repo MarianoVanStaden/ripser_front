@@ -10,7 +10,7 @@ import {
   TimelineContent, TimelineDot, TimelineOppositeContent,
 } from '@mui/lab';
 import {
-  ArrowBack, Edit, CheckCircle, Cancel, Link, LinkOff, History, PlayArrow, QrCode2, SwapHoriz,
+  ArrowBack, Edit, CheckCircle, Cancel, Link, LinkOff, History, PlayArrow, QrCode2, SwapHoriz, Palette,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -23,6 +23,7 @@ import type { EquipoFabricadoDTO, EtapaFabricacionDTO, HistorialEstadoEquipo, Hi
 import LoadingOverlay from '../common/LoadingOverlay';
 import ChecklistProduccionPanel from './ChecklistProduccionPanel';
 import ReasignarEquipoDialog from './ReasignarEquipoDialog';
+import EditarColorPrevistoDialog from './EditarColorPrevistoDialog';
 
 
 const EquipoDetail: React.FC = () => {
@@ -44,6 +45,7 @@ const EquipoDetail: React.FC = () => {
   }>({ open: false, errorMessage: '' });
 
   const [reassignDialog, setReassignDialog] = useState(false);
+  const [colorDialog, setColorDialog] = useState(false);
 
   const [changeStateDialog, setChangeStateDialog] = useState(false);
   const [newState, setNewState] = useState<'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'ENTREGADO' | null>(null);
@@ -343,6 +345,15 @@ const EquipoDetail: React.FC = () => {
     ['RESERVADO', 'FACTURADO', 'EN_TRANSITO', 'ENTREGADO'].includes(estadoAsignacionEfectivo)
   );
 
+  // Revestimiento (mismo criterio que EquiposList): "A Definir" = sin color real.
+  const sinColorReal = !equipo.color
+    || (equipo.color.nombre ?? '').trim().toUpperCase() === 'A DEFINIR';
+  const canEditColorPrevisto = !!estadoAsignacionEfectivo && sinColorReal
+    && ['RESERVADO', 'FACTURADO', 'EN_TRANSITO', 'ENTREGADO'].includes(estadoAsignacionEfectivo)
+    && ['PENDIENTE', 'EN_PROCESO', 'PENDIENTE_CONTROL_CALIDAD'].includes(equipo.estado);
+  // COMPLETADO sin color (o sentinela): la terminación ya no aplica → definir color real directo.
+  const canDefinirColor = equipo.estado === 'COMPLETADO' && sinColorReal;
+
   return (
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -455,6 +466,16 @@ const EquipoDetail: React.FC = () => {
           >
             Ficha + QR
           </Button>
+          {(canEditColorPrevisto || canDefinirColor) && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<Palette />}
+              onClick={() => setColorDialog(true)}
+            >
+              {canDefinirColor ? 'Definir color' : 'Elegir revestimiento'}
+            </Button>
+          )}
           <Tooltip title={puedeEditar ? '' : `No se puede editar (Estado: ${estadoAsignacionEfectivo})`}>
             <span>
               <Button
@@ -1277,6 +1298,17 @@ const EquipoDetail: React.FC = () => {
           });
           // El equipo actual quedó DISPONIBLE; abrimos la ficha del nuevo equipo asignado.
           navigate(`/fabricacion/equipos/${nuevo.numeroHeladera}`);
+        }}
+      />
+
+      <EditarColorPrevistoDialog
+        open={colorDialog}
+        equipo={equipo}
+        onClose={() => setColorDialog(false)}
+        onSuccess={() => {
+          setColorDialog(false);
+          loadEquipo();
+          setSnackbar({ open: true, message: '✅ Color actualizado', severity: 'success' });
         }}
       />
     </Box>

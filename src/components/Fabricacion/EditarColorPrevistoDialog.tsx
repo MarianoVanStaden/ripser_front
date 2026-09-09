@@ -11,7 +11,9 @@ import { useColores } from '../../context/useColores';
 
 interface EditarColorPrevistoDialogProps {
   open: boolean;
-  equipo: EquipoFabricadoListDTO | null;
+  // Acepta el list DTO (grilla) o el DTO completo (detalle): solo usa numeroHeladera/tipo/
+  // modelo/colorPrevisto, y de todas formas re-resuelve el equipo completo por numeroHeladera.
+  equipo: EquipoFabricadoListDTO | EquipoFabricadoDTO | null;
   onClose: () => void;
   onSuccess: (equipoActualizado: EquipoFabricadoDTO) => void;
 }
