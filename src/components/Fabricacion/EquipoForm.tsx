@@ -479,6 +479,41 @@ const EquipoForm: React.FC = () => {
     }
   };
 
+  // Hardening: si se entra a editar (por URL directa) un equipo comprometido con una venta,
+  // no mostramos el form. La edición también está bloqueada server-side (updateEquipo), esto es UX.
+  const equipoComprometido =
+    isEdit && !!equipoEditQuery.data?.estadoAsignacion &&
+    ['RESERVADO', 'FACTURADO', 'EN_TRANSITO', 'ENTREGADO'].includes(equipoEditQuery.data.estadoAsignacion);
+  if (equipoComprometido) {
+    const data = equipoEditQuery.data!;
+    return (
+      <Box p={3}>
+        <Box display="flex" alignItems="center" gap={2} mb={3}>
+          <IconButton onClick={() => navigate('/fabricacion/equipos')}>
+            <ArrowBack />
+          </IconButton>
+          <Typography variant="h5" fontWeight="600">Editar Equipo</Typography>
+        </Box>
+        <Alert
+          severity="warning"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => navigate(`/fabricacion/equipos/${data.numeroHeladera}`)}
+            >
+              Ver detalle
+            </Button>
+          }
+        >
+          El equipo <strong>{data.numeroHeladera}</strong> está <strong>{data.estadoAsignacion}</strong> (comprometido
+          con una venta) y no puede editarse. Usá las acciones dedicadas desde el detalle
+          (revestimiento, reasignar, entregar).
+        </Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box p={3}>
       <LoadingOverlay open={(loading || equipoEditQuery.isPending) && isEdit} message="Cargando equipo..." />
