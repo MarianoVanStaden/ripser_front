@@ -188,6 +188,19 @@ export const equipoFabricadoApi = {
     return response.data;
   },
 
+  /**
+   * Define el color REAL de un equipo COMPLETADO que quedó sin color (o con el sentinela
+   * "A Definir"): datos migrados o bases completadas sin terminación. Setea color_id directo,
+   * SIN descontar material (ya se consumió al fabricar/migrar).
+   */
+  definirColor: async (id: number, colorId: number) => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${id}/definir-color`,
+      { colorId },
+    );
+    return response.data;
+  },
+
   delete: async (id: number) => {
     await api.delete(`/api/equipos-fabricados/${id}`);
   },

@@ -16,11 +16,16 @@ interface EditarColorPrevistoDialogProps {
   onSuccess: (equipoActualizado: EquipoFabricadoDTO) => void;
 }
 
+/** Color placeholder que se trata como "sin color" (ver definirColorReal en el backend). */
+const esColorIndefinido = (nombre?: string | null): boolean =>
+  !nombre || nombre.trim().toUpperCase() === 'A DEFINIR';
+
 /**
- * Elige/edita el "color previsto" (revestimiento) de un equipo base ya comprometido
- * (reservado/facturado) cuyo botón de edición estructural está bloqueado. Es solo una anotación:
- * NO asigna el color real ni consume stock — el revestimiento definitivo se aplica en la
- * terminación (Iniciar → Completar → Aplicar Terminación).
+ * Doble propósito según el estado del equipo:
+ *  - Base sin terminar (WIP/reservada): edita el "color previsto" (anotación; el revestimiento
+ *    definitivo se aplica en la terminación, que descuenta material).
+ *  - Equipo COMPLETADO sin color real (o con el sentinela "A Definir"): DEFINE el color real
+ *    directo (sin descontar material) — destraba migrados/bases completadas sin terminación.
  */
 const EditarColorPrevistoDialog: React.FC<EditarColorPrevistoDialogProps> = ({
   open,
@@ -63,19 +68,29 @@ const EditarColorPrevistoDialog: React.FC<EditarColorPrevistoDialogProps> = ({
 
   const colorPrevistoActual = full?.colorPrevisto ?? equipo?.colorPrevisto ?? null;
 
+  // Modo "definir color real": el equipo ya está COMPLETADO sin color usable → la terminación ya
+  // no aplica; se setea color_id directo. Si no, es el flujo de "color previsto" de siempre.
+  const esDefinir = !!full && full.estado === 'COMPLETADO' && esColorIndefinido(full.color?.nombre);
+
   const handleGuardar = async () => {
     if (!full?.id) {
       setError('No se pudo determinar el id del equipo');
       return;
     }
+    if (esDefinir && !colorId) {
+      setError('Elegí un color para definir el revestimiento');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      const actualizado = await equipoFabricadoApi.updateColorPrevisto(full.id, colorId ?? null);
+      const actualizado = esDefinir
+        ? await equipoFabricadoApi.definirColor(full.id, colorId!)
+        : await equipoFabricadoApi.updateColorPrevisto(full.id, colorId ?? null);
       onSuccess(actualizado);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? 'No se pudo guardar el color previsto');
+      setError(msg ?? 'No se pudo guardar el color');
     } finally {
       setSaving(false);
     }
@@ -85,7 +100,7 @@ const EditarColorPrevistoDialog: React.FC<EditarColorPrevistoDialogProps> = ({
     <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Palette fontSize="small" />
-        Elegir revestimiento (color previsto)
+        {esDefinir ? 'Definir color (revestimiento)' : 'Elegir revestimiento (color previsto)'}
       </DialogTitle>
       <DialogContent>
         {loadingEquipo ? (
@@ -100,7 +115,7 @@ const EditarColorPrevistoDialog: React.FC<EditarColorPrevistoDialogProps> = ({
               </Typography>
             )}
 
-            {colorPrevistoActual && (
+            {!esDefinir && colorPrevistoActual && (
               <Typography variant="body2">
                 Color previsto actual: <strong>{colorPrevistoActual}</strong>
               </Typography>
@@ -113,11 +128,19 @@ const EditarColorPrevistoDialog: React.FC<EditarColorPrevistoDialogProps> = ({
               size="medium"
             />
 
-            <Alert severity="info">
-              El revestimiento definitivo se aplica recién en la terminación (Iniciar → Completar →
-              Aplicar Terminación), donde se descuenta el material. Acá solo se registra el color
-              elegido para que el taller sepa qué producir.
-            </Alert>
+            {esDefinir ? (
+              <Alert severity="warning">
+                Este equipo ya está <strong>completado</strong> sin color definido. Se va a asignar
+                el color <strong>real</strong> directamente. No se descuenta material (ya se consumió
+                al fabricarlo).
+              </Alert>
+            ) : (
+              <Alert severity="info">
+                El revestimiento definitivo se aplica recién en la terminación (Iniciar → Completar →
+                Aplicar Terminación), donde se descuenta el material. Acá solo se registra el color
+                elegido para que el taller sepa qué producir.
+              </Alert>
+            )}
 
             {error && <Alert severity="error">{error}</Alert>}
           </Stack>
@@ -130,10 +153,10 @@ const EditarColorPrevistoDialog: React.FC<EditarColorPrevistoDialogProps> = ({
         <Button
           onClick={handleGuardar}
           variant="contained"
-          disabled={saving || loadingEquipo}
+          disabled={saving || loadingEquipo || (esDefinir && !colorId)}
           startIcon={saving ? <CircularProgress size={18} /> : undefined}
         >
-          {saving ? 'Guardando…' : 'Guardar'}
+          {saving ? 'Guardando…' : esDefinir ? 'Definir color' : 'Guardar'}
         </Button>
       </DialogActions>
     </Dialog>

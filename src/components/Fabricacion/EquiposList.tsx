@@ -830,12 +830,19 @@ const EquiposList: React.FC = () => {
         const isFacturadoOrHigher = estadoAsignacion && ['FACTURADO', 'EN_TRANSITO', 'ENTREGADO'].includes(estadoAsignacion);
         const canEdit = !isReservadoOrHigher;
         const canDelete = !isReservadoOrHigher;
+        // "A Definir" es un color-sentinela que quedó como color real en datos migrados: se
+        // trata como "sin color".
+        const sinColorReal = !params.row.color
+          || (params.row.color.nombre ?? '').trim().toUpperCase() === 'A DEFINIR';
         // Base sin color real y ya comprometida (reservada/facturada): el botón Editar está
         // bloqueado, pero el revestimiento debe poder elegirse. Solo anota el color previsto.
         // Se limita a los estados previos a la terminación: en FABRICADO_SIN_TERMINACION ya
         // aparece "Aplicar Terminación", que es la acción correcta (aplica el color con stock).
-        const canEditColorPrevisto = isReservadoOrHigher && !params.row.color
+        const canEditColorPrevisto = isReservadoOrHigher && sinColorReal
           && ['PENDIENTE', 'EN_PROCESO', 'PENDIENTE_CONTROL_CALIDAD'].includes(params.row.estado);
+        // Equipo ya COMPLETADO sin color (o con el sentinela): la terminación ya no aplica →
+        // se define el color real directo (mismo dialog, modo "definir").
+        const canDefinirColor = params.row.estado === 'COMPLETADO' && sinColorReal;
         const canAssign = params.row.estado === 'COMPLETADO' && !params.row.asignado && estadoAsignacion === 'DISPONIBLE';
         const canUnassign = params.row.asignado && !isFacturadoOrHigher;
         const canReassign = params.row.asignado && !!estadoAsignacion
@@ -873,8 +880,10 @@ const EquiposList: React.FC = () => {
                 </IconButton>
               </span>
             </Tooltip>
-            {canEditColorPrevisto && (
-              <Tooltip title="Elegir revestimiento (color previsto)">
+            {(canEditColorPrevisto || canDefinirColor) && (
+              <Tooltip title={canDefinirColor
+                ? 'Definir color (revestimiento)'
+                : 'Elegir revestimiento (color previsto)'}>
                 <IconButton
                   size="small"
                   color="secondary"
