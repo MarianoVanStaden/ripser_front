@@ -88,7 +88,7 @@ export interface DocumentoComercial {
   prestamoId?: number | null;
 }
 
-export type MotivoNotaCredito = 'DEVOLUCION_EQUIPO' | 'ERROR_FACTURACION' | 'OTRO';
+export type MotivoNotaCredito = 'DEVOLUCION_EQUIPO' | 'ERROR_FACTURACION' | 'ANULACION_COMPRA' | 'OTRO';
 
 export interface DetalleNotaCreditoItemDTO {
   detalleDocumentoId: number;
@@ -104,7 +104,7 @@ export interface CreateNotaCreditoDTO {
   motivo?: MotivoNotaCredito;
   /** Modo DEVOLUCION_EQUIPO: IDs de equipos a retornar al inventario. */
   equiposADevolver?: number[];
-  /** Modo ERROR_FACTURACION / OTRO: ítems exactos a acreditar. */
+  /** Modo ERROR_FACTURACION / ANULACION_COMPRA / OTRO: ítems exactos a acreditar. */
   itemsAcreditar?: DetalleNotaCreditoItemDTO[];
   /** true = se devolvió efectivo al cliente → aparece como EGRESO en flujo de caja.
    *  false (default) = reversión documental/CC sin salida de dinero → no impacta caja. */

@@ -11,7 +11,7 @@ import {
 import {
   CheckCircle, Receipt, Inventory, Warning,
   Description, ErrorOutline, SwapHoriz,
-  AddCircleOutline, RemoveCircleOutline,
+  AddCircleOutline, RemoveCircleOutline, RemoveShoppingCart,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import api from '../../api/config';
@@ -22,7 +22,11 @@ import LoadingOverlay from '../common/LoadingOverlay';
 
 // ────────────────────────── Types ──────────────────────────
 
-type ModoCredito = 'DEVOLUCION_EQUIPO' | 'ERROR_FACTURACION';
+type ModoCredito = 'DEVOLUCION_EQUIPO' | 'ERROR_FACTURACION' | 'ANULACION_COMPRA';
+
+/** ERROR_FACTURACION y ANULACION_COMPRA comparten el flujo de ítems a acreditar. */
+const esModoItems = (modo: ModoCredito | null): boolean =>
+  modo === 'ERROR_FACTURACION' || modo === 'ANULACION_COMPRA';
 
 /** Represents one selectable line in ERROR mode. EQUIPO items are expanded 1-per-unit. */
 interface ItemErrorSeleccionado {
@@ -382,7 +386,7 @@ const NotasCreditoPage: React.FC = () => {
     if (itemsErrorSeleccionados.length === 0) return null;
     return {
       facturaId: form.facturaId,
-      motivo: 'ERROR_FACTURACION',
+      motivo: modoCredito,
       reintegraEfectivo: form.reintegraEfectivo,
       itemsAcreditar: itemsErrorSeleccionados.map(i => ({
         detalleDocumentoId: i.detalleDocumentoId,
@@ -465,7 +469,7 @@ const NotasCreditoPage: React.FC = () => {
         modoCredito: modoCredito!,
         equiposDevueltos: modoCredito === 'DEVOLUCION_EQUIPO' ? form.equiposSeleccionados.length : undefined,
         totalEquiposFactura: modoCredito === 'DEVOLUCION_EQUIPO' ? equiposElegiblesDevolucion.length : undefined,
-        itemsAcreditados: modoCredito === 'ERROR_FACTURACION' ? itemsErrorSeleccionados.length : undefined,
+        itemsAcreditados: esModoItems(modoCredito) ? itemsErrorSeleccionados.length : undefined,
       };
 
       const notaCredito = await documentoApi.createNotaCredito(payload);
@@ -608,7 +612,7 @@ const NotasCreditoPage: React.FC = () => {
 
                 <Grid container spacing={2}>
                   {/* DEVOLUCION card */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={4}>
                     <Paper
                       elevation={0}
                       onClick={() => handleModoChange('DEVOLUCION_EQUIPO')}
@@ -634,7 +638,7 @@ const NotasCreditoPage: React.FC = () => {
                   </Grid>
 
                   {/* ERROR card */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={4}>
                     <Paper
                       elevation={0}
                       onClick={() => handleModoChange('ERROR_FACTURACION')}
@@ -653,6 +657,32 @@ const NotasCreditoPage: React.FC = () => {
                           <Typography variant="caption" color="text.secondary">
                             Se facturaron equipos o productos por error. Permite seleccionar ítems
                             específicos (incluyendo productos) y definir cantidad exacta a acreditar.
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Paper>
+                  </Grid>
+
+                  {/* ANULACION card */}
+                  <Grid item xs={12} sm={4}>
+                    <Paper
+                      elevation={0}
+                      onClick={() => handleModoChange('ANULACION_COMPRA')}
+                      sx={{
+                        p: 2.5, borderRadius: 2, cursor: 'pointer',
+                        border: `2px solid ${modoCredito === 'ANULACION_COMPRA' ? theme.palette.error.main : theme.palette.divider}`,
+                        bgcolor: modoCredito === 'ANULACION_COMPRA' ? alpha(theme.palette.error.main, 0.06) : 'transparent',
+                        transition: 'all 0.15s ease',
+                        '&:hover': { borderColor: theme.palette.error.light, bgcolor: alpha(theme.palette.error.main, 0.04) },
+                      }}
+                    >
+                      <Box display="flex" alignItems="flex-start" gap={1.5}>
+                        <RemoveShoppingCart sx={{ color: modoCredito === 'ANULACION_COMPRA' ? 'error.main' : 'text.secondary', mt: 0.2 }} />
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight="600">Anulación de compra</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            El cliente se baja de la compra. Se acreditan los ítems seleccionados
+                            igual que un error de facturación, pero queda registrado como anulación real.
                           </Typography>
                         </Box>
                       </Box>
@@ -786,7 +816,7 @@ const NotasCreditoPage: React.FC = () => {
         )}
 
         {/* ── Paso 3B: Ítems a acreditar (ERROR) ── */}
-        {modoCredito === 'ERROR_FACTURACION' && (
+        {esModoItems(modoCredito) && (
           <Grid item xs={12}>
             <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
               <CardContent>
@@ -1126,10 +1156,11 @@ const NotasCreditoPage: React.FC = () => {
                         </Typography>
                       </li>
                     )}
-                    {successDialog.data.modoCredito === 'ERROR_FACTURACION' && (
+                    {esModoItems(successDialog.data.modoCredito) && (
                       <li>
                         <Typography variant="body2">
-                          <strong>{successDialog.data.itemsAcreditados}</strong> ítem(s) acreditados por error de facturación
+                          <strong>{successDialog.data.itemsAcreditados}</strong> ítem(s) acreditados por{' '}
+                          {successDialog.data.modoCredito === 'ANULACION_COMPRA' ? 'anulación de compra' : 'error de facturación'}
                         </Typography>
                       </li>
                     )}

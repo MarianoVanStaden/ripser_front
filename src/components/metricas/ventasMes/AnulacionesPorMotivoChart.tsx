@@ -8,6 +8,7 @@ import { CHART_SERIES, CHART_TOOLTIP_BG, CHART_TOOLTIP_TEXT } from '../../../the
 const MOTIVO_CONFIG: Record<string, { label: string; color: string }> = {
   DEVOLUCION_EQUIPO: { label: 'Devolución de equipo', color: CHART_SERIES[0] },
   ERROR_FACTURACION: { label: 'Error de facturación', color: CHART_SERIES[1] },
+  ANULACION_COMPRA: { label: 'Anulación de compra', color: CHART_SERIES[2] },
   OTRO: { label: 'Otro', color: CHART_SERIES[3] },
   SIN_ESPECIFICAR: { label: 'Sin especificar', color: CHART_SERIES[7] },
 };
