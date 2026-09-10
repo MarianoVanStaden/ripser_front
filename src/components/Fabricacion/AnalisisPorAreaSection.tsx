@@ -259,7 +259,7 @@ const AnalisisPorAreaSection: React.FC = () => {
                             </Typography>
                           </Typography>
                           <Typography variant="body2" color="text.secondary" mt={0.5}>
-                            {`p50 ${formatHoras(area.p50Horas)} · máx. ${formatHoras(area.maxHoras)} · ${area.muestras} transición${area.muestras === 1 ? '' : 'es'}`}
+                            {`p50 ${formatHoras(area.p50Horas)} · máx. ${formatHoras(area.maxHoras)} · ${area.muestras} transici${area.muestras === 1 ? 'ón' : 'ones'}`}
                           </Typography>
                         </>
                       ) : (
