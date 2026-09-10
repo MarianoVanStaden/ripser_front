@@ -342,6 +342,12 @@ const AnalisisPorAreaSection: React.FC = () => {
                   <Bar dataKey="porcentajeRetrabajo" fill={chartSerie(5)} />
                 </BarChart>
               </ResponsiveContainer>
+              <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+                De cada 100 etapas que el área dio por terminadas, cuántas fueron rechazadas en el control
+                de calidad y hubo que rehacer. Un porcentaje alto significa trabajo doble: el área avanza,
+                pero una parte vuelve para atrás. Si un área se despega del resto, conviene revisar qué
+                está fallando ahí (los motivos de rechazo quedan registrados en cada etapa).
+              </Typography>
             </Paper>
           </Grid>
 
@@ -379,6 +385,13 @@ const AnalisisPorAreaSection: React.FC = () => {
                   ))}
                 </BarChart>
               </ResponsiveContainer>
+              <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+                Cuántas etapas terminó cada persona en el período, separadas por color según el área.
+                Sirve para ver quién carga con más trabajo y en qué área trabaja cada uno — no mide
+                calidad ni velocidad (una etapa difícil cuenta igual que una fácil), así que conviene
+                leerlo junto con el retrabajo QC y la duración por área antes de sacar conclusiones
+                sobre una persona.
+              </Typography>
             </Paper>
           </Grid>
 
