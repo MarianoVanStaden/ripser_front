@@ -395,7 +395,15 @@ const AnalisisPorAreaSection: React.FC = () => {
                       <Bar dataKey="p90Horas" name="p90" fill={chartSerie(7)} />
                     </BarChart>
                   </ResponsiveContainer>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+                    <strong>p50 (mediana)</strong>: el tiempo típico del área — la mitad de las etapas se
+                    terminan en menos de ese tiempo. <strong>p90</strong>: casi todas (9 de cada 10) se
+                    terminan en menos de ese tiempo; las que lo superan son los casos problemáticos.
+                    Si el p90 está muy por encima del p50, el área trabaja bien en general pero algunas
+                    etapas se atrasan mucho — conviene revisar esos casos puntuales. Si suben los dos,
+                    el área entera se está enlenteciendo.
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
                     Solo etapas con fecha de inicio registrada (dato que se captura desde sep 2026) — el
                     volumen crece a medida que el taller usa el botón Iniciar.
                   </Typography>
