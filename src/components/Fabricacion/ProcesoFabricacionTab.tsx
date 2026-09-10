@@ -260,6 +260,13 @@ const ProcesoFabricacionTab: React.FC = () => {
                         <TableCell key={tipo}>
                           <Stack spacing={0.5} alignItems="flex-start">
                             {estadoEtapaChip(etapa, tipo === proxima)}
+                            {etapa?.demorada && (
+                              <Tooltip
+                                title={`Lleva ${formatHoras(etapa.duracionHoras)} en el área; el p90 histórico es ${formatHoras(etapa.p90HorasArea)}`}
+                              >
+                                <Chip size="small" color="warning" variant="outlined" label="Demorada" />
+                              </Tooltip>
+                            )}
                             {tipo === proxima && espera !== null && (
                               <Tooltip title="Las áreas anteriores terminaron y esta no se inició; espera desde la última área completada">
                                 <Chip

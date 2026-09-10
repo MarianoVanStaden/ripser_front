@@ -183,6 +183,9 @@ export interface EtapaProcesoDTO {
   fechaInicio?: string;
   fechaCompletado?: string;
   duracionHoras?: number;
+  /** true si está EN_PROCESO hace más que el p90 histórico del área (90 días). */
+  demorada?: boolean;
+  p90HorasArea?: number;
 }
 
 export interface ProcesoFabricacionEquipoDTO {
@@ -247,6 +250,15 @@ export interface TendenciaP50SemanaDTO {
   muestras: number;
 }
 
+export interface EsperaEntreAreasDTO {
+  tipoEtapa: TipoEtapaFabricacion;
+  tipoEtapaLabel: string;
+  promedioHoras?: number;
+  p50Horas?: number;
+  maxHoras?: number;
+  muestras: number;
+}
+
 export interface KpisProduccionDTO {
   throughputSemanal: ThroughputSemanaDTO[];
   retrabajoPorArea: RetrabajoAreaDTO[];
@@ -254,6 +266,8 @@ export interface KpisProduccionDTO {
   duracionPorArea: DuracionAreaDTO[];
   cuellosDeBotella: CuelloBotellaAreaDTO[];
   tendenciaP50Semanal: TendenciaP50SemanaDTO[];
+  /** Ausente si el backend aún no expone la espera histórica entre áreas. */
+  esperaEntreAreas?: EsperaEntreAreasDTO[];
 }
 
 export interface ActualizarEtapaFabricacionDTO {

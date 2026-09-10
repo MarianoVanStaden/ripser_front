@@ -89,6 +89,11 @@ const AnalisisPorAreaSection: React.FC = () => {
 
   const retrabajoData = kpisQuery.data?.retrabajoPorArea ?? [];
   const cuellosData = kpisQuery.data?.cuellosDeBotella ?? [];
+  // AISLACION no tiene área anterior: siempre sin muestras, se omite.
+  const esperaData = (kpisQuery.data?.esperaEntreAreas ?? []).filter(
+    (e) => e.tipoEtapa !== 'AISLACION'
+  );
+  const hayEspera = esperaData.some((e) => e.muestras > 0);
   const duracionData = kpisQuery.data?.duracionPorArea ?? [];
   const hayDuracion = duracionData.some((d) => d.muestras > 0);
 
@@ -218,6 +223,52 @@ const AnalisisPorAreaSection: React.FC = () => {
             <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
               Equipos sin ninguna área en proceso, con las áreas anteriores terminadas y esta (la próxima)
               sin iniciar; la espera se cuenta desde la última área completada.
+            </Typography>
+          </Grid>
+          )}
+
+          {/* Espera histórica entre áreas: tiempo muerto entre que un área termina
+              y la siguiente se inicia, sobre etapas iniciadas en el rango.
+              esperaData vacío = backend viejo sin el campo: ocultar la sección. */}
+          {esperaData.length > 0 && hayEspera && (
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" fontWeight={600} mb={1}>
+              Espera entre áreas (histórica, en el rango)
+            </Typography>
+            <Grid container spacing={2}>
+              {esperaData.map((area) => (
+                <Grid item xs={12} sm={6} md={4} key={area.tipoEtapa}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        → {area.tipoEtapaLabel}
+                      </Typography>
+                      {area.muestras > 0 ? (
+                        <>
+                          <Typography variant="h5" fontWeight="bold">
+                            {formatHoras(area.promedioHoras)}
+                            <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.75 }}>
+                              promedio
+                            </Typography>
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" mt={0.5}>
+                            {`p50 ${formatHoras(area.p50Horas)} · máx. ${formatHoras(area.maxHoras)} · ${area.muestras} transición${area.muestras === 1 ? '' : 'es'}`}
+                          </Typography>
+                        </>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          Sin transiciones medibles en el rango
+                        </Typography>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+            <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+              Tiempo muerto entre que el área anterior termina y esta se inicia (requiere fecha de inicio,
+              capturada desde sep 2026). A diferencia de los frenados de arriba, esto es historia del rango,
+              no una foto de ahora.
             </Typography>
           </Grid>
           )}
