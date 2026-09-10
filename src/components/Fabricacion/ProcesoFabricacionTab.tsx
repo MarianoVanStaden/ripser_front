@@ -55,23 +55,37 @@ const formatHoras = (horas?: number | null): string => {
 
 const toISODate = (d: Date): string => d.toISOString().slice(0, 10);
 
+const ordenEtapa = (tipo: TipoEtapaFabricacion): number => TIPOS_ETAPA.indexOf(tipo);
+
+/** Primera etapa PENDIENTE en orden secuencial: la próxima a ejecutar. */
+const proximaEtapaTipo = (equipo: ProcesoFabricacionEquipoDTO): TipoEtapaFabricacion | null => {
+  const pendientes = equipo.etapas
+    .filter((e) => e.estado === 'PENDIENTE')
+    .sort((a, b) => ordenEtapa(a.tipoEtapa) - ordenEtapa(b.tipoEtapa));
+  return pendientes[0]?.tipoEtapa ?? null;
+};
+
 /**
- * Horas que el equipo lleva frenado esperando esta área: etapa PENDIENTE (sin
- * iniciar) con al menos otra área ya completada. Se cuenta desde la última
- * etapa completada del equipo. Null si no está frenado.
+ * Etapas estrictamente secuenciales: la espera solo es accionable en la próxima
+ * etapa pendiente, cuando todas las anteriores están completadas y ninguna área
+ * del equipo está en proceso (si hay una en proceso, el equipo está siendo
+ * trabajado, no frenado). Se cuenta desde la última área completada.
  */
-const horasFrenado = (equipo: ProcesoFabricacionEquipoDTO, etapa?: EtapaProcesoDTO): number | null => {
-  if (!etapa || etapa.estado !== 'PENDIENTE') return null;
-  const completadas = equipo.etapas
-    .filter((e) => e.estado === 'COMPLETADO' && e.fechaCompletado)
+const horasEsperaAccionable = (equipo: ProcesoFabricacionEquipoDTO): number | null => {
+  const proxima = proximaEtapaTipo(equipo);
+  if (proxima === null) return null;
+  if (equipo.etapas.some((e) => e.estado === 'EN_PROCESO')) return null;
+  const anteriores = equipo.etapas.filter((e) => ordenEtapa(e.tipoEtapa) < ordenEtapa(proxima));
+  if (anteriores.length === 0 || !anteriores.every((e) => e.estado === 'COMPLETADO')) return null;
+  const completadas = anteriores
+    .filter((e) => e.fechaCompletado)
     .map((e) => new Date(e.fechaCompletado as string).getTime())
     .filter((t) => !Number.isNaN(t));
   if (completadas.length === 0) return null;
-  const horas = (Date.now() - Math.max(...completadas)) / 3_600_000;
-  return horas > 0 ? horas : 0;
+  return Math.max(0, (Date.now() - Math.max(...completadas)) / 3_600_000);
 };
 
-const estadoEtapaChip = (etapa?: EtapaProcesoDTO) => {
+const estadoEtapaChip = (etapa: EtapaProcesoDTO | undefined, esProxima: boolean) => {
   if (!etapa) {
     return <Chip size="small" label="Sin etapa" variant="outlined" sx={{ opacity: 0.6 }} />;
   }
@@ -83,7 +97,11 @@ const estadoEtapaChip = (etapa?: EtapaProcesoDTO) => {
     case 'RECHAZADO':
       return <Chip size="small" label="Rechazada" color="error" variant="outlined" />;
     default:
-      return <Chip size="small" label="Pendiente" variant="outlined" />;
+      return esProxima ? (
+        <Chip size="small" label="Próxima" variant="outlined" />
+      ) : (
+        <Chip size="small" label="Pendiente" variant="outlined" sx={{ opacity: 0.5 }} />
+      );
   }
 };
 
@@ -213,7 +231,10 @@ const ProcesoFabricacionTab: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {equipos.map((equipo) => (
+                {equipos.map((equipo) => {
+                  const proxima = proximaEtapaTipo(equipo);
+                  const espera = horasEsperaAccionable(equipo);
+                  return (
                   <TableRow key={equipo.equipoId} hover>
                     <TableCell>
                       <Typography variant="body2" fontWeight={600}>
@@ -235,13 +256,12 @@ const ProcesoFabricacionTab: React.FC = () => {
                     </TableCell>
                     {TIPOS_ETAPA.map((tipo) => {
                       const etapa = equipo.etapas.find((e) => e.tipoEtapa === tipo);
-                      const espera = horasFrenado(equipo, etapa);
                       return (
                         <TableCell key={tipo}>
                           <Stack spacing={0.5} alignItems="flex-start">
-                            {estadoEtapaChip(etapa)}
-                            {espera !== null && (
-                              <Tooltip title="Área sin iniciar con otra ya terminada; espera desde la última área completada del equipo">
+                            {estadoEtapaChip(etapa, tipo === proxima)}
+                            {tipo === proxima && espera !== null && (
+                              <Tooltip title="Las áreas anteriores terminaron y esta no se inició; espera desde la última área completada">
                                 <Chip
                                   size="small"
                                   color="warning"
@@ -286,7 +306,8 @@ const ProcesoFabricacionTab: React.FC = () => {
                       );
                     })}
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>

@@ -216,8 +216,8 @@ const AnalisisPorAreaSection: React.FC = () => {
               })}
             </Grid>
             <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
-              Equipos en fabricación con al menos un área terminada y esta pendiente sin iniciar; la espera
-              se cuenta desde la última área completada.
+              Equipos sin ninguna área en proceso, con las áreas anteriores terminadas y esta (la próxima)
+              sin iniciar; la espera se cuenta desde la última área completada.
             </Typography>
           </Grid>
           )}
