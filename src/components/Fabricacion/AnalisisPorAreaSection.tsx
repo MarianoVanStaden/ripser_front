@@ -224,6 +224,13 @@ const AnalisisPorAreaSection: React.FC = () => {
               Equipos sin ninguna área en proceso, con las áreas anteriores terminadas y esta (la próxima)
               sin iniciar; la espera se cuenta desde la última área completada.
             </Typography>
+            <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+              Es una foto de este momento: cada equipo contado está parado hoy, listo para entrar a esta
+              área, y nadie lo inició todavía. <strong>Espera prom.</strong> es cuánto llevan esperando en
+              promedio esos equipos y <strong>máx.</strong> el que más lleva. El área marcada como cuello
+              de botella es la que más equipos tiene frenados ahora — es donde conviene poner gente hoy
+              para destrabar la fábrica.
+            </Typography>
           </Grid>
           )}
 
