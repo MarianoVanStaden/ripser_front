@@ -270,6 +270,14 @@ const AnalisisPorAreaSection: React.FC = () => {
               capturada desde sep 2026). A diferencia de los frenados de arriba, esto es historia del rango,
               no una foto de ahora.
             </Typography>
+            <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+              <strong>Promedio</strong>: cuánto espera en general un equipo para entrar a esta área.
+              <strong> p50 (mediana)</strong>: la espera típica — la mitad de los equipos esperó menos que
+              eso. <strong>Máx.</strong>: el peor caso del rango. Si el promedio o el máximo están muy por
+              encima del p50, la mayoría pasa rápido pero algunos equipos quedaron frenados mucho tiempo —
+              conviene revisar esos casos. Si el p50 es alto, la demora para entrar a esta área es de todos
+              los días, no de casos sueltos.
+            </Typography>
           </Grid>
           )}
 
