@@ -23,7 +23,7 @@ import {
   DialogContent,
   DialogActions,
   InputAdornment,
-  Grid2 as Grid,
+  Grid,
   Chip,
   TablePagination,
 } from '@mui/material';

@@ -10,7 +10,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  Grid2 as Grid,
+  Grid,
   InputLabel,
   MenuItem,
   Select,
@@ -135,7 +135,7 @@ const NuevaLiquidacionDialog: React.FC<Props> = ({ open, onClose, onSaved }) => 
             <Grid size={12}>
               <FormControl fullWidth required>
                 <InputLabel>Caja origen (tarjeta)</InputLabel>
-                <Select
+                <Select<number | ''>
                   value={cajaOrigenId}
                   label="Caja origen (tarjeta)"
                   onChange={(e) =>
@@ -164,7 +164,7 @@ const NuevaLiquidacionDialog: React.FC<Props> = ({ open, onClose, onSaved }) => 
             <Grid size={12}>
               <FormControl fullWidth required>
                 <InputLabel>Caja destino (banco)</InputLabel>
-                <Select
+                <Select<number | ''>
                   value={cajaDestinoId}
                   label="Caja destino (banco)"
                   onChange={(e) =>

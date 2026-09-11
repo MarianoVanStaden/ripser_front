@@ -173,118 +173,117 @@ const ClientesPage: React.FC = () => {
       )}
 
       {/* Buscador y Filtros */}
-<Paper
-  sx={{
-    p: { sm: 2, md: 2.5 },
-    mb: 3,
-    borderRadius: 3,
-    // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa; la separación la da el borde divider
-    boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-    border: '1px solid',
-    borderColor: 'divider',
-    bgcolor: 'background.paper',
-  }}
->
-  <Box
-    sx={{
-      display: 'flex',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 1.5,
-    }}
-  >
-    {/* Buscar */}
-    <TextField
-      size="small"
-      variant="outlined"
-      placeholder="Buscar clientes"
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-      sx={{
-        minWidth: { xs: '100%', sm: 360, md: 420 },
-        flex: { xs: '1 1 100%', sm: '0 0 auto' },
-        '& .MuiOutlinedInput-root': {
-          borderRadius: 999,
-        },
-      }}
-      InputProps={{
-        startAdornment: (
-          <InputAdornment position="start" sx={{ ml: 0.5 }}>
-            <SearchIcon fontSize="small" color="action" />
-          </InputAdornment>
-        ),
-      }}
-    />
-
-    {/* Separador sutil */}
-    <Box
-      sx={{
-        width: 1,
-        display: { xs: 'block', sm: 'none' },
-        my: 0.5,
-        opacity: 0.5,
-      }}
-    />
-
-    {/* Tipo */}
-    <TextField
-      select
-      size="small"
-      label="Tipo"
-      value={tipoFilter}
-      onChange={(e) => setTipoFilter(e.target.value as TipoCliente | '')}
-      sx={{
-        minWidth: { xs: '48%', sm: 160 },
-        flex: { xs: '1 1 48%', sm: '0 0 auto' },
-        '& .MuiOutlinedInput-root': { borderRadius: 999 },
-      }}
-    >
-      <MenuItem value="">Todos</MenuItem>
-      <MenuItem value="PERSONA_FISICA">Persona Física</MenuItem>
-      <MenuItem value="PERSONA_JURIDICA">Persona Jurídica</MenuItem>
-    </TextField>
-
-    {/* Estado */}
-    <TextField
-      select
-      size="small"
-      label="Estado"
-      value={estadoFilter}
-      onChange={(e) => setEstadoFilter(e.target.value as EstadoCliente | '')}
-      sx={{
-        minWidth: { xs: '48%', sm: 160 },
-        flex: { xs: '1 1 48%', sm: '0 0 auto' },
-        '& .MuiOutlinedInput-root': { borderRadius: 999 },
-      }}
-    >
-      <MenuItem value="">Todos</MenuItem>
-      <MenuItem value="ACTIVO">Activo</MenuItem>
-      <MenuItem value="INACTIVO">Inactivo</MenuItem>
-      <MenuItem value="SUSPENDIDO">Suspendido</MenuItem>
-      <MenuItem value="MOROSO">Moroso</MenuItem>
-    </TextField>
-
-    {/* Botones */}
-    <Box sx={{ ml: { xs: 0, sm: 'auto' }, display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, mt: { xs: 1, sm: 0 } }}>
-      <Button
-        size="small"
-        variant="text"
-        startIcon={<ClearIcon />}
-        onClick={clearFilters}
+      <Paper
         sx={{
-          borderRadius: 999,
-          textTransform: 'none',
-          color: 'text.secondary',
-          '&:hover': { backgroundColor: 'action.hover' },
-          flex: { xs: 1, sm: 'none' },
+          p: { sm: 2, md: 2.5 },
+          mb: 3,
+          borderRadius: 3,
+          // eslint-disable-next-line ripser/no-literal-colors -- sombra decorativa; la separación la da el borde divider
+          boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
         }}
       >
-        Limpiar
-      </Button>
-    </Box>
-  </Box>
-</Paper>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 1.5,
+          }}
+        >
+          {/* Buscar */}
+          <TextField
+            size="small"
+            variant="outlined"
+            placeholder="Buscar clientes"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{
+              minWidth: { xs: '100%', sm: 360, md: 420 },
+              flex: { xs: '1 1 100%', sm: '0 0 auto' },
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 999,
+              },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start" sx={{ ml: 0.5 }}>
+                  <SearchIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            }}
+          />
 
+          {/* Separador sutil */}
+          <Box
+            sx={{
+              width: 1,
+              display: { xs: 'block', sm: 'none' },
+              my: 0.5,
+              opacity: 0.5,
+            }}
+          />
+
+          {/* Tipo */}
+          <TextField
+            select
+            size="small"
+            label="Tipo"
+            value={tipoFilter}
+            onChange={(e) => setTipoFilter(e.target.value as TipoCliente | '')}
+            sx={{
+              minWidth: { xs: '48%', sm: 160 },
+              flex: { xs: '1 1 48%', sm: '0 0 auto' },
+              '& .MuiOutlinedInput-root': { borderRadius: 999 },
+            }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="PERSONA_FISICA">Persona Física</MenuItem>
+            <MenuItem value="PERSONA_JURIDICA">Persona Jurídica</MenuItem>
+          </TextField>
+
+          {/* Estado */}
+          <TextField
+            select
+            size="small"
+            label="Estado"
+            value={estadoFilter}
+            onChange={(e) => setEstadoFilter(e.target.value as EstadoCliente | '')}
+            sx={{
+              minWidth: { xs: '48%', sm: 160 },
+              flex: { xs: '1 1 48%', sm: '0 0 auto' },
+              '& .MuiOutlinedInput-root': { borderRadius: 999 },
+            }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="ACTIVO">Activo</MenuItem>
+            <MenuItem value="INACTIVO">Inactivo</MenuItem>
+            <MenuItem value="SUSPENDIDO">Suspendido</MenuItem>
+            <MenuItem value="MOROSO">Moroso</MenuItem>
+          </TextField>
+
+          {/* Botones */}
+          <Box sx={{ ml: { xs: 0, sm: 'auto' }, display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, mt: { xs: 1, sm: 0 } }}>
+            <Button
+              size="small"
+              variant="text"
+              startIcon={<ClearIcon />}
+              onClick={clearFilters}
+              sx={{
+                borderRadius: 999,
+                textTransform: 'none',
+                color: 'text.secondary',
+                '&:hover': { backgroundColor: 'action.hover' },
+                flex: { xs: 1, sm: 'none' },
+              }}
+            >
+              Limpiar
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
 
       {/* Resumen */}
       <Box mb={2}>
@@ -296,7 +295,14 @@ const ClientesPage: React.FC = () => {
       {/* Grid de Cards */}
       <Grid container spacing={2}>
         {clientes.map((cliente) => (
-          <Grid key={cliente.id} item xs={12} sm={6} md={4} lg={3}>
+          <Grid
+            key={cliente.id}
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4,
+              lg: 3
+            }}>
             <Card>
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>

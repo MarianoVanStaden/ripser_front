@@ -379,7 +379,11 @@ const AsignacionTareasPage: React.FC = () => {
           <Box mb={2}>
             <Grid container spacing={2}>
               {/* Búsqueda */}
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <TextField
                   fullWidth
                   label="Buscar"
@@ -398,7 +402,12 @@ const AsignacionTareasPage: React.FC = () => {
               </Grid>
 
               {/* Filtro por Estado */}
-              <Grid item xs={12} sm={6} md={2}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 2
+                }}>
                 <TextField
                   fullWidth
                   select
@@ -415,7 +424,12 @@ const AsignacionTareasPage: React.FC = () => {
               </Grid>
 
               {/* Filtro por Orden */}
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <Autocomplete
                   size="small"
                   options={ordenes}
@@ -429,7 +443,12 @@ const AsignacionTareasPage: React.FC = () => {
               </Grid>
 
               {/* Filtro por Empleado */}
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <Autocomplete
                   size="small"
                   options={empleados}
@@ -683,7 +702,11 @@ const AsignacionTareasPage: React.FC = () => {
                   ⏱️ HORAS Y ESTADO
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={editingTarea ? 4 : 6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: editingTarea ? 4 : 6
+                    }}>
                     <TextField
                       fullWidth
                       type="number"
@@ -702,7 +725,11 @@ const AsignacionTareasPage: React.FC = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} sm={editingTarea ? 4 : 6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: editingTarea ? 4 : 6
+                    }}>
                     <TextField
                       fullWidth
                       type="number"
@@ -722,7 +749,11 @@ const AsignacionTareasPage: React.FC = () => {
                   </Grid>
 
                   {editingTarea && (
-                    <Grid item xs={12} sm={4}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 4
+                      }}>
                       <TextField
                         fullWidth
                         select
@@ -846,7 +877,7 @@ const AsignacionTareasPage: React.FC = () => {
               {/* Comparación de Horas */}
               <Box>
                 <Grid container spacing={2}>
-                  <Grid item xs={6}>
+                  <Grid size={6}>
                     <Paper
                       elevation={0}
                       sx={{
@@ -867,7 +898,7 @@ const AsignacionTareasPage: React.FC = () => {
                       </Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6}>
+                  <Grid size={6}>
                     <Paper
                       elevation={0}
                       sx={{

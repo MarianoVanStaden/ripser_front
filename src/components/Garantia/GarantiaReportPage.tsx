@@ -180,7 +180,12 @@ const GarantiaReportPage: React.FC = () => {
 
       {/* Main Statistics Cards */}
       <Grid container spacing={2} mb={4}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main', height: '100%' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -198,7 +203,12 @@ const GarantiaReportPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main', height: '100%' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -216,7 +226,12 @@ const GarantiaReportPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main', height: '100%' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -234,7 +249,12 @@ const GarantiaReportPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main', height: '100%' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -255,7 +275,12 @@ const GarantiaReportPage: React.FC = () => {
 
       {/* Claims Statistics */}
       <Grid container spacing={2} mb={4}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main', height: '100%' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -273,7 +298,12 @@ const GarantiaReportPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main', height: '100%' }}>
             <CardContent>
               <Stack spacing={1}>
@@ -288,7 +318,12 @@ const GarantiaReportPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main', height: '100%' }}>
             <CardContent>
               <Stack spacing={1}>
@@ -303,7 +338,12 @@ const GarantiaReportPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main', height: '100%' }}>
             <CardContent>
               <Stack spacing={1}>
@@ -321,7 +361,11 @@ const GarantiaReportPage: React.FC = () => {
 
       <Grid container spacing={3}>
         {/* Guarantees by Model */}
-        <Grid item xs={12} lg={6}>
+        <Grid
+          size={{
+            xs: 12,
+            lg: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="h6" mb={2} fontWeight="bold">
@@ -388,7 +432,11 @@ const GarantiaReportPage: React.FC = () => {
         </Grid>
 
         {/* Guarantees About to Expire */}
-        <Grid item xs={12} lg={6}>
+        <Grid
+          size={{
+            xs: 12,
+            lg: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="h6" mb={2} fontWeight="bold">
@@ -460,7 +508,7 @@ const GarantiaReportPage: React.FC = () => {
         </Grid>
 
         {/* Recent Claims */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" mb={2} fontWeight="bold">

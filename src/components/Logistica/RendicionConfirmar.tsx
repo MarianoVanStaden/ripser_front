@@ -582,7 +582,7 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
                   {c.clienteId != null && (prestamosPorCliente[c.clienteId]?.length ?? 0) > 0 && (
                     <FormControl fullWidth size="small">
                       <InputLabel>Imputar a crédito (opcional)</InputLabel>
-                      <Select
+                      <Select<number | ''>
                         value={c.prestamoId}
                         label="Imputar a crédito (opcional)"
                         onChange={(e) => updateCheque(c.id, {

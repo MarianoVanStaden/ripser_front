@@ -104,7 +104,7 @@ const TareaFormDialog: React.FC<Props> = ({ open, puestoId, tarea, onClose, onSa
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
           <Grid container spacing={2}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Controller
                 name="nombre"
                 control={control}
@@ -120,7 +120,7 @@ const TareaFormDialog: React.FC<Props> = ({ open, puestoId, tarea, onClose, onSa
                 )}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Controller
                 name="descripcion"
                 control={control}
@@ -137,7 +137,7 @@ const TareaFormDialog: React.FC<Props> = ({ open, puestoId, tarea, onClose, onSa
                 )}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Controller
                 name="obligatoria"
                 control={control}

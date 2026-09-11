@@ -423,7 +423,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
         </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Nombre de la opción"
@@ -432,7 +432,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
                 placeholder="Ej: 6 cuotas sin interés"
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 select
@@ -447,7 +447,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <TextField
                 fullWidth
                 type="number"
@@ -457,7 +457,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
                 inputProps={{ min: 1, max: 48 }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <TextField
                 fullWidth
                 type="number"
@@ -470,7 +470,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
                 helperText="Use valores negativos para descuentos"
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Typography gutterBottom>Interés: {formData.tasaInteres}%</Typography>
               <Slider
                 value={formData.tasaInteres || 0}
@@ -486,7 +486,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
                 valueLabelDisplay="auto"
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 multiline
@@ -497,7 +497,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
                 placeholder="Ej: Con tarjetas seleccionadas, válido hasta fin de mes"
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Alert severity="info">
                 <Typography variant="body2">
                   <strong>Resumen del cálculo:</strong>

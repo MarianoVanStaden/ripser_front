@@ -352,7 +352,11 @@ export default function EspecificacionesTecnicasPage() {
             Identificación
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               <TextField
                 select
                 fullWidth
@@ -368,7 +372,11 @@ export default function EspecificacionesTecnicasPage() {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={8}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 8
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -385,7 +393,11 @@ export default function EspecificacionesTecnicasPage() {
             Componentes
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -394,7 +406,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('motor', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -403,7 +419,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('gas', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -412,7 +432,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('humedad', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -421,7 +445,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('sistema', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -430,7 +458,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('iluminacion', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -439,7 +471,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('estructura', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -448,7 +484,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('gabinete', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -457,7 +497,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('transformador', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -466,7 +510,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('leds', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -475,7 +523,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('vidrios', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -484,7 +536,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('paneles', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -493,7 +549,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('puertas', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -509,7 +569,11 @@ export default function EspecificacionesTecnicasPage() {
             Estanterías y dimensiones
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={6} sm={3}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 3
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -519,7 +583,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('estanteriasCantidad', e.target.value)}
               />
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 3
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -529,7 +597,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('estanteriasFormato', e.target.value)}
               />
             </Grid>
-            <Grid item xs={4} sm={2}>
+            <Grid
+              size={{
+                xs: 4,
+                sm: 2
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -540,7 +612,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('alto', e.target.value)}
               />
             </Grid>
-            <Grid item xs={4} sm={2}>
+            <Grid
+              size={{
+                xs: 4,
+                sm: 2
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -551,7 +627,11 @@ export default function EspecificacionesTecnicasPage() {
                 onChange={(e) => setField('profundidad', e.target.value)}
               />
             </Grid>
-            <Grid item xs={4} sm={2}>
+            <Grid
+              size={{
+                xs: 4,
+                sm: 2
+              }}>
               <TextField
                 fullWidth
                 size="small"

@@ -87,7 +87,7 @@ const ImputarChequeACreditoDialog: React.FC<ImputarChequeACreditoDialogProps> = 
             </Alert>
           ) : (
             <Grid container spacing={2}>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <FormControl fullWidth required>
                   <InputLabel>Crédito destino</InputLabel>
                   <Select

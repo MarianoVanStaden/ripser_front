@@ -157,7 +157,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
               </Typography>
               <Divider sx={{ my: 1 }} />
               <Grid container spacing={1}>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <Typography variant="body2" color="text.secondary">
                     Número:
                   </Typography>
@@ -165,7 +165,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
                     {cheque.numeroCheque}
                   </Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <Typography variant="body2" color="text.secondary">
                     Banco:
                   </Typography>
@@ -173,7 +173,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
                     {cheque.bancoNombre}
                   </Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <Typography variant="body2" color="text.secondary">
                     Monto:
                   </Typography>
@@ -181,7 +181,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
                     ${cheque.monto.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <Typography variant="body2" color="text.secondary">
                     Fecha Cobro:
                   </Typography>
@@ -190,7 +190,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
                   </Typography>
                 </Grid>
                 {cheque.clienteNombre && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Typography variant="body2" color="text.secondary">
                       Cliente:
                     </Typography>
@@ -206,7 +206,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
           {/* Form Fields */}
           <Grid container spacing={2}>
             {/* Proveedor Destino */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Controller
                 name="proveedorDestinoId"
                 control={control}
@@ -244,7 +244,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
             </Grid>
 
             {/* Observaciones */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Controller
                 name="observaciones"
                 control={control}

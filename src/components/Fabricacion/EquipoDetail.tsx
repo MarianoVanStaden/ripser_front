@@ -524,7 +524,11 @@ const EquipoDetail: React.FC = () => {
       )}
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -611,7 +615,11 @@ const EquipoDetail: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -677,7 +685,7 @@ const EquipoDetail: React.FC = () => {
         </Grid>
 
         {equipo.clienteNombre && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -694,7 +702,7 @@ const EquipoDetail: React.FC = () => {
 
         {/* Historial de Estados */}
         {equipo.estadoAsignacion && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={1} mb={2}>
@@ -794,7 +802,7 @@ const EquipoDetail: React.FC = () => {
           ['enviarControlCalidad', 'rechazarControlCalidad', 'rechazarEtapasControlCalidad',
            'aprobarControlCalidad', 'aprobarControlCalidadSinColor'].includes(h.evento ?? '')
         ) && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={1} mb={2}>

@@ -814,7 +814,11 @@ const Dashboard: React.FC = () => {
               <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
                 <Grid container spacing={{ xs: 2, sm: 3 }}>
                   {/* Recent Sales */}
-                  <Grid item xs={12} lg={7}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      lg: 7
+                    }}>
                     <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                       <ShippingIcon color="primary" />
                       Ventas Recientes
@@ -878,7 +882,11 @@ const Dashboard: React.FC = () => {
 
 
                   {/* Performance Indicators */}
-                  <Grid item xs={12} lg={5}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      lg: 5
+                    }}>
                     <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <AssessmentIcon color="primary" />
                       Indicadores de Rendimiento

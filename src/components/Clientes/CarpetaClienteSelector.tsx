@@ -133,7 +133,14 @@ const CarpetaClienteSelector: React.FC = () => {
 
       <Grid container spacing={2.5} alignItems="stretch">
         {clientes.map((cliente) => (
-          <Grid key={cliente.id} item xs={12} sm={6} md={4} lg={3}>
+          <Grid
+            key={cliente.id}
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4,
+              lg: 3
+            }}>
             <Card elevation={1} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <CardContent sx={{ flex: 1 }}>
                 <Box display="flex" alignItems="center" mb={2} gap={2}>

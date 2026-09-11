@@ -53,7 +53,7 @@ const EnvioTransferenciaDialog: React.FC<Props> = ({
                   Detalles de la transferencia:
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={6}>
+                  <Grid size={6}>
                     <Typography variant="body2" color="text.secondary">
                       Origen:
                     </Typography>
@@ -61,7 +61,7 @@ const EnvioTransferenciaDialog: React.FC<Props> = ({
                       {transferencia.depositoOrigenNombre}
                     </Typography>
                   </Grid>
-                  <Grid item xs={6}>
+                  <Grid size={6}>
                     <Typography variant="body2" color="text.secondary">
                       Destino:
                     </Typography>
@@ -69,7 +69,7 @@ const EnvioTransferenciaDialog: React.FC<Props> = ({
                       {transferencia.depositoDestinoNombre}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Typography variant="body2" color="text.secondary">
                       Items:
                     </Typography>

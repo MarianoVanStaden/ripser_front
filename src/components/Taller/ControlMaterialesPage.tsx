@@ -526,7 +526,7 @@ const ControlMaterialesPage: React.FC = () => {
                   )}
 
                   <Grid container spacing={2}>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                       <TextField
                         fullWidth
                         type="number"
@@ -538,7 +538,7 @@ const ControlMaterialesPage: React.FC = () => {
                         sx={{ bgcolor: 'background.paper' }}
                       />
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                       <TextField
                         fullWidth
                         type="number"

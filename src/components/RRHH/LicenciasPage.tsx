@@ -488,7 +488,12 @@ const LicenciasPage: React.FC = () => {
       {tabValue === 0 && (<>
       {/* Estadísticas Rápidas */}
       <Grid container spacing={{ xs: 2, sm: 2 }} mb={3}>
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -506,7 +511,12 @@ const LicenciasPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -524,7 +534,12 @@ const LicenciasPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -542,7 +557,12 @@ const LicenciasPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -566,7 +586,11 @@ const LicenciasPage: React.FC = () => {
           <Box mb={2}>
             <Grid container spacing={2}>
               {/* Búsqueda */}
-              <Grid item xs={12} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   label="Buscar"
@@ -585,7 +609,11 @@ const LicenciasPage: React.FC = () => {
               </Grid>
 
               {/* Filtro por Empleado */}
-              <Grid item xs={12} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 3
+                }}>
                 <Autocomplete
                   options={empleados}
                   getOptionLabel={(option) => getEmpleadoNombre(option)}
@@ -599,7 +627,12 @@ const LicenciasPage: React.FC = () => {
               </Grid>
 
               {/* Filtro por Tipo */}
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   select
@@ -634,7 +667,12 @@ const LicenciasPage: React.FC = () => {
               </Grid>
 
               {/* Filtro por Estado */}
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   select
@@ -878,7 +916,7 @@ const LicenciasPage: React.FC = () => {
               <MenuItem value="RESERVA_DE_PUESTO">Reserva de Puesto</MenuItem>
             </TextField>
             <Grid container spacing={2}>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <TextField
                   label="Fecha Inicio"
                   name="fechaInicio"
@@ -890,7 +928,7 @@ const LicenciasPage: React.FC = () => {
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <TextField
                   label="Fecha Fin"
                   name="fechaFin"

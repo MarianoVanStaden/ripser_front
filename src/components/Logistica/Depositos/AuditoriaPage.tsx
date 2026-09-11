@@ -725,12 +725,17 @@ const AuditoriaPage: React.FC = () => {
         {/* Statistics Cards */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {/* Stock Section */}
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
               Movimientos de Stock (Productos/Materiales)
             </Typography>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -740,7 +745,12 @@ const AuditoriaPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ borderLeft: 3, borderColor: 'success.main' }}>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -750,7 +760,12 @@ const AuditoriaPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ borderLeft: 3, borderColor: 'error.main' }}>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -760,7 +775,12 @@ const AuditoriaPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ borderLeft: 3, borderColor: 'info.main' }}>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -770,7 +790,12 @@ const AuditoriaPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ borderLeft: 3, borderColor: 'secondary.main' }}>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -780,7 +805,12 @@ const AuditoriaPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ borderLeft: 3, borderColor: 'warning.main' }}>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -792,12 +822,17 @@ const AuditoriaPage: React.FC = () => {
           </Grid>
 
           {/* Equipment Section */}
-          <Grid item xs={12} sx={{ mt: 1 }}>
+          <Grid sx={{ mt: 1 }} size={12}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
               Movimientos de Equipos (Heladeras/Freezers)
             </Typography>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -807,7 +842,12 @@ const AuditoriaPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ borderLeft: 3, borderColor: 'success.main' }}>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -817,7 +857,12 @@ const AuditoriaPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ borderLeft: 3, borderColor: 'info.main' }}>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -827,7 +872,12 @@ const AuditoriaPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ borderLeft: 3, borderColor: 'error.main' }}>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -837,7 +887,12 @@ const AuditoriaPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ borderLeft: 3, borderColor: 'primary.main' }}>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -847,7 +902,12 @@ const AuditoriaPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={6} sm={4} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ borderLeft: 3, borderColor: 'grey.500' }}>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography color="textSecondary" variant="caption">
@@ -877,7 +937,11 @@ const AuditoriaPage: React.FC = () => {
           </AccordionSummary>
           <AccordionDetails>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 3
+                }}>
                 <DatePicker
                   label="Fecha Inicio"
                   value={fechaInicio ? dayjs(fechaInicio) : null}
@@ -885,7 +949,11 @@ const AuditoriaPage: React.FC = () => {
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 3
+                }}>
                 <DatePicker
                   label="Fecha Fin"
                   value={fechaFin ? dayjs(fechaFin) : null}
@@ -893,7 +961,11 @@ const AuditoriaPage: React.FC = () => {
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Typography variant="caption" display="block" gutterBottom>
                   Rangos Predefinidos:
                 </Typography>
@@ -904,7 +976,11 @@ const AuditoriaPage: React.FC = () => {
                   <Button onClick={() => setDateRange('quarter')}>Último Trimestre</Button>
                 </ButtonGroup>
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 3
+                }}>
                 <FormControl fullWidth>
                   <InputLabel>Depósito Origen</InputLabel>
                   <Select
@@ -921,7 +997,11 @@ const AuditoriaPage: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 3
+                }}>
                 <FormControl fullWidth>
                   <InputLabel>Depósito Destino</InputLabel>
                   <Select
@@ -941,7 +1021,11 @@ const AuditoriaPage: React.FC = () => {
 
               {tabValue === 0 ? (
                 <>
-                  <Grid item xs={12} md={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 4
+                    }}>
                     <FormControl fullWidth>
                       <InputLabel>Tipo de Movimiento</InputLabel>
                       <Select
@@ -958,7 +1042,11 @@ const AuditoriaPage: React.FC = () => {
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 4
+                    }}>
                     <FormControl fullWidth>
                       <InputLabel>Producto</InputLabel>
                       <Select
@@ -978,7 +1066,11 @@ const AuditoriaPage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <Grid item xs={12} md={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 4
+                    }}>
                     <FormControl fullWidth>
                       <InputLabel>Tipo de Movimiento</InputLabel>
                       <Select
@@ -995,7 +1087,11 @@ const AuditoriaPage: React.FC = () => {
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 4
+                    }}>
                     <TextField
                       fullWidth
                       label="Número de Heladera"
@@ -1007,7 +1103,11 @@ const AuditoriaPage: React.FC = () => {
                 </>
               )}
 
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <Button fullWidth variant="contained" onClick={handleApplyFilters} sx={{ height: '56px' }}>
                   Aplicar Filtros de Fecha
                 </Button>
@@ -1280,20 +1380,20 @@ const AuditoriaPage: React.FC = () => {
                           </Typography>
                         </Box>
                         <Grid container spacing={1}>
-                          <Grid item xs={6}>
+                          <Grid size={6}>
                             <Typography variant="caption" color="textSecondary">
                               Origen:
                             </Typography>
                             <Typography variant="body2">{mov.depositoOrigenNombre || '-'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={6}>
                             <Typography variant="caption" color="textSecondary">
                               Destino:
                             </Typography>
                             <Typography variant="body2">{mov.depositoDestinoNombre || '-'}</Typography>
                           </Grid>
                           {mov.motivo && (
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                               <Typography variant="caption" color="textSecondary">
                                 Motivo:
                               </Typography>
@@ -1301,7 +1401,7 @@ const AuditoriaPage: React.FC = () => {
                             </Grid>
                           )}
                           {mov.documentoReferencia && (
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                               <Typography variant="caption" color="textSecondary">
                                 Documento:
                               </Typography>
@@ -1309,7 +1409,7 @@ const AuditoriaPage: React.FC = () => {
                             </Grid>
                           )}
                           {mov.ubicacionInterna && (
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                               <Typography variant="caption" color="textSecondary">
                                 Ubicación Interna:
                               </Typography>
@@ -1317,7 +1417,7 @@ const AuditoriaPage: React.FC = () => {
                             </Grid>
                           )}
                           {mov.observaciones && (
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                               <Typography variant="caption" color="textSecondary">
                                 Observaciones:
                               </Typography>
@@ -1325,7 +1425,7 @@ const AuditoriaPage: React.FC = () => {
                             </Grid>
                           )}
                           {mov.usuarioNombre && (
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                               <Typography variant="caption" color="textSecondary">
                                 Usuario: {mov.usuarioNombre}
                               </Typography>

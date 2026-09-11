@@ -29,7 +29,12 @@ const AdminDashboard: React.FC = () => {
         📊 Dashboard Administrativo (ADMIN/GERENTE)
       </Typography>
       <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
@@ -44,7 +49,12 @@ const AdminDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
@@ -59,7 +69,12 @@ const AdminDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
@@ -76,7 +91,12 @@ const AdminDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>

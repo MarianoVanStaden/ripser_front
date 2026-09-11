@@ -127,14 +127,22 @@ const ConfigFinanciamientoDialog: React.FC<Props> = ({
               Nueva Opción de Financiamiento
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <TextField
                   fullWidth size="small" label="Nombre"
                   value={form.nombre}
                   onChange={(e) => setForm({ ...form, nombre: e.target.value })}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Método de Pago</InputLabel>
                   <Select
@@ -148,7 +156,11 @@ const ConfigFinanciamientoDialog: React.FC<Props> = ({
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <TextField
                   fullWidth size="small" type="number" label="Cantidad de Cuotas"
                   value={form.cantidadCuotas}
@@ -156,7 +168,11 @@ const ConfigFinanciamientoDialog: React.FC<Props> = ({
                   inputProps={{ min: 1 }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <TextField
                   fullWidth size="small" type="number" label="Tasa de Interés (%)"
                   value={form.tasaInteres}
@@ -164,20 +180,24 @@ const ConfigFinanciamientoDialog: React.FC<Props> = ({
                   inputProps={{ min: 0, step: 0.1 }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <Typography variant="body2" color="text.secondary">Total con interés:</Typography>
                 <Typography variant="h6">
                   ${(totalVenta * 0.4 + totalVenta * 0.6 * (1 + form.tasaInteres / 100)).toFixed(2)}
                 </Typography>
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   fullWidth size="small" label="Descripción" multiline rows={2}
                   value={form.descripcion}
                   onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Box display="flex" gap={1} justifyContent="flex-end">
                   <Button size="small" onClick={() => setShowNewForm(false)}>Cancelar</Button>
                   <Button size="small" variant="contained" onClick={handleAdd}>Agregar</Button>
@@ -196,7 +216,7 @@ const ConfigFinanciamientoDialog: React.FC<Props> = ({
               const optionValue = opcion.id !== undefined ? opcion.id : index;
               const isSelected = selectedOpcionId === optionValue;
               return (
-                <Grid item xs={12} key={index}>
+                <Grid key={index} size={12}>
                   <Card
                     variant="outlined"
                     sx={{

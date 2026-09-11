@@ -117,7 +117,7 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
           <Grid container spacing={3}>
             {!isEdit && (
               <>
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <ClienteAutocomplete
                     size="medium"
                     value={selectedCliente}
@@ -128,7 +128,11 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                     required
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6
+                  }}>
                   <TextField
                     fullWidth
                     label="Cantidad de Cuotas"
@@ -139,7 +143,11 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                     inputProps={{ min: 1 }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6
+                  }}>
                   <TextField
                     fullWidth
                     label="Valor de Cuota"
@@ -150,7 +158,11 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                     inputProps={{ min: 0.01, step: 0.01 }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6
+                  }}>
                   <TextField
                     fullWidth
                     select
@@ -166,7 +178,11 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                 </Grid>
               </>
             )}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 select
@@ -182,7 +198,11 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
             </Grid>
             {!isEdit && (
               <>
-                <Grid item xs={12} sm={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6
+                  }}>
                   <TextField
                     fullWidth
                     label="Código Cliente Rojas"
@@ -190,7 +210,11 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                     onChange={(e) => handleChange('codigoClienteRojas', e.target.value || undefined)}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6
+                  }}>
                   <TextField
                     fullWidth
                     label="Número de Comprobante"
@@ -200,7 +224,7 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                 </Grid>
               </>
             )}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Observaciones"
@@ -211,19 +235,19 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
               />
             </Grid>
             {!isEdit && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                   <Typography variant="subtitle2" gutterBottom>Resumen del Cálculo</Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={4}>
+                    <Grid size={4}>
                       <Typography variant="caption" color="text.secondary">Cuotas</Typography>
                       <Typography variant="body1" fontWeight="medium">{formData.cantidadCuotas || 0}</Typography>
                     </Grid>
-                    <Grid item xs={4}>
+                    <Grid size={4}>
                       <Typography variant="caption" color="text.secondary">Valor Cuota</Typography>
                       <Typography variant="body1" fontWeight="medium">{formatPrice(formData.valorCuota || 0)}</Typography>
                     </Grid>
-                    <Grid item xs={4}>
+                    <Grid size={4}>
                       <Typography variant="caption" color="text.secondary">Monto Total</Typography>
                       <Typography variant="body1" fontWeight="bold" color="primary">{formatPrice(montoTotal)}</Typography>
                     </Grid>

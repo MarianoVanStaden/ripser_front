@@ -528,7 +528,7 @@ const NotasCreditoPage: React.FC = () => {
       <Grid container spacing={3}>
 
         {/* ── Paso 1: Factura ── */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
             <CardContent>
               <Box display="flex" alignItems="center" gap={1.5} mb={2}>
@@ -584,7 +584,12 @@ const NotasCreditoPage: React.FC = () => {
                       ['Fecha', dayjs(facturaSeleccionada.fechaEmision).format('DD/MM/YYYY')],
                       ['Total', formatCurrency(facturaSeleccionada.total || 0)],
                     ].map(([label, value]) => (
-                      <Grid item xs={6} sm={3} key={label}>
+                      <Grid
+                        key={label}
+                        size={{
+                          xs: 6,
+                          sm: 3
+                        }}>
                         <Typography variant="caption" color="text.secondary">{label}</Typography>
                         <Typography variant="body2" fontWeight="600" color={label === 'Total' ? 'primary.main' : undefined}>{value}</Typography>
                       </Grid>
@@ -598,7 +603,7 @@ const NotasCreditoPage: React.FC = () => {
 
         {/* ── Paso 2: Tipo de nota de crédito ── */}
         {form.facturaId && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={1.5} mb={2}>
@@ -612,7 +617,11 @@ const NotasCreditoPage: React.FC = () => {
 
                 <Grid container spacing={2}>
                   {/* DEVOLUCION card */}
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <Paper
                       elevation={0}
                       onClick={() => handleModoChange('DEVOLUCION_EQUIPO')}
@@ -638,7 +647,11 @@ const NotasCreditoPage: React.FC = () => {
                   </Grid>
 
                   {/* ERROR card */}
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <Paper
                       elevation={0}
                       onClick={() => handleModoChange('ERROR_FACTURACION')}
@@ -664,7 +677,11 @@ const NotasCreditoPage: React.FC = () => {
                   </Grid>
 
                   {/* ANULACION card */}
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <Paper
                       elevation={0}
                       onClick={() => handleModoChange('ANULACION_COMPRA')}
@@ -696,7 +713,7 @@ const NotasCreditoPage: React.FC = () => {
 
         {/* ── Paso 3A: Selección de equipos (DEVOLUCION) ── */}
         {modoCredito === 'DEVOLUCION_EQUIPO' && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
               <CardContent>
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
@@ -778,13 +795,21 @@ const NotasCreditoPage: React.FC = () => {
                     {form.equiposSeleccionados.length > 0 && (
                       <Paper elevation={0} sx={{ mt: 2, p: 2, bgcolor: alpha(theme.palette.success.main, 0.08), borderRadius: 2, border: `1px solid ${alpha(theme.palette.success.main, 0.2)}` }}>
                         <Grid container spacing={2} alignItems="center">
-                          <Grid item xs={12} sm={4}>
+                          <Grid
+                            size={{
+                              xs: 12,
+                              sm: 4
+                            }}>
                             <Typography variant="body2" color="text.secondary">Equipos seleccionados</Typography>
                             <Typography variant="h6" fontWeight="600" color="success.main">
                               {form.equiposSeleccionados.length} de {equiposElegiblesDevolucion.length}
                             </Typography>
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid
+                            size={{
+                              xs: 12,
+                              sm: 4
+                            }}>
                             <Typography variant="body2" color="text.secondary">
                               {montoRealCC !== null ? 'Monto a acreditar en CC' : 'Monto a acreditar (estimado)'}
                             </Typography>
@@ -794,7 +819,11 @@ const NotasCreditoPage: React.FC = () => {
                                 : formatCurrency(montoRealCC ?? montoDevolucion)}
                             </Typography>
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid
+                            size={{
+                              xs: 12,
+                              sm: 4
+                            }}>
                             <Tooltip title={montoRealCC !== null
                               ? 'Reversa de los débitos que la factura generó en cuenta corriente'
                               : 'Monto proporcional sobre los ítems de equipo de la factura'}>
@@ -817,7 +846,7 @@ const NotasCreditoPage: React.FC = () => {
 
         {/* ── Paso 3B: Ítems a acreditar (ERROR) ── */}
         {esModoItems(modoCredito) && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
               <CardContent>
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
@@ -949,11 +978,19 @@ const NotasCreditoPage: React.FC = () => {
                     {itemsErrorSeleccionados.length > 0 && (
                       <Paper elevation={0} sx={{ mt: 2, p: 2, bgcolor: alpha(theme.palette.warning.main, 0.07), borderRadius: 2, border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}` }}>
                         <Grid container spacing={2} alignItems="center">
-                          <Grid item xs={12} sm={4}>
+                          <Grid
+                            size={{
+                              xs: 12,
+                              sm: 4
+                            }}>
                             <Typography variant="body2" color="text.secondary">Ítems seleccionados</Typography>
                             <Typography variant="h6" fontWeight="600" color="warning.dark">{itemsErrorSeleccionados.length}</Typography>
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid
+                            size={{
+                              xs: 12,
+                              sm: 4
+                            }}>
                             <Typography variant="body2" color="text.secondary">
                               {montoRealCC !== null ? 'Monto a acreditar en CC' : 'Monto a acreditar (exacto)'}
                             </Typography>
@@ -963,7 +1000,11 @@ const NotasCreditoPage: React.FC = () => {
                                 : formatCurrency(montoRealCC ?? montoError)}
                             </Typography>
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid
+                            size={{
+                              xs: 12,
+                              sm: 4
+                            }}>
                             <Alert severity={montoRealCC !== null ? 'info' : 'warning'} sx={{ py: 0.5, borderRadius: 1 }}>
                               <Typography variant="caption">
                                 {montoRealCC !== null
@@ -984,7 +1025,7 @@ const NotasCreditoPage: React.FC = () => {
 
         {/* ── Paso 4: Observaciones ── */}
         {hayItemsSeleccionados && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={1.5} mb={2}>
@@ -1026,7 +1067,7 @@ const NotasCreditoPage: React.FC = () => {
 
         {/* ── Confirmar ── */}
         {hayItemsSeleccionados && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card elevation={0} sx={{ border: `2px solid ${theme.palette.warning.main}`, borderRadius: 2, bgcolor: alpha(theme.palette.warning.main, 0.04) }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={1} mb={2}>
@@ -1036,15 +1077,27 @@ const NotasCreditoPage: React.FC = () => {
                 <Divider sx={{ mb: 2 }} />
 
                 <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="text.secondary">Factura</Typography>
                     <Typography variant="body1" fontWeight="600">{form.facturaNumero}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="text.secondary">Cliente</Typography>
                     <Typography variant="body1" fontWeight="600">{form.clienteNombre}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="text.secondary">
                       {modoCredito === 'DEVOLUCION_EQUIPO' ? 'Equipos a devolver' : 'Ítems a acreditar'}
                     </Typography>
@@ -1054,7 +1107,11 @@ const NotasCreditoPage: React.FC = () => {
                         : itemsErrorSeleccionados.length}
                     </Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="text.secondary">
                       {montoRealCC !== null ? 'Monto a acreditar en CC' : 'Monto estimado'}
                     </Typography>
@@ -1169,19 +1226,19 @@ const NotasCreditoPage: React.FC = () => {
 
                 <Paper elevation={0} sx={{ bgcolor: 'grey.50', borderRadius: 2, p: 2.5, width: '100%', border: `1px solid ${theme.palette.divider}` }}>
                   <Grid container spacing={2}>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                       <Typography variant="caption" color="text.secondary">N° Nota de Crédito</Typography>
                       <Typography variant="body1" fontWeight="600">{successDialog.data.notaCredito?.numeroDocumento || '—'}</Typography>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                       <Typography variant="caption" color="text.secondary">Cliente</Typography>
                       <Typography variant="body1" fontWeight="600">{successDialog.data.notaCredito?.clienteNombre}</Typography>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                       <Typography variant="caption" color="text.secondary">Monto Acreditado</Typography>
                       <Typography variant="body1" fontWeight="600" color="success.main">{formatCurrency(successDialog.data.montoCalculado)}</Typography>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                       <Typography variant="caption" color="text.secondary">Factura de Referencia</Typography>
                       <Typography variant="body1" fontWeight="600">{successDialog.data.facturaNumero}</Typography>
                     </Grid>

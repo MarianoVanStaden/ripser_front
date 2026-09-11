@@ -276,7 +276,11 @@ export const RefinanciacionPage: React.FC = () => {
 
       <Grid container spacing={3}>
         {/* ── Panel izquierdo: formulario ── */}
-        <Grid item xs={12} md={5}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 5
+          }}>
           <Card>
             <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Typography variant="subtitle1" fontWeight={600}>Parámetros de refinanciación</Typography>
@@ -447,7 +451,11 @@ export const RefinanciacionPage: React.FC = () => {
         </Grid>
 
         {/* ── Panel derecho: proyección + tabla ── */}
-        <Grid item xs={12} md={7}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 7
+          }}>
           {/* Resumen */}
           <Card sx={{ mb: 2 }}>
             <CardContent>

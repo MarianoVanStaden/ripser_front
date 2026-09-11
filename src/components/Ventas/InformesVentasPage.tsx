@@ -694,15 +694,17 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
         </Alert>
       )}
 
-
-
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
             Configuración del Informe
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo de Informe</InputLabel>
                 <Select
@@ -716,7 +718,11 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Agrupar por</InputLabel>
                 <Select
@@ -736,7 +742,11 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo de Gráfico</InputLabel>
                 <Select
@@ -755,7 +765,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
       </Card>
 
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
@@ -770,7 +785,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
@@ -785,7 +805,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
@@ -809,7 +834,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
             <Typography variant="h6">Filtros</Typography>
           </Box>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <TextField
                 fullWidth
                 label="Buscar"
@@ -823,7 +853,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 2
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo de Documento</InputLabel>
                 <Select
@@ -837,7 +872,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 2
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Estado</InputLabel>
                 <Select
@@ -854,7 +894,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 2
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Método de Pago</InputLabel>
                 <Select
@@ -876,7 +921,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 2
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Cliente</InputLabel>
                 <Select
@@ -893,7 +943,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Vendedor</InputLabel>
                 <Select
@@ -910,7 +965,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} lg={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                lg: 3
+              }}>
               <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
                 <DatePicker
                   label="Desde"
@@ -920,7 +980,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                 />
               </LocalizationProvider>
             </Grid>
-            <Grid item xs={12} sm={6} lg={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                lg: 3
+              }}>
               <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
                 <DatePicker
                   label="Hasta"
@@ -1148,7 +1213,11 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
           {viewingSale && (
             <Box>
               <Grid container spacing={2} mb={3}>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Información General
                   </Typography>
@@ -1159,7 +1228,11 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                     <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago)}</Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Cliente y Vendedor
                   </Typography>

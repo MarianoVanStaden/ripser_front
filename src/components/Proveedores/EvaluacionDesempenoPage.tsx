@@ -339,7 +339,12 @@ const EvaluacionDesempenoPage = () => {
       <Box>
         <Grid container spacing={3}>
           {/* Calificación General */}
-          <Grid item xs={12} md={6} lg={4}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6,
+              lg: 4
+            }}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" mb={2}>
@@ -360,7 +365,12 @@ const EvaluacionDesempenoPage = () => {
           </Grid>
 
           {/* Calificaciones por Criterio */}
-          <Grid item xs={12} md={6} lg={8}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6,
+              lg: 8
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" mb={2}>Métricas por Criterio</Typography>
@@ -391,7 +401,12 @@ const EvaluacionDesempenoPage = () => {
           </Grid>
 
           {/* Rango de Calificaciones */}
-          <Grid item xs={12} md={6} lg={4}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6,
+              lg: 4
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" mb={2}>Rango de Calificaciones</Typography>

@@ -166,14 +166,22 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
     <Stack spacing={3}>
       {/* KPIs */}
       <Grid container spacing={2}>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <KpiCard
             icon={<GavelIcon />} color="primary.main"
             label="Total (rango)" value={data.totalSanciones}
             subtitle="Sanciones en el período"
           />
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <KpiCard
             icon={<GavelIcon />} color="warning.main"
             label="Este mes" value={data.sancionesMesActual}
@@ -183,14 +191,22 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
             } : undefined}
           />
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <KpiCard
             icon={<AccessTimeIcon />} color="error.main"
             label="Días susp. mes" value={data.diasSuspensionMes}
             subtitle={`${data.suspensionesActivasMes} suspensión(es) en el mes`}
           />
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <KpiCard
             icon={<RepeatIcon />} color="error.main"
             label="Reincidentes" value={data.empleadosReincidentes}
@@ -201,7 +217,11 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
 
       {/* Charts row 1 */}
       <Grid container spacing={2}>
-        <Grid item xs={12} md={5}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 5
+          }}>
           <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: 1, borderColor: 'divider', height: 380 }}>
             <Typography variant="subtitle2" fontWeight={700} color="primary" mb={2}>
               DISTRIBUCIÓN POR TIPO
@@ -227,7 +247,11 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
             )}
           </Paper>
         </Grid>
-        <Grid item xs={12} md={7}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 7
+          }}>
           <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: 1, borderColor: 'divider', height: 380 }}>
             <Typography variant="subtitle2" fontWeight={700} color="primary" mb={2}>
               SANCIONES POR SECTOR (Top 10)
@@ -255,7 +279,11 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
 
       {/* Charts row 2 */}
       <Grid container spacing={2}>
-        <Grid item xs={12} md={8}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 8
+          }}>
           <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: 1, borderColor: 'divider', height: 360 }}>
             <Typography variant="subtitle2" fontWeight={700} color="primary" mb={2}>
               EVOLUCIÓN MENSUAL (Últimos 12 meses)
@@ -275,7 +303,11 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
             </ResponsiveContainer>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 4
+          }}>
           <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: 1, borderColor: 'divider', height: 360, overflow: 'auto' }}>
             <Typography variant="subtitle2" fontWeight={700} color="primary" mb={2}>
               MOTIVOS MÁS FRECUENTES
@@ -323,7 +355,13 @@ const DisciplinaDashboard: React.FC<DisciplinaDashboardProps> = ({ onSelectEmple
         ) : (
           <Grid container spacing={1.5}>
             {data.topReincidentes.map((r) => (
-              <Grid item xs={12} sm={6} md={4} key={r.empleadoId}>
+              <Grid
+                key={r.empleadoId}
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 4
+                }}>
                 <Paper
                   variant="outlined"
                   sx={{

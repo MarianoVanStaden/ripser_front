@@ -239,7 +239,12 @@ const GarantiasPage: React.FC = () => {
 
       {/* Statistics Cards */}
       <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -257,7 +262,12 @@ const GarantiasPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -275,7 +285,12 @@ const GarantiasPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -293,7 +308,12 @@ const GarantiasPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'grey.100', borderLeft: '4px solid', borderColor: 'grey.500' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -316,7 +336,11 @@ const GarantiasPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth
                 label="Buscar por modelo, serie"
@@ -332,7 +356,11 @@ const GarantiasPage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 2
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Estado</InputLabel>
                 <Select
@@ -348,7 +376,11 @@ const GarantiasPage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={6} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                md: 2
+              }}>
               <FechaField
                 label="Alta desde"
                 value={fechaDesde}
@@ -358,7 +390,11 @@ const GarantiasPage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={6} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                md: 2
+              }}>
               <FechaField
                 label="Alta hasta"
                 value={fechaHasta}
@@ -368,7 +404,11 @@ const GarantiasPage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 2
+              }}>
               <Button
                 fullWidth
                 variant="contained"

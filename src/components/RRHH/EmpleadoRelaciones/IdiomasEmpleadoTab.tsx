@@ -114,12 +114,12 @@ const IdiomasEmpleadoTab: React.FC<Props> = ({ empleadoId }) => {
         <DialogContent>
           <Stack spacing={2} mt={1}>
             <Grid container spacing={2}>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField fullWidth required label="Idioma" placeholder="Inglés, Portugués…"
                   value={form.idioma}
                   onChange={(e) => setForm({ ...form, idioma: e.target.value })} />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField fullWidth select required label="Nivel" value={form.nivel}
                   onChange={(e) => setForm({ ...form, nivel: e.target.value as NivelIdioma })}>
                   {NIVELES_IDIOMA.map(n => <MenuItem key={n} value={n}>{NIVEL_IDIOMA_LABEL[n]}</MenuItem>)}

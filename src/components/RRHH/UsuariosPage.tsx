@@ -426,7 +426,11 @@ const UsuariosPage: React.FC = () => {
         <DialogTitle>Crear Nuevo Usuario</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 label="Nombre de Usuario *"
@@ -435,7 +439,11 @@ const UsuariosPage: React.FC = () => {
                 helperText="Mínimo 3 caracteres"
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 label="Email *"
@@ -444,7 +452,11 @@ const UsuariosPage: React.FC = () => {
                 onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 label="Nombre"
@@ -452,7 +464,11 @@ const UsuariosPage: React.FC = () => {
                 onChange={(e) => setCreateForm({ ...createForm, nombre: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 label="Apellido"
@@ -460,7 +476,7 @@ const UsuariosPage: React.FC = () => {
                 onChange={(e) => setCreateForm({ ...createForm, apellido: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Contraseña *"
@@ -482,7 +498,7 @@ const UsuariosPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <FormControl fullWidth>
                 <InputLabel>Roles *</InputLabel>
                 <Select
@@ -530,7 +546,7 @@ const UsuariosPage: React.FC = () => {
         <DialogTitle>Editar Usuario: {selectedUser?.username}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Email"
@@ -539,7 +555,7 @@ const UsuariosPage: React.FC = () => {
                 onChange={(e) => setUpdateForm({ ...updateForm, email: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <FormControl fullWidth>
                 <InputLabel>Roles</InputLabel>
                 <Select
@@ -572,7 +588,11 @@ const UsuariosPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -584,7 +604,11 @@ const UsuariosPage: React.FC = () => {
                 label={updateForm.enabled ? 'Usuario Activo' : 'Usuario Inactivo'}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -611,7 +635,7 @@ const UsuariosPage: React.FC = () => {
         <DialogTitle>Cambiar Contraseña: {selectedUser?.username}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Contraseña Actual *"
@@ -632,7 +656,7 @@ const UsuariosPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Nueva Contraseña *"

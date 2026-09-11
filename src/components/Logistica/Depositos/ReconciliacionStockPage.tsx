@@ -164,7 +164,11 @@ const InlineAjusteDeposito: React.FC<InlineAjusteDepositoProps> = ({
     >
       <Grid container spacing={1.5} alignItems="flex-start">
         {/* Deposit info */}
-        <Grid item xs={12} sm={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 3
+          }}>
           <Typography variant="body2" fontWeight="medium" gutterBottom>
             {detalle.depositoNombre}
           </Typography>
@@ -181,7 +185,11 @@ const InlineAjusteDeposito: React.FC<InlineAjusteDepositoProps> = ({
         </Grid>
 
         {/* Nuevo contado */}
-        <Grid item xs={12} sm={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 3
+          }}>
           <TextField
             fullWidth
             type="number"
@@ -211,7 +219,11 @@ const InlineAjusteDeposito: React.FC<InlineAjusteDepositoProps> = ({
         </Grid>
 
         {/* Observaciones */}
-        <Grid item xs={12} sm={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 4
+          }}>
           <TextField
             fullWidth
             label="Observaciones"
@@ -223,7 +235,12 @@ const InlineAjusteDeposito: React.FC<InlineAjusteDepositoProps> = ({
         </Grid>
 
         {/* Guardar */}
-        <Grid item xs={12} sm={2} sx={{ display: 'flex', alignItems: 'flex-start', pt: '4px !important' }}>
+        <Grid
+          sx={{ display: 'flex', alignItems: 'flex-start', pt: '4px !important' }}
+          size={{
+            xs: 12,
+            sm: 2
+          }}>
           <Button
             fullWidth
             variant="contained"
@@ -822,7 +839,12 @@ const ReconciliacionStockPage: React.FC = () => {
               {/* Summary Cards */}
               {diferencias && (
                 <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6,
+                      md: 3
+                    }}>
                     <Card sx={{ bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.300' }}>
                       <CardContent>
                         <Typography variant="subtitle2" color="text.secondary">
@@ -832,7 +854,12 @@ const ReconciliacionStockPage: React.FC = () => {
                       </CardContent>
                     </Card>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6,
+                      md: 3
+                    }}>
                     <Card
                       sx={{
                         bgcolor: 'action.hover',
@@ -850,7 +877,12 @@ const ReconciliacionStockPage: React.FC = () => {
                       </CardContent>
                     </Card>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6,
+                      md: 3
+                    }}>
                     <Card
                       sx={{
                         bgcolor: tintChannel('warning', 0.08),
@@ -868,7 +900,12 @@ const ReconciliacionStockPage: React.FC = () => {
                       </CardContent>
                     </Card>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6,
+                      md: 3
+                    }}>
                     <Card
                       sx={{
                         bgcolor: tintChannel('error', 0.08),
@@ -1278,7 +1315,7 @@ const ReconciliacionStockPage: React.FC = () => {
                   {detalleTabValue === 0 && (
                     <Box>
                       <Grid container spacing={3}>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                           <Typography
                             variant="subtitle2"
                             color="primary"
@@ -1288,7 +1325,11 @@ const ReconciliacionStockPage: React.FC = () => {
                             📋 Datos de la Reconciliación
                           </Typography>
                         </Grid>
-                        <Grid item xs={6} md={3}>
+                        <Grid
+                          size={{
+                            xs: 6,
+                            md: 3
+                          }}>
                           <Typography variant="body2" color="text.secondary">
                             Código
                           </Typography>
@@ -1297,7 +1338,11 @@ const ReconciliacionStockPage: React.FC = () => {
                               `#${selectedReconciliacion.id}`}
                           </Typography>
                         </Grid>
-                        <Grid item xs={6} md={3}>
+                        <Grid
+                          size={{
+                            xs: 6,
+                            md: 3
+                          }}>
                           <Typography variant="body2" color="text.secondary">
                             Período
                           </Typography>
@@ -1305,7 +1350,11 @@ const ReconciliacionStockPage: React.FC = () => {
                             {selectedReconciliacion.periodo}
                           </Typography>
                         </Grid>
-                        <Grid item xs={6} md={3}>
+                        <Grid
+                          size={{
+                            xs: 6,
+                            md: 3
+                          }}>
                           <Typography variant="body2" color="text.secondary">
                             Fecha Inicio
                           </Typography>
@@ -1313,7 +1362,11 @@ const ReconciliacionStockPage: React.FC = () => {
                             {dayjs(selectedReconciliacion.fechaInicio).format('DD/MM/YYYY HH:mm')}
                           </Typography>
                         </Grid>
-                        <Grid item xs={6} md={3}>
+                        <Grid
+                          size={{
+                            xs: 6,
+                            md: 3
+                          }}>
                           <Typography variant="body2" color="text.secondary">
                             Fecha Finalización
                           </Typography>
@@ -1331,7 +1384,7 @@ const ReconciliacionStockPage: React.FC = () => {
                         {(selectedReconciliacionDetalle?.usuarioInicioNombre ||
                           selectedReconciliacionDetalle?.usuarioAprobacionNombre) && (
                           <>
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                               <Divider sx={{ my: 1 }} />
                               <Typography
                                 variant="subtitle2"
@@ -1343,7 +1396,11 @@ const ReconciliacionStockPage: React.FC = () => {
                               </Typography>
                             </Grid>
                             {selectedReconciliacionDetalle?.usuarioInicioNombre && (
-                              <Grid item xs={6} md={3}>
+                              <Grid
+                                size={{
+                                  xs: 6,
+                                  md: 3
+                                }}>
                                 <Typography variant="body2" color="text.secondary">
                                   Iniciada por
                                 </Typography>
@@ -1356,7 +1413,11 @@ const ReconciliacionStockPage: React.FC = () => {
                               </Grid>
                             )}
                             {selectedReconciliacionDetalle?.usuarioAprobacionNombre && (
-                              <Grid item xs={6} md={3}>
+                              <Grid
+                                size={{
+                                  xs: 6,
+                                  md: 3
+                                }}>
                                 <Typography variant="body2" color="text.secondary">
                                   Aprobada por
                                 </Typography>
@@ -1372,7 +1433,7 @@ const ReconciliacionStockPage: React.FC = () => {
                         )}
 
                         {selectedReconciliacion.observaciones && (
-                          <Grid item xs={12}>
+                          <Grid size={12}>
                             <Divider sx={{ my: 1 }} />
                             <Typography
                               variant="subtitle2"
@@ -1390,7 +1451,7 @@ const ReconciliacionStockPage: React.FC = () => {
                           </Grid>
                         )}
 
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                           <Divider sx={{ my: 1 }} />
                           <Typography
                             variant="subtitle2"
@@ -1515,7 +1576,7 @@ const ReconciliacionStockPage: React.FC = () => {
                       <Grid container spacing={3}>
                         {ajustesArray.length > 0 ? (
                           <>
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                               <Typography
                                 variant="subtitle2"
                                 color="primary"
@@ -1525,7 +1586,11 @@ const ReconciliacionStockPage: React.FC = () => {
                                 📈 Análisis de Ajustes
                               </Typography>
                             </Grid>
-                            <Grid item xs={12} md={4}>
+                            <Grid
+                              size={{
+                                xs: 12,
+                                md: 4
+                              }}>
                               <Paper variant="outlined" sx={{ p: 2 }}>
                                 <Typography variant="h5" color="success.main">
                                   {ajustesArray.filter((a) => a.diferencia > 0).length}
@@ -1542,7 +1607,11 @@ const ReconciliacionStockPage: React.FC = () => {
                                 </Typography>
                               </Paper>
                             </Grid>
-                            <Grid item xs={12} md={4}>
+                            <Grid
+                              size={{
+                                xs: 12,
+                                md: 4
+                              }}>
                               <Paper variant="outlined" sx={{ p: 2 }}>
                                 <Typography variant="h5" color="error.main">
                                   {ajustesArray.filter((a) => a.diferencia < 0).length}
@@ -1559,7 +1628,11 @@ const ReconciliacionStockPage: React.FC = () => {
                                 </Typography>
                               </Paper>
                             </Grid>
-                            <Grid item xs={12} md={4}>
+                            <Grid
+                              size={{
+                                xs: 12,
+                                md: 4
+                              }}>
                               <Paper variant="outlined" sx={{ p: 2 }}>
                                 <Typography variant="h5" color="info.main">
                                   {ajustesArray.filter((a) => a.diferencia === 0).length}
@@ -1573,7 +1646,7 @@ const ReconciliacionStockPage: React.FC = () => {
                               </Paper>
                             </Grid>
 
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                               <Divider sx={{ my: 1 }} />
                               <Typography
                                 variant="subtitle2"
@@ -1602,7 +1675,7 @@ const ReconciliacionStockPage: React.FC = () => {
                               </Box>
                             </Grid>
 
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                               <Divider sx={{ my: 1 }} />
                               <Typography
                                 variant="subtitle2"
@@ -1653,7 +1726,7 @@ const ReconciliacionStockPage: React.FC = () => {
                             </Grid>
                           </>
                         ) : (
-                          <Grid item xs={12}>
+                          <Grid size={12}>
                             <Alert severity="info">
                               No hay ajustes registrados para mostrar estadísticas.
                             </Alert>

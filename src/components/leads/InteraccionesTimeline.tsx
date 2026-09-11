@@ -412,7 +412,11 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
           )}
 
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Tipo de Interacción</InputLabel>
                 <Select
@@ -431,7 +435,11 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 type="datetime-local"
@@ -442,7 +450,7 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
               />
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 multiline
@@ -455,7 +463,11 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Resultado</InputLabel>
                 <Select
@@ -478,7 +490,11 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 type="number"
@@ -492,7 +508,7 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
               />
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Divider sx={{ my: 1 }}>
                 <Chip
                   label={proximaAccionRequerida ? 'Próxima Acción *' : 'Próxima Acción'}
@@ -502,7 +518,11 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
               </Divider>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 type="date"
@@ -516,7 +536,11 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 label="Notas de Próxima Acción"

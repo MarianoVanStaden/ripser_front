@@ -92,7 +92,7 @@ export const RecordatorioCobranzaDialog: React.FC<RecordatorioCobranzaDialogProp
           {formError && <Alert severity="error">{formError}</Alert>}
 
           <Grid container spacing={2}>
-            <Grid item xs={7}>
+            <Grid size={7}>
               <FechaField
                 label="Fecha *"
                 value={form.fechaRecordatorio}
@@ -100,7 +100,7 @@ export const RecordatorioCobranzaDialog: React.FC<RecordatorioCobranzaDialogProp
                 minDate={getTodayStr()}
               />
             </Grid>
-            <Grid item xs={5}>
+            <Grid size={5}>
               <TextField
                 label="Hora"
                 type="time"
@@ -113,7 +113,7 @@ export const RecordatorioCobranzaDialog: React.FC<RecordatorioCobranzaDialogProp
           </Grid>
 
           <Grid container spacing={2}>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo</InputLabel>
                 <Select
@@ -129,7 +129,7 @@ export const RecordatorioCobranzaDialog: React.FC<RecordatorioCobranzaDialogProp
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Prioridad</InputLabel>
                 <Select

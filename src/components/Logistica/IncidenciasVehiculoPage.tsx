@@ -407,7 +407,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
           )}
 
           <Grid container spacing={2}>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo *</InputLabel>
                 <Select value={form.tipo} label="Tipo *" onChange={(e) => set('tipo', e.target.value as TipoIncidenciaVehiculo)}>
@@ -417,7 +417,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Gravedad *</InputLabel>
                 <Select value={form.gravedad} label="Gravedad *" onChange={(e) => set('gravedad', e.target.value as GravedadIncidencia)}>
@@ -430,7 +430,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
           </Grid>
 
           <Grid container spacing={2}>
-            <Grid item xs={isEdit ? 6 : 6}>
+            <Grid size={isEdit ? 6 : 6}>
               <TextField
                 label="Fecha *"
                 type="date"
@@ -441,7 +441,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <TextField
                 label="Km vehículo"
                 type="number"
@@ -489,7 +489,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
             <>
               <Divider />
               <Grid container spacing={2}>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <TextField
                     label="N° Expediente"
                     fullWidth
@@ -498,7 +498,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
                     onChange={(e) => set('numeroExpediente', e.target.value)}
                   />
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <TextField
                     label="Tercero involucrado"
                     fullWidth
@@ -531,7 +531,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
             <>
               <Divider />
               <Grid container spacing={2}>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <TextField
                     label="Fecha resolución"
                     type="date"
@@ -542,7 +542,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <TextField
                     label="Observaciones resolución"
                     fullWidth
@@ -990,13 +990,25 @@ const TabLegajo: React.FC<TabLegajoProps> = ({ vehiculos, onMutation }) => {
           {/* Stats */}
           {incidencias.length > 0 && (
             <Grid container spacing={2} mb={2}>
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <StatCard label="Total incidencias" count={stats.total} color="primary" icon={<DirectionsCarIcon />} />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <StatCard label="Abiertas / En proceso" count={stats.abiertas} color="error" icon={<ErrorOutlineIcon />} />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <StatCard label="Graves / Críticas activas" count={stats.criticas} color="warning" icon={<WarningIcon />} />
               </Grid>
             </Grid>

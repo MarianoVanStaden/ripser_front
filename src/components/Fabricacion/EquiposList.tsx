@@ -1094,7 +1094,12 @@ const EquiposList: React.FC = () => {
 
         {/* Summary Cards */}
         <Grid container spacing={2} mb={3}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%', bgcolor: 'primary.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -1114,7 +1119,12 @@ const EquiposList: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%', bgcolor: 'success.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -1134,7 +1144,12 @@ const EquiposList: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%', bgcolor: 'warning.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -1154,7 +1169,12 @@ const EquiposList: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%', bgcolor: 'info.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -1174,7 +1194,12 @@ const EquiposList: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%', bgcolor: 'warning.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -1194,7 +1219,12 @@ const EquiposList: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%', bgcolor: 'success.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -1214,7 +1244,12 @@ const EquiposList: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%', bgcolor: 'grey.100' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -1234,7 +1269,12 @@ const EquiposList: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%', bgcolor: 'success.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -1254,7 +1294,12 @@ const EquiposList: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%', bgcolor: 'error.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -1274,7 +1319,12 @@ const EquiposList: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%', bgcolor: 'secondary.50' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -1335,7 +1385,11 @@ const EquiposList: React.FC = () => {
           <Box>
             <Grid container spacing={3}>
               {/* Estado de Fabricación */}
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Paper sx={{ p: 3, height: '100%' }}>
                   <Typography variant="h6" gutterBottom fontWeight="600">
                     Estado de Fabricación
@@ -1368,7 +1422,11 @@ const EquiposList: React.FC = () => {
               </Grid>
 
               {/* Estado de Asignación */}
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Paper sx={{ p: 3, height: '100%' }}>
                   <Typography variant="h6" gutterBottom fontWeight="600">
                     Estado de Asignación
@@ -1399,7 +1457,11 @@ const EquiposList: React.FC = () => {
               </Grid>
 
               {/* Distribución por Tipo */}
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Paper sx={{ p: 3, height: '100%' }}>
                   <Typography variant="h6" gutterBottom fontWeight="600">
                     Distribución por Tipo de Equipo
@@ -1425,7 +1487,11 @@ const EquiposList: React.FC = () => {
               </Grid>
 
               {/* Resumen de Flujo */}
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Paper sx={{ p: 3, height: '100%' }}>
                   <Typography variant="h6" gutterBottom fontWeight="600">
                     Flujo de Equipos
@@ -1455,13 +1521,18 @@ const EquiposList: React.FC = () => {
               </Grid>
 
               {/* KPIs Adicionales */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" gutterBottom fontWeight="600">
                     Indicadores Clave de Rendimiento
                   </Typography>
                   <Grid container spacing={3} mt={1}>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6,
+                        md: 3
+                      }}>
                       <Box textAlign="center">
                         <Typography variant="h3" color="success.main" fontWeight="bold">
                           {metrics.total > 0 ? ((metrics.completados / metrics.total) * 100).toFixed(1) : 0}%
@@ -1471,7 +1542,12 @@ const EquiposList: React.FC = () => {
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6,
+                        md: 3
+                      }}>
                       <Box textAlign="center">
                         <Typography variant="h3" color="warning.main" fontWeight="bold">
                           {metrics.completados > 0 ? ((metrics.asignados / metrics.completados) * 100).toFixed(1) : 0}%
@@ -1481,7 +1557,12 @@ const EquiposList: React.FC = () => {
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6,
+                        md: 3
+                      }}>
                       <Box textAlign="center">
                         <Typography variant="h3" color="info.main" fontWeight="bold">
                           {metrics.total > 0 ? ((metrics.enProceso / metrics.total) * 100).toFixed(1) : 0}%
@@ -1491,7 +1572,12 @@ const EquiposList: React.FC = () => {
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6,
+                        md: 3
+                      }}>
                       <Box textAlign="center">
                         <Typography variant="h3" color="error.main" fontWeight="bold">
                           {metrics.total > 0 ? ((metrics.cancelados / metrics.total) * 100).toFixed(1) : 0}%

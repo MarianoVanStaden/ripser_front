@@ -305,7 +305,11 @@ const SueldoFormDialog: React.FC<Props> = ({
 
         <Grid container spacing={2}>
           {/* Empleado / Categoría / Período / Concepto */}
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Autocomplete
               options={empleados}
               value={empleados.find(e => e.id === form.empleadoId) ?? null}
@@ -337,7 +341,11 @@ const SueldoFormDialog: React.FC<Props> = ({
               disabled={!!editing}
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Autocomplete
               options={categorias.filter(c => c.activo !== false)}
               value={categorias.find(c => c.id === form.categoriaSalarialId) ?? null}
@@ -346,7 +354,11 @@ const SueldoFormDialog: React.FC<Props> = ({
               renderInput={(p) => <TextField {...p} label="Categoría salarial *" />}
             />
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 4
+            }}>
             <TextField
               fullWidth type="month" label="Período *"
               value={form.periodo}
@@ -354,7 +366,11 @@ const SueldoFormDialog: React.FC<Props> = ({
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 4
+            }}>
             <TextField
               fullWidth select label="Concepto"
               value={form.concepto}
@@ -365,13 +381,18 @@ const SueldoFormDialog: React.FC<Props> = ({
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12}><Divider /></Grid>
+          <Grid size={12}><Divider /></Grid>
 
           {/* Asistencia */}
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Typography variant="subtitle1" color="primary" fontWeight={600}>Asistencia</Typography>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField fullWidth type="number" label="Días computados"
               value={form.concepto === 'AGUINALDO' ? 30 : form.diasComputados}
               onChange={setNumberField('diasComputados')}
@@ -388,7 +409,12 @@ const SueldoFormDialog: React.FC<Props> = ({
               }
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField fullWidth type="number" label="Presentismo (%)"
               value={form.presentismoPct}
               onChange={setNumberField('presentismoPct')}
@@ -396,32 +422,52 @@ const SueldoFormDialog: React.FC<Props> = ({
               helperText="0 a 100"
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField fullWidth type="number" label="Horas Extra (cant.)"
               value={form.horasExtraCant} onChange={setNumberField('horasExtraCant')}
               helperText={categoria ? `${categoria.horaExtraValor.toLocaleString('es-AR')} $/h` : ''}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField fullWidth type="number" label="Horas Ausente (cant.)"
               value={form.horasAusenteCant} onChange={setNumberField('horasAusenteCant')}
               helperText={categoria ? `${categoria.horaAusenteValor.toLocaleString('es-AR')} $/h` : ''}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField fullWidth type="number" label="Km recorridos"
               value={form.kmCant} onChange={setNumberField('kmCant')}
               helperText={categoria ? `${categoria.kmValor.toLocaleString('es-AR')} $/km` : ''}
             />
           </Grid>
 
-          <Grid item xs={12}><Divider /></Grid>
+          <Grid size={12}><Divider /></Grid>
 
           {/* Bonos */}
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Typography variant="subtitle1" color="primary" fontWeight={600}>Bonos del mes</Typography>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField fullWidth type="number" label="Heladeras producidas"
               value={form.unidadesProducidas} onChange={setNumberField('unidadesProducidas')}
               helperText={bonosProdCategoria.length > 0
@@ -429,7 +475,12 @@ const SueldoFormDialog: React.FC<Props> = ({
                 : 'Sin tabla configurada'}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField fullWidth type="number" label="Bono ventas ($)"
               value={form.bonoVentas} onChange={setNumberField('bonoVentas')}
               helperText={
@@ -441,44 +492,74 @@ const SueldoFormDialog: React.FC<Props> = ({
               }
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField fullWidth type="number" label="Bono Especial"
               value={form.bonoEspecial} onChange={setNumberField('bonoEspecial')}
               InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField fullWidth type="number" label="Comisiones"
               value={form.comisiones} onChange={setNumberField('comisiones')}
               InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField fullWidth type="number" label="Bonificaciones (libre)"
               value={form.bonificaciones} onChange={setNumberField('bonificaciones')}
               InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
             />
           </Grid>
 
-          <Grid item xs={12}><Divider /></Grid>
+          <Grid size={12}><Divider /></Grid>
 
           {/* Descuentos / Adelantos */}
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Typography variant="subtitle1" color="error" fontWeight={600}>Descuentos y Adelantos</Typography>
           </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4
+            }}>
             <TextField fullWidth type="number" label="Descuentos Legales"
               value={form.descuentosLegales} onChange={setNumberField('descuentosLegales')}
               InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4
+            }}>
             <TextField fullWidth type="number" label="Otros Descuentos"
               value={form.descuentosOtros} onChange={setNumberField('descuentosOtros')}
               InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4
+            }}>
             <TextField fullWidth type="number" label="Adelantos del período"
               value={form.adelantos} onChange={setNumberField('adelantos')}
               InputProps={{
@@ -501,7 +582,7 @@ const SueldoFormDialog: React.FC<Props> = ({
             />
           </Grid>
 
-          <Grid item xs={12}>
+          <Grid size={12}>
             <TextField
               fullWidth multiline rows={2} label="Observaciones"
               value={form.observaciones}
@@ -510,7 +591,7 @@ const SueldoFormDialog: React.FC<Props> = ({
           </Grid>
 
           {/* Resumen calculado */}
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card variant="outlined" sx={{ bgcolor: 'grey.50', p: 2 }}>
               <Stack direction="row" alignItems="center" spacing={1} mb={1}>
                 <CalculateIcon color="primary" />
@@ -525,75 +606,123 @@ const SueldoFormDialog: React.FC<Props> = ({
                 </Typography>
               ) : calc && (
                 <Grid container spacing={1.5}>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">
                       Sueldo Básico{diasEfectivos < diasMes ? ` (${diasEfectivos}/${diasMes} días)` : ''}
                     </Typography>
                     <Typography variant="body2" fontWeight={600}>${calc.sueldoBasico.toLocaleString('es-AR')}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">Presentismo</Typography>
                     <Typography variant="body2">${calc.presentismoMonto.toLocaleString('es-AR')}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">Horas Extra</Typography>
                     <Typography variant="body2">${calc.horasExtraMonto.toLocaleString('es-AR')}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">KM</Typography>
                     <Typography variant="body2">${calc.kmMonto.toLocaleString('es-AR')}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">Bono Producción</Typography>
                     <Typography variant="body2">${calc.bonoProduccion.toLocaleString('es-AR')}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">Bono Ventas</Typography>
                     <Typography variant="body2">${calc.bonoVentas.toLocaleString('es-AR')}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">Bono Especial</Typography>
                     <Typography variant="body2">${calc.bonoEspecial.toLocaleString('es-AR')}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">Comisiones + Bonif.</Typography>
                     <Typography variant="body2">${(calc.comisiones + calc.bonificaciones).toLocaleString('es-AR')}</Typography>
                   </Grid>
 
-                  <Grid item xs={12}><Divider /></Grid>
+                  <Grid size={12}><Divider /></Grid>
 
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">Horas Ausente</Typography>
                     <Typography variant="body2" color="error.main">- ${calc.horasAusenteMonto.toLocaleString('es-AR')}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">Adelantos</Typography>
                     <Typography variant="body2" color="error.main">- ${calc.adelantos.toLocaleString('es-AR')}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">Descuentos Legales</Typography>
                     <Typography variant="body2" color="error.main">- ${calc.descuentosLegales.toLocaleString('es-AR')}</Typography>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <Typography variant="caption" color="textSecondary">Otros Descuentos</Typography>
                     <Typography variant="body2" color="error.main">- ${calc.descuentosOtros.toLocaleString('es-AR')}</Typography>
                   </Grid>
 
-                  <Grid item xs={12}><Divider /></Grid>
+                  <Grid size={12}><Divider /></Grid>
 
-                  <Grid item xs={4}>
+                  <Grid size={4}>
                     <Typography variant="caption" color="textSecondary">Total Bruto</Typography>
                     <Typography variant="h6" color="primary.main" fontWeight={700}>
                       ${calc.totalBruto.toLocaleString('es-AR')}
                     </Typography>
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid size={4}>
                     <Typography variant="caption" color="textSecondary">Total Descuentos</Typography>
                     <Typography variant="h6" color="error.main" fontWeight={700}>
                       ${calc.totalDescuentos.toLocaleString('es-AR')}
                     </Typography>
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid size={4}>
                     <Typography variant="caption" color="textSecondary">Sueldo Neto</Typography>
                     <Typography variant="h6" color="success.main" fontWeight={700}>
                       ${calc.sueldoNeto.toLocaleString('es-AR')}

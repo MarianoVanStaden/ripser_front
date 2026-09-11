@@ -124,13 +124,22 @@ const ConvertToFacturaDialog: React.FC<Props> = ({
           <>
             <Box mb={3}>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6,
+                    md: 6
+                  }}>
                   <Typography variant="subtitle2" color="text.secondary">
                     Cliente:
                   </Typography>
                   <Typography>{selectedNotaPedido.clienteNombre}</Typography>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Typography variant="subtitle2" color="text.secondary">
                     Número de Documento:
                   </Typography>
@@ -156,7 +165,13 @@ const ConvertToFacturaDialog: React.FC<Props> = ({
                     {opcionesFinanciamiento.map((opcion, index) => {
                       const optionValue = opcion.id !== undefined ? opcion.id : index;
                       return (
-                        <Grid item xs={12} sm={6} md={4} key={index}>
+                        <Grid
+                          key={index}
+                          size={{
+                            xs: 12,
+                            sm: 6,
+                            md: 4
+                          }}>
                           <Card
                             variant="outlined"
                             sx={{
@@ -246,7 +261,11 @@ const ConvertToFacturaDialog: React.FC<Props> = ({
 
             <Box mt={2}>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6
+                  }}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Tipo de descuento</InputLabel>
                     <Select
@@ -260,7 +279,11 @@ const ConvertToFacturaDialog: React.FC<Props> = ({
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6
+                  }}>
                   <TextField
                     fullWidth
                     size="small"
@@ -280,7 +303,11 @@ const ConvertToFacturaDialog: React.FC<Props> = ({
                     disabled={notaDescuentoTipo === 'NONE'}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6
+                  }}>
                   <TextField
                     fullWidth
                     size="small"

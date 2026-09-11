@@ -140,11 +140,11 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
           </Alert>
           <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1, mb: 3 }}>
             <Grid container spacing={2}>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="caption" color="text.secondary">Cliente</Typography>
                 <Typography variant="body2" fontWeight="medium">{pago.clienteNombre}</Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="caption" color="text.secondary">
                   {pago.cuotaId != null ? 'Préstamo / Cuota' : 'Origen'}
                 </Typography>
@@ -154,24 +154,24 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
                     : `Gestión libre${pago.descripcionOrigen ? `: ${pago.descripcionOrigen}` : ''}`}
                 </Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="caption" color="text.secondary">Comprobante</Typography>
                 <Typography variant="body2" fontWeight="medium">{pago.numeroComprobante}</Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="caption" color="text.secondary">Método</Typography>
                 <Typography variant="body2" fontWeight="medium">{pago.metodoPago}</Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="caption" color="text.secondary">Fecha informada</Typography>
                 <Typography variant="body2" fontWeight="medium">{pago.fechaPagoInformada}</Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="caption" color="text.secondary">Monto informado</Typography>
                 <Typography variant="body2" fontWeight="bold">{formatPrice(pago.montoInformado)}</Typography>
               </Grid>
               {pago.observaciones && (
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Typography variant="caption" color="text.secondary">Observaciones de cobranzas</Typography>
                   <Typography variant="body2">{pago.observaciones}</Typography>
                 </Grid>
@@ -180,7 +180,11 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
           </Box>
 
           <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth required type="number"
                 label="Monto que ingresa a caja"
@@ -191,7 +195,7 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
               />
             </Grid>
             {pago.cuotaId == null && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <FormControlLabel
                   control={<Checkbox checked={impactarCC} onChange={(e) => setImpactarCC(e.target.checked)} />}
                   label="Registrar también en la cuenta corriente del cliente"
@@ -203,7 +207,7 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
               </Grid>
             )}
             {requiereCaja && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <CajaSelector
                   metodoPago={pago.metodoPago}
                   value={cajaRef}
@@ -214,16 +218,24 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
             )}
 
             {pago.metodoPago === 'CHEQUE' && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
                   <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Datos del cheque</Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <TextField fullWidth required label="Número de cheque"
                         value={chequeData.numeroCheque}
                         onChange={(e) => setChequeData({ ...chequeData, numeroCheque: e.target.value })} />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <FormControl fullWidth required>
                         <InputLabel>Banco</InputLabel>
                         <Select value={chequeData.bancoId || ''} label="Banco" disabled={loadingBancos}
@@ -232,27 +244,43 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <TextField fullWidth required label="Titular"
                         value={chequeData.titular}
                         onChange={(e) => setChequeData({ ...chequeData, titular: e.target.value })} />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <TextField fullWidth label="CUIT titular"
                         value={chequeData.cuitTitular}
                         onChange={(e) => setChequeData({ ...chequeData, cuitTitular: e.target.value })} />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <FechaField label="Fecha emisión" required size="medium"
                         value={chequeData.fechaEmision}
                         onChange={(v) => setChequeData({ ...chequeData, fechaEmision: v })} />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <FechaField label="Fecha cobro" required size="medium"
                         value={chequeData.fechaCobro}
                         onChange={(v) => setChequeData({ ...chequeData, fechaCobro: v })} />
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                       <FormControlLabel
                         control={<Checkbox checked={!!chequeData.esEcheq}
                           onChange={(e) => setChequeData({ ...chequeData, esEcheq: e.target.checked })} />}

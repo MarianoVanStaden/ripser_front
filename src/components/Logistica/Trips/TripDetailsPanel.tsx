@@ -385,7 +385,11 @@ export default function TripDetailsPanel({
               </Box>
 
               <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom>Información General</Typography>
@@ -402,7 +406,11 @@ export default function TripDetailsPanel({
                   </Card>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom>
@@ -472,7 +480,7 @@ export default function TripDetailsPanel({
                 </Grid>
 
                 {getFacturasByTrip(selectedTrip.id).length > 0 && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Card variant="outlined">
                       <CardContent>
                         <Typography variant="subtitle2" gutterBottom>
@@ -494,7 +502,7 @@ export default function TripDetailsPanel({
                 )}
 
                 {selectedTrip.observaciones && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Card variant="outlined">
                       <CardContent>
                         <Typography variant="subtitle2" gutterBottom>Observaciones</Typography>
@@ -506,7 +514,7 @@ export default function TripDetailsPanel({
 
                 {/* Resumen financiero — visible para roles con acceso financiero */}
                 {(!esLogistico || esAsignadoAlViaje(selectedTrip)) && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <ResumenCobrosDesktop
                       resumen={resumenFinancieroMap[selectedTrip.id]}
                       estadoViaje={selectedTrip.estado}

@@ -57,7 +57,13 @@ export default function ResumenTab({ onError }: Props) {
       {loading && (
         <Grid container spacing={2}>
           {Array.from({ length: 9 }).map((_, i) => (
-            <Grid item xs={6} sm={4} md={3} key={i}>
+            <Grid
+              key={i}
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 3
+              }}>
               <Skeleton variant="rounded" height={92} />
             </Grid>
           ))}
@@ -67,7 +73,13 @@ export default function ResumenTab({ onError }: Props) {
       {!loading && resumen && (
         <Grid container spacing={2}>
           {resumen.map((r) => (
-            <Grid item xs={6} sm={4} md={3} key={r.tabla}>
+            <Grid
+              key={r.tabla}
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 3
+              }}>
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="h4" sx={{ fontWeight: 700 }}>

@@ -268,7 +268,12 @@ const PreViajeChecklistDialog: React.FC<Props> = ({ open, trip, onClose, onCompl
         {/* Datos generales */}
         <Grid container spacing={1.5} sx={{ mb: 1 }}>
           {generales.map(([label, value]) => (
-            <Grid item xs={6} sm={4} key={label}>
+            <Grid
+              key={label}
+              size={{
+                xs: 6,
+                sm: 4
+              }}>
               <Typography variant="caption" color="text.secondary">{label}</Typography>
               <Typography variant="body2" fontWeight={500} noWrap>{value}</Typography>
             </Grid>
@@ -276,14 +281,22 @@ const PreViajeChecklistDialog: React.FC<Props> = ({ open, trip, onClose, onCompl
         </Grid>
 
         <Grid container spacing={1.5} sx={{ mt: 0 }}>
-          <Grid item xs={12} sm={6}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6
+            }}>
             <TextField
               label="Trailer" required={!readOnly} fullWidth size="small" disabled={readOnly}
               value={trailer} onChange={(e) => setTrailer(e.target.value)}
               placeholder="Identificación del trailer"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6
+            }}>
             <TextField
               label="Kilómetros de salida" required={!readOnly} fullWidth size="small" type="number" disabled={readOnly}
               value={kmSalida} onChange={(e) => setKmSalida(e.target.value)}
@@ -330,10 +343,18 @@ const PreViajeChecklistDialog: React.FC<Props> = ({ open, trip, onClose, onCompl
                       return (
                         <Box key={it.key}>
                           <Grid container spacing={1} alignItems="center">
-                            <Grid item xs={12} sm={5}>
+                            <Grid
+                              size={{
+                                xs: 12,
+                                sm: 5
+                              }}>
                               <Typography variant="body2">{it.label}</Typography>
                             </Grid>
-                            <Grid item xs={12} sm={7}>
+                            <Grid
+                              size={{
+                                xs: 12,
+                                sm: 7
+                              }}>
                               <Stack direction="row" spacing={1} alignItems="center">
                                 <ToggleButtonGroup
                                   size="small"

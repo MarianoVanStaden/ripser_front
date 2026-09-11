@@ -27,7 +27,11 @@ const FlujoCajaCharts: React.FC<FlujoCajaChartsProps> = ({
       </Typography>
       <Grid container spacing={3}>
         {/* Pie Chart - Distribución por método de pago */}
-        <Grid item xs={12} lg={4}>
+        <Grid
+          size={{
+            xs: 12,
+            lg: 4
+          }}>
           <PaymentMethodPieChart
             data={paymentMethodData}
             onSliceClick={onPaymentMethodClick}
@@ -36,12 +40,20 @@ const FlujoCajaCharts: React.FC<FlujoCajaChartsProps> = ({
         </Grid>
 
         {/* Bar Chart - Ingresos vs Egresos */}
-        <Grid item xs={12} lg={4}>
+        <Grid
+          size={{
+            xs: 12,
+            lg: 4
+          }}>
           <IncomeExpenseBarChart data={paymentMethodData} loading={loading} />
         </Grid>
 
         {/* Line Chart - Evolución temporal */}
-        <Grid item xs={12} lg={4}>
+        <Grid
+          size={{
+            xs: 12,
+            lg: 4
+          }}>
           <CashFlowLineChart
             data={timeSeriesData}
             loading={loading}

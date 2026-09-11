@@ -120,7 +120,11 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
       <Box p={3}>
         <Grid container spacing={3}>
           {/* Información General */}
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" mb={2} fontWeight="bold">
@@ -202,7 +206,11 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
           </Grid>
 
           {/* Vigencia por Tipo */}
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" mb={2} fontWeight="bold">
@@ -245,7 +253,7 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
           </Grid>
 
           {/* Reclamos */}
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card>
               <CardContent>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>

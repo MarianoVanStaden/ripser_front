@@ -169,7 +169,11 @@ const AdelantosPage: React.FC = () => {
       )}
 
       <Grid container spacing={{ xs: 2, sm: 3 }} mb={3}>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'primary.main', boxShadow: 2 }}>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -187,7 +191,11 @@ const AdelantosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'error.main', boxShadow: 2 }}>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -205,7 +213,11 @@ const AdelantosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'warning.main', boxShadow: 2 }}>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -223,7 +235,11 @@ const AdelantosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'success.main', boxShadow: 2 }}>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -245,7 +261,11 @@ const AdelantosPage: React.FC = () => {
       <Card sx={{ mb: 3, boxShadow: 2 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <Autocomplete
                 options={empleados}
                 getOptionLabel={(e) => getNombreCompleto(e)}
@@ -254,7 +274,11 @@ const AdelantosPage: React.FC = () => {
                 renderInput={(p) => <TextField {...p} label="Empleado" size="small" />}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -266,7 +290,11 @@ const AdelantosPage: React.FC = () => {
                 helperText="Vacío = todos los períodos"
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Estado</InputLabel>
                 <Select

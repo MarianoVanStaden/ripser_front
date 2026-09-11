@@ -161,14 +161,22 @@ const EmpleadoDisciplinaTab: React.FC<EmpleadoDisciplinaTabProps> = ({ empleado 
 
       {/* Métricas rápidas */}
       <Grid container spacing={2}>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <MetricCard
             icon={<GavelIcon />} label="Total sanciones"
             value={resumen.totalSanciones}
             hint={`${resumen.sancionesUltimos12Meses} en últimos 12m`}
           />
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <MetricCard
             icon={<AccessTimeIcon />} label="Días susp. totales"
             value={resumen.diasSuspensionTotales}
@@ -176,13 +184,21 @@ const EmpleadoDisciplinaTab: React.FC<EmpleadoDisciplinaTabProps> = ({ empleado 
             color="error.main"
           />
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <MetricCard
             icon={<TrendingUpIcon />} label="Última sanción"
             value={resumen.ultimaSancion ? dayjs(resumen.ultimaSancion).format('DD/MM/YYYY') : '—'}
           />
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <MetricCard
             icon={<WarningIcon />} label="Motivos distintos"
             value={Object.keys(resumen.motivosAcumulados ?? {}).length}

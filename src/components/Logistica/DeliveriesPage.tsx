@@ -1109,7 +1109,12 @@ const DeliveriesPage2: React.FC = () => {
 
       {/* Summary Cards - Grid estático */}
       <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mb: 3 }}>
-        <Grid item xs={6} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
@@ -1127,7 +1132,12 @@ const DeliveriesPage2: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
@@ -1143,7 +1153,12 @@ const DeliveriesPage2: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>

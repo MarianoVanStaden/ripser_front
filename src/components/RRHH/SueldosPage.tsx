@@ -261,7 +261,12 @@ const SueldosPage: React.FC = () => {
 
       {/* KPIs */}
       <Grid container spacing={{ xs: 2, sm: 3 }} mb={3}>
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'success.main', boxShadow: 2 }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
@@ -276,7 +281,12 @@ const SueldosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'primary.main', boxShadow: 2 }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
@@ -291,7 +301,12 @@ const SueldosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'error.main', boxShadow: 2 }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
@@ -306,7 +321,12 @@ const SueldosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'warning.main', boxShadow: 2 }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
@@ -327,14 +347,22 @@ const SueldosPage: React.FC = () => {
       <Card sx={{ mb: 3, boxShadow: 2 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField fullWidth size="small" label="Buscar"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Empleado o período..."
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <Autocomplete
                 options={empleados}
                 getOptionLabel={(e) => getNombreCompleto(e)}
@@ -343,7 +371,11 @@ const SueldosPage: React.FC = () => {
                 renderInput={(p) => <TextField {...p} label="Empleado" size="small" />}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField fullWidth size="small" type="month" label="Período"
                 value={periodoFilter}
                 onChange={(e) => setPeriodoFilter(e.target.value)}
@@ -477,7 +509,11 @@ const SueldosPage: React.FC = () => {
             </DialogTitle>
             <DialogContent sx={{ mt: 2 }}>
               <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined" sx={{ height: '100%', borderRadius: 2 }}>
                     <CardContent>
                       <Typography variant="h6" color="primary" gutterBottom fontWeight={600}>
@@ -494,7 +530,11 @@ const SueldosPage: React.FC = () => {
                   </Card>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined" sx={{ height: '100%', borderRadius: 2 }}>
                     <CardContent>
                       <Typography variant="h6" color="primary" gutterBottom fontWeight={600}>
@@ -515,7 +555,11 @@ const SueldosPage: React.FC = () => {
                   </Card>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined" sx={{ borderRadius: 2 }}>
                     <CardContent>
                       <Typography variant="h6" color="error" gutterBottom fontWeight={600}>
@@ -531,7 +575,11 @@ const SueldosPage: React.FC = () => {
                   </Card>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined" sx={{ borderRadius: 2, bgcolor: 'success.lighter' }}>
                     <CardContent>
                       <Typography variant="h6" color="success.dark" gutterBottom fontWeight={600}>
@@ -566,7 +614,7 @@ const SueldosPage: React.FC = () => {
                 </Grid>
 
                 {selected.observaciones && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Card variant="outlined" sx={{ borderRadius: 2 }}>
                       <CardContent>
                         <Typography variant="subtitle2" color="textSecondary" fontWeight={600} textTransform="uppercase" gutterBottom>

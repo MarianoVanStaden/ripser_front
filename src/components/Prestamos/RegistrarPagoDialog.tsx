@@ -245,22 +245,22 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1, mb: 3 }}>
             <Grid container spacing={2}>
-              <Grid item xs={4}>
+              <Grid size={4}>
                 <Typography variant="caption" color="text.secondary">Monto Cuota</Typography>
                 <Typography variant="body2" fontWeight="medium">{formatPrice(cuota.montoCuota)}</Typography>
               </Grid>
-              <Grid item xs={4}>
+              <Grid size={4}>
                 <Typography variant="caption" color="text.secondary">Ya Pagado</Typography>
                 <Typography variant="body2" fontWeight="medium">{formatPrice(cuota.montoPagado)}</Typography>
               </Grid>
-              <Grid item xs={4}>
+              <Grid size={4}>
                 <Typography variant="caption" color="text.secondary">Saldo Restante</Typography>
                 <Typography variant="body2" fontWeight="bold" color="error.main">
                   {formatPrice(saldoRestante)}
                 </Typography>
               </Grid>
               {(cuota.montoInformado ?? 0) > 0 && (
-                <Grid item xs={4}>
+                <Grid size={4}>
                   <Typography variant="caption" color="text.secondary">Informado pendiente</Typography>
                   <Typography variant="body2" fontWeight="medium" color="warning.main">
                     {formatPrice(cuota.montoInformado ?? 0)}
@@ -270,7 +270,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
             </Grid>
           </Box>
           <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 label="Monto a Pagar"
@@ -281,7 +285,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                 inputProps={{ min: 0.01, step: 0.01 }}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <FechaField
                 label="Fecha de Pago"
                 size="medium"
@@ -289,7 +297,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                 onChange={setFechaPago}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               {cuota?.metodoPagoSugerido && (
                 <Alert
                   severity={metodoPago === cuota.metodoPagoSugerido ? 'success' : 'warning'}
@@ -314,7 +322,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
               </FormControl>
             </Grid>
             {requiereCaja && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <CajaSelector
                   metodoPago={metodoPago}
                   value={cajaRef}
@@ -323,7 +331,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                 />
               </Grid>
             )}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label={modoCobranzas ? 'Número de comprobante *' : 'Número de comprobante'}
@@ -335,7 +343,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
               />
             </Grid>
             {modoCobranzas && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   fullWidth multiline rows={2}
                   label="Observaciones"
@@ -346,7 +354,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
               </Grid>
             )}
             {METODOS_CON_VALIDACION_SALDO.includes(metodoPago) && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 {loadingSaldo ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <CircularProgress size={16} />
@@ -364,13 +372,17 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
             )}
 
             {!modoCobranzas && metodoPago === 'CHEQUE' && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
                   <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
                     Datos del cheque recibido
                   </Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <TextField
                         fullWidth required
                         label="Número de cheque"
@@ -378,7 +390,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                         onChange={(e) => setChequeData({ ...chequeData, numeroCheque: e.target.value })}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <FormControl fullWidth required>
                         <InputLabel>Banco</InputLabel>
                         <Select
@@ -393,7 +409,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <TextField
                         fullWidth required
                         label="Titular"
@@ -401,7 +421,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                         onChange={(e) => setChequeData({ ...chequeData, titular: e.target.value })}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <TextField
                         fullWidth
                         label="CUIT titular"
@@ -410,7 +434,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                         placeholder="20-12345678-9"
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <FechaField
                         label="Fecha de emisión"
                         required size="medium"
@@ -419,7 +447,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                         maxDate={dayjs().format('YYYY-MM-DD')}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <FechaField
                         label="Fecha de cobro"
                         required size="medium"
@@ -427,7 +459,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                         onChange={(v) => setChequeData({ ...chequeData, fechaCobro: v })}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <TextField
                         fullWidth
                         label="Número de cuenta"
@@ -435,7 +471,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                         onChange={(e) => setChequeData({ ...chequeData, numeroCuenta: e.target.value })}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <TextField
                         fullWidth
                         label="CBU (22 dígitos)"
@@ -444,7 +484,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                         inputProps={{ maxLength: 22 }}
                       />
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                       <FormControlLabel
                         control={
                           <Checkbox
@@ -455,7 +495,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                         label="Es eCheq"
                       />
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                       <TextField
                         fullWidth multiline rows={2}
                         label="Observaciones"
@@ -463,7 +503,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                         onChange={(e) => setChequeData({ ...chequeData, observaciones: e.target.value })}
                       />
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                       <Typography variant="caption" color="text.secondary">
                         El monto del cheque será {formatPrice(montoPagado)} — lo toma del monto a pagar.
                       </Typography>

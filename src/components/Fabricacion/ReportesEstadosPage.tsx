@@ -397,7 +397,11 @@ const ReportesEstadosPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent sx={{ '&:last-child': { pb: 2 } }}>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <Box display="flex" alignItems="center" gap={0.5}>
                 <MuiTooltip title="Mes anterior">
                   <IconButton size="small" onClick={() => cambiarMes(-1)}>
@@ -422,7 +426,12 @@ const ReportesEstadosPage: React.FC = () => {
               </Box>
             </Grid>
 
-            <Grid item xs={12} sm={4} md={2.5}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4,
+                md: 2.5
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Estado</InputLabel>
                 <Select
@@ -438,7 +447,12 @@ const ReportesEstadosPage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={4} md={2.5}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4,
+                md: 2.5
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo</InputLabel>
                 <Select
@@ -455,7 +469,12 @@ const ReportesEstadosPage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4,
+                md: 2
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -465,7 +484,13 @@ const ReportesEstadosPage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={1} display="flex" justifyContent="flex-end">
+            <Grid
+              display="flex"
+              justifyContent="flex-end"
+              size={{
+                xs: 12,
+                md: 1
+              }}>
               <Button variant="outlined" size="small" onClick={clearFilters}>
                 Limpiar
               </Button>
@@ -484,7 +509,12 @@ const ReportesEstadosPage: React.FC = () => {
         </Typography>
       </Box>
       <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2
+          }}>
           <Card sx={{ bgcolor: 'background.default' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -504,7 +534,13 @@ const ReportesEstadosPage: React.FC = () => {
         {ESTADOS_ASIGNACION
           .filter((e) => !['PENDIENTE_TERMINACION', 'EN_SERVICE'].includes(e.key))
           .map((e) => (
-            <Grid item xs={12} sm={6} md={2} key={e.key}>
+            <Grid
+              key={e.key}
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 2
+              }}>
               <Card sx={{ bgcolor: e.bg }}>
                 <CardContent>
                   <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -528,7 +564,11 @@ const ReportesEstadosPage: React.FC = () => {
       <Grid container spacing={3} mb={4}>
         {hasAsignacionData ? (
           <>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <Card sx={{ height: '100%' }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
@@ -539,7 +579,11 @@ const ReportesEstadosPage: React.FC = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <Card sx={{ height: '100%' }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -566,7 +610,7 @@ const ReportesEstadosPage: React.FC = () => {
             </Grid>
           </>
         ) : (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card>
               <CardContent>
                 <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={4}>
@@ -600,7 +644,13 @@ const ReportesEstadosPage: React.FC = () => {
           const visibles = lista.slice(0, MAX_CODIGOS_VISIBLES);
           const ocultos = lista.length - visibles.length;
           return (
-            <Grid item xs={12} sm={6} md={4} key={cfg.key}>
+            <Grid
+              key={cfg.key}
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <Card sx={{ height: '100%', borderTop: `3px solid ${cfg.hex}` }}>
                 <CardContent>
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
@@ -632,7 +682,7 @@ const ReportesEstadosPage: React.FC = () => {
           );
         })}
         {equiposDelMes.length === 0 && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card>
               <CardContent>
                 <Typography variant="body2" color="text.secondary" align="center" py={2}>
@@ -669,7 +719,13 @@ const ReportesEstadosPage: React.FC = () => {
           { label: 'Pendientes', value: resumenEstados?.pendientes ?? 0, bg: bgVar('warning'), color: fgVar('warning') },
           { label: 'Control Calidad', value: resumenEstados?.pendienteControlCalidad ?? 0, bg: bgVar('info'), color: fgVar('info') },
         ].map((k) => (
-          <Grid item xs={6} sm={4} md={2} key={k.label}>
+          <Grid
+            key={k.label}
+            size={{
+              xs: 6,
+              sm: 4,
+              md: 2
+            }}>
             <Card sx={{ bgcolor: k.bg }}>
               <CardContent>
                 <Typography variant="caption" color="text.secondary">
@@ -685,7 +741,11 @@ const ReportesEstadosPage: React.FC = () => {
       </Grid>
 
       <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} md={5}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 5
+          }}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
@@ -696,7 +756,11 @@ const ReportesEstadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={7}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 7
+          }}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -747,7 +811,12 @@ const ReportesEstadosPage: React.FC = () => {
           const visibles = lista.slice(0, MAX_CODIGOS_VISIBLES);
           const ocultos = lista.length - visibles.length;
           return (
-            <Grid item xs={12} sm={6} key={cfg.key}>
+            <Grid
+              key={cfg.key}
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Card sx={{ height: '100%', borderTop: `3px solid ${cfg.hex}` }}>
                 <CardContent>
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
@@ -779,7 +848,7 @@ const ReportesEstadosPage: React.FC = () => {
           );
         })}
         {ESTADOS_FABRICACION_WIP.every((cfg) => (codigosEnFabricacion.get(cfg.key) ?? []).length === 0) && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card>
               <CardContent>
                 <Typography variant="body2" color="text.secondary" align="center" py={2}>

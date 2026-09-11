@@ -796,7 +796,12 @@ const InventarioDepositoPage: React.FC = () => {
 
       {/* Statistics Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2.4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -806,7 +811,12 @@ const InventarioDepositoPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2.4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -816,7 +826,12 @@ const InventarioDepositoPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2.4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -826,7 +841,12 @@ const InventarioDepositoPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2.4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -840,7 +860,12 @@ const InventarioDepositoPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2.4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -858,7 +883,11 @@ const InventarioDepositoPage: React.FC = () => {
 
       {/* Charts */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -887,7 +916,11 @@ const InventarioDepositoPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -919,7 +952,11 @@ const InventarioDepositoPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth
                 label="Buscar"
@@ -936,7 +973,11 @@ const InventarioDepositoPage: React.FC = () => {
               />
             </Grid>
             {tabValue === 0 ? (
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <FormControl fullWidth>
                   <InputLabel>Depósito</InputLabel>
                   <Select
@@ -954,7 +995,11 @@ const InventarioDepositoPage: React.FC = () => {
                 </FormControl>
               </Grid>
             ) : (
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <FormControl fullWidth>
                   <InputLabel>Producto</InputLabel>
                   <Select
@@ -972,7 +1017,11 @@ const InventarioDepositoPage: React.FC = () => {
                 </FormControl>
               </Grid>
             )}
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Filtrar Alertas</InputLabel>
                 <Select
@@ -1003,7 +1052,11 @@ const InventarioDepositoPage: React.FC = () => {
         </AccordionSummary>
         <AccordionDetails>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 type="number"
@@ -1014,7 +1067,11 @@ const InventarioDepositoPage: React.FC = () => {
                 helperText="Mostrar productos con cantidad mayor o igual"
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 type="number"
@@ -1025,7 +1082,7 @@ const InventarioDepositoPage: React.FC = () => {
                 helperText="Mostrar productos con cantidad menor o igual"
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Button
                 variant="outlined"
                 size="small"
@@ -1199,7 +1256,7 @@ const InventarioDepositoPage: React.FC = () => {
                 {selectedStock.cantidad})
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <FormControl fullWidth>
                     <InputLabel>Depósito Destino</InputLabel>
                     <Select
@@ -1219,7 +1276,7 @@ const InventarioDepositoPage: React.FC = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <TextField
                     fullWidth
                     type="number"
@@ -1286,7 +1343,7 @@ const InventarioDepositoPage: React.FC = () => {
         <DialogTitle>Asignar Stock a Depósito</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Grid container spacing={2}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <FormControl fullWidth>
                 <InputLabel>Producto</InputLabel>
                 <Select
@@ -1305,7 +1362,7 @@ const InventarioDepositoPage: React.FC = () => {
 
             {/* Mostrar información de stock disponible */}
             {createForm.productoId > 0 && stockDisponibleInfo.producto && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Alert 
                   severity={stockDisponibleInfo.stockDisponible > 0 ? 'info' : 'warning'}
                   sx={{ py: 1 }}
@@ -1329,7 +1386,7 @@ const InventarioDepositoPage: React.FC = () => {
 
             {/* Mostrar configuración existente si la hay */}
             {configExistente && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Alert severity="info" sx={{ py: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Typography variant="body2">
@@ -1360,7 +1417,7 @@ const InventarioDepositoPage: React.FC = () => {
               </Grid>
             )}
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <FormControl fullWidth>
                 <InputLabel>Depósito</InputLabel>
                 <Select
@@ -1398,7 +1455,7 @@ const InventarioDepositoPage: React.FC = () => {
               );
               if (stockEnDeposito) {
                 return (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Alert severity="success" icon={<AddIcon />}>
                       <Typography variant="body2">
                         Este depósito ya tiene <strong>{stockEnDeposito.cantidad}</strong> unidades. 
@@ -1413,7 +1470,7 @@ const InventarioDepositoPage: React.FC = () => {
               return null;
             })()}
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 type="number"
@@ -1438,7 +1495,7 @@ const InventarioDepositoPage: React.FC = () => {
                 }
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <TextField
                 fullWidth
                 type="number"
@@ -1452,7 +1509,7 @@ const InventarioDepositoPage: React.FC = () => {
                 disabled={usarConfigExistente && configExistente !== null}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <TextField
                 fullWidth
                 type="number"
@@ -1507,7 +1564,7 @@ const InventarioDepositoPage: React.FC = () => {
                   Detalle del Stock:
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={4}>
+                  <Grid size={4}>
                     <Box textAlign="center">
                       <Typography variant="h5" color="primary">
                         {stockDisponibleInfo.stockTotal}
@@ -1517,7 +1574,7 @@ const InventarioDepositoPage: React.FC = () => {
                       </Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid size={4}>
                     <Box textAlign="center">
                       <Typography variant="h5" color="error">
                         {stockDisponibleInfo.stockAsignado}
@@ -1527,7 +1584,7 @@ const InventarioDepositoPage: React.FC = () => {
                       </Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid size={4}>
                     <Box textAlign="center">
                       <Typography variant="h5" color={stockDisponibleInfo.stockDisponible > 0 ? 'success.main' : 'text.disabled'}>
                         {stockDisponibleInfo.stockDisponible}

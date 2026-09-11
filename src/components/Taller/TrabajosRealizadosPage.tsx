@@ -155,7 +155,12 @@ const TrabajosRealizadosPage: React.FC = () => {
 
       {/* Estadísticas Rápidas */}
       <Grid container spacing={2} mb={3}>
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -173,7 +178,12 @@ const TrabajosRealizadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -191,7 +201,12 @@ const TrabajosRealizadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -209,7 +224,12 @@ const TrabajosRealizadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -233,7 +253,11 @@ const TrabajosRealizadosPage: React.FC = () => {
           <Box mb={2}>
             <Grid container spacing={2}>
               {/* Búsqueda */}
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <TextField
                   fullWidth
                   label="Buscar"
@@ -252,7 +276,12 @@ const TrabajosRealizadosPage: React.FC = () => {
               </Grid>
 
               {/* Filtro por Estado */}
-              <Grid item xs={12} sm={4} md={2}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4,
+                  md: 2
+                }}>
                 <TextField
                   fullWidth
                   select
@@ -268,7 +297,12 @@ const TrabajosRealizadosPage: React.FC = () => {
               </Grid>
 
               {/* Fecha Desde */}
-              <Grid item xs={12} sm={4} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   type="date"
@@ -281,7 +315,12 @@ const TrabajosRealizadosPage: React.FC = () => {
               </Grid>
 
               {/* Fecha Hasta */}
-              <Grid item xs={12} sm={4} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   type="date"
@@ -470,7 +509,11 @@ const TrabajosRealizadosPage: React.FC = () => {
             <DialogContent>
               <Grid container spacing={3} sx={{ mt: 0.5 }}>
                 {/* Información del Cliente */}
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined" sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
                     <CardContent sx={{ p: 3 }}>
                       <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
@@ -502,7 +545,11 @@ const TrabajosRealizadosPage: React.FC = () => {
                 </Grid>
 
                 {/* Costos y Resumen */}
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined" sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
                     <CardContent sx={{ p: 3 }}>
                       <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
@@ -549,7 +596,7 @@ const TrabajosRealizadosPage: React.FC = () => {
                 </Grid>
 
                 {/* Descripción del Trabajo */}
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
                     <CardContent sx={{ p: 3 }}>
                       <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
@@ -578,7 +625,7 @@ const TrabajosRealizadosPage: React.FC = () => {
 
                 {/* Materiales Utilizados */}
                 {selected.materiales && selected.materiales.length > 0 && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
                       <CardContent sx={{ p: 3 }}>
                         <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
@@ -617,7 +664,7 @@ const TrabajosRealizadosPage: React.FC = () => {
 
                 {/* Tareas Realizadas */}
                 {selected.tareas && selected.tareas.length > 0 && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
                       <CardContent sx={{ p: 3 }}>
                         <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>

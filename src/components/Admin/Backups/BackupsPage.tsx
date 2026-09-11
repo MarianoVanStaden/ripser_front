@@ -216,7 +216,12 @@ function BackupPanel({ api, tiers, defaultTab }: BackupPanelProps) {
 
       {/* Tarjetas de estado overall */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <StatCard label="Último backup">
             <Stack spacing={0.5}>
               <Typography variant="subtitle1" fontWeight={700}>
@@ -226,7 +231,12 @@ function BackupPanel({ api, tiers, defaultTab }: BackupPanelProps) {
             </Stack>
           </StatCard>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <StatCard
             label="Próxima ejecución"
             hint={status ? `Cada ${status.intervalo}` : undefined}
@@ -236,12 +246,22 @@ function BackupPanel({ api, tiers, defaultTab }: BackupPanelProps) {
             </Typography>
           </StatCard>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <StatCard label="Backups almacenados">
             <Typography variant="h6" fontWeight={700}>{status?.cantidadBackups ?? 0}</Typography>
           </StatCard>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <StatCard label="Almacenamiento total">
             <Stack direction="row" alignItems="center" spacing={1}>
               <StorageIcon fontSize="small" color="action" />

@@ -194,14 +194,22 @@ const SancionFormDialog: React.FC<SancionFormDialogProps> = ({
               MEDIDA DISCIPLINARIA
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <TextField
                   fullWidth label="Fecha *" type="date"
                   value={fecha} onChange={(e) => setFecha(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
-              <Grid item xs={12} sm={5}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 5
+                }}>
                 <TextField
                   fullWidth select label="Tipo de Sanción *"
                   value={tipo} onChange={(e) => setTipo(e.target.value as TipoSancion)}
@@ -216,7 +224,11 @@ const SancionFormDialog: React.FC<SancionFormDialogProps> = ({
                   ))}
                 </TextField>
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 3
+                }}>
                 <TextField
                   fullWidth label="Días" type="number"
                   value={dias}
@@ -226,7 +238,11 @@ const SancionFormDialog: React.FC<SancionFormDialogProps> = ({
                   InputProps={{ endAdornment: <InputAdornment position="end">días</InputAdornment> }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <Autocomplete
                   freeSolo
                   options={motivosSugeridos}
@@ -239,21 +255,29 @@ const SancionFormDialog: React.FC<SancionFormDialogProps> = ({
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <TextField
                   fullWidth label="Pedida por"
                   placeholder="Ej: Villar, P"
                   value={pedidaPor} onChange={(e) => setPedidaPor(e.target.value)}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   fullWidth multiline rows={2}
                   label="Motivo / Descripción del hecho *"
                   value={motivo} onChange={(e) => setMotivo(e.target.value)}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <TextField
                   fullWidth select label="Estado *"
                   value={estado} onChange={(e) => setEstado(e.target.value as EstadoSancion)}
@@ -263,7 +287,7 @@ const SancionFormDialog: React.FC<SancionFormDialogProps> = ({
                   ))}
                 </TextField>
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   fullWidth multiline rows={3}
                   label="Observaciones internas (RRHH)"

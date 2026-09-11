@@ -37,7 +37,11 @@ const ViewTransferenciaDialog: React.FC<Props> = ({ open, onClose, transferencia
         {transferencia && (
           <Box sx={{ mt: 2 }}>
             <Grid container spacing={2} mb={3}>
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Typography variant="body2" color="text.secondary">
                   Depósito Origen
                 </Typography>
@@ -45,7 +49,11 @@ const ViewTransferenciaDialog: React.FC<Props> = ({ open, onClose, transferencia
                   {transferencia.depositoOrigenNombre}
                 </Typography>
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Typography variant="body2" color="text.secondary">
                   Depósito Destino
                 </Typography>
@@ -53,7 +61,11 @@ const ViewTransferenciaDialog: React.FC<Props> = ({ open, onClose, transferencia
                   {transferencia.depositoDestinoNombre}
                 </Typography>
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Typography variant="body2" color="text.secondary">
                   Fecha de Transferencia
                 </Typography>
@@ -61,20 +73,24 @@ const ViewTransferenciaDialog: React.FC<Props> = ({ open, onClose, transferencia
                   {dayjs(transferencia.fechaTransferencia).format('DD/MM/YYYY HH:mm')}
                 </Typography>
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Typography variant="body2" color="text.secondary">
                   Estado
                 </Typography>
                 <Box mt={0.5}>{getEstadoChip(transferencia.estado)}</Box>
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="body2" color="text.secondary">
                   Usuario Solicitud
                 </Typography>
                 <Typography variant="body1">{transferencia.usuarioSolicitudNombre}</Typography>
               </Grid>
               {transferencia.observaciones && (
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Typography variant="body2" color="text.secondary">
                     Observaciones
                   </Typography>

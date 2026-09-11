@@ -127,7 +127,11 @@ const FacturarManualTab: React.FC<Props> = ({
           <Divider sx={{ mb: 3 }} />
 
           <Grid container spacing={3} sx={{ width: '100%' }}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <ClienteAutocomplete
                 value={selectedCliente}
                 onChange={onChangeCliente}
@@ -138,7 +142,11 @@ const FacturarManualTab: React.FC<Props> = ({
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControl fullWidth required>
                 <InputLabel>Vendedor</InputLabel>
                 <Select
@@ -156,7 +164,11 @@ const FacturarManualTab: React.FC<Props> = ({
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Método de Pago</InputLabel>
                 <Select
@@ -171,7 +183,11 @@ const FacturarManualTab: React.FC<Props> = ({
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Tipo de IVA</InputLabel>
                 <Select
@@ -186,7 +202,11 @@ const FacturarManualTab: React.FC<Props> = ({
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth label="Fecha de Vencimiento" type="date"
                 value={dueDate}
@@ -195,7 +215,11 @@ const FacturarManualTab: React.FC<Props> = ({
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth label="Fecha Estimada de Entrega" type="date"
                 value={fechaEstimadaEntrega}
@@ -205,7 +229,11 @@ const FacturarManualTab: React.FC<Props> = ({
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Tipo de descuento</InputLabel>
                 <Select
@@ -224,7 +252,11 @@ const FacturarManualTab: React.FC<Props> = ({
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth type="number"
                 label={descuentoTipo === 'PORCENTAJE' ? 'Descuento (%)' : 'Descuento ($)'}
@@ -244,7 +276,7 @@ const FacturarManualTab: React.FC<Props> = ({
             </Grid>
 
             {isFinanciamiento(paymentMethod) && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 {selectedOpcionFinanciamiento ? (
                   <Alert severity="success" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
@@ -279,7 +311,7 @@ const FacturarManualTab: React.FC<Props> = ({
             )}
 
             {!isFinanciamiento(paymentMethod) && metodoPagoRequiereCaja(paymentMethod) && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <CajaSelector
                   metodoPago={paymentMethod}
                   value={cajaContadoRef}
@@ -293,7 +325,11 @@ const FacturarManualTab: React.FC<Props> = ({
               </Grid>
             )}
 
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               <TextField
                 select fullWidth size="small" label="Canal de venta"
                 value={canalVenta}
@@ -305,7 +341,11 @@ const FacturarManualTab: React.FC<Props> = ({
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={5}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 5
+              }}>
               <TextField
                 fullWidth size="small" label="Gestiona la compra (si no es el titular)"
                 placeholder="Nombre de quien habla por WhatsApp"
@@ -313,7 +353,11 @@ const FacturarManualTab: React.FC<Props> = ({
                 onChange={(e) => onChangeGestionanteNombre(e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 3
+              }}>
               <TextField
                 fullWidth size="small" label="Tel. gestionante"
                 value={gestionanteTelefono}
@@ -322,7 +366,7 @@ const FacturarManualTab: React.FC<Props> = ({
               />
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth multiline rows={2} label="Observaciones"
                 value={notes}
@@ -392,12 +436,20 @@ const FacturarManualTab: React.FC<Props> = ({
                     const equipoBase = totals.subtotal - costoEnvio;
                     return (
                       <>
-                        <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: showDescuentoCol ? 4 : 6
+                          }}>
                           <Typography variant="body2" color="text.secondary">Equipo:</Typography>
                           <Typography variant="body2">${equipoBase.toFixed(2)}</Typography>
                         </Grid>
                         {showDescuentoCol && (
-                          <Grid item xs={12} sm={4}>
+                          <Grid
+                            size={{
+                              xs: 12,
+                              sm: 4
+                            }}>
                             <Typography variant="subtitle2" color="text.secondary">
                               Descuento {descuentoTipo === 'PORCENTAJE' ? `(${descuentoValor}%)` : '(monto fijo)'}:
                             </Typography>
@@ -405,25 +457,37 @@ const FacturarManualTab: React.FC<Props> = ({
                           </Grid>
                         )}
                         {costoEnvio > 0 && (
-                          <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
+                          <Grid
+                            size={{
+                              xs: 12,
+                              sm: showDescuentoCol ? 4 : 6
+                            }}>
                             <Typography variant="body2" color="text.secondary">Envío:</Typography>
                             <Typography variant="body2">${costoEnvio.toFixed(2)}</Typography>
                           </Grid>
                         )}
-                        <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: showDescuentoCol ? 4 : 6
+                          }}>
                           <Typography variant="subtitle2" color="text.secondary">
                             {showDescuentoCol ? 'Subtotal (neto):' : 'Subtotal:'}
                           </Typography>
                           {/* Neto gravado = bruto - descuento (equipos - descuento + envío); IVA sobre esta base. */}
                           <Typography variant="h6">${(totals.subtotal - totals.descuento).toFixed(2)}</Typography>
                         </Grid>
-                        <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: showDescuentoCol ? 4 : 6
+                          }}>
                           <Typography variant="subtitle2" color="text.secondary">
                             IVA ({IVA_OPTIONS.find((o) => o.value === selectedIva)?.label}):
                           </Typography>
                           <Typography variant="h6">${totals.iva.toFixed(2)}</Typography>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                           <Divider sx={{ my: 1 }} />
                           <Typography variant="subtitle2" color="text.secondary">Total:</Typography>
                           <Typography variant="h5" color="primary">${totals.total.toFixed(2)}</Typography>

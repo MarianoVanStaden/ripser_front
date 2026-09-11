@@ -267,7 +267,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
         <Box sx={{ pt: 2 }}>
           <Grid container spacing={2}>
             {/* Tipo de movimiento */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <FormControl component="fieldset">
                 <FormLabel>Tipo de Movimiento</FormLabel>
                 <RadioGroup
@@ -282,7 +282,11 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
             </Grid>
 
             {/* Categoría */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <FormControl fullWidth required>
                 <InputLabel>Categoría</InputLabel>
                 <Select
@@ -303,7 +307,11 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
             </Grid>
 
             {/* Fecha */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <DatePicker
                 label="Fecha *"
                 value={fecha}
@@ -319,7 +327,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
             </Grid>
 
             {/* Concepto */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 required
@@ -334,7 +342,11 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
             </Grid>
 
             {/* Importe */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 required
@@ -349,7 +361,11 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
             </Grid>
 
             {/* Método de pago */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <FormControl fullWidth required>
                 <InputLabel>Método de Pago</InputLabel>
                 <Select
@@ -372,7 +388,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
 
             {/* Selector de caja */}
             {requiereCaja && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <CajaSelector
                   metodoPago={metodoPago}
                   value={cajaRef}
@@ -384,7 +400,11 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
             )}
 
             {/* Número de comprobante */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 label="Número de Comprobante"
@@ -396,7 +416,11 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
             </Grid>
 
             {/* Responsable */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 label="Responsable"
@@ -408,7 +432,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
             </Grid>
 
             {/* Observaciones */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Observaciones"
@@ -423,7 +447,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
 
             {/* Error message */}
             {error && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Alert severity="error">{error}</Alert>
               </Grid>
             )}

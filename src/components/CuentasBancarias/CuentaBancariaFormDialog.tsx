@@ -149,7 +149,11 @@ const CuentaBancariaFormDialog: React.FC<Props> = ({ open, cuenta, onClose, onSa
 
           <Grid container spacing={2}>
             {/* Banco */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="bancoId"
                 control={control}
@@ -176,7 +180,11 @@ const CuentaBancariaFormDialog: React.FC<Props> = ({ open, cuenta, onClose, onSa
             </Grid>
 
             {/* Tipo de Cuenta */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="tipoCuenta"
                 control={control}
@@ -194,7 +202,11 @@ const CuentaBancariaFormDialog: React.FC<Props> = ({ open, cuenta, onClose, onSa
             </Grid>
 
             {/* CBU */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="cbu"
                 control={control}
@@ -211,7 +223,11 @@ const CuentaBancariaFormDialog: React.FC<Props> = ({ open, cuenta, onClose, onSa
             </Grid>
 
             {/* Número de Cuenta */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="numeroCuenta"
                 control={control}
@@ -228,7 +244,11 @@ const CuentaBancariaFormDialog: React.FC<Props> = ({ open, cuenta, onClose, onSa
             </Grid>
 
             {/* Alias */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="alias"
                 control={control}
@@ -245,7 +265,11 @@ const CuentaBancariaFormDialog: React.FC<Props> = ({ open, cuenta, onClose, onSa
             </Grid>
 
             {/* Activo */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="activo"
                 control={control}
@@ -264,7 +288,7 @@ const CuentaBancariaFormDialog: React.FC<Props> = ({ open, cuenta, onClose, onSa
             </Grid>
 
             {/* Observaciones */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Controller
                 name="observaciones"
                 control={control}

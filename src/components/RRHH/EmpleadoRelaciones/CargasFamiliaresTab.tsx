@@ -176,33 +176,49 @@ const CargasFamiliaresTab: React.FC<Props> = ({ empleadoId }) => {
         <DialogContent>
           <Stack spacing={2} mt={1}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <TextField fullWidth select required label="Vínculo" value={form.vinculo}
                   onChange={(e) => setForm({ ...form, vinculo: e.target.value as VinculoCargaFamiliar })}>
                   {VINCULOS_CARGA.map(v => <MenuItem key={v} value={v}>{VINCULO_CARGA_LABEL[v]}</MenuItem>)}
                 </TextField>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <TextField fullWidth label="Fecha de Nacimiento" type="date"
                   value={form.fechaNacimiento}
                   onChange={(e) => setForm({ ...form, fechaNacimiento: e.target.value })}
                   InputLabelProps={{ shrink: true }} />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField fullWidth required label="Nombre completo" value={form.nombreCompleto}
                   onChange={(e) => setForm({ ...form, nombreCompleto: e.target.value })} />
               </Grid>
-              <Grid item xs={6} sm={6}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 6
+                }}>
                 <TextField fullWidth label="DNI" value={form.dni}
                   onChange={(e) => setForm({ ...form, dni: e.target.value.replace(/\D/g, '').slice(0, 8) })}
                   inputProps={{ inputMode: 'numeric', maxLength: 8 }} />
               </Grid>
-              <Grid item xs={6} sm={6}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 6
+                }}>
                 <TextField fullWidth label="CUIL" value={form.cuil}
                   onChange={(e) => setForm({ ...form, cuil: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                   inputProps={{ inputMode: 'numeric', maxLength: 11 }} />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField fullWidth label="Observaciones" multiline rows={2}
                   value={form.observaciones}
                   onChange={(e) => setForm({ ...form, observaciones: e.target.value })} />

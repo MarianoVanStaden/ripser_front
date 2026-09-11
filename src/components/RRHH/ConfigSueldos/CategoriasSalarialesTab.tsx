@@ -147,13 +147,21 @@ const CategoriasSalarialesTab: React.FC = () => {
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={8}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 8
+              }}>
               <TextField
                 fullWidth label="Nombre *" value={form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               <FormControlLabel
                 control={<Switch checked={form.activo ?? true} onChange={(e) => setForm({ ...form, activo: e.target.checked })} />}
                 label="Activa"
@@ -167,7 +175,13 @@ const CategoriasSalarialesTab: React.FC = () => {
               ['horaAusenteValor', 'Valor Hora Ausente'],
               ['kmValor', 'Valor por KM'],
             ] as Array<[keyof CategoriaSalarialCreateDTO, string]>).map(([key, label]) => (
-              <Grid key={String(key)} item xs={12} sm={6} md={4}>
+              <Grid
+                key={String(key)}
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 4
+                }}>
                 <TextField
                   fullWidth type="number" label={label}
                   value={(form as any)[key]}

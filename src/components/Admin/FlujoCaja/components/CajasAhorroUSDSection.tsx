@@ -7,7 +7,7 @@ import {
   Card,
   CardContent,
   Chip,
-  Grid2 as Grid,
+  Grid,
   IconButton,
   Paper,
   Skeleton,

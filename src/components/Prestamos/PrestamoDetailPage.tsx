@@ -146,7 +146,7 @@ export const PrestamoDetailPage: React.FC = () => {
       const recordatoriosData: RecordatorioCuotaDTO[] = [];
       for (const cuota of cuotasData) {
         try {
-          recordatoriosData.push(...await recordatorioCuotaApi.getByCuota(cuota.id));
+          recordatoriosData.push(...(await recordatorioCuotaApi.getByCuota(cuota.id)));
         } catch {
           // ignore individual errors
         }
@@ -373,7 +373,11 @@ export const PrestamoDetailPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <Typography variant="caption" color="text.secondary">Cliente</Typography>
               <Typography variant="h6">
                 {cliente
@@ -395,7 +399,11 @@ export const PrestamoDetailPage: React.FC = () => {
                 </>
               )}
             </Grid>
-            <Grid item xs={6} md={3}>
+            <Grid
+              size={{
+                xs: 6,
+                md: 3
+              }}>
               <Typography variant="caption" color="text.secondary">Estado</Typography>
               <Box sx={{ mt: 0.5 }}>
                 <Chip
@@ -405,7 +413,11 @@ export const PrestamoDetailPage: React.FC = () => {
                 />
               </Box>
             </Grid>
-            <Grid item xs={6} md={3}>
+            <Grid
+              size={{
+                xs: 6,
+                md: 3
+              }}>
               <Typography variant="caption" color="text.secondary">Categoría</Typography>
               <Box sx={{ mt: 0.5 }}>
                 <Chip
@@ -420,37 +432,77 @@ export const PrestamoDetailPage: React.FC = () => {
                 />
               </Box>
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <Typography variant="caption" color="text.secondary">Financiación</Typography>
               <Typography variant="body1">{TIPO_FINANCIACION_LABELS[prestamo.tipoFinanciacion]}</Typography>
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <Typography variant="caption" color="text.secondary">Cuotas</Typography>
               <Typography variant="body1">{prestamo.cuotasPagadas}/{prestamo.cantidadCuotas}</Typography>
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <Typography variant="caption" color="text.secondary">Valor Cuota</Typography>
               <Typography variant="body1">{formatPrice(prestamo.valorCuota)}</Typography>
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <Typography variant="caption" color="text.secondary">Monto Total</Typography>
               <Typography variant="body1" fontWeight="bold">{formatPrice(prestamo.montoTotal)}</Typography>
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <Typography variant="caption" color="text.secondary">Cobrado</Typography>
               <Typography variant="body1" color="success.main">{formatPrice(prestamo.montoPagado)}</Typography>
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <Typography variant="caption" color="text.secondary">Saldo Pendiente</Typography>
               <Typography variant="body1" fontWeight="bold" color="error.main">{formatPrice(prestamo.saldoPendiente)}</Typography>
             </Grid>
             {prestamo.diasVencido > 0 && (
-              <Grid item xs={6} sm={4} md={2}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 4,
+                  md: 2
+                }}>
                 <Typography variant="caption" color="text.secondary">Días Vencido</Typography>
                 <Typography variant="body1" color="error.main" fontWeight="bold">{prestamo.diasVencido}</Typography>
               </Grid>
             )}
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <Typography variant="caption" color="text.secondary">Fecha Entrega</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Typography
@@ -477,7 +529,12 @@ export const PrestamoDetailPage: React.FC = () => {
                 )}
               </Box>
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <Typography variant="caption" color="text.secondary">Comprobante</Typography>
               <Typography
                 variant="body1"
@@ -486,7 +543,12 @@ export const PrestamoDetailPage: React.FC = () => {
                 {prestamo.numeroComprobante || 'Sin comprobante'}
               </Typography>
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <Typography variant="caption" color="text.secondary">Fidelización</Typography>
               <Typography variant="body1">
                 Compras: {cliente?.cantidadComprasValidas ?? '-'} · Equipos: {equipos.reduce((s, e) => s + (e.cantidad ?? 0), 0)}
@@ -498,7 +560,7 @@ export const PrestamoDetailPage: React.FC = () => {
               )}
             </Grid>
             {prestamo.observaciones && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="caption" color="text.secondary">Observaciones</Typography>
                 {prestamo.observaciones.includes('>>> COBRAR CON CHEQUE <<<') ? (
                   <>

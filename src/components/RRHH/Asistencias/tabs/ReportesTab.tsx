@@ -460,7 +460,12 @@ const ReportesTab: React.FC<Props> = ({
             </Stack>
           </Box>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <Autocomplete
                 options={empleados}
                 getOptionLabel={(option) => getEmpleadoNombre(option)}
@@ -471,7 +476,12 @@ const ReportesTab: React.FC<Props> = ({
                 )}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 2
+              }}>
               <TextField
                 type="date"
                 label="Desde"
@@ -481,7 +491,12 @@ const ReportesTab: React.FC<Props> = ({
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 2
+              }}>
               <TextField
                 type="date"
                 label="Hasta"
@@ -491,7 +506,12 @@ const ReportesTab: React.FC<Props> = ({
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Tipo de Registro</InputLabel>
                 <Select
@@ -507,7 +527,12 @@ const ReportesTab: React.FC<Props> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 2
+              }}>
               <Button
                 variant="outlined"
                 fullWidth
@@ -534,7 +559,11 @@ const ReportesTab: React.FC<Props> = ({
               Configurar Período de Comparación
             </Typography>
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <TextField
                   type="date"
                   label="Período Anterior - Desde"
@@ -544,7 +573,11 @@ const ReportesTab: React.FC<Props> = ({
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <TextField
                   type="date"
                   label="Período Anterior - Hasta"
@@ -554,7 +587,11 @@ const ReportesTab: React.FC<Props> = ({
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <Alert severity="info" sx={{ py: 0 }}>
                   <Typography variant="caption">
                     <strong>Período Actual:</strong>{' '}
@@ -585,7 +622,12 @@ const ReportesTab: React.FC<Props> = ({
                 </ResponsiveContainer>
 
                 <Grid container spacing={2} mt={2}>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6,
+                      md: 3
+                    }}>
                     <Paper sx={{ p: 2, bgcolor: 'primary.50' }}>
                       <Typography variant="caption" color="textSecondary">
                         Cambio en Horas Totales
@@ -617,7 +659,12 @@ const ReportesTab: React.FC<Props> = ({
                       </Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6,
+                      md: 3
+                    }}>
                     <Paper sx={{ p: 2, bgcolor: 'warning.50' }}>
                       <Typography variant="caption" color="textSecondary">
                         Cambio en Tardanzas
@@ -647,7 +694,12 @@ const ReportesTab: React.FC<Props> = ({
                       </Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6,
+                      md: 3
+                    }}>
                     <Paper sx={{ p: 2, bgcolor: 'error.50' }}>
                       <Typography variant="caption" color="textSecondary">
                         Cambio en Inasistencias
@@ -677,7 +729,12 @@ const ReportesTab: React.FC<Props> = ({
                       </Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6,
+                      md: 3
+                    }}>
                     <Paper sx={{ p: 2, bgcolor: 'info.50' }}>
                       <Typography variant="caption" color="textSecondary">
                         Cambio en Promedio Diario
@@ -707,7 +764,12 @@ const ReportesTab: React.FC<Props> = ({
 
       {/* KPIs del Reporte */}
       <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -725,7 +787,12 @@ const ReportesTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -743,7 +810,12 @@ const ReportesTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -761,7 +833,12 @@ const ReportesTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -779,7 +856,12 @@ const ReportesTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -797,7 +879,12 @@ const ReportesTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -815,7 +902,12 @@ const ReportesTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card sx={{ bgcolor: 'secondary.50', borderLeft: '4px solid', borderColor: 'secondary.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -833,7 +925,12 @@ const ReportesTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
@@ -855,7 +952,11 @@ const ReportesTab: React.FC<Props> = ({
       {/* Gráficos */}
       {showCharts && reportFilteredAsistencias.length > 0 && (
         <Grid container spacing={3} mb={3}>
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" mb={2} display="flex" alignItems="center">
@@ -886,7 +987,11 @@ const ReportesTab: React.FC<Props> = ({
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" mb={2} display="flex" alignItems="center">
@@ -922,7 +1027,7 @@ const ReportesTab: React.FC<Props> = ({
           </Grid>
 
           {!reportEmpleadoFilter && horasPorEmpleado.length > 0 && (
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" mb={2} display="flex" alignItems="center">
@@ -945,7 +1050,11 @@ const ReportesTab: React.FC<Props> = ({
             </Grid>
           )}
 
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" mb={2} display="flex" alignItems="center">
@@ -968,7 +1077,11 @@ const ReportesTab: React.FC<Props> = ({
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" mb={2} display="flex" alignItems="center">
@@ -1227,7 +1340,12 @@ const ReportesTab: React.FC<Props> = ({
           {reportFilteredAsistencias.length > 0 && (
             <Box mt={3} p={2} bgcolor="grey.100" borderRadius={1}>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6,
+                    md: 3
+                  }}>
                   <Typography variant="caption" color="textSecondary">
                     Total Horas Trabajadas
                   </Typography>
@@ -1235,7 +1353,12 @@ const ReportesTab: React.FC<Props> = ({
                     {reportStats.totalHoras.toFixed(2)} horas
                   </Typography>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6,
+                    md: 3
+                  }}>
                   <Typography variant="caption" color="textSecondary">
                     Total Horas Extras
                   </Typography>
@@ -1243,7 +1366,12 @@ const ReportesTab: React.FC<Props> = ({
                     {reportStats.totalHorasExtras.toFixed(2)} horas
                   </Typography>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6,
+                    md: 3
+                  }}>
                   <Typography variant="caption" color="textSecondary">
                     Promedio Horas/Día
                   </Typography>
@@ -1251,7 +1379,12 @@ const ReportesTab: React.FC<Props> = ({
                     {reportStats.promedioHoras.toFixed(2)} horas
                   </Typography>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 6,
+                    md: 3
+                  }}>
                   <Typography variant="caption" color="textSecondary">
                     Días Trabajados
                   </Typography>

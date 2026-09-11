@@ -446,7 +446,11 @@ const ComunicacionesInicialesPage = () => {
           ) : (
             <Box>
               <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Información general
                   </Typography>
@@ -463,7 +467,11 @@ const ComunicacionesInicialesPage = () => {
                     <strong>Método de pago:</strong> {getMetodoPagoLabel(facturaDialog.documento.metodoPago)}
                   </Typography>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Cliente
                   </Typography>

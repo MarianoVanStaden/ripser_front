@@ -81,7 +81,15 @@ const DesdeNotaPedidoTab: React.FC<Props> = ({
             const estadoCfg = ESTADO_OPTIONS[nota.estado] ?? { label: nota.estado, color: 'default' as const };
             const opciones = notaOpcionesFinanciamiento[nota.id] ?? [];
             return (
-              <Grid item xs={12} sm={6} md={6} lg={4} xl={3} key={nota.id}>
+              <Grid
+                key={nota.id}
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 6,
+                  lg: 4,
+                  xl: 3
+                }}>
                 <Card>
                   <CardContent>
                     <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>

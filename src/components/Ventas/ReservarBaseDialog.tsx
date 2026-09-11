@@ -241,7 +241,7 @@ const ReservarBaseDialog: React.FC<ReservarBaseDialogProps> = ({
                                 ? `Base para unidad ${unitIdx + 1}`
                                 : 'Equipo base'}
                             </InputLabel>
-                            <Select
+                            <Select<number | ''>
                               value={selectedId}
                               label={cantUnidades > 1 ? `Base para unidad ${unitIdx + 1}` : 'Equipo base'}
                               onChange={e => {

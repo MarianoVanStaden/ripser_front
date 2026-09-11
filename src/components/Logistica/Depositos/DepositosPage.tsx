@@ -263,7 +263,12 @@ const DepositosPage: React.FC = () => {
 
       {/* Statistics Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2.4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -273,7 +278,12 @@ const DepositosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2.4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -285,7 +295,12 @@ const DepositosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2.4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -297,7 +312,12 @@ const DepositosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2.4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -309,7 +329,12 @@ const DepositosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 2.4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -327,7 +352,11 @@ const DepositosPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth
                 label="Buscar"
@@ -343,7 +372,11 @@ const DepositosPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 2
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Estado</InputLabel>
                 <Select
@@ -357,7 +390,11 @@ const DepositosPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 2
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Tipo</InputLabel>
                 <Select value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)} label="Tipo">
@@ -367,7 +404,11 @@ const DepositosPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Sucursal</InputLabel>
                 <Select
@@ -492,7 +533,11 @@ const DepositosPage: React.FC = () => {
         <DialogTitle>{selectedDeposito ? 'Editar Depósito' : 'Nuevo Depósito'}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 label="Código"
@@ -503,7 +548,11 @@ const DepositosPage: React.FC = () => {
                 helperText="Único e inmutable"
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 label="Nombre"
@@ -512,7 +561,7 @@ const DepositosPage: React.FC = () => {
                 required
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Dirección"
@@ -520,7 +569,7 @@ const DepositosPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Descripción"
@@ -530,7 +579,7 @@ const DepositosPage: React.FC = () => {
                 rows={3}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <FormControl fullWidth>
                 <InputLabel>Sucursal</InputLabel>
                 <Select
@@ -554,7 +603,7 @@ const DepositosPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <FormControlLabel
                 control={
                   <Switch

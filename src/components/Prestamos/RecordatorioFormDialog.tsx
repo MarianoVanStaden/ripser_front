@@ -96,7 +96,11 @@ export const RecordatorioFormDialog: React.FC<RecordatorioFormDialogProps> = ({
         <Box sx={{ mt: 2 }}>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <FechaField
                 label="Fecha Recordatorio"
                 size="medium"
@@ -104,7 +108,11 @@ export const RecordatorioFormDialog: React.FC<RecordatorioFormDialogProps> = ({
                 onChange={(v) => handleChange('fechaRecordatorio', v)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 select
@@ -117,7 +125,7 @@ export const RecordatorioFormDialog: React.FC<RecordatorioFormDialogProps> = ({
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Mensaje"

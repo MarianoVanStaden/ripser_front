@@ -273,7 +273,11 @@ export const LeadDetailPage = () => {
 
       <Grid container spacing={3}>
         {/* Columna Izquierda - Información de Contacto */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -485,7 +489,11 @@ export const LeadDetailPage = () => {
         </Grid>
 
         {/* Columna Derecha - Timeline y Recordatorios */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           {/* Próximo Recordatorio Pendiente */}
           {lead.recordatorios && lead.recordatorios.length > 0 && (() => {
             // Filtrar solo recordatorios pendientes (no enviados)
@@ -529,61 +537,61 @@ export const LeadDetailPage = () => {
                   {lead.recordatorios?.map((recordatorio) => {
                     const colors = getRecordatorioColor(recordatorio.fechaRecordatorio, recordatorio.enviado || false);
                     return (
-                    <ListItem key={recordatorio.id}>
-                      <Paper
-                        sx={(theme) => ({
-                          p: 2,
-                          width: '100%',
-                          bgcolor: colors.bgcolor,
-                          borderLeft: 4,
-                          borderColor: colors.borderColor,
-                          // El fondo pastel de la escala ordinal queda fijo (claro) en
-                          // ambos esquemas: en dark el texto vuelve a colores oscuros
-                          // fijos para seguir siendo legible. En light no cambia nada.
-                          ...theme.applyStyles('dark', {
-                            // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre fondo pastel fijo de la escala ordinal
-                            color: 'rgba(0,0,0,0.87)',
-                            '& .MuiTypography-root': {
+                      <ListItem key={recordatorio.id}>
+                        <Paper
+                          sx={(theme) => ({
+                            p: 2,
+                            width: '100%',
+                            bgcolor: colors.bgcolor,
+                            borderLeft: 4,
+                            borderColor: colors.borderColor,
+                            // El fondo pastel de la escala ordinal queda fijo (claro) en
+                            // ambos esquemas: en dark el texto vuelve a colores oscuros
+                            // fijos para seguir siendo legible. En light no cambia nada.
+                            ...theme.applyStyles('dark', {
                               // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre fondo pastel fijo de la escala ordinal
-                              color: 'rgba(0,0,0,0.87)'
-                            },
-                            '& .MuiTypography-root.MuiTypography-caption': {
-                              // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre fondo pastel fijo de la escala ordinal
-                              color: 'rgba(0,0,0,0.6)'
-                            }
-                          })
-                        })}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-                          <NotificationsIcon fontSize="small" />
-                          <Typography variant="body2" fontWeight="bold">
-                            {recordatorio.tipo?.replace(/_/g, ' ')}
-                          </Typography>
-                          <Chip 
-                            label={recordatorio.enviado ? 'Enviado' : 'Pendiente'}
-                            size="small"
-                            color={recordatorio.enviado ? 'success' : 'warning'}
-                          />
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <EventIcon fontSize="small" />
-                          <Typography variant="body2">
-                            {recordatorio.fechaRecordatorio}
-                          </Typography>
-                        </Box>
-                        {recordatorio.mensaje && (
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
-                            {recordatorio.mensaje}
-                          </Typography>
-                        )}
-                        {recordatorio.fechaEnvio && (
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                            Enviado: {new Date(recordatorio.fechaEnvio).toLocaleString('es-AR')}
-                          </Typography>
-                        )}
-                      </Paper>
-                    </ListItem>
-                  )})}
+                              color: 'rgba(0,0,0,0.87)',
+                              '& .MuiTypography-root': {
+                                // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre fondo pastel fijo de la escala ordinal
+                                color: 'rgba(0,0,0,0.87)'
+                              },
+                              '& .MuiTypography-root.MuiTypography-caption': {
+                                // eslint-disable-next-line ripser/no-literal-colors -- texto fijo sobre fondo pastel fijo de la escala ordinal
+                                color: 'rgba(0,0,0,0.6)'
+                              }
+                            })
+                          })}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                            <NotificationsIcon fontSize="small" />
+                            <Typography variant="body2" fontWeight="bold">
+                              {recordatorio.tipo?.replace(/_/g, ' ')}
+                            </Typography>
+                            <Chip 
+                              label={recordatorio.enviado ? 'Enviado' : 'Pendiente'}
+                              size="small"
+                              color={recordatorio.enviado ? 'success' : 'warning'}
+                            />
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <EventIcon fontSize="small" />
+                            <Typography variant="body2">
+                              {recordatorio.fechaRecordatorio}
+                            </Typography>
+                          </Box>
+                          {recordatorio.mensaje && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
+                              {recordatorio.mensaje}
+                            </Typography>
+                          )}
+                          {recordatorio.fechaEnvio && (
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                              Enviado: {new Date(recordatorio.fechaEnvio).toLocaleString('es-AR')}
+                            </Typography>
+                          )}
+                        </Paper>
+                      </ListItem>
+                    );})}
                 </List>
               )}
             </CardContent>

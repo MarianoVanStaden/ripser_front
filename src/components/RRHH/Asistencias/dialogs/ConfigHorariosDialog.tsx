@@ -78,7 +78,11 @@ const ConfigHorariosDialog: React.FC<Props> = ({
               {DIAS_SEMANA.map((dia) => (
                 <Box key={dia} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
                   <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={3}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 3
+                      }}>
                       <FormControlLabel
                         control={
                           <Checkbox
@@ -89,7 +93,11 @@ const ConfigHorariosDialog: React.FC<Props> = ({
                         label={dia.charAt(0).toUpperCase() + dia.slice(1)}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={4}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 4
+                      }}>
                       <TextField
                         label="Hora Entrada"
                         type="time"
@@ -100,7 +108,11 @@ const ConfigHorariosDialog: React.FC<Props> = ({
                         size="small"
                       />
                     </Grid>
-                    <Grid item xs={12} sm={4}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 4
+                      }}>
                       <TextField
                         label="Hora Salida"
                         type="time"

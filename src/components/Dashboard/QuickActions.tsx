@@ -83,7 +83,7 @@ const QuickActions: React.FC = () => {
   return (
     <Grid container spacing={1.5}>
       {actions.map((action, index) => (
-        <Grid item xs={6} key={index}>
+        <Grid key={index} size={6}>
           <Paper
             elevation={0}
             sx={{

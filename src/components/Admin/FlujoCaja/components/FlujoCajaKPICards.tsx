@@ -92,7 +92,13 @@ const FlujoCajaKPICards: React.FC<FlujoCajaKPICardsProps> = ({ kpis, loading = f
     return (
       <Grid container spacing={3}>
         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <Grid item xs={12} sm={6} md={3} key={i}>
+          <Grid
+            key={i}
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Box sx={{ height: 100 }} />
@@ -109,7 +115,13 @@ const FlujoCajaKPICards: React.FC<FlujoCajaKPICardsProps> = ({ kpis, loading = f
       {kpiCards.map((card, index) => {
         const Icon = card.icon;
         return (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+          <Grid
+            key={index}
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card
               sx={{
                 height: '100%',

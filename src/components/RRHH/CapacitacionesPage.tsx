@@ -302,7 +302,11 @@ const CapacitacionesPage: React.FC = () => {
 
       {/* Stats */}
       <Grid container spacing={2} mb={3}>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -315,7 +319,11 @@ const CapacitacionesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -328,7 +336,11 @@ const CapacitacionesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -341,7 +353,11 @@ const CapacitacionesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
@@ -361,7 +377,11 @@ const CapacitacionesPage: React.FC = () => {
       <Card>
         <CardContent>
           <Grid container spacing={2} mb={2}>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth size="small"
                 label="Buscar"
@@ -371,7 +391,11 @@ const CapacitacionesPage: React.FC = () => {
                 InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth select size="small" label="Motivo"
                 value={motivoFilter}
@@ -381,7 +405,11 @@ const CapacitacionesPage: React.FC = () => {
                 {MOTIVOS.map(m => <MenuItem key={m} value={m}>{MOTIVO_CAPACITACION_LABEL[m]}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <Autocomplete
                 size="small"
                 options={areas}
@@ -511,7 +539,11 @@ const CapacitacionesPage: React.FC = () => {
             </DialogTitle>
             <DialogContent>
               <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" color="textSecondary">Área</Typography>
@@ -527,7 +559,11 @@ const CapacitacionesPage: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" color="textSecondary">Objetivo</Typography>
@@ -537,7 +573,7 @@ const CapacitacionesPage: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle1" fontWeight="600" gutterBottom>
@@ -577,7 +613,11 @@ const CapacitacionesPage: React.FC = () => {
         <DialogTitle>{editing ? 'Editar Capacitación' : 'Nueva Capacitación'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 select fullWidth label="Motivo" value={formData.motivo}
                 onChange={(e) => setFormData(p => ({ ...p, motivo: e.target.value as MotivoCapacitacion }))}
@@ -586,7 +626,11 @@ const CapacitacionesPage: React.FC = () => {
                 {MOTIVOS.map(m => <MenuItem key={m} value={m}>{MOTIVO_CAPACITACION_LABEL[m]}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <Autocomplete
                 options={areas}
                 getOptionLabel={o => o.nombre}
@@ -595,7 +639,11 @@ const CapacitacionesPage: React.FC = () => {
                 renderInput={(p) => <TextField {...p} label="Área" />}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth label="Actividad" placeholder="Ej.: Capacitación 5S"
                 value={formData.actividad}
@@ -603,7 +651,11 @@ const CapacitacionesPage: React.FC = () => {
                 helperText="Encabezado de la planilla F-RRHH-003"
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth required label="Nombre"
                 value={formData.nombre}
@@ -611,7 +663,7 @@ const CapacitacionesPage: React.FC = () => {
                 placeholder="Ej.: Inducción Operarios Planta"
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth label="Objetivo"
                 value={formData.objetivo}
@@ -620,14 +672,22 @@ const CapacitacionesPage: React.FC = () => {
                 helperText="Aparece en la planilla impresa"
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth label="Capacitador"
                 value={formData.capacitador}
                 onChange={(e) => setFormData(p => ({ ...p, capacitador: e.target.value }))}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth label="Institución (opcional)"
                 value={formData.institucion}
@@ -635,7 +695,11 @@ const CapacitacionesPage: React.FC = () => {
                 InputProps={{ startAdornment: <InputAdornment position="start"><BusinessIcon /></InputAdornment> }}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 type="date" fullWidth required label="Fecha Inicio"
                 value={formData.fechaInicio}
@@ -643,7 +707,11 @@ const CapacitacionesPage: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 type="date" fullWidth required label="Fecha Fin"
                 value={formData.fechaFin}
@@ -651,7 +719,11 @@ const CapacitacionesPage: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 type="number" fullWidth required label="Horas"
                 value={formData.horas}
@@ -660,7 +732,11 @@ const CapacitacionesPage: React.FC = () => {
                 InputProps={{ startAdornment: <InputAdornment position="start"><TimeIcon /></InputAdornment> }}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 type="number" fullWidth label="Costo"
                 value={formData.costo}
@@ -669,7 +745,11 @@ const CapacitacionesPage: React.FC = () => {
                 InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControlLabel
                 control={<Switch checked={formData.certificado} color="success"
                   onChange={(e) => setFormData(p => ({ ...p, certificado: e.target.checked }))} />}
@@ -677,7 +757,7 @@ const CapacitacionesPage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Divider sx={{ my: 1 }}>Participantes</Divider>
               <Autocomplete
                 multiple
@@ -708,7 +788,7 @@ const CapacitacionesPage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth multiline rows={3} label="Descripción / Temario"
                 value={formData.descripcion}

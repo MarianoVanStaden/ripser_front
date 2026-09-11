@@ -181,17 +181,29 @@ const AnulacionesPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={6} md={3}>
+            <Grid
+              size={{
+                xs: 6,
+                md: 3
+              }}>
               <TextField fullWidth size="small" label="Desde" type="date"
                 value={desde} onChange={(e) => setDesde(e.target.value)}
                 InputLabelProps={{ shrink: true }} />
             </Grid>
-            <Grid item xs={6} md={3}>
+            <Grid
+              size={{
+                xs: 6,
+                md: 3
+              }}>
               <TextField fullWidth size="small" label="Hasta" type="date"
                 value={hasta} onChange={(e) => setHasta(e.target.value)}
                 InputLabelProps={{ shrink: true }} />
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 3
+              }}>
               <Button variant="outlined" size="small" onClick={() => { setDesde(''); setHasta(''); }}>
                 Limpiar período
               </Button>
@@ -202,19 +214,31 @@ const AnulacionesPage: React.FC = () => {
 
       {/* Tarjetas resumen */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} sm={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 4
+          }}>
           <Card><CardContent>
             <Typography variant="h6">{totales.nc}</Typography>
             <Typography variant="body2" color="text.secondary">Notas de Crédito</Typography>
           </CardContent></Card>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 4
+          }}>
           <Card><CardContent>
             <Typography variant="h6">{totales.equipos}</Typography>
             <Typography variant="body2" color="text.secondary">Equipos anulados</Typography>
           </CardContent></Card>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 4
+          }}>
           <Card><CardContent>
             <Typography variant="h6">{fmtMoney(totales.monto)}</Typography>
             <Typography variant="body2" color="text.secondary">Monto acreditado</Typography>
@@ -417,19 +441,19 @@ const AnulacionesPage: React.FC = () => {
           ) : facturaQuery.data ? (
             <>
               <Grid container spacing={2} mb={2}>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <Typography variant="body2" color="text.secondary">Cliente</Typography>
                   <Typography variant="body1">{facturaQuery.data.clienteNombre || '-'}</Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <Typography variant="body2" color="text.secondary">Fecha de emisión</Typography>
                   <Typography variant="body1">{fmtFecha(facturaQuery.data.fechaEmision)}</Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <Typography variant="body2" color="text.secondary">Estado</Typography>
                   <Chip size="small" label={facturaQuery.data.estado} />
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <Typography variant="body2" color="text.secondary">Total</Typography>
                   <Typography variant="body1">{fmtMoney(facturaQuery.data.total)}</Typography>
                 </Grid>

@@ -191,13 +191,13 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
           )}
 
           <Grid container spacing={2}>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <Typography variant="body2" color="textSecondary">
                 Tipo
               </Typography>
               <ChequeTipoChip tipo={cheque.tipo} />
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <Typography variant="body2" color="textSecondary">
                 Estado
               </Typography>
@@ -207,11 +207,11 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               </Box>
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Divider />
             </Grid>
 
-            <Grid item xs={6}>
+            <Grid size={6}>
               <Typography variant="body2" color="textSecondary">
                 Número de Cheque
               </Typography>
@@ -219,7 +219,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
                 {cheque.numeroCheque}
               </Typography>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <Typography variant="body2" color="textSecondary">
                 Banco
               </Typography>
@@ -231,7 +231,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               </Box>
             </Grid>
 
-            <Grid item xs={6}>
+            <Grid size={6}>
               <Typography variant="body2" color="textSecondary">
                 Monto
               </Typography>
@@ -239,7 +239,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
                 ${cheque.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
               </Typography>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <Typography variant="body2" color="textSecondary">
                 Fecha de Emisión
               </Typography>
@@ -248,7 +248,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
               </Typography>
             </Grid>
 
-            <Grid item xs={6}>
+            <Grid size={6}>
               <Typography variant="body2" color="textSecondary">
                 Fecha de Cobro
               </Typography>
@@ -261,7 +261,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
                 )}
               </Typography>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <Typography variant="body2" color="textSecondary">
                 Titular
               </Typography>
@@ -274,7 +274,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             </Grid>
 
             {cheque.clienteNombre && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="body2" color="textSecondary">
                   Cliente
                 </Typography>
@@ -283,7 +283,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             )}
 
             {cheque.proveedorNombre && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="body2" color="textSecondary">
                   Proveedor
                 </Typography>
@@ -292,7 +292,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             )}
 
             {cheque.endosado && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="body2" color="textSecondary">
                   Endosado a
                 </Typography>
@@ -301,7 +301,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             )}
 
             {cheque.numeroCuenta && (
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="body2" color="textSecondary">
                   Número de Cuenta
                 </Typography>
@@ -310,7 +310,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             )}
 
             {cheque.cbu && (
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="body2" color="textSecondary">
                   CBU
                 </Typography>
@@ -319,7 +319,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             )}
 
             {cheque.fechaDeposito && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="body2" color="textSecondary">
                   Fecha de Depósito
                 </Typography>
@@ -330,7 +330,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             )}
 
             {cheque.fechaCobrado && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="body2" color="textSecondary">
                   Fecha de Cobro Efectivo
                 </Typography>
@@ -341,7 +341,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             )}
 
             {cheque.fechaRechazo && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="body2" color="textSecondary">
                   Fecha de Rechazo
                 </Typography>
@@ -352,7 +352,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             )}
 
             {cheque.motivoRechazo && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="body2" color="textSecondary">
                   Motivo de Rechazo
                 </Typography>
@@ -363,7 +363,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             )}
 
             {cheque.observaciones && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="body2" color="textSecondary">
                   Observaciones
                 </Typography>
@@ -372,13 +372,13 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             )}
 
             {historial.length > 0 && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Divider />
               </Grid>
             )}
 
             {historial.length > 0 && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="subtitle2" gutterBottom>
                   Historial
                 </Typography>
@@ -425,11 +425,11 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             {/* Sección de endosos - solo para TERCEROS */}
             {cheque.tipo === 'TERCEROS' && (
               <>
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Divider />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                     <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       Endosos
@@ -459,7 +459,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
 
             {/* Selección de caja destino para acreditar el cobro */}
             {showCobroInput && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="subtitle2" gutterBottom>
                   Acreditar el cobro en una caja propia
                 </Typography>
@@ -496,7 +496,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
 
             {/* Input para motivo de rechazo */}
             {showRechazoInput && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   fullWidth
                   label="Motivo del Rechazo"
@@ -532,7 +532,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
 
             {/* Input para motivo de anulación */}
             {showAnulacionInput && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   fullWidth
                   label="Motivo de Anulación"
@@ -568,7 +568,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
 
             {/* Input para revertir la última transición (herramienta de corrección) */}
             {showReversionInput && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 {(() => {
                   const ultima = [...historial]
                     .reverse()

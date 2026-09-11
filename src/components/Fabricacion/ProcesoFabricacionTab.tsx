@@ -168,7 +168,13 @@ const ProcesoFabricacionTab: React.FC = () => {
           {TIPOS_ETAPA.map((tipo) => {
             const area = resumen.find((r) => r.tipoEtapa === tipo);
             return (
-              <Grid item xs={12} sm={6} md={3} key={tipo}>
+              <Grid
+                key={tipo}
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <Card variant="outlined" sx={{ height: '100%' }}>
                   <CardContent>
                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>

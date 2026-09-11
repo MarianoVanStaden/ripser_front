@@ -333,7 +333,12 @@ export const GestionCobranzaDetailPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <Typography variant="caption" color="text.secondary">Estado</Typography>
               <Box mt={0.5}>
                 <Chip
@@ -342,7 +347,12 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                 />
               </Box>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <Typography variant="caption" color="text.secondary">Prioridad</Typography>
               <Box mt={0.5}>
                 {gestion.prioridad ? (
@@ -358,7 +368,12 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                 )}
               </Box>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <Typography variant="caption" color="text.secondary">Días Vencido</Typography>
               <Typography
                 variant="h6"
@@ -368,7 +383,12 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                 {gestion.diasVencido} días
               </Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               {gestion.prestamoId != null ? (
                 <>
                   <Typography variant="caption" color="text.secondary">Mora Actual (live)</Typography>
@@ -388,28 +408,48 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                 </>
               )}
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <Typography variant="caption" color="text.secondary">Días Mora Real</Typography>
               <Box mt={0.5}>
                 <BadgeMora dias={gestion.diasMoraReal} />
               </Box>
             </Grid>
             {gestion.proximaCuotaVencimiento && (
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <Typography variant="caption" color="text.secondary">Próximo Vencimiento</Typography>
                 <Typography variant="body2">
                   {dayjs(gestion.proximaCuotaVencimiento).format('DD/MM/YYYY')}
                 </Typography>
               </Grid>
             )}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <Typography variant="caption" color="text.secondary">Teléfono</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                 <Phone fontSize="small" color="action" />
                 <Typography variant="body2">{gestion.clienteTelefono || '-'}</Typography>
               </Box>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <Typography variant="caption" color="text.secondary">Próxima Gestión</Typography>
               <Typography variant="body2">
                 {gestion.fechaProximaGestion
@@ -417,7 +457,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                   : '-'}
               </Typography>
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Divider sx={{ my: 1 }} />
               <Typography variant="caption" color="text.secondary" display="block" mb={1}>
                 Promesa de Pago
@@ -430,7 +470,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
               />
             </Grid>
             {gestion.observaciones && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Divider sx={{ my: 1 }} />
                 <Typography variant="caption" color="text.secondary">Observaciones</Typography>
                 <Typography variant="body2">{gestion.observaciones}</Typography>

@@ -184,7 +184,12 @@ const TallerDashboard: React.FC = () => {
 
       {/* KPI Cards */}
       <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
@@ -204,7 +209,12 @@ const TallerDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
@@ -224,7 +234,12 @@ const TallerDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
@@ -244,7 +259,12 @@ const TallerDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
@@ -268,7 +288,11 @@ const TallerDashboard: React.FC = () => {
       {/* Main Content */}
       <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
         {/* Progreso de fabricación */}
-        <Grid item xs={12} md={8}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 8
+          }}>
           <Paper sx={{ p: { xs: 2, sm: 3 } }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography
@@ -420,7 +444,11 @@ const TallerDashboard: React.FC = () => {
         </Grid>
 
         {/* Panel lateral: stock y producción del mes */}
-        <Grid item xs={12} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 4
+          }}>
           <Paper sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 3 } }}>
             <Typography
               variant="h6"

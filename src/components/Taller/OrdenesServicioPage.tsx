@@ -701,7 +701,11 @@ const OrdenesServicioPage: React.FC = () => {
             <Grid container spacing={3} sx={{ mt: 0.5 }}>
               {/* Información General */}
               {/* @ts-ignore */}
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Card variant="outlined" sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
@@ -761,7 +765,11 @@ const OrdenesServicioPage: React.FC = () => {
 
               {/* Costos */}
               {/* @ts-ignore */}
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Card variant="outlined" sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
@@ -814,7 +822,7 @@ const OrdenesServicioPage: React.FC = () => {
 
               {/* Descripción del Trabajo */}
               {/* @ts-ignore */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
@@ -859,7 +867,7 @@ const OrdenesServicioPage: React.FC = () => {
 
               {/* Equipos en Service */}
               {selected.equipos && selected.equipos.length > 0 && (
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
                     <CardContent sx={{ p: 3 }}>
                       <Typography variant="h6" color="warning.dark" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
@@ -902,7 +910,7 @@ const OrdenesServicioPage: React.FC = () => {
 
               {/* Materiales Utilizados */}
               {selected.materiales && selected.materiales.length > 0 && (
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
                     <CardContent sx={{ p: 3 }}>
                       <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
@@ -941,7 +949,7 @@ const OrdenesServicioPage: React.FC = () => {
 
               {/* Tareas */}
               {selected.tareas && selected.tareas.length > 0 && (
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
                     <CardContent sx={{ p: 3 }}>
                       <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
@@ -1299,7 +1307,11 @@ const OrdenesServicioPage: React.FC = () => {
                   📅 FECHAS Y ESTADO
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={editingOrden ? 6 : 12}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: editingOrden ? 6 : 12
+                    }}>
                     <TextField
                       fullWidth
                       type="date"
@@ -1313,7 +1325,11 @@ const OrdenesServicioPage: React.FC = () => {
                   </Grid>
 
                   {editingOrden && (
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <TextField
                         fullWidth
                         select

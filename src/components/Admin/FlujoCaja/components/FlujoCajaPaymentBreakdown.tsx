@@ -29,7 +29,14 @@ const FlujoCajaPaymentBreakdown: React.FC<FlujoCajaPaymentBreakdownProps> = ({
         </Typography>
         <Grid container spacing={3}>
           {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={i}>
+            <Grid
+              key={i}
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4,
+                lg: 3
+              }}>
               <Box sx={{ height: 400, bgcolor: 'grey.100', borderRadius: 2 }} />
             </Grid>
           ))}
@@ -59,21 +66,40 @@ const FlujoCajaPaymentBreakdown: React.FC<FlujoCajaPaymentBreakdownProps> = ({
       <Grid container spacing={3}>
         {/* Otros métodos de pago */}
         {otherMethods.map((method) => (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={method.metodoPago}>
+          <Grid
+            key={method.metodoPago}
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4,
+              lg: 3
+            }}>
             <PaymentMethodCard data={method} totalGeneral={totalGeneral} />
           </Grid>
         ))}
 
         {/* Card de Cheques (si existe) junto con el card de estados */}
         {chequeMethod && (
-          <Grid item xs={12} sm={6} md={4} lg={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4,
+              lg: 3
+            }}>
             <PaymentMethodCard data={chequeMethod} totalGeneral={totalGeneral} />
           </Grid>
         )}
 
         {/* Card de Estados de Cheques (si hay cheques) */}
         {chequeStatusData.length > 0 && (
-          <Grid item xs={12} sm={6} md={4} lg={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4,
+              lg: 3
+            }}>
             <ChequeStatusCard data={chequeStatusData} />
           </Grid>
         )}

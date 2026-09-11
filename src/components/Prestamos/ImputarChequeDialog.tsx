@@ -102,7 +102,7 @@ export const ImputarChequeDialog: React.FC<ImputarChequeDialogProps> = ({
             </Alert>
           ) : (
             <Grid container spacing={2}>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <FormControl fullWidth required>
                   <InputLabel>Cheque a imputar</InputLabel>
                   <Select
@@ -121,19 +121,19 @@ export const ImputarChequeDialog: React.FC<ImputarChequeDialogProps> = ({
                 </FormControl>
               </Grid>
               {chequeSel && (
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <Grid container spacing={2}>
-                      <Grid item xs={6}>
+                      <Grid size={6}>
                         <Typography variant="caption" color="text.secondary">Monto del cheque</Typography>
                         <Typography variant="body2" fontWeight="bold">{formatPrice(chequeSel.monto)}</Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid size={6}>
                         <Typography variant="caption" color="text.secondary">Estado</Typography>
                         <Box><Chip size="small" label={chequeSel.estado} /></Box>
                       </Grid>
                       {chequeSel.titular && (
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                           <Typography variant="caption" color="text.secondary">Titular</Typography>
                           <Typography variant="body2">{chequeSel.titular}</Typography>
                         </Grid>

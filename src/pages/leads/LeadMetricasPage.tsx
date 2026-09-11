@@ -245,7 +245,12 @@ export const LeadMetricasPage = () => {
             Filtros
           </Typography>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <DatePicker
                 label="Fecha Inicio"
                 value={fechaInicio}
@@ -258,7 +263,12 @@ export const LeadMetricasPage = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <DatePicker
                 label="Fecha Fin"
                 value={fechaFin}
@@ -271,7 +281,12 @@ export const LeadMetricasPage = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <Autocomplete
                 options={vendedores}
                 getOptionLabel={(option) => option.username || ''}
@@ -293,7 +308,12 @@ export const LeadMetricasPage = () => {
                 )}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <Stack direction="row" spacing={1}>
                 <Button
                   variant="contained"
@@ -306,7 +326,11 @@ export const LeadMetricasPage = () => {
                 </Button>
               </Stack>
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 3
+              }}>
               <Stack direction="row" spacing={1}>
                 <Button
                   variant="outlined"
@@ -352,7 +376,11 @@ export const LeadMetricasPage = () => {
         {!loading && metricas && (
           <Grid container spacing={3}>
             {/* Tasa de Conversión */}
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -388,7 +416,11 @@ export const LeadMetricasPage = () => {
             </Grid>
 
             {/* Tiempo de Conversión */}
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -422,7 +454,11 @@ export const LeadMetricasPage = () => {
 
             {/* Cumplimiento de Meta de Ventas: solo el % (calculado server-side);
                 los montos de facturación no se muestran a ningún rol. */}
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -454,7 +490,11 @@ export const LeadMetricasPage = () => {
             </Grid>
 
             {/* Meta de Leads */}
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -491,7 +531,11 @@ export const LeadMetricasPage = () => {
             </Grid>
 
             {/* Leads en Pipeline Activo */}
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -524,45 +568,61 @@ export const LeadMetricasPage = () => {
             </Grid>
 
             {/* Embudo de Ventas */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <div id="metricas-embudo-chart" style={{ background: 'var(--mui-palette-background-paper)' }}>
                 <EmbudoVentasChart data={metricas.embudoVentas} />
               </div>
             </Grid>
 
             {/* Métricas por Canal */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <div id="metricas-canal-chart" style={{ background: 'var(--mui-palette-background-paper)' }}>
                 <MetricasCanalChart data={metricas.metricasPorCanal} ocultarMontos={ocultarMontos} />
               </div>
             </Grid>
 
             {/* Métricas por Prioridad */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <div id="metricas-prioridad-chart" style={{ background: 'var(--mui-palette-background-paper)' }}>
                 <MetricasPrioridadChart data={metricas.metricasPorPrioridad} ocultarMontos={ocultarMontos} />
               </div>
             </Grid>
 
             {/* Tendencias Temporales */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <div id="metricas-tendencias-chart" style={{ background: 'var(--mui-palette-background-paper)' }}>
                 <TendenciasTemporalesChart data={metricas.tendenciasTemporales} />
               </div>
             </Grid>
 
             {/* Distribución Geográfica */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <DistribucionGeograficaTable data={metricas.distribucionGeografica} ocultarMontos={ocultarMontos} />
             </Grid>
 
             {/* Productos de Interés */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <ProductosInteresTables data={metricas.productosInteres} ocultarMontos={ocultarMontos} />
             </Grid>
 
             {/* Ranking de Vendedores */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <RankingVendedoresTable data={metricas.metricasPorVendedor} ocultarMontos={ocultarMontos} />
             </Grid>
           </Grid>

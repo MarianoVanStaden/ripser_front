@@ -378,13 +378,21 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
             {/* ============ 1. IDENTIFICACIÓN ============ */}
             {tab === 0 && (
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={8}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 8
+                  }}>
                   <TextField
                     fullWidth required label="Nombre del puesto"
                     value={form.nombre} onChange={(e) => upd('nombre', e.target.value)}
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     fullWidth label="CIUO"
                     value={form.ciuo} onChange={(e) => upd('ciuo', e.target.value)}
@@ -392,7 +400,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                   />
                 </Grid>
 
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Unidad de Negocio"
                     value={form.unidadNegocioId}
@@ -402,7 +414,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                     {cats.unidadesNegocio.map((u) => <MenuItem key={u.id} value={u.id}>{u.nombre}</MenuItem>)}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Lugar de Trabajo"
                     value={form.lugarTrabajoId}
@@ -412,7 +428,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                     {cats.lugaresTrabajo.map((l) => <MenuItem key={l.id} value={l.id}>{l.nombre}</MenuItem>)}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     fullWidth label="Volumen de dotación" type="number"
                     value={form.volumenDotacion}
@@ -420,7 +440,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                   />
                 </Grid>
 
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Área"
                     value={form.areaId}
@@ -434,7 +458,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                     {cats.areas.map((a) => <MenuItem key={a.id} value={a.id}>{a.nombre}</MenuItem>)}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Departamento"
                     value={form.departamentoId}
@@ -447,7 +475,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                     {departamentosFiltrados.map((d) => <MenuItem key={d.id} value={d.id}>{d.nombre}</MenuItem>)}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Sector"
                     value={form.sectorId}
@@ -458,7 +490,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                   </TextField>
                 </Grid>
 
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Banda Jerárquica"
                     value={form.bandaJerarquicaId}
@@ -470,7 +506,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                     ))}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Nivel Jerárquico"
                     value={form.nivelJerarquicoId}
@@ -480,7 +520,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                     {cats.niveles.map((n) => <MenuItem key={n.id} value={n.id}>{n.nombre}</MenuItem>)}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Categoría salarial"
                     value={form.categoriaSalarialId}
@@ -499,7 +543,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                     ))}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     fullWidth label="Salario base" type="number"
                     value={form.salarioBase}
@@ -509,7 +557,7 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                   />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <TextField
                     select fullWidth label="Reporta a (puesto)"
                     value={form.reportaAPuestoId}
@@ -522,14 +570,14 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                   </TextField>
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <TextField
                     fullWidth multiline rows={2} label="Descripción / Resumen"
                     value={form.descripcion} onChange={(e) => upd('descripcion', e.target.value)}
                   />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <TextField
                     fullWidth label="Departamento (texto libre legacy)"
                     value={form.departamentoLegacy}
@@ -730,7 +778,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
             {/* ============ 8. REQUERIMIENTOS ============ */}
             {tab === 7 && (
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Nivel de educación"
                     value={form.nivelEducacionId}
@@ -740,7 +792,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                     {cats.nivelesEducacion.map((n) => <MenuItem key={n.id} value={n.id}>{n.nombre}</MenuItem>)}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Tipo de formación"
                     value={form.tipoFormacionId}
@@ -750,7 +806,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                     {cats.tiposFormacion.map((t) => <MenuItem key={t.id} value={t.id}>{t.nombre}</MenuItem>)}
                   </TextField>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    sm: 4
+                  }}>
                   <TextField
                     select fullWidth label="Nivel de experiencia"
                     value={form.nivelExperienciaId}
@@ -764,13 +824,13 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                     ))}
                   </TextField>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <TextField
                     fullWidth multiline rows={3} label="Requisitos (texto libre legacy)"
                     value={form.requisitos} onChange={(e) => upd('requisitos', e.target.value)}
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <TextField
                     fullWidth multiline rows={3} label="Observaciones / requisitos adicionales"
                     value={form.observacionesRequisitos}

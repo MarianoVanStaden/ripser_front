@@ -434,7 +434,11 @@ const FlujoCajaPage: React.FC = () => {
 
       {/* Resumen */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={1} mb={1}>
@@ -450,7 +454,11 @@ const FlujoCajaPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={1} mb={1}>
@@ -466,7 +474,11 @@ const FlujoCajaPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={1} mb={1}>
@@ -486,7 +498,11 @@ const FlujoCajaPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle2" color="text.secondary" mb={1}>
@@ -519,7 +535,11 @@ const FlujoCajaPage: React.FC = () => {
 
             <Grid container spacing={2}>
               {/* Búsqueda General */}
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   label="Buscar"
@@ -531,7 +551,12 @@ const FlujoCajaPage: React.FC = () => {
               </Grid>
 
               {/* Tipo de Movimiento */}
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Tipo de Movimiento</InputLabel>
                   <Select
@@ -547,7 +572,12 @@ const FlujoCajaPage: React.FC = () => {
               </Grid>
 
               {/* Origen del Movimiento */}
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Origen</InputLabel>
                   <Select
@@ -569,7 +599,12 @@ const FlujoCajaPage: React.FC = () => {
               </Grid>
 
               {/* Fecha Desde */}
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   label="Fecha Desde"
@@ -582,7 +617,12 @@ const FlujoCajaPage: React.FC = () => {
               </Grid>
 
               {/* Fecha Hasta */}
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   label="Fecha Hasta"
@@ -595,7 +635,12 @@ const FlujoCajaPage: React.FC = () => {
               </Grid>
 
               {/* Entidad (Cliente/Proveedor) */}
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   label="Cliente/Proveedor"
@@ -607,7 +652,12 @@ const FlujoCajaPage: React.FC = () => {
               </Grid>
 
               {/* Método de Pago */}
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Método de Pago</InputLabel>
                   <Select
@@ -626,7 +676,12 @@ const FlujoCajaPage: React.FC = () => {
               </Grid>
 
               {/* Cuenta Bancaria */}
-              <Grid item xs={12} sm={6} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 4
+                }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Cuenta Bancaria</InputLabel>
                   <Select
@@ -645,7 +700,12 @@ const FlujoCajaPage: React.FC = () => {
               </Grid>
 
               {/* Monto Mínimo */}
-              <Grid item xs={12} sm={6} md={2}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 2
+                }}>
                 <TextField
                   fullWidth
                   label="Monto Mínimo"
@@ -658,7 +718,12 @@ const FlujoCajaPage: React.FC = () => {
               </Grid>
 
               {/* Monto Máximo */}
-              <Grid item xs={12} sm={6} md={2}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 2
+                }}>
                 <TextField
                   fullWidth
                   label="Monto Máximo"

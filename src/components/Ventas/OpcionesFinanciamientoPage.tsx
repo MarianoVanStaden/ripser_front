@@ -424,7 +424,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Seleccionar Presupuesto/Documento</InputLabel>
                 <Select
@@ -448,7 +452,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <Typography variant="body2" color="text.secondary">
                 Seleccione un documento para gestionar sus opciones de financiamiento.
                 {selectedDocumentoId && (
@@ -593,7 +601,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   label="Nombre de la Opción"
@@ -604,7 +616,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth required>
                   <InputLabel>Método de Pago</InputLabel>
                   <Select
@@ -623,7 +639,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <TextField
                   fullWidth
                   type="number"
@@ -634,7 +654,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <TextField
                   fullWidth
                   type="number"
@@ -646,7 +670,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <TextField
                   fullWidth
                   type="number"
@@ -657,7 +685,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   type="number"
@@ -669,7 +701,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   type="number"
@@ -682,7 +718,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   fullWidth
                   multiline
@@ -695,7 +731,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
               </Grid>
 
               {/* Calculation Summary */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Divider sx={{ my: 1 }} />
                 <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                   <Typography variant="subtitle2" gutterBottom>
@@ -703,7 +739,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                     Resumen del Cálculo
                   </Typography>
                   <Grid container spacing={2} sx={{ mt: 1 }}>
-                    <Grid item xs={6} md={3}>
+                    <Grid
+                      size={{
+                        xs: 6,
+                        md: 3
+                      }}>
                       <Typography variant="caption" color="text.secondary">
                         Monto Base
                       </Typography>
@@ -711,7 +751,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                         ${(formData.montoTotal || 0).toLocaleString()}
                       </Typography>
                     </Grid>
-                    <Grid item xs={6} md={3}>
+                    <Grid
+                      size={{
+                        xs: 6,
+                        md: 3
+                      }}>
                       <Typography variant="caption" color="text.secondary">
                         {(formData.tasaInteres || 0) < 0 ? 'Descuento Total' : 'Interés Total'}
                       </Typography>
@@ -724,7 +768,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                           {(formData.tasaInteres || 0) < 0 ? ' (descuento)' : ''}
                         </Typography>
                       </Grid>
-                      <Grid item xs={6} md={3}>
+                      <Grid
+                        size={{
+                          xs: 6,
+                          md: 3
+                        }}>
                         <Typography variant="caption" color="text.secondary">
                           Monto Final
                         </Typography>
@@ -732,7 +780,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                           ${((formData.montoTotal || 0) * 0.4 + ((formData.montoTotal || 0) * 0.6) * (1 + (formData.tasaInteres || 0) / 100)).toLocaleString()}
                       </Typography>
                     </Grid>
-                    <Grid item xs={6} md={3}>
+                    <Grid
+                      size={{
+                        xs: 6,
+                        md: 3
+                      }}>
                       <Typography variant="caption" color="text.secondary">
                         Cuota Mensual
                       </Typography>

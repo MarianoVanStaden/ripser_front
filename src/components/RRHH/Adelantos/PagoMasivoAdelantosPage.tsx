@@ -197,7 +197,12 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
             Parámetros del pago
           </Typography>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <TextField
                 fullWidth size="small" type="month" label="Período"
                 value={periodo}
@@ -206,7 +211,12 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
                 helperText="Vacío = todos los pendientes"
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <TextField
                 fullWidth size="small" type="date" label="Fecha de pago *"
                 value={fecha}
@@ -214,7 +224,12 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Caja en pesos *</InputLabel>
                 <Select
@@ -236,7 +251,12 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Método de pago</InputLabel>
                 <Select
@@ -248,7 +268,7 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth size="small" label="Observaciones (opcional, aplica a todos los pagos)"
                 value={observaciones}
@@ -261,7 +281,11 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
 
       {/* KPIs del lote */}
       <Grid container spacing={2} mb={3}>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'success.main', boxShadow: 1 }}>
             <CardContent sx={{ py: 1.5 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -276,7 +300,11 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'warning.main', boxShadow: 1 }}>
             <CardContent sx={{ py: 1.5 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -291,7 +319,11 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'primary.main', boxShadow: 1 }}>
             <CardContent sx={{ py: 1.5 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -306,7 +338,11 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{
             borderLeft: 4,
             borderColor: saldoFinalCaja < 0 ? 'error.main' : 'success.main',

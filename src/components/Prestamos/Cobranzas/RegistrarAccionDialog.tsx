@@ -104,7 +104,7 @@ export const RegistrarAccionDialog: React.FC<RegistrarAccionDialogProps> = ({
           {formError && <Alert severity="error">{formError}</Alert>}
 
           <Grid container spacing={2}>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo *</InputLabel>
                 <Select
@@ -120,7 +120,7 @@ export const RegistrarAccionDialog: React.FC<RegistrarAccionDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Resultado</InputLabel>
                 <Select
@@ -140,7 +140,7 @@ export const RegistrarAccionDialog: React.FC<RegistrarAccionDialogProps> = ({
           </Grid>
 
           <Grid container spacing={2}>
-            <Grid item xs={7}>
+            <Grid size={7}>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DateTimePicker
                   label="Fecha y Hora"
@@ -154,7 +154,7 @@ export const RegistrarAccionDialog: React.FC<RegistrarAccionDialogProps> = ({
                 />
               </LocalizationProvider>
             </Grid>
-            <Grid item xs={5}>
+            <Grid size={5}>
               <TextField
                 label="Duración (min)"
                 type="number"

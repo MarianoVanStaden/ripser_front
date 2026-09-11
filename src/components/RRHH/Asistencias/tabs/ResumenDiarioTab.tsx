@@ -143,7 +143,12 @@ const ResumenDiarioTab: React.FC<Props> = ({
     <>
       {/* KPIs Inteligentes */}
       <Grid container spacing={{ xs: 2, sm: 2 }} mb={3}>
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack
@@ -174,7 +179,12 @@ const ResumenDiarioTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack
@@ -205,7 +215,12 @@ const ResumenDiarioTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack
@@ -236,7 +251,12 @@ const ResumenDiarioTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack
@@ -267,7 +287,12 @@ const ResumenDiarioTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack

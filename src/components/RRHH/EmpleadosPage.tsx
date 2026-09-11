@@ -730,7 +730,11 @@ const EmpleadosPage: React.FC = () => {
           {/* Filtros */}
           <Box mb={3}>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   label="Buscar"
@@ -747,7 +751,12 @@ const EmpleadosPage: React.FC = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   select
@@ -762,7 +771,12 @@ const EmpleadosPage: React.FC = () => {
                   <MenuItem value="LICENCIA">Licencia</MenuItem>
                 </TextField>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   select
@@ -1269,76 +1283,140 @@ const EmpleadosPage: React.FC = () => {
                   </Box>
                 )}
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="CUIL (11 dígitos)" value={fase1Data.cuil}
                       onChange={(e) => setFase1Data({ ...fase1Data, cuil: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                       inputProps={{ inputMode: 'numeric', maxLength: 11 }} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="DNI *" value={formData.dni}
                       onChange={(e) => setFormData({ ...formData, dni: e.target.value })} required />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Fecha de Nacimiento" type="date"
                       value={formData.fechaNacimiento}
                       onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
                       InputLabelProps={{ shrink: true }} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Apellido 1 *" value={formData.apellido}
                       onChange={(e) => setFormData({ ...formData, apellido: e.target.value })} required />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Apellido 2" value={fase1Data.apellido2}
                       onChange={(e) => setFase1Data({ ...fase1Data, apellido2: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Nombre 1 *" value={formData.nombre}
                       onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Nombre 2" value={fase1Data.nombre2}
                       onChange={(e) => setFase1Data({ ...fase1Data, nombre2: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="País de Nacimiento" value={fase1Data.paisNacimiento}
                       onChange={(e) => setFase1Data({ ...fase1Data, paisNacimiento: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Provincia de Nacimiento" value={fase1Data.provinciaNacimiento}
                       onChange={(e) => setFase1Data({ ...fase1Data, provinciaNacimiento: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Ciudad de Nacimiento" value={fase1Data.ciudadNacimiento}
                       onChange={(e) => setFase1Data({ ...fase1Data, ciudadNacimiento: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Nacionalidad 1" value={fase1Data.nacionalidad1}
                       onChange={(e) => setFase1Data({ ...fase1Data, nacionalidad1: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Nacionalidad 2" value={fase1Data.nacionalidad2}
                       onChange={(e) => setFase1Data({ ...fase1Data, nacionalidad2: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Documento Nacionalidad 2" value={fase1Data.docNacionalidad2}
                       onChange={(e) => setFase1Data({ ...fase1Data, docNacionalidad2: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth select label="Género" value={fase1Data.genero}
                       onChange={(e) => setFase1Data({ ...fase1Data, genero: e.target.value as Fase1State['genero'] })}>
                       <MenuItem value="">— Sin asignar —</MenuItem>
                       {GENEROS.map(g => <MenuItem key={g} value={g}>{GENERO_LABEL[g]}</MenuItem>)}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth select label="Estado Civil" value={fase1Data.estadoCivil}
                       onChange={(e) => setFase1Data({ ...fase1Data, estadoCivil: e.target.value as Fase1State['estadoCivil'] })}>
                       <MenuItem value="">— Sin asignar —</MenuItem>
                       {ESTADOS_CIVILES.map(ec => <MenuItem key={ec} value={ec}>{ESTADO_CIVIL_LABEL[ec]}</MenuItem>)}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Estado Civil — Desde" type="date"
                       value={fase1Data.estadoCivilDesde}
                       onChange={(e) => setFase1Data({ ...fase1Data, estadoCivilDesde: e.target.value })}
@@ -1361,21 +1439,37 @@ const EmpleadosPage: React.FC = () => {
                   Teléfono particular
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={4} sm={2}>
+                  <Grid
+                    size={{
+                      xs: 4,
+                      sm: 2
+                    }}>
                     <TextField fullWidth label="Cód. País" placeholder="54"
                       value={fase1Data.telCodigoPais}
                       onChange={(e) => setFase1Data({ ...fase1Data, telCodigoPais: e.target.value })} />
                   </Grid>
-                  <Grid item xs={4} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 4,
+                      sm: 3
+                    }}>
                     <TextField fullWidth label="Área (sin 0)" placeholder="11"
                       value={fase1Data.telArea}
                       onChange={(e) => setFase1Data({ ...fase1Data, telArea: e.target.value })} />
                   </Grid>
-                  <Grid item xs={4} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 4,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Número (sin 15)" value={fase1Data.telNumero}
                       onChange={(e) => setFase1Data({ ...fase1Data, telNumero: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 3
+                    }}>
                     <TextField fullWidth label="Email de Contacto" type="email"
                       value={fase1Data.emailContacto}
                       onChange={(e) => setFase1Data({ ...fase1Data, emailContacto: e.target.value })} />
@@ -1386,40 +1480,76 @@ const EmpleadosPage: React.FC = () => {
                   Domicilio real
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Calle" value={fase1Data.domCalle}
                       onChange={(e) => setFase1Data({ ...fase1Data, domCalle: e.target.value })} />
                   </Grid>
-                  <Grid item xs={6} sm={2}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 2
+                    }}>
                     <TextField fullWidth label="Altura" value={fase1Data.domAltura}
                       onChange={(e) => setFase1Data({ ...fase1Data, domAltura: e.target.value })} />
                   </Grid>
-                  <Grid item xs={6} sm={2}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 2
+                    }}>
                     <TextField fullWidth label="Piso" value={fase1Data.domPiso}
                       onChange={(e) => setFase1Data({ ...fase1Data, domPiso: e.target.value })} />
                   </Grid>
-                  <Grid item xs={6} sm={2}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 2
+                    }}>
                     <TextField fullWidth label="Depto" value={fase1Data.domDepto}
                       onChange={(e) => setFase1Data({ ...fase1Data, domDepto: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Barrio / Otra info" value={fase1Data.domBarrio}
                       onChange={(e) => setFase1Data({ ...fase1Data, domBarrio: e.target.value })} />
                   </Grid>
-                  <Grid item xs={6} sm={2}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 2
+                    }}>
                     <TextField fullWidth label="CP (CPA)" inputProps={{ maxLength: 8 }}
                       value={fase1Data.domCp}
                       onChange={(e) => setFase1Data({ ...fase1Data, domCp: e.target.value })} />
                   </Grid>
-                  <Grid item xs={6} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Localidad" value={fase1Data.domLocalidad}
                       onChange={(e) => setFase1Data({ ...fase1Data, domLocalidad: e.target.value })} />
                   </Grid>
-                  <Grid item xs={6} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Provincia" value={fase1Data.domProvincia}
                       onChange={(e) => setFase1Data({ ...fase1Data, domProvincia: e.target.value })} />
                   </Grid>
-                  <Grid item xs={6} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="País" value={fase1Data.domPais}
                       onChange={(e) => setFase1Data({ ...fase1Data, domPais: e.target.value })} />
                   </Grid>
@@ -1441,20 +1571,32 @@ const EmpleadosPage: React.FC = () => {
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Fecha de Ingreso" type="date"
                       value={formData.fechaIngreso}
                       onChange={(e) => setFormData({ ...formData, fechaIngreso: e.target.value })}
                       InputLabelProps={{ shrink: true }} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Fecha de Ingreso Legal (AFIP)" type="date"
                       value={fase1Data.fechaIngresoLegal}
                       onChange={(e) => setFase1Data({ ...fase1Data, fechaIngresoLegal: e.target.value })}
                       InputLabelProps={{ shrink: true }}
                       helperText='Alta temprana AFIP — puede diferir de la fecha real de inicio.' />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth select label="Sucursal / Sede"
                       value={formData.sucursalId || ''}
                       onChange={(e) => setFormData({ ...formData, sucursalId: e.target.value ? Number(e.target.value) : undefined })}>
@@ -1462,31 +1604,55 @@ const EmpleadosPage: React.FC = () => {
                       {sucursales.map(s => <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>)}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Locación" value={fase1Data.locacion}
                       onChange={(e) => setFase1Data({ ...fase1Data, locacion: e.target.value })}
                       helperText='Oficinas, Taller, otro' />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Área" value={fase1Data.areaNombre}
                       onChange={(e) => setFase1Data({ ...fase1Data, areaNombre: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Departamento" value={fase1Data.departamentoNombre}
                       onChange={(e) => setFase1Data({ ...fase1Data, departamentoNombre: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Sector" value={fase1Data.sectorNombre}
                       onChange={(e) => setFase1Data({ ...fase1Data, sectorNombre: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth select label="Puesto *" value={formData.puestoId}
                       onChange={(e) => setFormData({ ...formData, puestoId: Number(e.target.value) })} required>
                       <MenuItem value={0}>— Seleccione un puesto —</MenuItem>
                       {puestos.map(p => <MenuItem key={p.id} value={p.id}>{p.nombre}</MenuItem>)}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth select label="Supervisor Directo"
                       value={fase1Data.supervisorDirectoId === '' ? '' : fase1Data.supervisorDirectoId}
                       onChange={(e) => setFase1Data({
@@ -1504,14 +1670,22 @@ const EmpleadosPage: React.FC = () => {
                         ))}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth select label="Tipo de Mano de Obra" value={fase1Data.tipoManoObra}
                       onChange={(e) => setFase1Data({ ...fase1Data, tipoManoObra: e.target.value as Fase1State['tipoManoObra'] })}>
                       <MenuItem value="">— Sin asignar —</MenuItem>
                       {TIPOS_MANO_OBRA.map(t => <MenuItem key={t} value={t}>{TIPO_MANO_OBRA_LABEL[t]}</MenuItem>)}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth select label="Situación de Revista (Estado) *"
                       value={formData.estado}
                       onChange={(e) => setFormData({ ...formData, estado: e.target.value as any })} required>
@@ -1520,14 +1694,22 @@ const EmpleadosPage: React.FC = () => {
                       <MenuItem value="LICENCIA">Licencia</MenuItem>
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth select label="Tipo de Contrato" value={fase1Data.tipoContrato}
                       onChange={(e) => setFase1Data({ ...fase1Data, tipoContrato: e.target.value as Fase1State['tipoContrato'] })}>
                       <MenuItem value="">— Sin asignar —</MenuItem>
                       {TIPOS_CONTRATO.map(t => <MenuItem key={t} value={t}>{TIPO_CONTRATO_LABEL[t]}</MenuItem>)}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth select label="Motivo de Egreso"
                       value={fase1Data.motivoEgreso}
                       onChange={(e) => setFase1Data({ ...fase1Data, motivoEgreso: e.target.value as Fase1State['motivoEgreso'] })}
@@ -1538,34 +1720,54 @@ const EmpleadosPage: React.FC = () => {
                     </TextField>
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Divider sx={{ my: 1 }}><Typography variant="caption" color="textSecondary">Contacto laboral</Typography></Divider>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <TextField fullWidth label="Tel. Lab. Área" value={fase1Data.telLaboralArea}
                       onChange={(e) => setFase1Data({ ...fase1Data, telLaboralArea: e.target.value })} />
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid
+                    size={{
+                      xs: 6,
+                      sm: 3
+                    }}>
                     <TextField fullWidth label="Tel. Lab. Número" value={fase1Data.telLaboralNumero}
                       onChange={(e) => setFase1Data({ ...fase1Data, telLaboralNumero: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Email Laboral" type="email"
                       value={fase1Data.emailLaboral}
                       onChange={(e) => setFase1Data({ ...fase1Data, emailLaboral: e.target.value })} />
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Divider sx={{ my: 1 }}><Typography variant="caption" color="textSecondary">Roles de transporte</Typography></Divider>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <FormControlLabel
                       control={<Checkbox checked={fase1Data.esConductor}
                         onChange={(e) => setFase1Data({ ...fase1Data, esConductor: e.target.checked })} />}
                       label="Puede conducir (conductor)"
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <FormControlLabel
                       control={<Checkbox checked={fase1Data.esAcompanante}
                         onChange={(e) => setFase1Data({ ...fase1Data, esAcompanante: e.target.checked })} />}
@@ -1586,42 +1788,70 @@ const EmpleadosPage: React.FC = () => {
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="CBU (22 dígitos)" value={fase1Data.cbu}
                       onChange={(e) => setFase1Data({ ...fase1Data, cbu: e.target.value.replace(/\D/g, '').slice(0, 22) })}
                       inputProps={{ inputMode: 'numeric', maxLength: 22 }} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <CatalogoAutocomplete label="Banco" value={fase1Data.bancoNombre}
                       onChange={(v) => setFase1Data({ ...fase1Data, bancoNombre: v })}
                       fetcher={bancosApi.list}
                       helperText="Sugiere desde el catálogo global; podés escribir libre si falta uno" />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth select label="Tipo de Cuenta" value={fase1Data.tipoCuenta}
                       onChange={(e) => setFase1Data({ ...fase1Data, tipoCuenta: e.target.value as Fase1State['tipoCuenta'] })}>
                       <MenuItem value="">— Sin asignar —</MenuItem>
                       {TIPOS_CUENTA.map(t => <MenuItem key={t} value={t}>{TIPO_CUENTA_LABEL[t]}</MenuItem>)}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={8}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 8
+                    }}>
                     <TextField fullWidth label="Nº de Cuenta" value={fase1Data.numeroCuenta}
                       onChange={(e) => setFase1Data({ ...fase1Data, numeroCuenta: e.target.value })} />
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Divider sx={{ my: 1 }}><Typography variant="caption" color="textSecondary">Convenio y salario</Typography></Divider>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Convenio Colectivo" value={fase1Data.convenioColectivo}
                       onChange={(e) => setFase1Data({ ...fase1Data, convenioColectivo: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Categoría Laboral (convenio)" value={fase1Data.categoriaLaboral}
                       onChange={(e) => setFase1Data({ ...fase1Data, categoriaLaboral: e.target.value })}
                       helperText="Denominación del convenio — distinta de la categoría salarial interna" />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth select label="Categoría Salarial (interna)"
                       value={formData.categoriaSalarialId ?? ''}
                       onChange={(e) => setFormData({
@@ -1641,7 +1871,11 @@ const EmpleadosPage: React.FC = () => {
                       ))}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     {(() => {
                       const cat = categoriasSalariales.find(c => c.id === formData.categoriaSalarialId);
                       const valor = cat ? Number(cat.sueldoFijo) : Number(formData.salario || 0);
@@ -1654,7 +1888,11 @@ const EmpleadosPage: React.FC = () => {
                       );
                     })()}
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth select label="Moneda" value={fase1Data.moneda}
                       onChange={(e) => setFase1Data({ ...fase1Data, moneda: e.target.value as Fase1State['moneda'] })}>
                       <MenuItem value="">— Sin asignar —</MenuItem>
@@ -1662,14 +1900,22 @@ const EmpleadosPage: React.FC = () => {
                     </TextField>
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Divider sx={{ my: 1 }}><Typography variant="caption" color="textSecondary">Sindicato</Typography></Divider>
                   </Grid>
-                  <Grid item xs={12} sm={8}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 8
+                    }}>
                     <TextField fullWidth label="Sindicato" value={fase1Data.sindicato}
                       onChange={(e) => setFase1Data({ ...fase1Data, sindicato: e.target.value })} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <FormControlLabel
                       control={<Checkbox checked={fase1Data.afiliadoSindicato}
                         onChange={(e) => setFase1Data({ ...fase1Data, afiliadoSindicato: e.target.checked })} />}
@@ -1690,38 +1936,58 @@ const EmpleadosPage: React.FC = () => {
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth label="Código Obra Social / Prepaga"
                       value={fase1Data.obraSocialCodigo}
                       onChange={(e) => setFase1Data({ ...fase1Data, obraSocialCodigo: e.target.value })}
                       placeholder="#-####-#" />
                   </Grid>
-                  <Grid item xs={12} sm={8}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 8
+                    }}>
                     <CatalogoAutocomplete label="Detalle Obra Social / Prepaga"
                       value={fase1Data.obraSocialDetalle}
                       onChange={(v) => setFase1Data({ ...fase1Data, obraSocialDetalle: v })}
                       fetcher={obrasSocialesApi.list}
                       helperText="Sugiere desde el catálogo de obras sociales" />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 4
+                    }}>
                     <TextField fullWidth select label="Grupo Sanguíneo" value={fase1Data.grupoSanguineo}
                       onChange={(e) => setFase1Data({ ...fase1Data, grupoSanguineo: e.target.value as Fase1State['grupoSanguineo'] })}>
                       <MenuItem value="">— Sin asignar —</MenuItem>
                       {GRUPOS_SANGUINEOS.map(g => <MenuItem key={g} value={g}>{g}</MenuItem>)}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={8}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 8
+                    }}>
                     <CatalogoAutocomplete label="ART" value={fase1Data.artNombre}
                       onChange={(v) => setFase1Data({ ...fase1Data, artNombre: v })}
                       fetcher={artsApi.list} />
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <TextField fullWidth label="Alergias / Condiciones de salud relevantes (discapacidad)"
                       value={fase1Data.alergiasCondiciones}
                       onChange={(e) => setFase1Data({ ...fase1Data, alergiasCondiciones: e.target.value })}
                       multiline rows={2} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Fecha de Examen Preocupacional" type="date"
                       value={fase1Data.fechaExamenPreocupacional}
                       onChange={(e) => setFase1Data({ ...fase1Data, fechaExamenPreocupacional: e.target.value })}
@@ -1744,14 +2010,22 @@ const EmpleadosPage: React.FC = () => {
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth select label="Nivel de Estudios" value={fase1Data.nivelEstudios}
                       onChange={(e) => setFase1Data({ ...fase1Data, nivelEstudios: e.target.value as Fase1State['nivelEstudios'] })}>
                       <MenuItem value="">— Sin asignar —</MenuItem>
                       {NIVELES_ESTUDIOS.map(n => <MenuItem key={n} value={n}>{NIVEL_ESTUDIOS_LABEL[n]}</MenuItem>)}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Título / Carrera (profesión o especialidad)"
                       value={fase1Data.tituloCarrera}
                       onChange={(e) => setFase1Data({ ...fase1Data, tituloCarrera: e.target.value })} />
@@ -1776,13 +2050,21 @@ const EmpleadosPage: React.FC = () => {
                   Si dejás el número vacío, se autogenera (ej. LEG-00012).
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Número de Legajo" value={legajoData.numeroLegajo}
                       onChange={(e) => setLegajoData({ ...legajoData, numeroLegajo: e.target.value })}
                       placeholder={editingEmpleado ? '' : 'Se autogenera'}
                       InputProps={{ startAdornment: (<InputAdornment position="start"><BadgeIcon fontSize="small" /></InputAdornment>) }} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <TextField fullWidth label="Fecha de Alta" type="date" value={legajoData.fechaAlta}
                       onChange={(e) => setLegajoData({ ...legajoData, fechaAlta: e.target.value })}
                       InputLabelProps={{ shrink: true }}
@@ -1790,30 +2072,38 @@ const EmpleadosPage: React.FC = () => {
                   </Grid>
                   {editingEmpleado && (
                     <>
-                      <Grid item xs={12} sm={6}>
+                      <Grid
+                        size={{
+                          xs: 12,
+                          sm: 6
+                        }}>
                         <TextField fullWidth label="Fecha de Baja" type="date" value={legajoData.fechaBaja}
                           onChange={(e) => setLegajoData({ ...legajoData, fechaBaja: e.target.value })}
                           InputLabelProps={{ shrink: true }} />
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid
+                        size={{
+                          xs: 12,
+                          sm: 6
+                        }}>
                         <FormControlLabel
                           control={<Checkbox checked={legajoData.activo}
                             onChange={(e) => setLegajoData({ ...legajoData, activo: e.target.checked })} />}
                           label="Legajo activo" />
                       </Grid>
-                      <Grid item xs={12}>
+                      <Grid size={12}>
                         <TextField fullWidth label="Motivo de Baja (texto)" value={legajoData.motivoBaja}
                           onChange={(e) => setLegajoData({ ...legajoData, motivoBaja: e.target.value })}
                           multiline rows={2} disabled={!legajoData.fechaBaja && legajoData.activo} />
                       </Grid>
                     </>
                   )}
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <TextField fullWidth label="Documentación" value={legajoData.documentacion}
                       onChange={(e) => setLegajoData({ ...legajoData, documentacion: e.target.value })}
                       multiline rows={2} placeholder="Referencias a documentos físicos / archivos / carpetas" />
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <TextField fullWidth label="Observaciones" value={legajoData.observaciones}
                       onChange={(e) => setLegajoData({ ...legajoData, observaciones: e.target.value })}
                       multiline rows={3} />
@@ -1842,19 +2132,35 @@ const EmpleadosPage: React.FC = () => {
                         Se creará el usuario <strong>emp_{formData.dni || '{DNI}'}</strong> con roles derivados del puesto seleccionado.
                       </Alert>
                       <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: 6
+                          }}>
                           <TextField fullWidth label={formData.crearUsuario ? 'Email *' : 'Email'} type="email"
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                         </Grid>
-                        <Grid item xs={12} sm={6} />
-                        <Grid item xs={12} sm={6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: 6
+                          }} />
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: 6
+                          }}>
                           <TextField fullWidth label="Contraseña *" type="password"
                             value={formData.usuarioPassword}
                             onChange={(e) => setFormData({ ...formData, usuarioPassword: e.target.value })}
                             helperText="Mínimo 8 caracteres" />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: 6
+                          }}>
                           <TextField fullWidth label="Confirmar contraseña *" type="password"
                             value={formData.confirmPassword}
                             onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}

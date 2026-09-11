@@ -313,20 +313,20 @@ export const ConvertLeadPage = () => {
               <Divider sx={{ my: 3 }} />
 
               <Grid container spacing={2} sx={{ textAlign: 'left', maxWidth: 600, mx: 'auto' }}>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <Typography variant="body2" color="text.secondary">
                     ID del Cliente:
                   </Typography>
                   <Typography variant="h6">{success.clienteId}</Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={6}>
                   <Typography variant="body2" color="text.secondary">
                     Fecha de Conversión:
                   </Typography>
                   <Typography variant="h6">{success.fechaConversion}</Typography>
                 </Grid>
                 {success.productoComprado && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Typography variant="body2" color="text.secondary">
                       Producto:
                     </Typography>
@@ -334,7 +334,7 @@ export const ConvertLeadPage = () => {
                   </Grid>
                 )}
                 {success.montoConversion && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Typography variant="body2" color="text.secondary">
                       Monto:
                     </Typography>
@@ -404,7 +404,11 @@ export const ConvertLeadPage = () => {
 
       <Grid container spacing={3}>
         {/* Info del Lead */}
-        <Grid item xs={12} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 4
+          }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -535,7 +539,11 @@ export const ConvertLeadPage = () => {
         </Grid>
 
         {/* Formulario de Conversión */}
-        <Grid item xs={12} md={8}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 8
+          }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -545,7 +553,11 @@ export const ConvertLeadPage = () => {
 
               <form onSubmit={handleSubmit}>
                 <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       select
                       fullWidth
@@ -559,7 +571,11 @@ export const ConvertLeadPage = () => {
                     </TextField>
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       fullWidth
                       label="Razón Social"
@@ -569,7 +585,11 @@ export const ConvertLeadPage = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       fullWidth
                       label="Nombre de Fantasía"
@@ -579,7 +599,11 @@ export const ConvertLeadPage = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       fullWidth
                       label="Apellido"
@@ -589,7 +613,11 @@ export const ConvertLeadPage = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       fullWidth
                       label="CUIT / CUIL"
@@ -600,7 +628,11 @@ export const ConvertLeadPage = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       fullWidth
                       type="email"
@@ -612,7 +644,11 @@ export const ConvertLeadPage = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       fullWidth
                       label="Teléfono alternativo"
@@ -625,7 +661,11 @@ export const ConvertLeadPage = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       fullWidth
                       label="Dirección"
@@ -635,7 +675,11 @@ export const ConvertLeadPage = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       fullWidth
                       label="Ciudad"
@@ -645,7 +689,11 @@ export const ConvertLeadPage = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       select
                       fullWidth
@@ -666,7 +714,11 @@ export const ConvertLeadPage = () => {
                   </Grid>
 
                   {conversionData.rubroCliente === 'OTRO' && (
-                    <Grid item xs={12} md={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        md: 6
+                      }}>
                       <TextField
                         fullWidth
                         label="Detalle del rubro"
@@ -677,7 +729,7 @@ export const ConvertLeadPage = () => {
                     </Grid>
                   )}
 
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <TextField
                       fullWidth
                       multiline
@@ -689,7 +741,7 @@ export const ConvertLeadPage = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Autocomplete
                       options={[
                         ...recetas.map(r => ({ type: 'receta' as const, id: r.id, nombre: `🔧 ${r.nombre}`, precio: r.precioVenta || 0 })),
@@ -717,7 +769,11 @@ export const ConvertLeadPage = () => {
 
                   {selectedProduct && (
                     <>
-                      <Grid item xs={12} sm={6}>
+                      <Grid
+                        size={{
+                          xs: 12,
+                          sm: 6
+                        }}>
                         <TextField
                           fullWidth
                           type="number"
@@ -731,7 +787,11 @@ export const ConvertLeadPage = () => {
                           helperText="Cantidad de unidades"
                         />
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid
+                        size={{
+                          xs: 12,
+                          sm: 6
+                        }}>
                         <Button
                           variant="contained"
                           color="primary"
@@ -783,7 +843,7 @@ export const ConvertLeadPage = () => {
                     </>
                   )}
 
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                       <Typography variant="subtitle2" gutterBottom>
                         Resumen de Conversión:
@@ -848,14 +908,14 @@ export const ConvertLeadPage = () => {
                     </Box>
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Alert severity="info">
                       Al convertir este lead, se creará un nuevo cliente con la información proporcionada.
                       El lead quedará marcado como "Convertido" y ya no podrá ser modificado.
                     </Alert>
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
                       <Button
                         variant="outlined"

@@ -709,7 +709,12 @@ const RegistroVentasPage: React.FC = () => {
         <>
       {/* Summary Cards */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
@@ -727,7 +732,12 @@ const RegistroVentasPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
@@ -745,7 +755,12 @@ const RegistroVentasPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
@@ -770,7 +785,11 @@ const RegistroVentasPage: React.FC = () => {
             <Typography variant="h6">Filtros</Typography>
           </Box>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 3
+              }}>
               <TextField
                 fullWidth
                 label="Buscar"
@@ -784,7 +803,11 @@ const RegistroVentasPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 2
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo de Documento</InputLabel>
                 <Select
@@ -798,7 +821,11 @@ const RegistroVentasPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 2
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Estado</InputLabel>
                 <Select
@@ -818,7 +845,11 @@ const RegistroVentasPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 2
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Método de Pago</InputLabel>
                 <Select
@@ -840,7 +871,11 @@ const RegistroVentasPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 2
+              }}>
               <Autocomplete
                 size="small"
                 options={clientOptions}
@@ -874,7 +909,11 @@ const RegistroVentasPage: React.FC = () => {
                 )}
               />
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 1.5
+              }}>
               <TextField
                 fullWidth
                 label="Desde"
@@ -885,7 +924,11 @@ const RegistroVentasPage: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 1.5
+              }}>
               <TextField
                 fullWidth
                 label="Hasta"
@@ -896,7 +939,11 @@ const RegistroVentasPage: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 2
+              }}>
               <TextField
                 fullWidth
                 label="Ciudad"
@@ -907,7 +954,11 @@ const RegistroVentasPage: React.FC = () => {
                 placeholder="Filtrar por ciudad..."
               />
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 2
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Provincia</InputLabel>
                 <Select
@@ -1221,7 +1272,11 @@ const RegistroVentasPage: React.FC = () => {
           {viewingSale && (
             <Box>
               <Grid container spacing={2} mb={3}>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Información General
                   </Typography>
@@ -1238,7 +1293,11 @@ const RegistroVentasPage: React.FC = () => {
                     )}
                   </Box>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Cliente y Vendedor
                   </Typography>
@@ -1295,35 +1354,59 @@ const RegistroVentasPage: React.FC = () => {
                     </Typography>
                     <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 2, mb: 1 }}>
                       <Grid container spacing={1}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: 6
+                          }}>
                           <Typography variant="body2" color="text.secondary">Método</Typography>
                           <Typography fontWeight={600}>
                             {getPaymentMethodLabel(viewingSale.metodoPago as PaymentMethod)}
                           </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: 6
+                          }}>
                           <Typography variant="body2" color="text.secondary">
                             Entrega inicial{costoEnvio > 0 ? ` (incluye envío ${fmt(costoEnvio)})` : ''}
                           </Typography>
                           <Typography fontWeight={700} color="success.dark">{fmt(entregaInicial)}</Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: 6
+                          }}>
                           <Typography variant="body2" color="text.secondary">Monto financiado</Typography>
                           <Typography fontWeight={600}>{fmt(montoFinanciado)}</Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: 6
+                          }}>
                           <Typography variant="body2" color="text.secondary">Cuotas</Typography>
                           <Typography fontWeight={600}>
                             {opcion.cantidadCuotas} × {fmt(Number(opcion.montoCuota) || 0)}
                           </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: 6
+                          }}>
                           <Typography variant="body2" color="text.secondary">
                             Interés{opcion.tasaInteres != null ? ` (${Number(opcion.tasaInteres)}%)` : ''}
                           </Typography>
                           <Typography fontWeight={600}>{fmt(interesTotal)}</Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: 6
+                          }}>
                           <Typography variant="body2" color="text.secondary">Total del crédito</Typography>
                           <Typography fontWeight={600}>{fmt(montoCredito)}</Typography>
                         </Grid>
@@ -1542,7 +1625,7 @@ const RegistroVentasPage: React.FC = () => {
           {editingSale && (
             <Box sx={{ mt: 2 }}>
               <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Estado</InputLabel>
                     <Select
@@ -1559,29 +1642,29 @@ const RegistroVentasPage: React.FC = () => {
                 </Grid>
 
                 {/* Current Sale Details Summary */}
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Información de la Factura
                   </Typography>
                   <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <Grid container spacing={2}>
-                      <Grid item xs={6}>
+                      <Grid size={6}>
                         <Typography variant="body2">
                           <strong>Cliente:</strong> {getClientFullName(editingSale.cliente || null)}
                         </Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid size={6}>
                         <Typography variant="body2">
                           <strong>Usuario:</strong> {getUsuarioFullName((editingSale.usuario || editingSale.empleado) as Usuario || null)}
                         </Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid size={6}>
                         <Typography variant="body2">
                           <strong>Estado Actual:</strong> {getStatusLabel(editingSale.estado)}
                         </Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid size={6}>
                         <Typography variant="body2">
                           <strong>Total:</strong> ${(editingSale.total || 0).toLocaleString()}
                         </Typography>

@@ -281,7 +281,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
 
           <Grid container spacing={2}>
             {/* Tipo */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <FormControl fullWidth required error={!!errors.tipo} disabled={!!cheque}>
                 <InputLabel>Tipo de Cheque</InputLabel>
                 <Controller
@@ -304,7 +308,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
 
             {/* Estado (solo para creación) */}
             {!cheque && (
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <FormControl fullWidth required error={!!errors.estado}>
                   <InputLabel>Estado</InputLabel>
                   <Controller
@@ -322,7 +330,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             )}
 
             {/* Número de Cheque */}
-            <Grid item xs={12} sm={cheque ? 6 : 12}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: cheque ? 6 : 12
+              }}>
               <Controller
                 name="numeroCheque"
                 control={control}
@@ -340,7 +352,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             </Grid>
 
             {/* Banco */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="bancoId"
                 control={control}
@@ -367,7 +383,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             </Grid>
 
             {/* Monto */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="monto"
                 control={control}
@@ -390,7 +410,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             </Grid>
 
             {/* Titular */}
-            <Grid item xs={12} sm={8}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 8
+              }}>
               <Controller
                 name="titular"
                 control={control}
@@ -408,7 +432,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             </Grid>
 
             {/* CUIT Titular */}
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               <Controller
                 name="cuitTitular"
                 control={control}
@@ -425,7 +453,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             </Grid>
 
             {/* Fecha Emisión */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="fechaEmision"
                 control={control}
@@ -445,7 +477,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             </Grid>
 
             {/* Fecha Cobro */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="fechaCobro"
                 control={control}
@@ -466,7 +502,7 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
 
             {/* Cliente (solo si tipo = TERCEROS) */}
             {tipo === 'TERCEROS' && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Controller
                   name="clienteId"
                   control={control}
@@ -489,7 +525,7 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
 
             {/* Proveedor (solo si tipo = PROPIO) */}
             {tipo === 'PROPIO' && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Controller
                   name="proveedorId"
                   control={control}
@@ -519,7 +555,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             )}
 
             {/* Número de Cuenta */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="numeroCuenta"
                 control={control}
@@ -536,7 +576,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             </Grid>
 
             {/* CBU */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="cbu"
                 control={control}
@@ -553,7 +597,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             </Grid>
 
             {/* E-Cheq */}
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               <Controller
                 name="esEcheq"
                 control={control}
@@ -572,7 +620,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             </Grid>
 
             {/* Endosado */}
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               <Controller
                 name="endosado"
                 control={control}
@@ -592,7 +644,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
 
             {/* Endosado A */}
             {endosado && (
-              <Grid item xs={12} sm={8}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 8
+                }}>
                 <Controller
                   name="endosadoA"
                   control={control}
@@ -610,7 +666,7 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
             )}
 
             {/* Observaciones */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Controller
                 name="observaciones"
                 control={control}

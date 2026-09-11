@@ -152,7 +152,11 @@ const DevKPIs: React.FC = () => {
       </Typography>
 
       <Grid container spacing={2}>
-        <Grid item xs={12} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Typography variant="overline">Throughput semanal</Typography>
@@ -161,7 +165,11 @@ const DevKPIs: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Typography variant="overline">Feat ratio</Typography>
@@ -170,7 +178,11 @@ const DevKPIs: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Typography variant="overline">Fix ratio</Typography>
@@ -179,7 +191,11 @@ const DevKPIs: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Typography variant="overline">Top contributor</Typography>
@@ -189,7 +205,11 @@ const DevKPIs: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle2" gutterBottom>Commits por hora</Typography>
@@ -209,7 +229,11 @@ const DevKPIs: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle2" gutterBottom>Commits por día de la semana</Typography>
@@ -230,7 +254,11 @@ const DevKPIs: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle2" gutterBottom>Tipos de commits</Typography>
@@ -252,7 +280,11 @@ const DevKPIs: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle2" gutterBottom>Top autores (commits)</Typography>
@@ -273,7 +305,7 @@ const DevKPIs: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Calidad estática</Typography>

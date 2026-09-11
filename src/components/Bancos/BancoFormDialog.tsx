@@ -117,7 +117,11 @@ const BancoFormDialog: React.FC<Props> = ({ open, banco, onClose, onSave }) => {
           )}
 
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               <Controller
                 name="codigo"
                 control={control}
@@ -134,7 +138,11 @@ const BancoFormDialog: React.FC<Props> = ({ open, banco, onClose, onSave }) => {
               />
             </Grid>
 
-            <Grid item xs={12} sm={8}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 8
+              }}>
               <Controller
                 name="nombre"
                 control={control}
@@ -151,7 +159,11 @@ const BancoFormDialog: React.FC<Props> = ({ open, banco, onClose, onSave }) => {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="nombreCorto"
                 control={control}
@@ -167,7 +179,11 @@ const BancoFormDialog: React.FC<Props> = ({ open, banco, onClose, onSave }) => {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="activo"
                 control={control}

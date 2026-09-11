@@ -181,7 +181,7 @@ const AnalisisPorAreaSection: React.FC = () => {
           {/* Cuellos de botella: frenados entre áreas AHORA (no depende del rango).
               cuellosData vacío = backend viejo sin el campo (skew de deploy): ocultar la sección. */}
           {cuellosData.length > 0 && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Typography variant="subtitle1" fontWeight={600} mb={1}>
               Frenados entre áreas (ahora)
             </Typography>
@@ -189,7 +189,13 @@ const AnalisisPorAreaSection: React.FC = () => {
               {cuellosData.map((area) => {
                 const esCuello = maxFrenados > 0 && area.equiposFrenados === maxFrenados;
                 return (
-                  <Grid item xs={12} sm={6} md={3} key={area.tipoEtapa}>
+                  <Grid
+                    key={area.tipoEtapa}
+                    size={{
+                      xs: 12,
+                      sm: 6,
+                      md: 3
+                    }}>
                     <Card
                       variant="outlined"
                       sx={esCuello ? { borderColor: 'warning.main', borderWidth: 2 } : undefined}
@@ -238,13 +244,19 @@ const AnalisisPorAreaSection: React.FC = () => {
               y la siguiente se inicia, sobre etapas iniciadas en el rango.
               esperaData vacío = backend viejo sin el campo: ocultar la sección. */}
           {esperaData.length > 0 && hayEspera && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Typography variant="subtitle1" fontWeight={600} mb={1}>
               Espera entre áreas (histórica, en el rango)
             </Typography>
             <Grid container spacing={2}>
               {esperaData.map((area) => (
-                <Grid item xs={12} sm={6} md={4} key={area.tipoEtapa}>
+                <Grid
+                  key={area.tipoEtapa}
+                  size={{
+                    xs: 12,
+                    sm: 6,
+                    md: 4
+                  }}>
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -289,7 +301,7 @@ const AnalisisPorAreaSection: React.FC = () => {
           )}
 
           {/* Throughput semanal */}
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="subtitle1" gutterBottom fontWeight={600}>
                 Etapas completadas por semana
@@ -319,7 +331,11 @@ const AnalisisPorAreaSection: React.FC = () => {
           </Grid>
 
           {/* Retrabajo QC */}
-          <Grid item xs={12} md={5}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 5
+            }}>
             <Paper sx={{ p: 3, height: '100%' }}>
               <Typography variant="subtitle1" gutterBottom fontWeight={600}>
                 Retrabajo QC por área (%)
@@ -352,7 +368,11 @@ const AnalisisPorAreaSection: React.FC = () => {
           </Grid>
 
           {/* Productividad por responsable */}
-          <Grid item xs={12} md={7}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 7
+            }}>
             <Paper sx={{ p: 3, height: '100%' }}>
               <Typography variant="subtitle1" gutterBottom fontWeight={600}>
                 Etapas completadas por responsable
@@ -396,7 +416,7 @@ const AnalisisPorAreaSection: React.FC = () => {
           </Grid>
 
           {/* Duración por área p50/p90 */}
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="subtitle1" gutterBottom fontWeight={600}>
                 Duración por área (p50 / p90, en horas)

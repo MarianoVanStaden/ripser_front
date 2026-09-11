@@ -201,7 +201,12 @@ const ChequesPage: React.FC = () => {
 
       {/* Statistics Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 4,
+            md: 2
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -211,7 +216,12 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 4,
+            md: 2
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -223,7 +233,12 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 4,
+            md: 2
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -235,7 +250,12 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 4,
+            md: 2
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -247,7 +267,12 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 4,
+            md: 2
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -259,7 +284,12 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 4,
+            md: 2
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -271,7 +301,12 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -283,7 +318,12 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -301,7 +341,11 @@ const ChequesPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 label="Buscar"
@@ -317,7 +361,11 @@ const ChequesPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 3
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Tipo</InputLabel>
                 <Select
@@ -331,7 +379,11 @@ const ChequesPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 3
+              }}>
               <FormControl fullWidth>
                 <InputLabel>Estado</InputLabel>
                 <Select

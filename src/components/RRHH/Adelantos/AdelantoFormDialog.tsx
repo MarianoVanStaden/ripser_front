@@ -96,7 +96,7 @@ const AdelantoFormDialog: React.FC<Props> = ({ open, empleados, editing, onClose
 
       <DialogContent sx={{ mt: 2 }}>
         <Grid container spacing={2}>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Controller
               name="empleadoId"
               control={control}
@@ -119,7 +119,11 @@ const AdelantoFormDialog: React.FC<Props> = ({ open, empleados, editing, onClose
             />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6
+            }}>
             <Controller
               name="periodo"
               control={control}
@@ -137,7 +141,11 @@ const AdelantoFormDialog: React.FC<Props> = ({ open, empleados, editing, onClose
             />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6
+            }}>
             <Controller
               name="fecha"
               control={control}
@@ -155,7 +163,7 @@ const AdelantoFormDialog: React.FC<Props> = ({ open, empleados, editing, onClose
             />
           </Grid>
 
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Controller
               name="monto"
               control={control}
@@ -173,7 +181,7 @@ const AdelantoFormDialog: React.FC<Props> = ({ open, empleados, editing, onClose
             />
           </Grid>
 
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Controller
               name="observaciones"
               control={control}

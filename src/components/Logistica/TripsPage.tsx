@@ -866,7 +866,12 @@ const TripsPage2: React.FC = () => {
 
       {/* Summary Cards - Grid estático como versión 1 */}
       <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mb: 3 }}>
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
@@ -884,7 +889,12 @@ const TripsPage2: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
@@ -902,7 +912,12 @@ const TripsPage2: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
@@ -925,7 +940,12 @@ const TripsPage2: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
@@ -942,256 +962,256 @@ const TripsPage2: React.FC = () => {
         </Grid>
       </Grid>
 
-        {/* Filter - Chips on mobile */}
-        <Box mb={2}>
-          {isMobile ? (
-            <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1 }}>
-              {[
-                { value: 'all', label: 'Todos' },
-                { value: 'PLANIFICADO', label: 'Planificados' },
-                { value: 'EN_CURSO', label: 'En Ruta' },
-                { value: 'COMPLETADO', label: 'Completados' },
-                { value: 'PENDIENTE_RENDICION', label: 'Pend. Rendición' },
-                { value: 'RENDIDO', label: 'Rendidos' },
-              ].map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  onClick={() => setStatusFilter(option.value as 'all' | EstadoViaje)}
-                  color={statusFilter === option.value ? 'primary' : 'default'}
-                  variant={statusFilter === option.value ? 'filled' : 'outlined'}
-                  sx={{ minHeight: 36 }}
-                />
-              ))}
-            </Stack>
-          ) : (
-            <FormControl sx={{ minWidth: 150 }} size="small">
-              <InputLabel>Estado</InputLabel>
-              <Select
-                value={statusFilter}
-                label="Estado"
-                onChange={(e) => setStatusFilter(e.target.value as 'all' | EstadoViaje)}
-              >
-                <MenuItem value="all">Todos</MenuItem>
-                <MenuItem value="PLANIFICADO">Planificados</MenuItem>
-                <MenuItem value="EN_CURSO">En Ruta</MenuItem>
-                <MenuItem value="COMPLETADO">Completados</MenuItem>
-                <MenuItem value="PENDIENTE_RENDICION">Pendiente de Rendición</MenuItem>
-                <MenuItem value="RENDIDO">Rendidos</MenuItem>
-                <MenuItem value="CANCELADO">Cancelados</MenuItem>
-              </Select>
-            </FormControl>
-          )}
-        </Box>
-
-        {/* Trip List */}
+      {/* Filter - Chips on mobile */}
+      <Box mb={2}>
         {isMobile ? (
-          <Stack spacing={1.5}>
-            {paginatedTrips.map((trip) => (
-              <MobileTripCard key={trip.id} trip={trip} />
+          <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1 }}>
+            {[
+              { value: 'all', label: 'Todos' },
+              { value: 'PLANIFICADO', label: 'Planificados' },
+              { value: 'EN_CURSO', label: 'En Ruta' },
+              { value: 'COMPLETADO', label: 'Completados' },
+              { value: 'PENDIENTE_RENDICION', label: 'Pend. Rendición' },
+              { value: 'RENDIDO', label: 'Rendidos' },
+            ].map((option) => (
+              <Chip
+                key={option.value}
+                label={option.label}
+                onClick={() => setStatusFilter(option.value as 'all' | EstadoViaje)}
+                color={statusFilter === option.value ? 'primary' : 'default'}
+                variant={statusFilter === option.value ? 'filled' : 'outlined'}
+                sx={{ minHeight: 36 }}
+              />
             ))}
           </Stack>
         ) : (
-          /* Desktop/Tablet Table */
-          <Card>
-            <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
-              <Paper sx={{ overflowX: 'auto' }}>
-                <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <Box component="thead">
-                    <Box component="tr" sx={{ bgcolor: 'grey.50' }}>
-                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>ID</Box>
-                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Clientes</Box>
-                      {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Facturas</Box>}
-                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Conductor</Box>
-                      {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Vehículo</Box>}
-                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Destino</Box>
-                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Fecha</Box>
-                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Entrega est.</Box>
-                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Estado</Box>
-                      <Box component="th" sx={{ p: 1.5, textAlign: 'center', fontWeight: 'bold' }}>Acciones</Box>
-                    </Box>
-                  </Box>
-                  <Box component="tbody">
-                    {paginatedTrips.map((trip) => {
-                      const tripFacturas = getFacturasByTrip(trip.id);
-                      const tripOrdenes = getOrdenesByTrip(trip.id);
-                      const tripClientes = getClientesByTrip(trip.id);
+          <FormControl sx={{ minWidth: 150 }} size="small">
+            <InputLabel>Estado</InputLabel>
+            <Select
+              value={statusFilter}
+              label="Estado"
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | EstadoViaje)}
+            >
+              <MenuItem value="all">Todos</MenuItem>
+              <MenuItem value="PLANIFICADO">Planificados</MenuItem>
+              <MenuItem value="EN_CURSO">En Ruta</MenuItem>
+              <MenuItem value="COMPLETADO">Completados</MenuItem>
+              <MenuItem value="PENDIENTE_RENDICION">Pendiente de Rendición</MenuItem>
+              <MenuItem value="RENDIDO">Rendidos</MenuItem>
+              <MenuItem value="CANCELADO">Cancelados</MenuItem>
+            </Select>
+          </FormControl>
+        )}
+      </Box>
 
-                      return (
-                        <Box
-                          component="tr"
-                          key={trip.id}
-                          sx={{
-                            '&:hover': { bgcolor: 'grey.50' },
-                            borderBottom: '1px solid',
-                            borderColor: 'divider',
-                          }}
-                        >
+      {/* Trip List */}
+      {isMobile ? (
+        <Stack spacing={1.5}>
+          {paginatedTrips.map((trip) => (
+            <MobileTripCard key={trip.id} trip={trip} />
+          ))}
+        </Stack>
+      ) : (
+        /* Desktop/Tablet Table */
+        <Card>
+          <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+            <Paper sx={{ overflowX: 'auto' }}>
+              <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
+                <Box component="thead">
+                  <Box component="tr" sx={{ bgcolor: 'grey.50' }}>
+                    <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>ID</Box>
+                    <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Clientes</Box>
+                    {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Facturas</Box>}
+                    <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Conductor</Box>
+                    {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Vehículo</Box>}
+                    <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Destino</Box>
+                    <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Fecha</Box>
+                    <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Entrega est.</Box>
+                    <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Estado</Box>
+                    <Box component="th" sx={{ p: 1.5, textAlign: 'center', fontWeight: 'bold' }}>Acciones</Box>
+                  </Box>
+                </Box>
+                <Box component="tbody">
+                  {paginatedTrips.map((trip) => {
+                    const tripFacturas = getFacturasByTrip(trip.id);
+                    const tripOrdenes = getOrdenesByTrip(trip.id);
+                    const tripClientes = getClientesByTrip(trip.id);
+
+                    return (
+                      <Box
+                        component="tr"
+                        key={trip.id}
+                        sx={{
+                          '&:hover': { bgcolor: 'grey.50' },
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
+                        }}
+                      >
+                        <Box component="td" sx={{ p: 1.5 }}>
+                          <Typography variant="body2" fontWeight="bold">#{trip.id}</Typography>
+                        </Box>
+                        <Box component="td" sx={{ p: 1.5 }}>
+                          {tripClientes.length > 0 ? (
+                            <Box>
+                              <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                                {tripClientes[0]}
+                              </Typography>
+                              {tripClientes.length > 1 && (
+                                <Chip label={`+${tripClientes.length - 1}`} size="small" />
+                              )}
+                            </Box>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">Sin clientes</Typography>
+                          )}
+                        </Box>
+                        {!isTablet && (
                           <Box component="td" sx={{ p: 1.5 }}>
-                            <Typography variant="body2" fontWeight="bold">#{trip.id}</Typography>
-                          </Box>
-                          <Box component="td" sx={{ p: 1.5 }}>
-                            {tripClientes.length > 0 ? (
-                              <Box>
-                                <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
-                                  {tripClientes[0]}
-                                </Typography>
-                                {tripClientes.length > 1 && (
-                                  <Chip label={`+${tripClientes.length - 1}`} size="small" />
+                            {tripFacturas.length > 0 || tripOrdenes.length > 0 ? (
+                              <Box display="flex" flexWrap="wrap" gap={0.5}>
+                                {tripFacturas.slice(0, 2).map((factura) => (
+                                  <Chip
+                                    key={factura.id}
+                                    label={factura.numeroDocumento}
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                  />
+                                ))}
+                                {tripOrdenes.slice(0, 2).map((orden) => (
+                                  <Chip
+                                    key={orden.id}
+                                    label={orden.numeroOrden}
+                                    size="small"
+                                    color="secondary"
+                                    variant="outlined"
+                                  />
+                                ))}
+                                {(tripFacturas.length > 2 || tripOrdenes.length > 2) && (
+                                  <Chip
+                                    label={`+${tripFacturas.length + tripOrdenes.length - 2}`}
+                                    size="small"
+                                  />
                                 )}
                               </Box>
                             ) : (
-                              <Typography variant="caption" color="text.secondary">Sin clientes</Typography>
+                              <Typography variant="caption" color="text.secondary">Sin documentos</Typography>
                             )}
                           </Box>
-                          {!isTablet && (
-                            <Box component="td" sx={{ p: 1.5 }}>
-                              {tripFacturas.length > 0 || tripOrdenes.length > 0 ? (
-                                <Box display="flex" flexWrap="wrap" gap={0.5}>
-                                  {tripFacturas.slice(0, 2).map((factura) => (
-                                    <Chip
-                                      key={factura.id}
-                                      label={factura.numeroDocumento}
-                                      size="small"
-                                      color="primary"
-                                      variant="outlined"
-                                    />
-                                  ))}
-                                  {tripOrdenes.slice(0, 2).map((orden) => (
-                                    <Chip
-                                      key={orden.id}
-                                      label={orden.numeroOrden}
-                                      size="small"
-                                      color="secondary"
-                                      variant="outlined"
-                                    />
-                                  ))}
-                                  {(tripFacturas.length > 2 || tripOrdenes.length > 2) && (
-                                    <Chip
-                                      label={`+${tripFacturas.length + tripOrdenes.length - 2}`}
-                                      size="small"
-                                    />
-                                  )}
-                                </Box>
-                              ) : (
-                                <Typography variant="caption" color="text.secondary">Sin documentos</Typography>
-                              )}
-                            </Box>
-                          )}
+                        )}
+                        <Box component="td" sx={{ p: 1.5 }}>
+                          <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                            {getDriverName(trip.conductorId)}
+                          </Typography>
+                        </Box>
+                        {!isTablet && (
                           <Box component="td" sx={{ p: 1.5 }}>
                             <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
-                              {getDriverName(trip.conductorId)}
+                              {getVehicleInfo(trip.vehiculoId)}
                             </Typography>
                           </Box>
-                          {!isTablet && (
-                            <Box component="td" sx={{ p: 1.5 }}>
-                              <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
-                                {getVehicleInfo(trip.vehiculoId)}
-                              </Typography>
-                            </Box>
-                          )}
-                          <Box component="td" sx={{ p: 1.5 }}>
-                            <Typography variant="body2" noWrap sx={{ maxWidth: 100 }}>
-                              {trip.destino}
-                            </Typography>
-                          </Box>
-                          <Box component="td" sx={{ p: 1.5 }}>
-                            <Typography variant="body2" noWrap>
-                              {new Date(trip.fechaViaje).toLocaleDateString()}
-                            </Typography>
-                          </Box>
-                          <Box component="td" sx={{ p: 1.5 }}>
-                            {(() => {
-                              const info = infoEntregaViaje(trip.id);
-                              if (!info) return <Typography variant="caption" color="text.secondary">—</Typography>;
-                              return (
-                                <Box>
-                                  <Typography variant="body2" noWrap>{info.fecha}</Typography>
-                                  <Chip
-                                    size="small"
-                                    variant="outlined"
-                                    label={info.restantes >= 0 ? `faltan ${info.restantes} d` : `atrasada ${Math.abs(info.restantes)} d`}
-                                    color={info.restantes < 0 ? 'error' : info.restantes <= 3 ? 'warning' : 'default'}
-                                  />
-                                </Box>
-                              );
-                            })()}
-                          </Box>
-                          <Box component="td" sx={{ p: 1.5 }}>
-                            {getStatusChip(trip.estado)}
-                          </Box>
-                          <Box component="td" sx={{ p: 1.5 }}>
-                            <Box display="flex" justifyContent="center" gap={0.5}>
-                              <IconButton onClick={() => handleViewDetails(trip)} size="small">
-                                <MapIcon fontSize="small" />
-                              </IconButton>
-                              {trip.estado === 'PLANIFICADO' && (
-                                <Tooltip
-                                  title={
-                                    tripsConEquiposPendientes.has(trip.id)
-                                      ? 'Hay equipos en producción. Verificá el checklist antes de salir.'
-                                      : 'Iniciar viaje'
-                                  }
-                                  enterDelay={300}
+                        )}
+                        <Box component="td" sx={{ p: 1.5 }}>
+                          <Typography variant="body2" noWrap sx={{ maxWidth: 100 }}>
+                            {trip.destino}
+                          </Typography>
+                        </Box>
+                        <Box component="td" sx={{ p: 1.5 }}>
+                          <Typography variant="body2" noWrap>
+                            {new Date(trip.fechaViaje).toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                        <Box component="td" sx={{ p: 1.5 }}>
+                          {(() => {
+                            const info = infoEntregaViaje(trip.id);
+                            if (!info) return <Typography variant="caption" color="text.secondary">—</Typography>;
+                            return (
+                              <Box>
+                                <Typography variant="body2" noWrap>{info.fecha}</Typography>
+                                <Chip
+                                  size="small"
+                                  variant="outlined"
+                                  label={info.restantes >= 0 ? `faltan ${info.restantes} d` : `atrasada ${Math.abs(info.restantes)} d`}
+                                  color={info.restantes < 0 ? 'error' : info.restantes <= 3 ? 'warning' : 'default'}
+                                />
+                              </Box>
+                            );
+                          })()}
+                        </Box>
+                        <Box component="td" sx={{ p: 1.5 }}>
+                          {getStatusChip(trip.estado)}
+                        </Box>
+                        <Box component="td" sx={{ p: 1.5 }}>
+                          <Box display="flex" justifyContent="center" gap={0.5}>
+                            <IconButton onClick={() => handleViewDetails(trip)} size="small">
+                              <MapIcon fontSize="small" />
+                            </IconButton>
+                            {trip.estado === 'PLANIFICADO' && (
+                              <Tooltip
+                                title={
+                                  tripsConEquiposPendientes.has(trip.id)
+                                    ? 'Hay equipos en producción. Verificá el checklist antes de salir.'
+                                    : 'Iniciar viaje'
+                                }
+                                enterDelay={300}
+                              >
+                                <Badge
+                                  color="warning"
+                                  variant="dot"
+                                  invisible={!tripsConEquiposPendientes.has(trip.id)}
+                                  overlap="circular"
                                 >
-                                  <Badge
-                                    color="warning"
-                                    variant="dot"
-                                    invisible={!tripsConEquiposPendientes.has(trip.id)}
-                                    overlap="circular"
+                                  <IconButton
+                                    onClick={() => setChecklistTrip(trip)}
+                                    size="small"
+                                    color="success"
+                                    aria-label="Iniciar viaje"
                                   >
-                                    <IconButton
-                                      onClick={() => setChecklistTrip(trip)}
-                                      size="small"
-                                      color="success"
-                                      aria-label="Iniciar viaje"
-                                    >
-                                      <StartIcon fontSize="small" />
-                                    </IconButton>
-                                  </Badge>
-                                </Tooltip>
-                              )}
-                              {trip.estado === 'EN_CURSO' && (
-                                <IconButton onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')} size="small" color="primary">
-                                  <StopIcon fontSize="small" />
-                                </IconButton>
-                              )}
-                              <IconButton onClick={() => handleEdit(trip)} size="small">
-                                <EditIcon fontSize="small" />
+                                    <StartIcon fontSize="small" />
+                                  </IconButton>
+                                </Badge>
+                              </Tooltip>
+                            )}
+                            {trip.estado === 'EN_CURSO' && (
+                              <IconButton onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')} size="small" color="primary">
+                                <StopIcon fontSize="small" />
                               </IconButton>
-                              {trip.estado === 'PLANIFICADO' && (
-                                <IconButton onClick={() => handleDelete(trip.id)} size="small">
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              )}
-                            </Box>
+                            )}
+                            <IconButton onClick={() => handleEdit(trip)} size="small">
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            {trip.estado === 'PLANIFICADO' && (
+                              <IconButton onClick={() => handleDelete(trip.id)} size="small">
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            )}
                           </Box>
                         </Box>
-                      );
-                    })}
-                  </Box>
+                      </Box>
+                    );
+                  })}
                 </Box>
-              </Paper>
-            </CardContent>
-          </Card>
-        )}
+              </Box>
+            </Paper>
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Pagination */}
-        <TablePagination
-          component="div"
-          count={filteredTrips.length}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          rowsPerPageOptions={isMobile ? [5, 10] : [5, 10, 25, 50]}
-          labelRowsPerPage={isMobile ? '' : 'Filas:'}
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-          sx={{
-            '.MuiTablePagination-selectLabel': { display: isMobile ? 'none' : 'block' },
-            '.MuiTablePagination-toolbar': { px: isMobile ? 0 : 2 },
-          }}
-        />
+      {/* Pagination */}
+      <TablePagination
+        component="div"
+        count={filteredTrips.length}
+        page={page}
+        onPageChange={handleChangePage}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        rowsPerPageOptions={isMobile ? [5, 10] : [5, 10, 25, 50]}
+        labelRowsPerPage={isMobile ? '' : 'Filas:'}
+        labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+        sx={{
+          '.MuiTablePagination-selectLabel': { display: isMobile ? 'none' : 'block' },
+          '.MuiTablePagination-toolbar': { px: isMobile ? 0 : 2 },
+        }}
+      />
 
       {/* FAB for mobile */}
       {isMobile && (

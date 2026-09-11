@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Box, Grid2 as Grid, Card, CardContent, Typography, Chip, LinearProgress,
+  Box, Grid, Card, CardContent, Typography, Chip, LinearProgress,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   Button, Stack, Divider, Alert,
 } from '@mui/material';

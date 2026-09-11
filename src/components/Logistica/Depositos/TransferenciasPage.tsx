@@ -847,7 +847,12 @@ const TransferenciasPage: React.FC = () => {
 
         {/* Statistics Cards */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom variant="body2">
@@ -857,7 +862,12 @@ const TransferenciasPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom variant="body2">
@@ -869,7 +879,12 @@ const TransferenciasPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom variant="body2">
@@ -881,7 +896,12 @@ const TransferenciasPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom variant="body2">
@@ -897,7 +917,11 @@ const TransferenciasPage: React.FC = () => {
 
         {/* Charts */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={4}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 4
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -926,7 +950,11 @@ const TransferenciasPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 4
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -951,7 +979,11 @@ const TransferenciasPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 4
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -977,7 +1009,11 @@ const TransferenciasPage: React.FC = () => {
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Estado</InputLabel>
                   <Select
@@ -993,7 +1029,11 @@ const TransferenciasPage: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Depósito</InputLabel>
                   <Select
@@ -1156,7 +1196,11 @@ const TransferenciasPage: React.FC = () => {
           <DialogContent>
             <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
               <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <FormControl fullWidth required>
                     <InputLabel>Depósito Origen</InputLabel>
                     <Select
@@ -1182,7 +1226,11 @@ const TransferenciasPage: React.FC = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <FormControl fullWidth required>
                     <InputLabel>Depósito Destino</InputLabel>
                     <Select
@@ -1274,147 +1322,159 @@ const TransferenciasPage: React.FC = () => {
                   const depositoDestinoNombre = depositos.find(d => d.id === newTransferencia.depositoDestinoId)?.nombre;
                   
                   return (
-                  <Card key={index} sx={{ mb: 2, p: 2 }}>
-                    <Grid container spacing={2} alignItems="center">
-                      <Grid item xs={12} md={item.tipo === 'PRODUCTO' ? 5 : 8}>
-                        <FormControl fullWidth size="small">
-                          <InputLabel>
-                            {item.tipo === 'PRODUCTO' ? 'Producto' : 'Equipo'}
-                          </InputLabel>
-                          <Select
-                            value={item.tipo === 'PRODUCTO' ? item.productoId || '' : item.equipoFabricadoId || ''}
-                            label={item.tipo === 'PRODUCTO' ? 'Producto' : 'Equipo'}
-                            onChange={(e) =>
-                              handleUpdateItem(
-                                index,
-                                item.tipo === 'PRODUCTO' ? 'productoId' : 'equipoFabricadoId',
-                                e.target.value
-                              )
-                            }
-                          >
-                            {item.tipo === 'PRODUCTO'
-                              ? stocksDisponibles.map(s => (
-                                  <MenuItem key={s.productoId} value={s.productoId}>
-                                    {s.productoNombre} (Stock: {s.cantidad})
-                                  </MenuItem>
-                                ))
-                              : equiposDisponibles.map(e => (
-                                  <MenuItem key={e.id} value={e.id}>
-                                    {e.numeroHeladera} - {e.modelo}
-                                  </MenuItem>
-                                ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-
-                      {item.tipo === 'PRODUCTO' && (
-                        <Grid item xs={12} md={3}>
-                          <TextField
-                            label="Cantidad"
-                            type="number"
-                            size="small"
-                            value={item.cantidad || 1}
-                            onChange={(e) => {
-                              const value = parseInt(e.target.value) || 0;
-                              const maxStock = stockOrigen?.cantidad || 0;
-                              // Limitar al máximo disponible
-                              const limitedValue = Math.min(Math.max(1, value), maxStock);
-                              handleUpdateItem(index, 'cantidad', limitedValue);
-                            }}
-                            inputProps={{
-                              min: 1,
-                              max: stockOrigen?.cantidad || 0,
-                            }}
-                            error={(item.cantidad || 0) > (stockOrigen?.cantidad || 0)}
-                            helperText={
-                              (item.cantidad || 0) > (stockOrigen?.cantidad || 0)
-                                ? `Máximo disponible: ${stockOrigen?.cantidad || 0}`
-                                : `Disponible: ${stockOrigen?.cantidad || 0}`
-                            }
-                            fullWidth
-                          />
+                    <Card key={index} sx={{ mb: 2, p: 2 }}>
+                      <Grid container spacing={2} alignItems="center">
+                        <Grid
+                          size={{
+                            xs: 12,
+                            md: item.tipo === 'PRODUCTO' ? 5 : 8
+                          }}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>
+                              {item.tipo === 'PRODUCTO' ? 'Producto' : 'Equipo'}
+                            </InputLabel>
+                            <Select
+                              value={item.tipo === 'PRODUCTO' ? item.productoId || '' : item.equipoFabricadoId || ''}
+                              label={item.tipo === 'PRODUCTO' ? 'Producto' : 'Equipo'}
+                              onChange={(e) =>
+                                handleUpdateItem(
+                                  index,
+                                  item.tipo === 'PRODUCTO' ? 'productoId' : 'equipoFabricadoId',
+                                  e.target.value
+                                )
+                              }
+                            >
+                              {item.tipo === 'PRODUCTO'
+                                ? stocksDisponibles.map(s => (
+                                    <MenuItem key={s.productoId} value={s.productoId}>
+                                      {s.productoNombre} (Stock: {s.cantidad})
+                                    </MenuItem>
+                                  ))
+                                : equiposDisponibles.map(e => (
+                                    <MenuItem key={e.id} value={e.id}>
+                                      {e.numeroHeladera} - {e.modelo}
+                                    </MenuItem>
+                                  ))}
+                            </Select>
+                          </FormControl>
                         </Grid>
-                      )}
 
-                      <Grid item xs={12} md={2}>
-                        <IconButton
-                          color="error"
-                          onClick={() => handleEliminarItem(index)}
-                          size="small"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Grid>
+                        {item.tipo === 'PRODUCTO' && (
+                          <Grid
+                            size={{
+                              xs: 12,
+                              md: 3
+                            }}>
+                            <TextField
+                              label="Cantidad"
+                              type="number"
+                              size="small"
+                              value={item.cantidad || 1}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value) || 0;
+                                const maxStock = stockOrigen?.cantidad || 0;
+                                // Limitar al máximo disponible
+                                const limitedValue = Math.min(Math.max(1, value), maxStock);
+                                handleUpdateItem(index, 'cantidad', limitedValue);
+                              }}
+                              inputProps={{
+                                min: 1,
+                                max: stockOrigen?.cantidad || 0,
+                              }}
+                              error={(item.cantidad || 0) > (stockOrigen?.cantidad || 0)}
+                              helperText={
+                                (item.cantidad || 0) > (stockOrigen?.cantidad || 0)
+                                  ? `Máximo disponible: ${stockOrigen?.cantidad || 0}`
+                                  : `Disponible: ${stockOrigen?.cantidad || 0}`
+                              }
+                              fullWidth
+                            />
+                          </Grid>
+                        )}
 
-                      {/* Mostrar información de stock en ambos depósitos */}
-                      {item.tipo === 'PRODUCTO' && item.productoId && (
-                        <Grid item xs={12}>
-                          <Divider sx={{ my: 1 }} />
-                          <Box display="flex" gap={3} flexWrap="wrap" alignItems="center">
-                            <Box>
-                              <Typography variant="caption" color="text.secondary">
-                                Stock en {depositoOrigenNombre || 'Origen'}:
-                              </Typography>
-                              <Chip 
-                                label={stockOrigen?.cantidad ?? 0} 
-                                size="small" 
-                                color={stockOrigen && stockOrigen.cantidad > 0 ? 'success' : 'error'}
-                                sx={{ ml: 1 }}
-                              />
-                            </Box>
-                            {newTransferencia.depositoDestinoId && (
+                        <Grid
+                          size={{
+                            xs: 12,
+                            md: 2
+                          }}>
+                          <IconButton
+                            color="error"
+                            onClick={() => handleEliminarItem(index)}
+                            size="small"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Grid>
+
+                        {/* Mostrar información de stock en ambos depósitos */}
+                        {item.tipo === 'PRODUCTO' && item.productoId && (
+                          <Grid size={12}>
+                            <Divider sx={{ my: 1 }} />
+                            <Box display="flex" gap={3} flexWrap="wrap" alignItems="center">
                               <Box>
                                 <Typography variant="caption" color="text.secondary">
-                                  Stock en {depositoDestinoNombre || 'Destino'}:
+                                  Stock en {depositoOrigenNombre || 'Origen'}:
                                 </Typography>
                                 <Chip 
-                                  label={stockDestino?.cantidad ?? 0} 
+                                  label={stockOrigen?.cantidad ?? 0} 
                                   size="small" 
-                                  color="info"
-                                  variant="outlined"
+                                  color={stockOrigen && stockOrigen.cantidad > 0 ? 'success' : 'error'}
                                   sx={{ ml: 1 }}
                                 />
                               </Box>
-                            )}
-                            {item.cantidad && stockOrigen && (() => {
-                              const stockRestante = (stockOrigen?.cantidad || 0) - (item.cantidad || 0);
-                              const esExceso = stockRestante < 0;
-                              return (
-                              <Box>
-                                <Typography variant="caption" color={esExceso ? 'error' : 'text.secondary'}>
-                                  Después de transferir:
-                                </Typography>
-                                <Chip 
-                                  label={`${depositoOrigenNombre}: ${stockRestante}`} 
-                                  size="small" 
-                                  color={esExceso ? 'error' : 'warning'}
-                                  variant={esExceso ? 'filled' : 'outlined'}
-                                  sx={{ ml: 1 }}
-                                />
-                                <Chip 
-                                  label={`${depositoDestinoNombre}: ${(stockDestino?.cantidad ?? 0) + (item.cantidad || 0)}`} 
-                                  size="small" 
-                                  color="success"
-                                  variant="outlined"
-                                  sx={{ ml: 1 }}
-                                />
-                                {esExceso && (
+                              {newTransferencia.depositoDestinoId && (
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Stock en {depositoDestinoNombre || 'Destino'}:
+                                  </Typography>
                                   <Chip 
-                                    icon={<WarningIcon />}
-                                    label="Stock insuficiente" 
+                                    label={stockDestino?.cantidad ?? 0} 
                                     size="small" 
-                                    color="error"
+                                    color="info"
+                                    variant="outlined"
                                     sx={{ ml: 1 }}
                                   />
-                                )}
-                              </Box>
-                              );
-                            })()}
-                          </Box>
-                        </Grid>
-                      )}
-                    </Grid>
-                  </Card>
+                                </Box>
+                              )}
+                              {item.cantidad && stockOrigen && (() => {
+                                const stockRestante = (stockOrigen?.cantidad || 0) - (item.cantidad || 0);
+                                const esExceso = stockRestante < 0;
+                                return (
+                                <Box>
+                                  <Typography variant="caption" color={esExceso ? 'error' : 'text.secondary'}>
+                                    Después de transferir:
+                                  </Typography>
+                                  <Chip 
+                                    label={`${depositoOrigenNombre}: ${stockRestante}`} 
+                                    size="small" 
+                                    color={esExceso ? 'error' : 'warning'}
+                                    variant={esExceso ? 'filled' : 'outlined'}
+                                    sx={{ ml: 1 }}
+                                  />
+                                  <Chip 
+                                    label={`${depositoDestinoNombre}: ${(stockDestino?.cantidad ?? 0) + (item.cantidad || 0)}`} 
+                                    size="small" 
+                                    color="success"
+                                    variant="outlined"
+                                    sx={{ ml: 1 }}
+                                  />
+                                  {esExceso && (
+                                    <Chip 
+                                      icon={<WarningIcon />}
+                                      label="Stock insuficiente" 
+                                      size="small" 
+                                      color="error"
+                                      sx={{ ml: 1 }}
+                                    />
+                                  )}
+                                </Box>
+                                );
+                              })()}
+                            </Box>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Card>
                   );
                 })}
 
@@ -1633,11 +1693,16 @@ const TransferenciasPage: React.FC = () => {
                                   </Typography>
                                   <Grid container spacing={2}>
                                     {item.distribuciones.map((dist, distIndex) => (
-                                      <Grid item xs={12} md={6} key={distIndex}>
+                                      <Grid
+                                        key={distIndex}
+                                        size={{
+                                          xs: 12,
+                                          md: 6
+                                        }}>
                                         <Card variant="outlined">
                                           <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                             <Grid container spacing={2} alignItems="center">
-                                              <Grid item xs={7}>
+                                              <Grid size={7}>
                                                 <FormControl fullWidth size="small">
                                                   <InputLabel>Depósito</InputLabel>
                                                   <Select
@@ -1662,7 +1727,7 @@ const TransferenciasPage: React.FC = () => {
                                                   </Select>
                                                 </FormControl>
                                               </Grid>
-                                              <Grid item xs={3}>
+                                              <Grid size={3}>
                                                 <TextField
                                                   type="number"
                                                   size="small"
@@ -1678,7 +1743,7 @@ const TransferenciasPage: React.FC = () => {
                                                   fullWidth
                                                 />
                                               </Grid>
-                                              <Grid item xs={2}>
+                                              <Grid size={2}>
                                                 <IconButton
                                                   size="small"
                                                   color="error"
@@ -1696,7 +1761,7 @@ const TransferenciasPage: React.FC = () => {
                                         </Card>
                                       </Grid>
                                     ))}
-                                    <Grid item xs={12}>
+                                    <Grid size={12}>
                                       <Button
                                         size="small"
                                         startIcon={<AddIcon />}

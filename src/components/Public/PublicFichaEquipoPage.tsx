@@ -302,7 +302,11 @@ const PublicFichaEquipoPage: React.FC = () => {
         <CardContent>
           <Grid container spacing={3}>
             {/* Columna 1: Identificación */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Typography variant="overline" color="text.secondary" display="block">
                 Número de Equipo
               </Typography>
@@ -329,7 +333,11 @@ const PublicFichaEquipoPage: React.FC = () => {
             </Grid>
 
             {/* Columna 2: Medidas y Color */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Typography variant="overline" color="text.secondary" display="block">
                 Medida
               </Typography>
@@ -354,7 +362,11 @@ const PublicFichaEquipoPage: React.FC = () => {
         <Divider sx={{ mb: 2 }} />
 
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6
+            }}>
             <Stack spacing={2}>
               <Box>
                 <Typography variant="overline" color="text.secondary" display="block">
@@ -407,7 +419,11 @@ const PublicFichaEquipoPage: React.FC = () => {
             </Stack>
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6
+            }}>
             <Stack spacing={2}>
               <Box>
                 <Typography variant="overline" color="text.secondary" display="block">
@@ -458,7 +474,11 @@ const PublicFichaEquipoPage: React.FC = () => {
 
         {/* DIMENSIONES Y ESTANTERÍAS */}
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6
+            }}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
                 Dimensiones (mm)
@@ -477,7 +497,11 @@ const PublicFichaEquipoPage: React.FC = () => {
             </Box>
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6
+            }}>
             {(ficha.estanteriasCantidad || ficha.estanteriasFormato) && (
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
@@ -511,7 +535,7 @@ const PublicFichaEquipoPage: React.FC = () => {
 
           <Grid container spacing={2}>
             {ficha.clienteNombre && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="overline" color="text.secondary" display="block">
                   Cliente / Negocio
                 </Typography>
@@ -520,7 +544,11 @@ const PublicFichaEquipoPage: React.FC = () => {
             )}
 
             {ficha.localidad && (
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <Typography variant="overline" color="text.secondary" display="block">
                   Localidad
                 </Typography>
@@ -529,7 +557,11 @@ const PublicFichaEquipoPage: React.FC = () => {
             )}
 
             {ficha.provincia && (
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <Typography variant="overline" color="text.secondary" display="block">
                   Provincia
                 </Typography>
@@ -549,7 +581,11 @@ const PublicFichaEquipoPage: React.FC = () => {
 
         <Grid container spacing={2}>
           {ficha.fechaFabricacion && (
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Typography variant="overline" color="text.secondary" display="block">
                 Fecha de Fabricación
               </Typography>
@@ -560,7 +596,11 @@ const PublicFichaEquipoPage: React.FC = () => {
           )}
 
           {ficha.fechaEntrega && (
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Typography variant="overline" color="text.secondary" display="block">
                 Fecha de Entrega
               </Typography>

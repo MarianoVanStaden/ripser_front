@@ -378,19 +378,35 @@ export const PrestamosResumenPage: React.FC = () => {
           </Box>
 
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FocoItem icon={<Schedule />} label="Vencidas hoy" value={resumenCob.gestionesVencidasHoy}
                 role="danger" hint="Gestiones sin acción registrada hoy" to={linkVencidasHoy} />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FocoItem icon={<Handshake />} label="Promesas vencen hoy" value={resumenCob.promesasVigentesHoy}
                 role="process" hint="Verificar si el cliente cumplió" to={linkPromesasVencenHoy} />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FocoItem icon={<Warning />} label="Promesas incumplidas" value={resumenCob.promesasIncumplidas}
                 role="danger" hint="Re-contactar al cliente" to={linkPromesasIncumplidas} />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FocoItem icon={<Gavel />} label="Recordatorios pendientes" value={resumenCob.recordatoriosPendientesAgente}
                 role="warning" hint="Tareas asignadas a tu agenda" to={linkRecordatoriosPendientes} />
             </Grid>
@@ -403,22 +419,42 @@ export const PrestamosResumenPage: React.FC = () => {
         <>
           <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Panorama General</Typography>
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <KpiCard title="Activos" value={resumen.prestamosActivos}
                 icon={<TrendingUp sx={{ color: 'status.success.fg', fontSize: 28 }} />} color="var(--mui-palette-status-success-fg)"
                 to={`${LISTA}?estados=ACTIVO`} />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <KpiCard title="En Mora" value={resumen.prestamosEnMora}
                 icon={<Warning sx={{ color: 'status.warning.fg', fontSize: 28 }} />} color="var(--mui-palette-status-warning-fg)"
                 to={`${LISTA}?estados=EN_MORA`} />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <KpiCard title="En Legal" value={resumen.prestamosEnLegal}
                 icon={<Gavel sx={{ color: 'status.danger.fg', fontSize: 28 }} />} color="var(--mui-palette-status-danger-fg)"
                 to={`${LISTA}?estados=EN_LEGAL`} />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <KpiCard title="Próximas a Vencer" value={resumen.cuotasProximasAVencer}
                 icon={<Schedule sx={{ color: 'status.warning.fg', fontSize: 28 }} />} color="var(--mui-palette-status-warning-fg)"
                 subtitle="Cuotas próx. días" />
@@ -432,24 +468,44 @@ export const PrestamosResumenPage: React.FC = () => {
         <>
           <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Cobranza</Typography>
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <KpiCard title="Gestiones Activas" value={resumenCob.totalGestionesActivas}
                 icon={<PhoneCallback sx={{ color: 'primary.main', fontSize: 28 }} />} color="var(--mui-palette-primary-main)"
                 to={linkActivas} />
             </Grid>
             {puedeVerMontos && (
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 3
+                }}>
                 <KpiCard title="Monto en Gestión" value={formatPrice(resumenCob.totalMontoPendiente)}
                   icon={<AttachMoney sx={{ color: 'status.warning.fg', fontSize: 28 }} />} color="var(--mui-palette-status-warning-fg)"
                   to={linkActivasOrdenadoPorMonto} subtitle="Ordenadas por monto" />
               </Grid>
             )}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <KpiCard title="Sin Gestión con Mora" value={resumenCob.sinGestionConMora}
                 icon={<Warning sx={{ color: 'status.danger.fg', fontSize: 28 }} />} color="var(--mui-palette-status-danger-fg)"
                 subtitle="Necesitan apertura de gestión" to={linkActivas} />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <KpiCard title="Cuotas Vencidas" value={resumenCob.cuotasVencidasTotal}
                 icon={<Schedule sx={{ color: 'status.neutral.fg', fontSize: 28 }} />} color="var(--mui-palette-status-neutral-fg)"
                 subtitle="En toda la empresa" to={linkConMora} />
@@ -462,7 +518,11 @@ export const PrestamosResumenPage: React.FC = () => {
       {resumen && (
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {puedeVerMontos && (
-          <Grid item xs={12} md={5}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 5
+            }}>
             <Paper sx={{ p: 3, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <AttachMoney sx={{ color: 'primary.main' }} />
@@ -506,7 +566,11 @@ export const PrestamosResumenPage: React.FC = () => {
           </Grid>
           )}
 
-          <Grid item xs={12} md={puedeVerMontos ? 7 : 12}>
+          <Grid
+            size={{
+              xs: 12,
+              md: puedeVerMontos ? 7 : 12
+            }}>
             <Paper sx={{ p: 3, height: '100%' }}>
               <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Cartera por Categoría</Typography>
               {categoriasCartera.length === 0 ? (
@@ -551,7 +615,11 @@ export const PrestamosResumenPage: React.FC = () => {
       {/* Tasa de recuperación + gestiones por estado */}
       {resumenCob && (
         <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 4
+            }}>
             <Paper sx={{ p: 3, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <TrendingUp sx={{ color: 'status.success.fg' }} />
@@ -602,7 +670,11 @@ export const PrestamosResumenPage: React.FC = () => {
             </Paper>
           </Grid>
 
-          <Grid item xs={12} md={8}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 8
+            }}>
             <Paper sx={{ p: 3, height: '100%' }}>
               <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Gestiones por Estado</Typography>
               <Grid container spacing={2}>
@@ -611,7 +683,12 @@ export const PrestamosResumenPage: React.FC = () => {
                   const count = resumenCob.gestionesPorEstado?.[estado] ?? 0;
                   const fgVar = `var(--mui-palette-status-${roleForEstado(estado)}-fg)`;
                   return (
-                    <Grid item xs={6} sm={4} key={estado}>
+                    <Grid
+                      key={estado}
+                      size={{
+                        xs: 6,
+                        sm: 4
+                      }}>
                       <KpiCard
                         title={ESTADO_GESTION_COBRANZA_LABELS[estado]}
                         value={count}

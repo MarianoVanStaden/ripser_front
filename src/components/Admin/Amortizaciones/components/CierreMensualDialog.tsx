@@ -9,7 +9,7 @@ import {
   TextField,
   Typography,
   Box,
-  Grid2 as Grid,
+  Grid,
   Card,
   CardContent,
   Table,

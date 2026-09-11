@@ -302,7 +302,11 @@ const ClienteFormPage: React.FC = () => {
         <Paper sx={{ p: 3 }}>
           <Grid container spacing={2}>
             {/* Tipo */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 select
                 fullWidth
@@ -316,7 +320,11 @@ const ClienteFormPage: React.FC = () => {
                 <MenuItem value="PERSONA_JURIDICA">Persona Jurídica</MenuItem>
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 select
                 fullWidth
@@ -338,7 +346,11 @@ const ClienteFormPage: React.FC = () => {
             {/* Datos básicos */}
             {formData.tipo === 'PERSONA_FISICA' ? (
               <>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <TextField
                     fullWidth
                     size="small"
@@ -349,7 +361,11 @@ const ClienteFormPage: React.FC = () => {
                     required
                   />
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <TextField
                     fullWidth
                     size="small"
@@ -363,7 +379,11 @@ const ClienteFormPage: React.FC = () => {
               </>
             ) : (
               <>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <TextField
                     fullWidth
                     size="small"
@@ -374,7 +394,11 @@ const ClienteFormPage: React.FC = () => {
                     required
                   />
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <TextField
                     fullWidth
                     size="small"
@@ -388,7 +412,11 @@ const ClienteFormPage: React.FC = () => {
               </>
             )}
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -402,7 +430,11 @@ const ClienteFormPage: React.FC = () => {
             <Divider flexItem sx={{ my: 2, width: '100%' }} />
 
             {/* Contacto */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -413,7 +445,11 @@ const ClienteFormPage: React.FC = () => {
                 name="email"
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -423,7 +459,11 @@ const ClienteFormPage: React.FC = () => {
                 name="telefono"
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -434,7 +474,11 @@ const ClienteFormPage: React.FC = () => {
                 name="telefonoAlternativo"
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 select
@@ -454,7 +498,11 @@ const ClienteFormPage: React.FC = () => {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -465,7 +513,7 @@ const ClienteFormPage: React.FC = () => {
                 name="rubroDetalle"
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 size="small"
@@ -475,7 +523,11 @@ const ClienteFormPage: React.FC = () => {
                 name="direccion"
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -485,7 +537,11 @@ const ClienteFormPage: React.FC = () => {
                 name="ciudad"
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth
                 select
@@ -505,7 +561,11 @@ const ClienteFormPage: React.FC = () => {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -519,7 +579,11 @@ const ClienteFormPage: React.FC = () => {
             <Divider flexItem sx={{ my: 2, width: '100%' }} />
 
             {/* Comercial */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -533,7 +597,11 @@ const ClienteFormPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormLabel>Calificación</FormLabel>
               <Rating
                 name="calificacion"
@@ -542,7 +610,7 @@ const ClienteFormPage: React.FC = () => {
                 precision={0.5}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 size="small"
@@ -558,7 +626,7 @@ const ClienteFormPage: React.FC = () => {
             <Divider flexItem sx={{ my: 2, width: '100%' }} />
 
             {/* Item comprado / conversión desde lead */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Typography variant="subtitle1" sx={{ mb: 1 }}>
                 Item comprado (conversión)
               </Typography>
@@ -566,7 +634,11 @@ const ClienteFormPage: React.FC = () => {
                 Producto o equipo que originó la conversión desde el lead. Editá si la conversión se hizo con un item incorrecto.
               </Typography>
             </Grid>
-            <Grid item xs={12} md={9}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 9
+              }}>
               <Autocomplete
                 options={itemOptions}
                 getOptionLabel={(opt) => opt.nombre}
@@ -586,7 +658,11 @@ const ClienteFormPage: React.FC = () => {
                 )}
               />
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 3
+              }}>
               <TextField
                 fullWidth
                 size="small"
@@ -601,7 +677,11 @@ const ClienteFormPage: React.FC = () => {
                 disabled={!selectedItem}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth
                 size="small"

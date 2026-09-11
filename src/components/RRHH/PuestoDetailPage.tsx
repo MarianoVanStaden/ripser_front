@@ -9,7 +9,7 @@ import {
   Alert,
   IconButton,
   Tooltip,
-  Grid2 as Grid,
+  Grid,
   Chip,
   Tabs,
   Tab,

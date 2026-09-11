@@ -336,7 +336,13 @@ const HospedajesPage: React.FC = () => {
           </Typography>
           <Grid container spacing={2}>
             {hospedajes.map((h) => (
-              <Grid item xs={12} sm={6} md={4} key={h.id}>
+              <Grid
+                key={h.id}
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 4
+                }}>
                 <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                   <CardContent sx={{ flex: 1 }}>
                     {/* Nombre + calificación */}

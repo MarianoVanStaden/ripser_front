@@ -7,7 +7,7 @@ import {
   DialogActions,
   Button,
   TextField,
-  Grid2 as Grid,
+  Grid,
   Alert,
   FormControl,
   InputAdornment,

@@ -137,7 +137,11 @@ const AusenciaCombinadaDialog: React.FC<Props> = ({
           />
 
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth required type="date"
                 label="Fecha de salida anticipada"
@@ -147,7 +151,11 @@ const AusenciaCombinadaDialog: React.FC<Props> = ({
                 helperText="Normalmente hoy"
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth required type="time"
                 label="Hora real de salida"
@@ -159,7 +167,11 @@ const AusenciaCombinadaDialog: React.FC<Props> = ({
           </Grid>
 
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 select fullWidth required label="Tipo de licencia"
                 value={form.tipoLicencia}
@@ -168,7 +180,11 @@ const AusenciaCombinadaDialog: React.FC<Props> = ({
                 {TIPOS_LICENCIA.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 fullWidth required type="date"
                 label="Fecha fin de licencia"

@@ -176,7 +176,13 @@ const DashboardFabricacion: React.FC = () => {
       {/* KPIs */}
       <Grid container spacing={3} mb={3}>
         {kpis.map((kpi, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+          <Grid
+            key={index}
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -199,7 +205,11 @@ const DashboardFabricacion: React.FC = () => {
       {/* Gráficos y Tablas */}
       <Grid container spacing={3}>
         {/* Equipos por Tipo */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper elevation={2} sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Equipos por Tipo
@@ -230,7 +240,11 @@ const DashboardFabricacion: React.FC = () => {
         </Grid>
 
         {/* Recetas/Modelos Más Usados */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper elevation={2} sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               {equiposConReceta.length > 0 ? 'Recetas Más Usadas' : 'Modelos Más Fabricados'}
@@ -271,7 +285,7 @@ const DashboardFabricacion: React.FC = () => {
         </Grid>
 
         {/* Equipos Recientes */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Paper elevation={2} sx={{ p: 3 }}>
             <Stack
               direction="row"

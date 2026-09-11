@@ -107,7 +107,7 @@ const BonosUmbralTab: React.FC<Props> = ({ variant }) => {
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={2} alignItems={{ sm: 'center' }} justifyContent="space-between">
         <FormControl size="small" sx={{ minWidth: 240 }}>
           <InputLabel>Filtrar por categoría</InputLabel>
-          <Select
+          <Select<number | ''>
             label="Filtrar por categoría"
             value={filterCategoria}
             onChange={(e) => setFilterCategoria(e.target.value === '' ? '' : Number(e.target.value))}
@@ -171,7 +171,7 @@ const BonosUmbralTab: React.FC<Props> = ({ variant }) => {
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           <Grid container spacing={2}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <FormControl fullWidth>
                 <InputLabel>Categoría *</InputLabel>
                 <Select
@@ -183,14 +183,22 @@ const BonosUmbralTab: React.FC<Props> = ({ variant }) => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth type="number" label="Umbral (unidades) *"
                 value={form.umbralUnidades}
                 onChange={(e) => setForm({ ...form, umbralUnidades: Number(e.target.value) || 0 })}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth type="number" label="Monto del bono *"
                 value={form.monto}

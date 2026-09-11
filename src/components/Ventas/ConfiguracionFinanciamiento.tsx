@@ -435,7 +435,11 @@ const ConfiguracionFinanciamiento: React.FC = () => {
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={8}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 8
+                }}>
                 <TextField
                   fullWidth
                   label="Nombre de la Plantilla"
@@ -446,7 +450,11 @@ const ConfiguracionFinanciamiento: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <TextField
                   fullWidth
                   type="number"
@@ -457,7 +465,11 @@ const ConfiguracionFinanciamiento: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth required>
                   <InputLabel>Método de Pago</InputLabel>
                   <Select
@@ -476,7 +488,11 @@ const ConfiguracionFinanciamiento: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   type="number"
@@ -487,7 +503,11 @@ const ConfiguracionFinanciamiento: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   type="number"
@@ -502,7 +522,11 @@ const ConfiguracionFinanciamiento: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -515,7 +539,7 @@ const ConfiguracionFinanciamiento: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography gutterBottom>Tasa de Interés: {formData.tasaInteres || 0}%</Typography>
                 <Slider
                   value={formData.tasaInteres || 0}
@@ -532,7 +556,7 @@ const ConfiguracionFinanciamiento: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   fullWidth
                   multiline
@@ -544,7 +568,7 @@ const ConfiguracionFinanciamiento: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Divider sx={{ my: 1 }} />
                 <Alert severity="info">
                   <Typography variant="body2">

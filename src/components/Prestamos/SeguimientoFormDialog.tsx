@@ -71,7 +71,11 @@ export const SeguimientoFormDialog: React.FC<SeguimientoFormDialogProps> = ({
         <Box sx={{ mt: 2 }}>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 select
@@ -85,7 +89,11 @@ export const SeguimientoFormDialog: React.FC<SeguimientoFormDialogProps> = ({
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 fullWidth
                 label="Fecha"
@@ -95,7 +103,7 @@ export const SeguimientoFormDialog: React.FC<SeguimientoFormDialogProps> = ({
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Descripción"
@@ -105,7 +113,7 @@ export const SeguimientoFormDialog: React.FC<SeguimientoFormDialogProps> = ({
                 onChange={(e) => handleChange('descripcion', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Resultado"
@@ -113,7 +121,7 @@ export const SeguimientoFormDialog: React.FC<SeguimientoFormDialogProps> = ({
                 onChange={(e) => handleChange('resultado', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Próxima Acción"

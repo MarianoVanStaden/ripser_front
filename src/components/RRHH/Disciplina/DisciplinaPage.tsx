@@ -330,7 +330,11 @@ const DisciplinaPage: React.FC = () => {
                 )}
               </Stack>
               <Grid container spacing={1.5}>
-                <Grid item xs={12} md={4}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 4
+                  }}>
                   <TextField
                     fullWidth size="small"
                     placeholder="Buscar nombre, DNI, motivo, etiqueta…"
@@ -340,7 +344,11 @@ const DisciplinaPage: React.FC = () => {
                     }}
                   />
                 </Grid>
-                <Grid item xs={6} md={2}>
+                <Grid
+                  size={{
+                    xs: 6,
+                    md: 2
+                  }}>
                   <TextField
                     fullWidth select size="small" label="Tipo"
                     value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value as any)}
@@ -351,7 +359,11 @@ const DisciplinaPage: React.FC = () => {
                     ))}
                   </TextField>
                 </Grid>
-                <Grid item xs={6} md={2}>
+                <Grid
+                  size={{
+                    xs: 6,
+                    md: 2
+                  }}>
                   <TextField
                     fullWidth select size="small" label="Estado"
                     value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value as any)}
@@ -362,7 +374,11 @@ const DisciplinaPage: React.FC = () => {
                     ))}
                   </TextField>
                 </Grid>
-                <Grid item xs={6} md={2}>
+                <Grid
+                  size={{
+                    xs: 6,
+                    md: 2
+                  }}>
                   <TextField
                     fullWidth select size="small" label="Sector"
                     value={sectorFiltro} onChange={(e) => setSectorFiltro(e.target.value)}
@@ -371,7 +387,11 @@ const DisciplinaPage: React.FC = () => {
                     {sectores.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
                   </TextField>
                 </Grid>
-                <Grid item xs={6} md={2}>
+                <Grid
+                  size={{
+                    xs: 6,
+                    md: 2
+                  }}>
                   <TextField
                     fullWidth select size="small" label="Departamento"
                     value={departamentoFiltro} onChange={(e) => setDepartamentoFiltro(e.target.value)}
@@ -380,14 +400,22 @@ const DisciplinaPage: React.FC = () => {
                     {departamentos.map(d => <MenuItem key={d} value={d}>{d}</MenuItem>)}
                   </TextField>
                 </Grid>
-                <Grid item xs={6} md={2}>
+                <Grid
+                  size={{
+                    xs: 6,
+                    md: 2
+                  }}>
                   <TextField
                     fullWidth size="small" label="Desde" type="date"
                     InputLabelProps={{ shrink: true }}
                     value={desde} onChange={(e) => setDesde(e.target.value)}
                   />
                 </Grid>
-                <Grid item xs={6} md={2}>
+                <Grid
+                  size={{
+                    xs: 6,
+                    md: 2
+                  }}>
                   <TextField
                     fullWidth size="small" label="Hasta" type="date"
                     InputLabelProps={{ shrink: true }}

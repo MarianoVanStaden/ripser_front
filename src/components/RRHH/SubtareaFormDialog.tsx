@@ -105,7 +105,7 @@ const SubtareaFormDialog: React.FC<Props> = ({ open, puestoId, tareaId, subtarea
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
           <Grid container spacing={2}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Controller
                 name="nombre"
                 control={control}
@@ -121,7 +121,7 @@ const SubtareaFormDialog: React.FC<Props> = ({ open, puestoId, tareaId, subtarea
                 )}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Controller
                 name="descripcion"
                 control={control}
@@ -138,7 +138,7 @@ const SubtareaFormDialog: React.FC<Props> = ({ open, puestoId, tareaId, subtarea
                 )}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Controller
                 name="obligatoria"
                 control={control}

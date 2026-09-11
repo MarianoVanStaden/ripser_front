@@ -354,7 +354,11 @@ export default function DeliveryDetailsPanel({
               </Box>
 
               <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom>Informacion</Typography>
@@ -403,7 +407,11 @@ export default function DeliveryDetailsPanel({
                   </Card>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="body2" mb={1}>
@@ -427,7 +435,7 @@ export default function DeliveryDetailsPanel({
                   </Card>
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom>
@@ -471,7 +479,7 @@ export default function DeliveryDetailsPanel({
                 </Grid>
 
                 {selectedDelivery.observaciones && (
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Card variant="outlined">
                       <CardContent>
                         <Typography variant="subtitle2" gutterBottom>Observaciones</Typography>
@@ -482,7 +490,7 @@ export default function DeliveryDetailsPanel({
                 )}
 
                 {/* Imágenes / Documentos — disponible para todos los estados */}
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <EntregaDocumentosCard
                     documentos={entregaDocumentos}
                     loading={loadingDocumentos}

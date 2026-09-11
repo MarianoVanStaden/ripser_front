@@ -559,7 +559,12 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
             Parámetros del mes
           </Typography>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4,
+                md: 2
+              }}>
               <TextField
                 fullWidth size="small" type="month" label="Período *"
                 value={periodo}
@@ -567,7 +572,12 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4,
+                md: 2
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Concepto default</InputLabel>
                 <Select
@@ -590,7 +600,12 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <TextField
                 fullWidth size="small" type="number" label="Unidades producidas"
                 value={unidadesProducidas}
@@ -604,7 +619,12 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                 }
               />
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 6,
+                sm: 4,
+                md: 2
+              }}>
               <TextField
                 fullWidth size="small" label="Meta de equipo (neto)"
                 value={loadingUnidades ? '' : totalEquipoNeto}
@@ -618,7 +638,12 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                 }
               />
             </Grid>
-            <Grid item xs={12} sm={4} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4,
+                md: 2
+              }}>
               <Stack direction="row" spacing={1}>
                 <Button
                   fullWidth
@@ -654,7 +679,11 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
 
       {/* KPIs del lote */}
       <Grid container spacing={2} mb={3}>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'success.main', boxShadow: 1 }}>
             <CardContent sx={{ py: 1.5 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -667,7 +696,11 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'primary.main', boxShadow: 1 }}>
             <CardContent sx={{ py: 1.5 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -682,7 +715,11 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'error.main', boxShadow: 1 }}>
             <CardContent sx={{ py: 1.5 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -697,7 +734,11 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid
+          size={{
+            xs: 6,
+            md: 3
+          }}>
           <Card sx={{ borderLeft: 4, borderColor: 'warning.main', boxShadow: 1 }}>
             <CardContent sx={{ py: 1.5 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">

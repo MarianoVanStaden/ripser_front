@@ -384,7 +384,7 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
           {formError && <Alert severity="error">{formError}</Alert>}
 
           <Grid container spacing={2}>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo</InputLabel>
                 <Select
@@ -398,7 +398,7 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <TextField
                 label="Fecha y Hora"
                 type="datetime-local"
@@ -423,7 +423,7 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
           />
 
           <Grid container spacing={2}>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Resultado</InputLabel>
                 <Select
@@ -438,7 +438,7 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <TextField
                 label="Duración (minutos)"
                 type="number"
@@ -460,7 +460,7 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
           </Divider>
 
           <Grid container spacing={2}>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <TextField
                 label="Próxima acción (fecha)"
                 type="date"
@@ -474,7 +474,7 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
                 helperText={proximaAccionRequerida && !form.proximaAccion ? 'Requerido cuando resultado es Reagendar' : undefined}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <TextField
                 label="Notas próxima acción"
                 fullWidth
@@ -828,7 +828,7 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
           />
 
           <Grid container spacing={2}>
-            <Grid item xs={7}>
+            <Grid size={7}>
               <TextField
                 label="Fecha *"
                 type="date"
@@ -840,7 +840,7 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
                 inputProps={{ min: getTodayStr() }}
               />
             </Grid>
-            <Grid item xs={5}>
+            <Grid size={5}>
               <TextField
                 label="Hora (opcional)"
                 type="time"
@@ -854,7 +854,7 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
           </Grid>
 
           <Grid container spacing={2}>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo *</InputLabel>
                 <Select
@@ -873,7 +873,7 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Prioridad</InputLabel>
                 <Select
@@ -1389,7 +1389,11 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
 
       {/* ── Stats ── */}
       <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 4
+          }}>
           <StatCard
             label="Total pendientes"
             count={conteos.totalPendientes}
@@ -1397,7 +1401,11 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
             icon={<NotificationsActiveIcon />}
           />
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 4
+          }}>
           <StatCard
             label="Vencidos"
             count={conteos.vencidos}
@@ -1405,7 +1413,11 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
             icon={<WarningIcon />}
           />
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 4
+          }}>
           <StatCard
             label="Para hoy"
             count={conteos.hoy}
@@ -1532,7 +1544,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
 
             <FormControl size="small" sx={{ minWidth: 160 }} disabled={soloMios}>
               <InputLabel>Asesor</InputLabel>
-              <Select
+              <Select<number | ''>
                 value={soloMios ? '' : filterUsuarioId}
                 label="Asesor"
                 onChange={(e) => {

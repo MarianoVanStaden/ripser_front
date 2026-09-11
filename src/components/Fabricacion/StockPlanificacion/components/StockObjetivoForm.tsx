@@ -127,7 +127,11 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="tipo"
                 control={control}
@@ -150,7 +154,11 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="modelo"
                 control={control}
@@ -166,7 +174,11 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="medidaId"
                 control={control}
@@ -180,7 +192,11 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="colorId"
                 control={control}
@@ -194,7 +210,11 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="cantidadObjetivo"
                 control={control}
@@ -212,7 +232,12 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
               />
             </Grid>
 
-            <Grid item xs={12} sm={6} sx={{ display: 'flex', alignItems: 'center' }}>
+            <Grid
+              sx={{ display: 'flex', alignItems: 'center' }}
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Controller
                 name="activo"
                 control={control}
@@ -228,7 +253,7 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
             </Grid>
 
             {Object.keys(errors).length > 0 && (
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Alert severity="error">Corregí los errores antes de continuar.</Alert>
               </Grid>
             )}

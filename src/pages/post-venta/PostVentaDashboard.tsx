@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Grid2 as Grid, Card, CardContent, Typography, Chip, LinearProgress,
+  Box, Grid, Card, CardContent, Typography, Chip, LinearProgress,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   Button, Stack, Alert,
 } from '@mui/material';

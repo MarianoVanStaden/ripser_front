@@ -157,7 +157,7 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
             </Box>
           ) : (
             <Grid container spacing={2} sx={{ mt: 0.5 }}>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Controller
                   name="recetaId"
                   control={control}
@@ -184,7 +184,7 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Controller
                   name="depositoOrigenId"
                   control={control}
@@ -211,7 +211,11 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <Controller
                   name="cantidadSolicitada"
                   control={control}
@@ -236,7 +240,7 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Controller
                   name="observaciones"
                   control={control}
@@ -256,7 +260,7 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
               </Grid>
 
               {apiError && (
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <Alert severity="error">{apiError}</Alert>
                 </Grid>
               )}

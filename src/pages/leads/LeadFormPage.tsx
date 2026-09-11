@@ -558,13 +558,17 @@ export const LeadFormPage = () => {
           <form onSubmit={handleSubmit}>
             <Grid container spacing={3}>
               {/* Información Básica */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="h6" gutterBottom>
                   Información de Contacto
                 </Typography>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   required
@@ -576,7 +580,11 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   required
@@ -592,7 +600,11 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   label="Teléfono alternativo"
@@ -607,7 +619,11 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth>
                   <InputLabel>Rubro</InputLabel>
                   <Select
@@ -627,7 +643,11 @@ export const LeadFormPage = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   label={formData.rubro === 'OTRO' ? 'Detalle del rubro (especificar)' : 'Detalle del rubro'}
@@ -639,7 +659,11 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   type="email"
@@ -653,7 +677,11 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth>
                   <InputLabel>Provincia</InputLabel>
                   <Select
@@ -674,13 +702,17 @@ export const LeadFormPage = () => {
               </Grid>
 
               {/* Canal y Estado */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
                   Datos del Lead
                 </Typography>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth required error={Boolean(errors.canal)}>
                   <InputLabel>Canal</InputLabel>
                   <Select
@@ -697,7 +729,11 @@ export const LeadFormPage = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth required error={Boolean(errors.estadoLead)}>
                   <InputLabel>Estado</InputLabel>
                   <Select
@@ -720,7 +756,11 @@ export const LeadFormPage = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <TextField
                   fullWidth
                   type="date"
@@ -737,7 +777,7 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   fullWidth
                   multiline
@@ -752,7 +792,11 @@ export const LeadFormPage = () => {
               </Grid>
 
               {canSelectSucursal && sucursales.length > 0 && (
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <FormControl fullWidth>
                     <InputLabel>Sucursal</InputLabel>
                     <Select
@@ -768,10 +812,14 @@ export const LeadFormPage = () => {
                 </Grid>
               )}
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth required={!isEditMode} error={Boolean(errors.usuarioAsignadoId)}>
                   <InputLabel>Asesor asignado</InputLabel>
-                  <Select
+                  <Select<number | ''>
                     value={formData.usuarioAsignadoId ?? ''}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -814,13 +862,17 @@ export const LeadFormPage = () => {
               </Grid>
 
               {/* Producto de Interés */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, mb: 1 }}>
                   Producto de Interés
                 </Typography>
               </Grid>
 
-              <Grid item xs={12} md={8}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 8
+                }}>
                 <Autocomplete
                   options={productos}
                   getOptionLabel={(option) => `${option.nombre} - $${option.precio}`}
@@ -845,7 +897,11 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <TextField
                   fullWidth
                   type="number"
@@ -858,13 +914,17 @@ export const LeadFormPage = () => {
               </Grid>
 
               {/* Receta de Fabricación de Interés */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, mb: 1 }}>
                   Equipo a Fabricar (Receta Base)
                 </Typography>
               </Grid>
 
-              <Grid item xs={12} md={12}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 12
+                }}>
                 <Autocomplete
                   options={sortedRecetas}
                   getOptionLabel={(option) => option.nombre}
@@ -894,7 +954,11 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   type="number"
@@ -913,7 +977,11 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 3
+                }}>
                 <TextField
                   fullWidth
                   label="Modelo Personalizado"
@@ -930,7 +998,11 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 3
+                }}>
                 <ColorPicker
                   label="Color"
                   value={formData.colorRecetaInteresId}
@@ -945,7 +1017,11 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 3
+                }}>
                 <MedidaPicker
                   label="Medida"
                   value={formData.medidaRecetaInteresId}
@@ -956,7 +1032,7 @@ export const LeadFormPage = () => {
               </Grid>
 
               {/* Recordatorios */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Divider sx={{ my: 3 }} />
                 <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <NotificationsIcon /> Recordatorios
@@ -973,7 +1049,7 @@ export const LeadFormPage = () => {
                 
                 if (proximoRecordatorio) {
                   return (
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                       <ProximoRecordatorio 
                         leadId={parseInt(id!)} 
                         recordatorio={proximoRecordatorio}
@@ -989,7 +1065,7 @@ export const LeadFormPage = () => {
 
               {/* Lista de recordatorios existentes */}
               {formData.recordatorios && formData.recordatorios.length > 0 && (
-                <Grid item xs={12}>
+                <Grid size={12}>
                   <List>
                     {formData.recordatorios.map((recordatorio, index) => (
                       <ListItem key={index}>
@@ -1035,13 +1111,17 @@ export const LeadFormPage = () => {
               )}
 
               {/* Formulario para nuevo recordatorio */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
                   <Typography variant="subtitle2" gutterBottom>
                     Agregar Nuevo Recordatorio
                   </Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} md={4}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        md: 4
+                      }}>
                       <TextField
                         fullWidth
                         type="date"
@@ -1052,7 +1132,11 @@ export const LeadFormPage = () => {
                         size="small"
                       />
                     </Grid>
-                    <Grid item xs={12} md={3}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        md: 3
+                      }}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Tipo</InputLabel>
                         <Select
@@ -1068,7 +1152,11 @@ export const LeadFormPage = () => {
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={12} md={4}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        md: 4
+                      }}>
                       <TextField
                         fullWidth
                         label="Mensaje (opcional)"
@@ -1077,7 +1165,11 @@ export const LeadFormPage = () => {
                         size="small"
                       />
                     </Grid>
-                    <Grid item xs={12} md={1}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        md: 1
+                      }}>
                       <Button
                         fullWidth
                         variant="contained"
@@ -1094,7 +1186,7 @@ export const LeadFormPage = () => {
               </Grid>
 
               {/* Botones */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
                   <Button
                     variant="outlined"

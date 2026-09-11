@@ -298,7 +298,12 @@ const TableroArmadoViajesPage: React.FC = () => {
       {/* ── Filtros ─────────────────────────────────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={2.5}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 2.5
+            }}>
             <FormControl fullWidth size="small">
               <InputLabel>Provincias</InputLabel>
               <Select
@@ -324,7 +329,12 @@ const TableroArmadoViajesPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <Autocomplete
               size="small"
               options={clienteSearch.options}
@@ -342,7 +352,12 @@ const TableroArmadoViajesPage: React.FC = () => {
               renderInput={(params) => <TextField {...params} label="Cliente" />}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 2
+            }}>
             <FormControl fullWidth size="small">
               <InputLabel>Tipo</InputLabel>
               <Select
@@ -356,7 +371,12 @@ const TableroArmadoViajesPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={6} sm={3} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 3,
+              md: 2
+            }}>
             <TextField
               fullWidth
               size="small"
@@ -367,7 +387,12 @@ const TableroArmadoViajesPage: React.FC = () => {
               onChange={(e) => setFilter('fechaDesde', e.target.value || undefined)}
             />
           </Grid>
-          <Grid item xs={6} sm={3} md={2}>
+          <Grid
+            size={{
+              xs: 6,
+              sm: 3,
+              md: 2
+            }}>
             <TextField
               fullWidth
               size="small"
@@ -378,7 +403,12 @@ const TableroArmadoViajesPage: React.FC = () => {
               onChange={(e) => setFilter('fechaHasta', e.target.value || undefined)}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 2
+            }}>
             <FormControl fullWidth size="small">
               <InputLabel>Observaciones</InputLabel>
               <Select
@@ -392,7 +422,12 @@ const TableroArmadoViajesPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6} md={2.5}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 2.5
+            }}>
             <FormControl fullWidth size="small">
               <InputLabel>Estado</InputLabel>
               <Select
@@ -406,7 +441,12 @@ const TableroArmadoViajesPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6} md={2.5}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 2.5
+            }}>
             <FormControlLabel
               control={
                 <Switch
@@ -417,7 +457,12 @@ const TableroArmadoViajesPage: React.FC = () => {
               label="Solo atrasados"
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2.5}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 2.5
+            }}>
             <FormControlLabel
               control={
                 <Switch
@@ -428,7 +473,12 @@ const TableroArmadoViajesPage: React.FC = () => {
               label="Ver descartadas"
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 2
+            }}>
             <Button
               startIcon={<FilterAltOffIcon />}
               onClick={() => {

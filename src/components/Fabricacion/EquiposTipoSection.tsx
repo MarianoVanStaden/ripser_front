@@ -192,7 +192,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
           />
           <FormControl size="small" sx={{ minWidth: 220 }}>
             <InputLabel id={`estados-fab-label-${tipo}`}>Estado Fabricación</InputLabel>
-            <Select
+            <Select<EstadoFabricacion[]>
               labelId={`estados-fab-label-${tipo}`}
               multiple
               value={estadosFilter}
@@ -211,7 +211,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
           </FormControl>
           <FormControl size="small" sx={{ minWidth: 220 }}>
             <InputLabel id={`estados-asig-label-${tipo}`}>Estado Asignación</InputLabel>
-            <Select
+            <Select<EstadoAsignacionEquipo[]>
               labelId={`estados-asig-label-${tipo}`}
               multiple
               value={estadosAsignacionFilter}

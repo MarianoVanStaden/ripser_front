@@ -15,7 +15,7 @@ import {
   Alert,
   Card,
   CardContent,
-  Grid2 as Grid,
+  Grid,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';

@@ -143,7 +143,12 @@ const PostventaDashboard: React.FC = () => {
 
       {/* KPIs */}
       <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <KpiCard
             icon={<WarningIcon sx={{ fontSize: 40 }} />}
             value={garantiasPorVencer.length}
@@ -152,7 +157,12 @@ const PostventaDashboard: React.FC = () => {
             onClick={() => navigate('/garantias/registro')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <KpiCard
             icon={<VerifiedUserIcon sx={{ fontSize: 40 }} />}
             value={garantiasVencidas}
@@ -161,7 +171,12 @@ const PostventaDashboard: React.FC = () => {
             onClick={() => navigate('/garantias/registro')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <KpiCard
             icon={<AssignmentLateIcon sx={{ fontSize: 40 }} />}
             value={reclamosPendientes.length}
@@ -171,7 +186,12 @@ const PostventaDashboard: React.FC = () => {
           />
         </Grid>
         {verTaller && (
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <KpiCard
               icon={<BuildIcon sx={{ fontSize: 40 }} />}
               value={ordenesRetrasadas.length}
@@ -185,7 +205,11 @@ const PostventaDashboard: React.FC = () => {
 
       <Grid container spacing={3}>
         {/* Garantías por vencer */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
@@ -225,7 +249,11 @@ const PostventaDashboard: React.FC = () => {
         </Grid>
 
         {/* Reclamos pendientes */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
@@ -263,7 +291,7 @@ const PostventaDashboard: React.FC = () => {
 
         {/* Órdenes de servicio (sólo con acceso a Taller) */}
         {verTaller && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card>
               <CardContent>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>

@@ -151,32 +151,56 @@ const ContactosEmergenciaTab: React.FC<Props> = ({ empleadoId }) => {
         <DialogContent>
           <Stack spacing={2} mt={1}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={8}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 8
+                }}>
                 <TextField fullWidth required label="Nombre completo" value={form.nombreCompleto}
                   onChange={(e) => setForm({ ...form, nombreCompleto: e.target.value })} />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 4
+                }}>
                 <TextField fullWidth label="Relación / Vínculo" placeholder="Madre, Hermano, etc."
                   value={form.relacion}
                   onChange={(e) => setForm({ ...form, relacion: e.target.value })} />
               </Grid>
-              <Grid item xs={4} sm={2}>
+              <Grid
+                size={{
+                  xs: 4,
+                  sm: 2
+                }}>
                 <TextField fullWidth label="Cód. País" value={form.telCodigoPais}
                   onChange={(e) => setForm({ ...form, telCodigoPais: e.target.value })} />
               </Grid>
-              <Grid item xs={4} sm={3}>
+              <Grid
+                size={{
+                  xs: 4,
+                  sm: 3
+                }}>
                 <TextField fullWidth label="Área (sin 0)" value={form.telArea}
                   onChange={(e) => setForm({ ...form, telArea: e.target.value })} />
               </Grid>
-              <Grid item xs={4} sm={4}>
+              <Grid
+                size={{
+                  xs: 4,
+                  sm: 4
+                }}>
                 <TextField fullWidth label="Número (sin 15)" value={form.telNumero}
                   onChange={(e) => setForm({ ...form, telNumero: e.target.value })} />
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 3
+                }}>
                 <TextField fullWidth label="Email" type="email" value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <FormControlLabel
                   control={<Checkbox checked={form.esPrincipal}
                     onChange={(e) => setForm({ ...form, esPrincipal: e.target.checked })} />}
