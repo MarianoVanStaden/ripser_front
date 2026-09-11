@@ -265,16 +265,22 @@ export const postVentaAllowedPaths = [
 // Rutas denegadas para el rol ADMIN_EMPRESA_LIMITADO (denylist):
 // Tiene acceso casi total como un ADMIN_EMPRESA, pero se le ocultan pantallas
 // sensibles que sólo debería tocar el dueño (configuración de costos,
-// gestión de usuarios/empresas, posición patrimonial, etc.) y todo RRHH
-// excepto Sueldos / Adelantos / Config. Sueldos.
+// gestión de usuarios/empresas, posición patrimonial, etc.) y todo RRHH.
+// Decisión de producto (sep 2026): Sueldos / Adelantos / Config. Sueldos
+// dejaron de ser excepción — también denegados (el backend acompaña:
+// SUELDOS_ROLES y AdelantoController.ROLES_SUELDOS ya no lo incluyen).
 //
 // FUENTE DE VERDAD ÚNICA: la consume el menú (useNavigation, como paths
 // exactos) y también RoleScopeGuard.tsx (como prefijos, vía startsWith). Editar
 // sólo acá.
 export const adminEmpresaLimitadoDeniedPaths = [
   '/taller/configuracion',
-  // RRHH: ve sólo Sueldos, Adelantos y Config. Sueldos.
+  // RRHH: denegado completo.
   '/rrhh/dashboard',
+  '/rrhh/sueldos',
+  '/rrhh/liquidaciones-finales',
+  '/rrhh/adelantos',
+  '/rrhh/config-sueldos',
   '/rrhh/empleados',
   '/rrhh/legajos',
   '/rrhh/asistencia',
