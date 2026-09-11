@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 
 // --- jsdom shims que MUI necesita (DataGrid, date-pickers, useMediaQuery) ---
 // jsdom no implementa estas APIs; sin ellas los componentes MUI tiran en runtime

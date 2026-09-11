@@ -13,7 +13,9 @@ export default tseslint.config([
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
-      reactHooks.configs['recommended-latest'],
+      // v7: los flat configs viven bajo `configs.flat`; `configs['recommended-latest']`
+      // a secas volvió a ser el shape legacy (eslintrc) y ESLint 10 lo rechaza.
+      reactHooks.configs.flat['recommended-latest'],
       reactRefresh.configs.vite,
     ],
     languageOptions: {
@@ -21,6 +23,27 @@ export default tseslint.config([
       globals: globals.browser,
     },
     rules: {
+      // react-hooks v7: el preset trae las reglas nuevas del React Compiler en
+      // 'error' (~330 hallazgos en código existente). Las bajamos a 'warn' para
+      // no frenar el lint con deuda histórica — rules-of-hooks sigue en error.
+      // Cleanup futuro: ir promoviendo módulo a módulo (ver docs/MIGRACION_VERSIONES_FRONT.md).
+      'react-hooks/static-components': 'warn',
+      'react-hooks/use-memo': 'warn',
+      'react-hooks/void-use-memo': 'warn',
+      'react-hooks/preserve-manual-memoization': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/globals': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/error-boundaries': 'warn',
+      'react-hooks/purity': 'warn',
+      'react-hooks/set-state-in-render': 'warn',
+      'react-hooks/config': 'warn',
+      'react-hooks/gating': 'warn',
+      // ESLint 10: reglas nuevas en js.configs.recommended que flaggean código
+      // preexistente (9 + 5 hallazgos). En warn hasta hacer el cleanup puntual.
+      'no-useless-assignment': 'warn',
+      'preserve-caught-error': 'warn',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',

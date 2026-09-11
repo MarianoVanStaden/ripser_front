@@ -104,13 +104,6 @@ export default defineConfig({
     analyzePlugin,
   ].filter(Boolean),
 
-  // FRONT-005: marcamos los console.log/info/debug como pure para que el
-  // minifier los elimine del bundle de producción. console.warn/error se
-  // preservan (Sentry los captura, son la "señal" útil en prod).
-  esbuild: {
-    pure: ['console.log', 'console.info', 'console.debug'],
-  },
-
   server: {
     port: 5173,
     proxy: {
@@ -151,6 +144,14 @@ export default defineConfig({
         ),
     },
     rollupOptions: {
+      // FRONT-005: console.log/info/debug marcados como pure para que el
+      // bundler los elimine del build de producción. console.warn/error se
+      // preservan (Sentry los captura, son la "señal" útil en prod).
+      // (Era `esbuild.pure` hasta Vite 7; Vite 8/Rolldown no tiene esbuild y
+      // el equivalente es treeshake.manualPureFunctions.)
+      treeshake: {
+        manualPureFunctions: ['console.log', 'console.info', 'console.debug'],
+      },
       output: {
         // Chunking philosophy (after debugging cross-chunk runtime errors):
         //
