@@ -270,7 +270,7 @@ export const exportToPDF = async (config: PDFExportConfig): Promise<void> => {
     doc.save(fileName);
   } catch (error) {
     console.error('Error al exportar a PDF:', error);
-    throw new Error('No se pudo generar el archivo PDF');
+    throw new Error('No se pudo generar el archivo PDF', { cause: error });
   }
 };
 

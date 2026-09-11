@@ -1037,7 +1037,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
       0,
       Number(documento.subtotal ?? 0) - Number(documento.descuentoMonto ?? 0) + Number(documento.iva ?? 0) - costoEnvio
     );
-    yPosition = renderOpcionFinanciamiento({
+    renderOpcionFinanciamiento({
       doc,
       opcion: opcionSeleccionada,
       yPosition,
@@ -1124,7 +1124,6 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
       columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 124 } },
       margin: { left: margin + 1, right: margin + 1 },
     });
-    yPosition = (doc as any).lastAutoTable.finalY;
   }
 
   // ===== PIE DE PÁGINA AZUL CON NOTA =====

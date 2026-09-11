@@ -730,6 +730,6 @@ export const exportarMetricasPDF = async (
     doc.save(nombreArchivo);
   } catch (error) {
     console.error('Error al generar PDF:', error);
-    throw new Error('No se pudo generar el archivo PDF. Verifique que los datos estén completos.');
+    throw new Error('No se pudo generar el archivo PDF. Verifique que los datos estén completos.', { cause: error });
   }
 };

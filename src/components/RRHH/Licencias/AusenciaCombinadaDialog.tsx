@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
 // Dialog para "ausencia combinada": el empleado se va antes hoy + licencia
 // continuada desde mañana. Crea atómicamente la excepción SALIDA_ANTICIPADA

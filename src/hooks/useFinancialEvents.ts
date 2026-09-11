@@ -84,14 +84,15 @@ export function useFinancialEvents(): void {
   const pendingKeysRef   = useRef<Set<string>>(new Set());
   const flushTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const processedIdsRef  = useRef<Set<string>>(new Set());
-  const lastEventTimeRef = useRef<number>(Date.now());
+  // Init 0 (no Date.now(): impuro durante render); el effect SSE lo setea al conectar.
+  const lastEventTimeRef = useRef<number>(0);
   const healthCheckRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   // Counts consecutive retriable failures — reset to 0 on successful open.
   const retryCountRef    = useRef<number>(0);
   // refreshSession is recreated on every AuthContext render; keep the latest
   // in a ref so the SSE effect's dep array doesn't churn.
   const refreshSessionRef = useRef(refreshSession);
-  refreshSessionRef.current = refreshSession;
+  useEffect(() => { refreshSessionRef.current = refreshSession; });
 
   // ---------------------------------------------------------------------------
   // Visibility: when the tab regains focus, invalidate all SSE-tracked queries.

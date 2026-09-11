@@ -113,7 +113,7 @@ const NotasPedidoPage: React.FC = () => {
   // Reset page=0 cuando cambian filtros (evita pedir página vacía).
   useEffect(() => {
     setPage(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [debouncedSearch, statusFilter, clientFilter, dateFromFilter, dateToFilter]);
 
   const notasQuery = useQuery({
@@ -184,7 +184,7 @@ const NotasPedidoPage: React.FC = () => {
       }
       return mutated ? next : prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [notasPedido]);
 
   // Batch-load opciones for notas that have a selected financing option but no cached opciones.
@@ -1213,7 +1213,7 @@ const NotasPedidoPage: React.FC = () => {
     const descuentoMonto = Number(notaToBill.descuentoMonto ?? 0);
     const ivaAmount = notaToBill.iva ?? 0;
     const montoTotal = (notaToBill.subtotal ?? 0) - descuentoMonto + ivaAmount;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const costoEnvio = (notaToBill.detalles ?? [])
       .filter((d: any) => d.tipoItem === 'ENVIO')
       .reduce((s: number, d: any) => s + (Number(d.subtotal) || 0), 0);

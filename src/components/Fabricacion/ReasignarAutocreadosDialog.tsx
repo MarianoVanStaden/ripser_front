@@ -41,7 +41,7 @@ const ReasignarAutocreadosDialog: React.FC<Props> = ({ open, onClose, onApplied 
       setError(null);
       correrDryRun();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [open]);
 
   const correrDryRun = async () => {

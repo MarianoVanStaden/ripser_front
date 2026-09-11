@@ -52,6 +52,7 @@ export function CommandPalette({
   // Reset al abrir.
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el palette; un solo re-render, sin cascada
       setQuery('');
       setHighlight(0);
     }
@@ -80,10 +81,6 @@ export function CommandPalette({
         return aw - bw;
       });
   }, [q, items, favItems, recItems]);
-
-  useEffect(() => {
-    setHighlight(0);
-  }, [q]);
 
   const go = (path?: string) => {
     const target = path ?? results[highlight]?.path;
@@ -126,7 +123,7 @@ export function CommandPalette({
           size="small"
           placeholder="Buscar pantalla…"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { setQuery(e.target.value); setHighlight(0); }}
           onKeyDown={handleKeyDown}
           InputProps={{
             startAdornment: (

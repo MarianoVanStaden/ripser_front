@@ -148,7 +148,7 @@ const ClienteFormPage: React.FC = () => {
       }
       setMontoConversion(cliente.montoConversion ?? '');
       setConversionTouched(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [clienteQuery.data, clienteIdNum]);
   useEffect(() => {
     if (clienteQuery.error) setError('Error al cargar el cliente');

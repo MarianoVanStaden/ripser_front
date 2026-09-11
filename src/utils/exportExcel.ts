@@ -104,7 +104,7 @@ export const exportToExcel = async (config: ExcelExportConfig): Promise<void> =>
     downloadBuffer(buffer, fileName);
   } catch (error) {
     console.error('Error al exportar a Excel:', error);
-    throw new Error('No se pudo generar el archivo Excel');
+    throw new Error('No se pudo generar el archivo Excel', { cause: error });
   }
 };
 

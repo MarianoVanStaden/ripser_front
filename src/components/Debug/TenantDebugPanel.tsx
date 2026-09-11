@@ -8,7 +8,7 @@
  * Ejemplo: import { TenantDebugPanel } from './components/Debug/TenantDebugPanel';
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -25,21 +25,19 @@ interface JWTPayload {
 export const TenantDebugPanel: React.FC = () => {
   const { empresaId, sucursalId, esSuperAdmin, empresaActual, sucursalActual } = useTenant();
   const { user, token } = useAuth();
-  const [jwtPayload, setJwtPayload] = useState<JWTPayload | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    // Decodificar JWT del localStorage
+  // Dato derivado del token — useMemo en vez de estado + effect (panel de debug).
+  const jwtPayload = useMemo<JWTPayload | null>(() => {
     const storedToken = localStorage.getItem('auth_token');
-    if (storedToken) {
-      try {
-        const base64Url = storedToken.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(atob(base64));
-        setJwtPayload(payload);
-      } catch (error) {
-        console.error('Error decoding JWT:', error);
-      }
+    if (!storedToken) return null;
+    try {
+      const base64Url = storedToken.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(base64));
+    } catch (error) {
+      console.error('Error decoding JWT:', error);
+      return null;
     }
   }, [token]);
 

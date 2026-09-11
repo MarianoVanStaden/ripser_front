@@ -87,7 +87,7 @@ const PresupuestosPage: React.FC = () => {
   // Reset page=0 cuando cambian filtros (evita pedir página vacía).
   useEffect(() => {
     setPage(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [debouncedSearch, statusFilter, clientFilter?.id, dateFromFilter, dateToFilter]);
 
   const presupuestosQueryKey = useMemo(() => ([

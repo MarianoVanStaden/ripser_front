@@ -48,6 +48,7 @@ export function useLeadSearch(options: UseLeadSearchOptions = {}): UseLeadSearch
   useEffect(() => {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading sync previo al fetch debounced; migrar a React Query es el fix real
     setLoading(true);
 
     const loadLeads = async () => {

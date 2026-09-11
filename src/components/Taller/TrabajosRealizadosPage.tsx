@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
+ 
 // (@ts-nocheck removido — ver MUI_V7_GRID_FIX.md si reaparecen errores de Grid)
 import React, { useState, useMemo } from 'react';
 import {

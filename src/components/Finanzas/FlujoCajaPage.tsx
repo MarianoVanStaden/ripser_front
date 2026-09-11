@@ -99,11 +99,6 @@ const FlujoCajaPage: React.FC = () => {
     searchTerm: '',
   });
 
-  // Mock data - Replace with actual API call
-  useEffect(() => {
-    loadMovimientos();
-  }, []);
-
   const loadMovimientos = async () => {
     try {
       setLoading(true);
@@ -149,6 +144,12 @@ const FlujoCajaPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Mock data - Replace with actual API call
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadMovimientos();
+  }, []);
 
   // Filtrar movimientos
   const filteredMovimientos = useMemo(() => {

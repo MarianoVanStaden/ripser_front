@@ -406,7 +406,7 @@ const EmpleadosPage: React.FC = () => {
       const fresh = lista.find((e: Empleado) => e.id === prev.id);
       return fresh ?? prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [panelQuery.data]);
 
   const handleOpenDetail = (empleado: Empleado) => {

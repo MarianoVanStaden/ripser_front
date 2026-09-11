@@ -16,7 +16,7 @@ export function MedidasProvider({ children, onlyActive = false }: MedidasProvide
   const [error, setError] = useState<string | null>(null);
 
   const onlyActiveRef = useRef(onlyActive);
-  onlyActiveRef.current = onlyActive;
+  useEffect(() => { onlyActiveRef.current = onlyActive; });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -41,6 +41,7 @@ export function MedidasProvider({ children, onlyActive = false }: MedidasProvide
 
   useEffect(() => {
     if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpiar catálogo al perder sesión (sync con auth); un re-render, sin cascada
       setMedidas([]);
       return;
     }

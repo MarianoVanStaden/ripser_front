@@ -86,6 +86,46 @@ export default tseslint.config([
       'ripser/no-literal-colors': 'error',
     },
   },
+  // ── Promoción módulo a módulo de las reglas nuevas (react-hooks v7 compiler
+  // + ESLint 10 core) de 'warn' a 'error'. Un módulo entra a esta lista cuando
+  // queda en cero hallazgos (fix real o disable puntual con motivo). La meta es
+  // que la lista cubra todo src/ y entonces se borra junto con los 'warn' de
+  // arriba. NO sacar módulos de acá: es un freeze contra regresiones.
+  {
+    files: [
+      'src/api/**',
+      'src/utils/**',
+      'src/services/**',
+      'src/context/**',
+      'src/hooks/**',
+      'src/components/BackendSetupDialog/**',
+      'src/components/Bancos/**',
+      'src/components/Clients/**',
+      'src/components/Debug/**',
+      'src/components/DevEnvBadge.tsx',
+      'src/components/Finanzas/**',
+      'src/components/Layout/**',
+      'src/components/leads/**',
+      'src/components/shared/**',
+    ],
+    rules: {
+      'react-hooks/static-components': 'error',
+      'react-hooks/use-memo': 'error',
+      'react-hooks/void-use-memo': 'error',
+      'react-hooks/preserve-manual-memoization': 'error',
+      'react-hooks/immutability': 'error',
+      'react-hooks/globals': 'error',
+      'react-hooks/refs': 'error',
+      'react-hooks/set-state-in-effect': 'error',
+      'react-hooks/error-boundaries': 'error',
+      'react-hooks/purity': 'error',
+      'react-hooks/set-state-in-render': 'error',
+      'react-hooks/config': 'error',
+      'react-hooks/gating': 'error',
+      'no-useless-assignment': 'error',
+      'preserve-caught-error': 'error',
+    },
+  },
   // react-refresh no aplica a infra de test: esos archivos no participan del
   // HMR de Vite y sus re-exports (`export *` de testing-library) son legítimos.
   {

@@ -85,10 +85,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
   const [docIdToDelete, setDocIdToDelete] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  useEffect(() => {
-    loadDocumentos();
-  }, [entityId]);
-
   const loadDocumentos = async () => {
     try {
       setLoading(true);
@@ -101,6 +97,12 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch al cambiar de entidad: loadDocumentos setea loading sync; migrar a React Query es el fix real
+    loadDocumentos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entityId]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {

@@ -160,7 +160,7 @@ const FichaEquipoPage: React.FC = () => {
     if (paramNumero) {
       void loadFicha(paramNumero);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [paramNumero]);
 
   // URL absoluta a la ficha online — único contenido del QR.

@@ -34,12 +34,6 @@ const BackendSetupDialog: React.FC<BackendSetupDialogProps> = ({ open, onClose }
   } | null>(null);
   const [testing, setTesting] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      checkConnection();
-    }
-  }, [open]);
-
   const checkConnection = async () => {
     setTesting(true);
     try {
@@ -54,6 +48,13 @@ const BackendSetupDialog: React.FC<BackendSetupDialogProps> = ({ open, onClose }
       setTesting(false);
     }
   };
+
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- test de conexión al abrir: setea testing sync antes del request
+      checkConnection();
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>

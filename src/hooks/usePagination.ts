@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PageResponse } from '../types/pagination.types';
 
@@ -72,7 +72,7 @@ export function usePagination<T, F = Record<string, unknown>>(
   const [armed, setArmed] = useState(fetchOnMount);
 
   const fetchFnRef = useRef(fetchFn);
-  fetchFnRef.current = fetchFn;
+  useEffect(() => { fetchFnRef.current = fetchFn; });
   const queryClient = useQueryClient();
 
   const query = useQuery({

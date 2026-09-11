@@ -137,7 +137,7 @@ const NotasCreditoPage: React.FC = () => {
     if (facturasQuery.error) {
       setAlert({ open: true, message: 'Error al cargar las facturas.', severity: 'error' });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [facturasQuery.error]);
 
   // ── Handlers ──

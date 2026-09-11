@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { SidebarContext, type SidebarContextValue } from './useSidebar';
 
@@ -16,7 +16,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   // Ref para leer el valor actual de multiOpen dentro de callbacks estables
   // sin recrearlos (los callbacks alimentan componentes memoizados).
   const multiOpenRef = useRef(multiOpen);
-  multiOpenRef.current = multiOpen;
+  useEffect(() => { multiOpenRef.current = multiOpen; });
 
   const openModule = useCallback(
     (id: string) => {

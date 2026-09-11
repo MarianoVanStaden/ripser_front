@@ -38,10 +38,6 @@ const ClientsPage: React.FC = () => {
     address: '',
   });
 
-  useEffect(() => {
-    fetchClients();
-  }, []);
-
   const fetchClients = async () => {
     try {
       setLoading(true);
@@ -55,6 +51,11 @@ const ClientsPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    fetchClients();
+  }, []);
 
   const handleOpenDialog = (client?: Client) => {
     if (client) {

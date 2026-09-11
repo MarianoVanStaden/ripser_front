@@ -153,7 +153,7 @@ const RegistroVentasPage: React.FC = () => {
   // Reset page=0 cuando cambian filtros server-side.
   useEffect(() => {
     setPage(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [debouncedSearch, statusFilter, clientFilter, dateFromFilter, dateToFilter, tipoDocumentoFilter, debouncedCiudad, provinciaFilter]);
 
   const usuariosMap = useMemo(

@@ -36,7 +36,7 @@ const SanearReservasHuerfanasDialog: React.FC<Props> = ({ open, onClose, onAppli
       setError(null);
       correrDryRun();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [open]);
 
   const correrDryRun = async () => {

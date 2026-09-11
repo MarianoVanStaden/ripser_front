@@ -25,7 +25,7 @@ export function ColoresProvider({ children, onlyActive = false }: ColoresProvide
   // We need stable filter semantics across renders so the loader doesn't
   // thrash. The provider is meant to be mounted near the app root.
   const onlyActiveRef = useRef(onlyActive);
-  onlyActiveRef.current = onlyActive;
+  useEffect(() => { onlyActiveRef.current = onlyActive; });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -50,6 +50,7 @@ export function ColoresProvider({ children, onlyActive = false }: ColoresProvide
 
   useEffect(() => {
     if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpiar catálogo al perder sesión (sync con auth); un re-render, sin cascada
       setColores([]);
       return;
     }
