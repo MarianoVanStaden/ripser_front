@@ -20,6 +20,37 @@ import type { OrdenServicio } from '../../types';
 
 const PROXIMO_VENCER_DIAS = 30;
 
+// A nivel módulo: definirlo dentro del dashboard lo recreaba en cada render
+// (react-hooks/static-components); no cierra sobre nada, todo entra por props.
+const KpiCard = ({
+  icon, value, label, color, onClick,
+}: { icon: React.ReactNode; value: number; label: string; color: string; onClick?: () => void }) => (
+  <Card
+    sx={{
+      bgcolor: `${color}.50`,
+      borderLeft: '4px solid',
+      borderColor: `${color}.main`,
+      cursor: onClick ? 'pointer' : 'default',
+      height: '100%',
+    }}
+    onClick={onClick}
+  >
+    <CardContent>
+      <Stack direction="row" alignItems="center" spacing={2}>
+        <Box sx={{ color: `${color}.main`, display: 'flex' }}>{icon}</Box>
+        <Box>
+          <Typography variant="h4" fontWeight="bold" color={`${color}.main`}>
+            {value}
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            {label}
+          </Typography>
+        </Box>
+      </Stack>
+    </CardContent>
+  </Card>
+);
+
 const PostventaDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { tienePermiso } = usePermisos();
@@ -32,11 +63,6 @@ const PostventaDashboard: React.FC = () => {
   const [reclamos, setReclamos] = useState<ReclamoGarantiaDTO[]>([]);
   const [ordenesAbiertas, setOrdenesAbiertas] = useState<OrdenServicio[]>([]);
   const [ordenesRetrasadas, setOrdenesRetrasadas] = useState<OrdenServicio[]>([]);
-
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verTaller]);
 
   const loadData = async () => {
     try {
@@ -80,6 +106,12 @@ const PostventaDashboard: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: loadData setea loading sync; migrar a React Query es el fix real
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verTaller]);
+
   // ----- Derivados de garantías -----
   const garantiasVigentes = garantias.filter(g => g.estado === 'VIGENTE');
   const garantiasPorVencer = garantiasVigentes
@@ -90,35 +122,6 @@ const PostventaDashboard: React.FC = () => {
 
   const reclamosPendientes = reclamos.filter(
     r => r.estado === 'PENDIENTE' || r.estado === 'EN_PROCESO'
-  );
-
-  const KpiCard = ({
-    icon, value, label, color, onClick,
-  }: { icon: React.ReactNode; value: number; label: string; color: string; onClick?: () => void }) => (
-    <Card
-      sx={{
-        bgcolor: `${color}.50`,
-        borderLeft: '4px solid',
-        borderColor: `${color}.main`,
-        cursor: onClick ? 'pointer' : 'default',
-        height: '100%',
-      }}
-      onClick={onClick}
-    >
-      <CardContent>
-        <Stack direction="row" alignItems="center" spacing={2}>
-          <Box sx={{ color: `${color}.main`, display: 'flex' }}>{icon}</Box>
-          <Box>
-            <Typography variant="h4" fontWeight="bold" color={`${color}.main`}>
-              {value}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              {label}
-            </Typography>
-          </Box>
-        </Stack>
-      </CardContent>
-    </Card>
   );
 
   if (loading) {

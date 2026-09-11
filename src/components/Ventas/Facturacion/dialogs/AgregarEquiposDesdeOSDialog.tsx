@@ -52,12 +52,6 @@ const AgregarEquiposDesdeOSDialog: React.FC<Props> = ({ open, onClose, onConfirm
   const [preciosPorEquipo, setPreciosPorEquipo] = useState<{ [key: number]: number }>({});
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open) {
-      loadOrdenes();
-    }
-  }, [open, clienteId]);
-
   const loadOrdenes = async () => {
     try {
       setLoadingOS(true);
@@ -91,6 +85,13 @@ const AgregarEquiposDesdeOSDialog: React.FC<Props> = ({ open, onClose, onConfirm
       setLoadingOS(false);
     }
   };
+
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial al abrir el dialog: setea loading sync antes del request; migrar a React Query es el fix real
+      loadOrdenes();
+    }
+  }, [open, clienteId]);
 
   const handleSelectOrden = (orden: OrdenServicio | null) => {
     setSelectedOrden(orden);

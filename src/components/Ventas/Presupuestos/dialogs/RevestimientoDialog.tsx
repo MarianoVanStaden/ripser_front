@@ -24,6 +24,7 @@ export default function RevestimientoDialog({ open, onClose, cantidadInicial, on
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
     setCantidad(cantidadInicial > 0 ? cantidadInicial : 1);
     documentoApi.getPrecioRevestimiento()
       .then(setPrecio)

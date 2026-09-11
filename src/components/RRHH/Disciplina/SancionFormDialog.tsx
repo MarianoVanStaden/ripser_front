@@ -82,6 +82,7 @@ const SancionFormDialog: React.FC<SancionFormDialogProps> = ({
     if (!open) return;
     if (initial) {
       const emp = empleados.find(e => e.id === initial.empleadoId) ?? null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- carga del form al abrir el dialog (crear/editar); un re-render, sin cascada
       setEmpleado(emp ?? (empleadoFijo ?? null));
       setFecha(initial.fecha);
       setTipo(initial.tipo);

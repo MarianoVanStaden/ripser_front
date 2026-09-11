@@ -158,9 +158,10 @@ const FichaEquipoPage: React.FC = () => {
 
   useEffect(() => {
     if (paramNumero) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
       void loadFicha(paramNumero);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [paramNumero]);
 
   // URL absoluta a la ficha online — único contenido del QR.

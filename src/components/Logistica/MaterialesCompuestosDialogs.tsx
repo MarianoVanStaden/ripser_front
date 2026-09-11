@@ -49,6 +49,7 @@ export const ComposicionDialog: React.FC<{
 
   useEffect(() => {
     if (open && producto) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset + loading sync al abrir el dialog antes del request; migrar a React Query es el fix real
       setError(null);
       setCargando(true);
       productoCompuestoApi
@@ -188,6 +189,7 @@ export const AjusteStockDialog: React.FC<{
 
   useEffect(() => {
     if (open && producto) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
       setNuevoStock(producto.stockActual ?? 0);
       setMotivo('');
       setError(null);

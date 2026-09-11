@@ -30,6 +30,7 @@ export default function ResumenTab({ onError }: Props) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- limpia el resumen al deseleccionar empresa; un re-render, sin cascada
     if (!empresa) { setResumen(null); return; }
     let cancel = false;
     setLoading(true);

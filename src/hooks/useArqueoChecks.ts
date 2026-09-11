@@ -19,6 +19,7 @@ export function useArqueoChecks(cajaId: number) {
   const [checkedIds, setCheckedIds] = useState<Set<number>>(() => loadFromStorage(cajaId));
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resync desde localStorage al cambiar de caja (store externo); un re-render, sin cascada
     setCheckedIds(loadFromStorage(cajaId));
   }, [cajaId]);
 

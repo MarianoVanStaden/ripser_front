@@ -112,8 +112,9 @@ const NotasPedidoPage: React.FC = () => {
 
   // Reset page=0 cuando cambian filtros (evita pedir página vacía).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar filtros; un re-render, sin cascada
     setPage(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [debouncedSearch, statusFilter, clientFilter, dateFromFilter, dateToFilter]);
 
   const notasQuery = useQuery({
@@ -165,8 +166,12 @@ const NotasPedidoPage: React.FC = () => {
   });
   const clientes = clientesQuery.data ?? [];
 
+  // Declarado antes de los effects que lo consumen (react-hooks/immutability).
+  const [notasFinanciamiento, setNotasFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
+
   useEffect(() => {
     if (!notasPedido.length) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del cache de opciones de financiamiento con la página de notas; un re-render, sin cascada
     setNotasFinanciamiento((prev) => {
       const next = { ...prev };
       let mutated = false;
@@ -184,7 +189,7 @@ const NotasPedidoPage: React.FC = () => {
       }
       return mutated ? next : prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [notasPedido]);
 
   // Batch-load opciones for notas that have a selected financing option but no cached opciones.
@@ -263,7 +268,6 @@ const NotasPedidoPage: React.FC = () => {
   const [notaParaFinanciamiento, setNotaParaFinanciamiento] = useState<DocumentoComercial | null>(null);
   const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState<OpcionFinanciamientoDTO[]>([]);
   const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
-  const [notasFinanciamiento, setNotasFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
   const [loadingOpciones, setLoadingOpciones] = useState(false);
 
   const [leadConversionDialogOpen, setLeadConversionDialogOpen] = useState(false);
@@ -316,6 +320,11 @@ const NotasPedidoPage: React.FC = () => {
   // queda descartado incluso mientras el botón todavía figura habilitado. Evita crear
   // dos notas de pedido idénticas a partir del mismo presupuesto (race TOCTOU).
   const convirtiendoNotaRef = useRef(false);
+
+  // Billing Dialog state (para Financiación Propia). Declarado acá (antes de
+  // handleDeudaCancel, que usa los setters) por react-hooks/immutability.
+  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
+  const [notaToBill, setNotaToBill] = useState<DocumentoComercial | null>(null);
 
   // Detects a debt-block response regardless of HTTP status or missing requiereConfirmacion flag.
   // The backend may return 400/409/422 and may omit requiereConfirmacion on some endpoints.
@@ -430,16 +439,19 @@ const NotasPedidoPage: React.FC = () => {
   });
   useEffect(() => {
     const data = presupuestosPendientesQuery.data?.content ?? [];
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- cache local sync con el query (se muta aparte al convertir un presupuesto); un re-render, sin cascada
     setPresupuestos(data.filter((p) => p.clienteId != null));
   }, [presupuestosPendientesQuery.data]);
 
   // El loading global ahora lo dicta solo el query de notas (es lo que se ve).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync loading con notasQuery; un re-render, sin cascada; migrar a estado derivado es el fix real
     setLoading(notasQuery.isLoading);
   }, [notasQuery.isLoading]);
   useEffect(() => {
     if (notasQuery.error) {
       const err = notasQuery.error as { response?: { data?: { message?: string } }; message?: string };
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync error con notasQuery; un re-render, sin cascada
       setError(err?.response?.data?.message || err?.message || 'Error al cargar las notas de pedido');
     } else {
       setError(null);
@@ -1141,9 +1153,6 @@ const NotasPedidoPage: React.FC = () => {
     }
   }, [notaToEdit, editForm, queryClient, handleCloseEditDialog, canReassignVendedor]);
 
-  // Billing Dialog state (para Financiación Propia)
-  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
-  const [notaToBill, setNotaToBill] = useState<DocumentoComercial | null>(null);
   // Confirmación previa a convertir una nota (sin equipos) a factura.
   // Antes era un window.confirm; ahora pasa por ConfirmDialog para mantener UX.
   const [confirmConvertFactura, setConfirmConvertFactura] = useState<{ nota: DocumentoComercial; payload: any } | null>(null);
@@ -1203,33 +1212,45 @@ const NotasPedidoPage: React.FC = () => {
     setNotaToBill(null);
   };
 
-  const submitBillingDialog = () => {
-    if (!notaToBill) return;
-    // Compute the real total with interest so the success dialog shows the correct value.
-    // Debe coincidir con BillingDialog: el envío NUNCA se financia ni recibe interés;
-    // la entrega = envío completo + % sobre equipos, y el interés se aplica sólo al
-    // saldo de equipos. montoTotal = subtotal - descuento + iva (descuentoMonto ya
-    // excluye el envío en el backend, por eso el envío queda dentro de montoTotal).
-    const descuentoMonto = Number(notaToBill.descuentoMonto ?? 0);
-    const ivaAmount = notaToBill.iva ?? 0;
-    const montoTotal = (notaToBill.subtotal ?? 0) - descuentoMonto + ivaAmount;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const costoEnvio = (notaToBill.detalles ?? [])
-      .filter((d: any) => d.tipoItem === 'ENVIO')
-      .reduce((s: number, d: any) => s + (Number(d.subtotal) || 0), 0);
-    const baseEquipos = montoTotal - costoEnvio;
-    const entregaEquipos = billingForm.entregarInicial
-      ? (billingForm.usePorcentaje
-          ? baseEquipos * (billingForm.porcentajeEntregaInicial / 100)
-          : billingForm.montoEntregaInicial)
-      : 0;
-    const saldoFinanciado = baseEquipos - entregaEquipos;
-    const interesTotal = saldoFinanciado * (billingForm.tasaInteres / 100);
-    // Total con financiamiento = entrega (envío + %equipos) + saldo + interés = montoTotal + interés.
-    setFacturaTotalConFinanciamiento(billingForm.tasaInteres > 0 ? montoTotal + interesTotal : null);
-    handleConvertToFactura(notaToBill.id, false, billingForm);
-    handleCloseBillingDialog();
-  };
+  // Ejecuta efectivamente la conversión a factura cuando la nota no tiene
+  // equipos (ya pasó la confirmación). Manejamos acá el flujo de deuda para
+  // mantener la lógica original. Declarado antes de handleConvertToFactura,
+  // que lo invoca (react-hooks/immutability).
+  const executeConvertToFacturaNoEquipos = useCallback(
+    async (baseFacturaPayload: any, confirmarConDeudaPendiente: boolean) => {
+      try {
+        setError(null);
+        const factura = await documentoApi.convertToFactura({
+          ...baseFacturaPayload,
+          ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
+        });
+        invalidateNotas();
+        setCreatedFactura(factura);
+        setFacturaSuccessDialogOpen(true);
+      } catch (err: any) {
+        console.error("Error converting to factura:", err);
+        const deudaData = parseDeudaError(err);
+        if (deudaData) {
+          setDeudaError(deudaData);
+          pendingDeudaRef.current = async () => {
+            try {
+              setError(null);
+              const facturaRetry = await documentoApi.convertToFactura({ ...baseFacturaPayload, confirmarConDeudaPendiente: true });
+              invalidateNotas();
+              setCreatedFactura(facturaRetry);
+              setFacturaSuccessDialogOpen(true);
+            } catch (retryErr: any) {
+              setError(retryErr?.response?.data?.message || retryErr?.message || "Error desconocido al convertir a factura");
+            }
+          };
+          return;
+        }
+        const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
+        setError(errorMessage);
+      }
+    },
+    [invalidateNotas]
+  );
 
   const handleConvertToFactura = useCallback(async (notaId: number, confirmarConDeudaPendiente = false, extraData?: any) => {
     // Find the nota
@@ -1297,6 +1318,7 @@ const NotasPedidoPage: React.FC = () => {
                 setAsignarEquiposDialogOpen(true);
               };
             } else {
+              // eslint-disable-next-line react-hooks/immutability -- auto-referencia del callback para el reintento post-confirmación de deuda; se consume de inmediato desde el ref, no queda una versión vieja viva
               pendingDeudaRef.current = () => handleConvertToFactura(notaId, true, extraData);
             }
             return;
@@ -1349,44 +1371,34 @@ const NotasPedidoPage: React.FC = () => {
     }
   }, [notasPedido, invalidateNotas]);
 
-  // Ejecuta efectivamente la conversión a factura cuando la nota no tiene
-  // equipos (ya pasó la confirmación). Manejamos acá el flujo de deuda para
-  // mantener la lógica original.
-  const executeConvertToFacturaNoEquipos = useCallback(
-    async (baseFacturaPayload: any, confirmarConDeudaPendiente: boolean) => {
-      try {
-        setError(null);
-        const factura = await documentoApi.convertToFactura({
-          ...baseFacturaPayload,
-          ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
-        });
-        invalidateNotas();
-        setCreatedFactura(factura);
-        setFacturaSuccessDialogOpen(true);
-      } catch (err: any) {
-        console.error("Error converting to factura:", err);
-        const deudaData = parseDeudaError(err);
-        if (deudaData) {
-          setDeudaError(deudaData);
-          pendingDeudaRef.current = async () => {
-            try {
-              setError(null);
-              const facturaRetry = await documentoApi.convertToFactura({ ...baseFacturaPayload, confirmarConDeudaPendiente: true });
-              invalidateNotas();
-              setCreatedFactura(facturaRetry);
-              setFacturaSuccessDialogOpen(true);
-            } catch (retryErr: any) {
-              setError(retryErr?.response?.data?.message || retryErr?.message || "Error desconocido al convertir a factura");
-            }
-          };
-          return;
-        }
-        const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
-        setError(errorMessage);
-      }
-    },
-    [invalidateNotas]
-  );
+  // Declarado después de handleConvertToFactura, que invoca (react-hooks/immutability).
+  const submitBillingDialog = () => {
+    if (!notaToBill) return;
+    // Compute the real total with interest so the success dialog shows the correct value.
+    // Debe coincidir con BillingDialog: el envío NUNCA se financia ni recibe interés;
+    // la entrega = envío completo + % sobre equipos, y el interés se aplica sólo al
+    // saldo de equipos. montoTotal = subtotal - descuento + iva (descuentoMonto ya
+    // excluye el envío en el backend, por eso el envío queda dentro de montoTotal).
+    const descuentoMonto = Number(notaToBill.descuentoMonto ?? 0);
+    const ivaAmount = notaToBill.iva ?? 0;
+    const montoTotal = (notaToBill.subtotal ?? 0) - descuentoMonto + ivaAmount;
+
+    const costoEnvio = (notaToBill.detalles ?? [])
+      .filter((d: any) => d.tipoItem === 'ENVIO')
+      .reduce((s: number, d: any) => s + (Number(d.subtotal) || 0), 0);
+    const baseEquipos = montoTotal - costoEnvio;
+    const entregaEquipos = billingForm.entregarInicial
+      ? (billingForm.usePorcentaje
+          ? baseEquipos * (billingForm.porcentajeEntregaInicial / 100)
+          : billingForm.montoEntregaInicial)
+      : 0;
+    const saldoFinanciado = baseEquipos - entregaEquipos;
+    const interesTotal = saldoFinanciado * (billingForm.tasaInteres / 100);
+    // Total con financiamiento = entrega (envío + %equipos) + saldo + interés = montoTotal + interés.
+    setFacturaTotalConFinanciamiento(billingForm.tasaInteres > 0 ? montoTotal + interesTotal : null);
+    handleConvertToFactura(notaToBill.id, false, billingForm);
+    handleCloseBillingDialog();
+  };
 
   const handleConfirmConvertFactura = useCallback(async () => {
     if (!confirmConvertFactura) return;

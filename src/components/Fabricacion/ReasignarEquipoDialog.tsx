@@ -28,16 +28,6 @@ const ReasignarEquipoDialog: React.FC<ReasignarEquipoDialogProps> = ({
   const [seleccionado, setSeleccionado] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open && equipo?.id) {
-      cargarReemplazos(equipo.id);
-    } else {
-      setReemplazos([]);
-      setSeleccionado(null);
-      setError(null);
-    }
-  }, [open, equipo?.id]);
-
   const cargarReemplazos = async (equipoId: number) => {
     setLoading(true);
     setError(null);
@@ -53,6 +43,18 @@ const ReasignarEquipoDialog: React.FC<ReasignarEquipoDialogProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (open && equipo?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial al abrir el dialog: setea loading sync antes del request; migrar a React Query es el fix real
+      cargarReemplazos(equipo.id);
+    } else {
+       
+      setReemplazos([]);
+      setSeleccionado(null);
+      setError(null);
+    }
+  }, [open, equipo?.id]);
 
   const handleConfirm = async () => {
     if (!equipo?.id || !seleccionado) return;

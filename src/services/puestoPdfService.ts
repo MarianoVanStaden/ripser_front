@@ -326,7 +326,7 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
     const rRows: [string, string][] = [];
     if (rReemplaza.length)   rRows.push(['Reemplaza a',       rReemplaza.join(', ')]);
     if (rReemplazado.length) rRows.push(['Reemplazado por',   rReemplazado.join(', ')]);
-    y = infoTable(doc, y, rRows, 44);
+    infoTable(doc, y, rRows, 44);
   }
 
   // ── FOOTER ─────────────────────────────────────────────────────────

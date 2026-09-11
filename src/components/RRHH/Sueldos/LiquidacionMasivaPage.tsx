@@ -169,6 +169,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
   useEffect(() => {
     if (!periodo) return;
     let cancelado = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch al cambiar el período: setea loading sync antes del request; migrar a React Query es el fix real
     setLoadingUnidades(true);
     sueldoApi.getUnidadesMes(periodo)
       .then(r => {
@@ -206,6 +207,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
   // así no piso las ediciones del usuario en cada keystroke.
   useEffect(() => {
     if (empleados.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- regenera la grilla editable al cambiar período/datos; copia local intencional, sin cascada
       setRows([]);
       return;
     }

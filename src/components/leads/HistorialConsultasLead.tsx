@@ -128,6 +128,7 @@ export const HistorialConsultasLead = ({
   }, [leadId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- cargar() setea loading sync antes del fetch; migrar a React Query es el fix real
     cargar();
   }, [cargar]);
 

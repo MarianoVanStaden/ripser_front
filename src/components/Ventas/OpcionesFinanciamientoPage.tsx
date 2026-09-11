@@ -58,6 +58,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
   // Auto-seleccionar el primero cuando llega la lista (semántica original).
   useEffect(() => {
     if (documentos.length > 0 && !selectedDocumentoId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync selección con la lista cargada (auto-selección del primero); un re-render, sin cascada
       setSelectedDocumentoId(documentos[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

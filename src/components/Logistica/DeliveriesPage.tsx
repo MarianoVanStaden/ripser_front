@@ -692,6 +692,7 @@ const DeliveriesPage2: React.FC = () => {
     setCobroStandaloneMontoEsperado(monto ?? null);
     setCobroStandaloneData(
       monto != null
+        // eslint-disable-next-line react-hooks/purity -- Date.now() genera el id de fila dentro de un event handler, no en render
         ? { detalles: [{ id: `det-${Date.now()}`, metodoPago: 'EFECTIVO', monto: String(monto), comprobante: '' }] }
         : initialCobroData()
     );

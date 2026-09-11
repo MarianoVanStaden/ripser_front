@@ -56,6 +56,7 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
     setLoadingPrestamos(true);
     // El motor crea las gestiones de crédito automáticamente al entrar en mora,
     // así que casi todos los EN_MORA/EN_LEGAL ya tienen gestión activa (409 seguro).
@@ -80,6 +81,7 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
   // Pre-fill montoPendiente when prestamo changes
   useEffect(() => {
     if (selectedPrestamo) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-carga monto pendiente al elegir crédito; un re-render, sin cascada
       setForm((f) => ({ ...f, montoPendiente: selectedPrestamo.saldoPendiente }));
     }
   }, [selectedPrestamo]);

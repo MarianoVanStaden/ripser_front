@@ -131,12 +131,6 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [confirmIncompletosOpen, setConfirmIncompletosOpen] = useState(false);
 
-  useEffect(() => {
-    if (open && detallesEquipo.length > 0) {
-      initializeAsignaciones();
-    }
-  }, [open, detallesEquipo]);
-
   const initializeAsignaciones = async () => {
     setLoading(true);
     setError(null);
@@ -391,6 +385,13 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
 
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (open && detallesEquipo.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial al abrir el dialog: setea loading sync antes del request; migrar a React Query es el fix real
+      initializeAsignaciones();
+    }
+  }, [open, detallesEquipo]);
 
   const handleEquipoToggle = (asignacionIndex: number, equipoId: number) => {
     setAsignaciones((prev) =>

@@ -47,6 +47,7 @@ export function useExcepciones({
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
     reload();
   }, [reload]);
 

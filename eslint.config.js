@@ -23,27 +23,10 @@ export default tseslint.config([
       globals: globals.browser,
     },
     rules: {
-      // react-hooks v7: el preset trae las reglas nuevas del React Compiler en
-      // 'error' (~330 hallazgos en código existente). Las bajamos a 'warn' para
-      // no frenar el lint con deuda histórica — rules-of-hooks sigue en error.
-      // Cleanup futuro: ir promoviendo módulo a módulo (ver docs/MIGRACION_VERSIONES_FRONT.md).
-      'react-hooks/static-components': 'warn',
-      'react-hooks/use-memo': 'warn',
-      'react-hooks/void-use-memo': 'warn',
-      'react-hooks/preserve-manual-memoization': 'warn',
-      'react-hooks/immutability': 'warn',
-      'react-hooks/globals': 'warn',
-      'react-hooks/refs': 'warn',
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/error-boundaries': 'warn',
-      'react-hooks/purity': 'warn',
-      'react-hooks/set-state-in-render': 'warn',
-      'react-hooks/config': 'warn',
-      'react-hooks/gating': 'warn',
-      // ESLint 10: reglas nuevas en js.configs.recommended que flaggean código
-      // preexistente (9 + 5 hallazgos). En warn hasta hacer el cleanup puntual.
-      'no-useless-assignment': 'warn',
-      'preserve-caught-error': 'warn',
+      // Reglas del React Compiler (react-hooks v7) y nuevas de ESLint 10
+      // (no-useless-assignment, preserve-caught-error): quedan en 'error' vía
+      // los presets. El codebase se llevó a cero en sep-2026 (fix real o
+      // eslint-disable puntual con motivo) — no reintroducir 'warn' global.
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',

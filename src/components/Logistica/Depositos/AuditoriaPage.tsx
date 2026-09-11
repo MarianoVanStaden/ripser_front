@@ -310,10 +310,12 @@ const AuditoriaPage: React.FC = () => {
 
   // Reset pagination when filters change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar filtros; un re-render, sin cascada
     setPageStock(0);
   }, [tipoMovimientoStockFilter, productoFilter, depositoOrigenFilter, depositoDestinoFilter]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar filtros; un re-render, sin cascada
     setPageEquipo(0);
   }, [tipoMovimientoEquipoFilter, depositoOrigenFilter, depositoDestinoFilter, numeroHeladeraFilter]);
 

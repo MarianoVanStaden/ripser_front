@@ -186,6 +186,7 @@ export const useSuperAdminContextCheck = () => {
   // Resetear cuando cambie el empresaId
   React.useEffect(() => {
     if (empresaId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset del dismissed al cambiar de empresa (sync con contexto); un re-render, sin cascada
       setDismissed(false);
     }
   }, [empresaId]);

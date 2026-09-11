@@ -48,6 +48,7 @@ const ReservarBaseDialog: React.FC<ReservarBaseDialogProps> = ({
       errorBases: null,
       selectedIds: Array(d.cantidad || 1).fill(''),
     }));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- seed de UI al abrir el dialog antes de cargar bases; un re-render, sin cascada
     setReservaciones(initial);
     setSubmitError(null);
 

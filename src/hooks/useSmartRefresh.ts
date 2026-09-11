@@ -22,7 +22,7 @@ export function useSmartRefresh({
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Keep onRefetch stable via ref so interval doesn't recreate on every render
   const onRefetchRef = useRef(onRefetch);
-  onRefetchRef.current = onRefetch;
+  useEffect(() => { onRefetchRef.current = onRefetch; });
 
   // Idle detection: reset on any user interaction
   useEffect(() => {

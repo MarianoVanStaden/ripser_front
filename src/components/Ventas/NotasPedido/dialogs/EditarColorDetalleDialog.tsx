@@ -53,6 +53,7 @@ const EditarColorDetalleDialog: React.FC<Props> = ({ open, onClose, onSaved, doc
     if (open && documento) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dets = ((documento as any).detalles || []) as any[];
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- seed del form desde el documento al abrir el dialog; un re-render, sin cascada
       setLineas(
         dets
           .filter((d) => d.tipoItem === 'EQUIPO')

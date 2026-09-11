@@ -201,6 +201,7 @@ const FacturacionPage = () => {
   const [notasSearchTerm, setNotasSearchTerm] = useState('');
   const debouncedNotasSearch = useDebounce(notasSearchTerm, 300);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar la búsqueda; un re-render, sin cascada
   useEffect(() => { setPageNotas(0); }, [debouncedNotasSearch]);
 
   const notasQuery = useQuery({
@@ -279,6 +280,22 @@ const FacturacionPage = () => {
     return null;
   };
 
+  // Billing Dialog state (Datos de Financiación Propia) — mirrors NotasPedidoPage
+  // Declarado antes de los callbacks que lo usan (react-hooks/immutability: no acceder antes de declarar).
+  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
+  const [billingMode, setBillingMode] = useState<'manual' | 'nota'>('manual');
+  const [billingForm, setBillingForm] = useState({
+    cantidadCuotas: 1,
+    tipoFinanciacion: 'MENSUAL',
+    entregarInicial: true,
+    usePorcentaje: true,
+    porcentajeEntregaInicial: 40,
+    montoEntregaInicial: 0,
+    tasaInteres: 0,
+  });
+  // True right after the user confirms the billing modal, so the submit handler can proceed.
+  const billingConfirmedRef = useRef(false);
+
   const handleDeudaConfirm = useCallback(() => {
     setDeudaError(null);
     const fn = pendingDeudaRef.current;
@@ -303,21 +320,6 @@ const FacturacionPage = () => {
     setIsManualInvoice(false);
     setManualFacturaDraft(null);
   }, []);
-
-  // Billing Dialog state (Datos de Financiación Propia) — mirrors NotasPedidoPage
-  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
-  const [billingMode, setBillingMode] = useState<'manual' | 'nota'>('manual');
-  const [billingForm, setBillingForm] = useState({
-    cantidadCuotas: 1,
-    tipoFinanciacion: 'MENSUAL',
-    entregarInicial: true,
-    usePorcentaje: true,
-    porcentajeEntregaInicial: 40,
-    montoEntregaInicial: 0,
-    tasaInteres: 0,
-  });
-  // True right after the user confirms the billing modal, so the submit handler can proceed.
-  const billingConfirmedRef = useRef(false);
 
   // Preemptive debt check — runs before any API side-effects so the warning appears first.
   // Same logic as NotasPedidoPage.
@@ -393,6 +395,7 @@ const FacturacionPage = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
     loadData();
   }, [empresaId, user?.id]); // Re-fetch when tenant changes (user?.id: append del logueado a la lista de vendedores)
 
@@ -436,6 +439,7 @@ const FacturacionPage = () => {
   useEffect(() => {
     // Admin: sin preselección — debe elegir el vendedor explícitamente.
     if (!isAdmin && user?.id && !selectedUsuarioId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync con el usuario autenticado (preselección de vendedor); un re-render, sin cascada
       setSelectedUsuarioId(user.id);
     }
   }, [user?.id, isAdmin]);
@@ -850,6 +854,7 @@ const FacturacionPage = () => {
       // Continuar con la creación de la factura automáticamente
       // Llamar a handleSubmitManualInvoice después de 1 segundo para que el usuario vea el mensaje
       setTimeout(() => {
+        // eslint-disable-next-line react-hooks/immutability -- invocación diferida vía setTimeout: la declaración ya existe cuando corre el callback, no en render
         handleSubmitManualInvoice();
       }, 1000);
       
@@ -1704,6 +1709,7 @@ const FacturacionPage = () => {
     const opcion = findOpcionByValue(selectedOpcionId);
     const normalized = normalizeMetodoPagoToBackend(opcion?.metodoPago);
     if (normalized) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- normaliza método legacy→backend al elegir opción; el guard de igualdad evita cascada
       setPaymentMethod((current) => (current === normalized ? current : normalized));
     }
   }, [selectedOpcionId, findOpcionByValue]);

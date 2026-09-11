@@ -71,6 +71,7 @@ const PagoAdelantoDialog: React.FC<Props> = ({ open, adelanto, onClose, onSucces
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI + fetch de cajas al abrir el dialog; un re-render, sin cascada
     setError(null);
     setObservaciones('');
     setFecha(dayjs().format('YYYY-MM-DD'));

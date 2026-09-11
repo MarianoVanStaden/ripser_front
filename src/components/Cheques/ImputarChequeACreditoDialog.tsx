@@ -35,6 +35,7 @@ const ImputarChequeACreditoDialog: React.FC<ImputarChequeACreditoDialogProps> = 
 
   useEffect(() => {
     if (open && cheque?.clienteId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI + loading sync al abrir el dialog; migrar a React Query es el fix real
       setPrestamoId('');
       setError(null);
       setLoading(true);

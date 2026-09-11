@@ -29,6 +29,7 @@ export default function EnvioDialog({ open, onClose, cantidadInicial, onConfirm 
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
     setProvincia('');
     setPrecio(0);
     setCantidad(cantidadInicial > 0 ? cantidadInicial : 1);

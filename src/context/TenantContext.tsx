@@ -339,6 +339,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     // Estados ya inicializados desde localStorage
     // Solo necesitamos marcar como terminado el loading
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- flag de init una sola vez al montar; un re-render, sin cascada
     setLoading(false);
   }, []);
 

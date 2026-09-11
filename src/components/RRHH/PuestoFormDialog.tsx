@@ -194,6 +194,7 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
   // ─── Carga inicial: catálogos + (si edita) el puesto ─────────
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI + carga de catálogos al abrir el dialog; un re-render, sin cascada
     setTab(0);
     setError(null);
     setForm(EMPTY_FORM);

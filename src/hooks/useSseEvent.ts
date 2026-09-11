@@ -21,9 +21,11 @@ export function useSseEvent(
   debounceMs = 500,
 ): void {
   const cbRef = useRef(callback);
-  cbRef.current = callback;
   const namesRef = useRef(eventNames);
-  namesRef.current = eventNames;
+  useEffect(() => {
+    cbRef.current = callback;
+    namesRef.current = eventNames;
+  });
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;

@@ -141,6 +141,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
   // Reset categoría cuando cambia tipo (solo si no estamos editando)
   useEffect(() => {
     if (!editingMovimiento) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de categoría al cambiar tipo; un re-render, sin cascada
       setCategoria('');
     }
   }, [tipo, editingMovimiento]);
@@ -148,6 +149,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
   // Cargar datos si es edición
   useEffect(() => {
     if (editingMovimiento && open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- carga del form al abrir en modo edición; un re-render, sin cascada
       setTipo(editingMovimiento.tipo);
       setCategoria(editingMovimiento.categoriaGasto || editingMovimiento.categoriaCobro || '');
       setFecha(dayjs(editingMovimiento.fecha));

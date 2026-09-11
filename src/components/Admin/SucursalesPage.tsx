@@ -39,6 +39,7 @@ export const SucursalesPage: React.FC = () => {
   useEffect(() => {
     if (empresas.length > 0 && !selectedEmpresa) {
       const defaultEmpresa = userEmpresaId && empresas.find(e => e.id === userEmpresaId);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync selección default con las empresas ya cargadas; un re-render, sin cascada
       setSelectedEmpresa(defaultEmpresa ? defaultEmpresa.id : empresas[0].id);
     }
   }, [empresas, selectedEmpresa, userEmpresaId]);

@@ -69,6 +69,7 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
   }, [prestamoId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial al abrir: load() setea loading sync; migrar a React Query es el fix real
     if (open && prestamoId) load();
   }, [open, prestamoId, load]);
 

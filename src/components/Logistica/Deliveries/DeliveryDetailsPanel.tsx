@@ -82,6 +82,7 @@ export default function DeliveryDetailsPanel({
   // Vuelve a Info cada vez que se abre (comportamiento de la página original).
   const [detailsTab, setDetailsTab] = useState(0);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
     if (detailsDialogOpen) setDetailsTab(0);
   }, [detailsDialogOpen]);
 

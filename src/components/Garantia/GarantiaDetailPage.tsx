@@ -35,10 +35,6 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
   const [reclamoFormOpen, setReclamoFormOpen] = useState(false);
   const [selectedReclamo, setSelectedReclamo] = useState<ReclamoGarantiaDTO | null>(null);
 
-  useEffect(() => {
-    loadReclamos();
-  }, [garantia.id]);
-
   const loadReclamos = async () => {
     try {
       setLoading(true);
@@ -50,6 +46,11 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadReclamos();
+  }, [garantia.id]);
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {

@@ -120,10 +120,12 @@ export default function OperacionesTab({ tablas, onError, onOk }: Props) {
     }
   }, [page, rowsPerPage]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch de historial paginado; migrar a React Query es el fix real
   useEffect(() => { cargarHistorial(); }, [cargarHistorial]);
 
   // Columnas de la tabla elegida (solo hace falta para UPDATE_CAMPO)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de columnas al cambiar la tabla elegida; un re-render, sin cascada
     setColumna(null);
     setColumnas([]);
     if (!tabla) return;

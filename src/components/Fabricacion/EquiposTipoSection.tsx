@@ -95,6 +95,7 @@ const EquiposTipoSection: React.FC<EquiposTipoSectionProps> = ({
 
   // Al cambiar cualquier filtro, volver a la página 0.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de página al cambiar filtros; no-op si ya está en 0, sin cascada
     setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
   }, [estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter, especialFilter, sinCaracteristicasFilter, modeloFilter, searchFilter]);
 

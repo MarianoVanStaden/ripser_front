@@ -74,15 +74,6 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
     { value: "CHEQUE", label: "Cheque" },
   ];
 
-  // Load existing options when dialog opens
-  useEffect(() => {
-    if (open && documentoId) {
-      cargarOpciones();
-    } else if (open && !documentoId) {
-      setOpciones([]);
-    }
-  }, [open, documentoId]);
-
   const cargarOpciones = async () => {
     setLoading(true);
     try {
@@ -99,6 +90,17 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
       setLoading(false);
     }
   };
+
+  // Load existing options when dialog opens
+  useEffect(() => {
+    if (open && documentoId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial al abrir el dialog: setea loading sync antes del request; migrar a React Query es el fix real
+      cargarOpciones();
+    } else if (open && !documentoId) {
+       
+      setOpciones([]);
+    }
+  }, [open, documentoId]);
 
   const calcularMontos = (cantidadCuotas: number, tasaInteres: number) => {
       // El 40% se asume pagado sin recargo, el interés aplica sobre el 60%

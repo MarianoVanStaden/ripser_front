@@ -192,6 +192,7 @@ const StockPage: React.FC = () => {
     const costoNum = costoInput ? parseFloat(costoInput) : NaN;
     if (!Number.isNaN(costoNum) && costoNum > 0 && priceParams) {
       const calculated = calculateSellingPrice(costoNum, priceParams.porcentajeGanancia, priceParams.redondeo);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- precio sugerido derivado del costo tipeado; un re-render, sin cascada
       setSuggestedPrice(calculated);
     } else {
       setSuggestedPrice(null);

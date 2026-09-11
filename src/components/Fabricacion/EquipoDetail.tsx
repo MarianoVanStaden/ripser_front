@@ -69,6 +69,7 @@ const EquipoDetail: React.FC = () => {
   const loading = equipoQuery.isPending;
   useEffect(() => {
     if (equipoQuery.error) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del snackbar con el error de la query; un re-render, sin cascada
       setSnackbar({ open: true, message: 'Error al cargar el equipo', severity: 'error' });
     }
   }, [equipoQuery.error]);
@@ -94,6 +95,7 @@ const EquipoDetail: React.FC = () => {
   const loadHistorial = loadEquipo;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync de etapas/error con el equipo cargado por React Query; un re-render, sin cascada
     setCompletarError(null);
     if (!equipo?.id) {
       setEtapas([]);

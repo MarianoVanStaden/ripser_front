@@ -59,6 +59,7 @@ const DepositarPesosDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess 
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
       setApiError(null);
       reset({ monto: '', fecha: todayString(), descripcion: '' });
     }

@@ -165,6 +165,7 @@ export default function PresupuestoFormDialog({
   useEffect(() => {
     if (productosQuery.error) {
       const err = productosQuery.error as { response?: { data?: { message?: string } }; message?: string };
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del banner de error con el estado de las queries; un re-render, sin cascada
       setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
     } else if (recetasQuery.error) {
       const err = recetasQuery.error as { response?: { data?: { message?: string } }; message?: string };
@@ -177,6 +178,7 @@ export default function PresupuestoFormDialog({
   // viene por deep-link.
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratación/reset del form al abrir el dialog; un re-render, sin cascada
     setHasUnsavedChanges(false);
     setError(null);
     if (presupuesto) {

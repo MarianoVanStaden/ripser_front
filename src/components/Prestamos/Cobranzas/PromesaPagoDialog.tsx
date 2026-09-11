@@ -40,6 +40,7 @@ export const PromesaPagoDialog: React.FC<PromesaPagoDialogProps> = ({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
     setLoadingCuotas(true);
     cuotaPrestamoApi.getByPrestamo(prestamoId)
       .then((data: CuotaPrestamoDTO[]) => {

@@ -80,6 +80,7 @@ const DocumentoDetalleDialog: React.FC<DocumentoDetalleDialogProps> = ({
 
   useEffect(() => {
     if (open && documento) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
       setDocActual(documento);
       setMostrarCadena(false);
       setCadena([]);

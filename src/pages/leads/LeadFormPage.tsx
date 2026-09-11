@@ -142,14 +142,6 @@ export const LeadFormPage = () => {
   // Rastrear recordatorios originales para detectar eliminaciones
   const [recordatoriosOriginales, setRecordatoriosOriginales] = useState<RecordatorioLeadDTO[]>([]);
 
-  // Cargar catálogos y datos del lead
-  useEffect(() => {
-    loadCatalogs();
-    if (isEditMode && id) {
-      loadLead(parseInt(id));
-    }
-  }, [id, isEditMode]);
-
   // Pre-rellenar datos del cliente origen en modo recompra
   useEffect(() => {
     if (!modoRecompra || !clienteOrigenIdParam) return;
@@ -231,6 +223,15 @@ export const LeadFormPage = () => {
       setLoading(false);
     }
   };
+
+  // Cargar catálogos y datos del lead
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadCatalogs();
+    if (isEditMode && id) {
+      loadLead(parseInt(id));
+    }
+  }, [id, isEditMode]);
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};

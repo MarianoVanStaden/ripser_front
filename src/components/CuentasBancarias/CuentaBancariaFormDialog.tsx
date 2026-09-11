@@ -69,8 +69,18 @@ const CuentaBancariaFormDialog: React.FC<Props> = ({ open, cuenta, onClose, onSa
     },
   });
 
+  const loadBancos = async () => {
+    try {
+      const data = await bancoApi.getActivos();
+      setBancos(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error loading bancos:', err);
+    }
+  };
+
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- carga de bancos al abrir el dialog; migrar a React Query es el fix real
       loadBancos();
       if (cuenta) {
         reset({
@@ -96,15 +106,6 @@ const CuentaBancariaFormDialog: React.FC<Props> = ({ open, cuenta, onClose, onSa
       setError(null);
     }
   }, [open, cuenta, reset]);
-
-  const loadBancos = async () => {
-    try {
-      const data = await bancoApi.getActivos();
-      setBancos(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Error loading bancos:', err);
-    }
-  };
 
   const onSubmit = async (data: CuentaBancariaFormData) => {
     try {

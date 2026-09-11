@@ -168,6 +168,7 @@ const CapacitacionesPage: React.FC = () => {
   }).sort((a, b) => (b.fechaInicio ?? '').localeCompare(a.fechaInicio ?? ''));
 
   // Volver a la primera página cuando cambian los filtros.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de página al cambiar filtros; un re-render, sin cascada
   useEffect(() => { setPage(0); }, [searchTerm, motivoFilter, areaFilter]);
 
   const paged = filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);

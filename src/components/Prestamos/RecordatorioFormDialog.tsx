@@ -43,6 +43,7 @@ export const RecordatorioFormDialog: React.FC<RecordatorioFormDialogProps> = ({
   useEffect(() => {
     if (open) {
       if (recordatorio) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
         setFormData({
           cuotaId: recordatorio.cuotaId,
           fechaRecordatorio: recordatorio.fechaRecordatorio,

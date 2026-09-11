@@ -74,6 +74,7 @@ const BancoFormDialog: React.FC<Props> = ({ open, banco, onClose, onSave }) => {
           activo: true,
         });
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de RHF + error al abrir el dialog (patrón estándar); un re-render, sin cascada
       setError(null);
     }
   }, [open, banco, reset]);

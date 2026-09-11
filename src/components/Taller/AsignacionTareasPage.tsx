@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
+ 
 // (@ts-nocheck removido — ver MUI_V7_GRID_FIX.md si reaparecen errores de Grid)
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
@@ -94,12 +94,6 @@ const AsignacionTareasPage: React.FC = () => {
     estado: 'PENDIENTE'
   });
 
-  useEffect(() => {
-    loadTareas();
-    loadOrdenes();
-    loadEmpleados();
-  }, []);
-
   const loadTareas = async () => {
     try {
       setLoading(true);
@@ -138,6 +132,13 @@ const AsignacionTareasPage: React.FC = () => {
       setEmpleados([]);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadTareas();
+    loadOrdenes();
+    loadEmpleados();
+  }, []);
 
   const handleOpenForm = async (tarea?: TareaServicio) => {
     if (tarea) {

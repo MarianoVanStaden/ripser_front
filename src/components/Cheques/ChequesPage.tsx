@@ -73,6 +73,7 @@ const ChequesPage: React.FC = () => {
   // Reset page=0 cuando cambia la búsqueda debounced (los filtros lo hacen
   // en handleFilterChange).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar la búsqueda debounced; un re-render, sin cascada
     setPage(0);
   }, [debouncedSearch]);
 

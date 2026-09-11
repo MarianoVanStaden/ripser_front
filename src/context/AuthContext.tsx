@@ -55,6 +55,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [esSuperAdmin, setEsSuperAdmin] = useState<boolean>(false);
   const [esPlatformOwner, setEsPlatformOwner] = useState<boolean>(false);
 
+  // Declarado antes del effect de init que lo invoca (regla react-hooks/immutability).
+  const logout = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    setEsSuperAdmin(false);
+    setEsPlatformOwner(false);
+    safeSession.removeItem("esPlatformOwner");
+    safeLocal.removeItem("auth_token");
+    safeLocal.removeItem("auth_user");
+    safeLocal.removeItem("auth_refresh_token");
+    // Clear multi-tenant data (now in sessionStorage for tab isolation)
+    safeSession.removeItem("empresaId");
+    safeSession.removeItem("sucursalId");
+    safeSession.removeItem("esSuperAdmin");
+    // Clear sucursal filter to prevent cross-user contamination
+    safeSession.removeItem("sucursalFiltro");
+    delete axios.defaults.headers.common.Authorization;
+    setAuthToken(null);
+  }, []);
+
   useEffect(() => {
     const isTokenExpired = (token: string): boolean => {
       try {
@@ -213,7 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }));
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || "Error de autenticación");
+      throw new Error(error.response?.data?.error || "Error de autenticación", { cause: error });
     } finally {
       setLoading(false);
     }
@@ -249,25 +269,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     window.addEventListener('auth-token-refreshed', onRefreshed);
     return () => window.removeEventListener('auth-token-refreshed', onRefreshed);
-  }, []);
-
-  const logout = useCallback(() => {
-    setToken(null);
-    setUser(null);
-    setEsSuperAdmin(false);
-    setEsPlatformOwner(false);
-    safeSession.removeItem("esPlatformOwner");
-    safeLocal.removeItem("auth_token");
-    safeLocal.removeItem("auth_user");
-    safeLocal.removeItem("auth_refresh_token");
-    // Clear multi-tenant data (now in sessionStorage for tab isolation)
-    safeSession.removeItem("empresaId");
-    safeSession.removeItem("sucursalId");
-    safeSession.removeItem("esSuperAdmin");
-    // Clear sucursal filter to prevent cross-user contamination
-    safeSession.removeItem("sucursalFiltro");
-    delete axios.defaults.headers.common.Authorization;
-    setAuthToken(null);
   }, []);
 
   useEffect(() => {

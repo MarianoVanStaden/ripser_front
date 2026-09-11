@@ -35,6 +35,7 @@ export default function CatalogoAutocomplete<T extends { nombre: string; activo?
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
     setLoading(true);
     fetcher()
       .then(list => {

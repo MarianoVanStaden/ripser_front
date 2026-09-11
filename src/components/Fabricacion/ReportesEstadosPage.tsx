@@ -164,10 +164,6 @@ const ReportesEstadosPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
     try {
       setLoading(true);
@@ -181,6 +177,11 @@ const ReportesEstadosPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadData();
+  }, []);
 
   const cambiarMes = (delta: number) => {
     const base = mesSeleccionado ? dayjs(`${mesSeleccionado}-01`) : dayjs();
@@ -214,6 +215,7 @@ const ReportesEstadosPage: React.FC = () => {
   }, [equiposDelMes, filtroEstado]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de página al cambiar filtros; un re-render, sin cascada
     setPage(0);
   }, [filteredEquipos]);
 

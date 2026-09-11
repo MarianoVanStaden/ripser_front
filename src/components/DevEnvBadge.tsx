@@ -13,16 +13,20 @@
  *   - destino del backend (proxy de Vite → :8080/RipserApp)
  * Además antepone "[LOCAL] " al título de la pestaña del navegador.
  */
-import type { CSSProperties } from 'react'
+import { useEffect, type CSSProperties } from 'react'
 
 export default function DevEnvBadge() {
-  if (!import.meta.env.DEV) return null
-
   // Prefijo en el título de la pestaña (una sola vez; la app no cambia
-  // document.title dinámicamente por ruta).
-  if (typeof document !== 'undefined' && !document.title.startsWith('[LOCAL]')) {
-    document.title = `[LOCAL] ${document.title}`
-  }
+  // document.title dinámicamente por ruta). En effect: mutar document
+  // durante el render viola react-hooks/immutability. El hook va antes del
+  // early-return para no condicionar hooks (rules-of-hooks).
+  useEffect(() => {
+    if (import.meta.env.DEV && !document.title.startsWith('[LOCAL]')) {
+      document.title = `[LOCAL] ${document.title}`
+    }
+  }, [])
+
+  if (!import.meta.env.DEV) return null
 
   const hostPort =
     typeof window !== 'undefined' ? window.location.host : 'localhost'

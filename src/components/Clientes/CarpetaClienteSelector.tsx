@@ -38,6 +38,7 @@ const CarpetaClienteSelector: React.FC = () => {
 
   // Reset a la primera página cuando cambia el término de búsqueda
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar la búsqueda debounced; un re-render, sin cascada
     setPage(0);
   }, [debouncedSearch]);
 

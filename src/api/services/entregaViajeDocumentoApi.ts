@@ -85,7 +85,7 @@ export const entregaViajeDocumentoApi = {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error('Error desconocido al descargar el documento');
+      throw new Error('Error desconocido al descargar el documento', { cause: error });
     }
   },
 

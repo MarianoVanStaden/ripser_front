@@ -401,12 +401,13 @@ const EmpleadosPage: React.FC = () => {
   useEffect(() => {
     const lista = panelQuery.data?.empleados;
     if (!lista) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del detalle abierto con la lista refetcheada; no-op si no cambió, sin cascada
     setSelectedEmpleado((prev) => {
       if (!prev) return prev;
       const fresh = lista.find((e: Empleado) => e.id === prev.id);
       return fresh ?? prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [panelQuery.data]);
 
   const handleOpenDetail = (empleado: Empleado) => {

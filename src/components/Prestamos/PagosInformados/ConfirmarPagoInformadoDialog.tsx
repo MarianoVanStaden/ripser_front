@@ -50,6 +50,7 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
 
   useEffect(() => {
     if (open && pago) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
       setMontoConfirmado(pago.montoInformado);
       setCajaRef(null);
       setChequeData(blankCheque());
@@ -61,10 +62,12 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
   // cliente. Para CHEQUE_RECHAZADO el backend lo hace siempre (cancela el DEBITO
   // de reversión del cheque); este checkbox cubre DEUDA_LIBRE/OTRO.
   const [impactarCC, setImpactarCC] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
   useEffect(() => { if (open) setImpactarCC(false); }, [open]);
 
   useEffect(() => {
     if (open && pago?.metodoPago === 'CHEQUE' && bancos.length === 0 && !loadingBancos) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
       setLoadingBancos(true);
       bancoApi.getActivos()
         .then(setBancos)

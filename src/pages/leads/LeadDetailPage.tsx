@@ -53,7 +53,7 @@ export const LeadDetailPage = () => {
       } catch {
         data.recordatorios = [];
       }
-      let interacciones: InteraccionLeadDTO[] = [];
+      let interacciones: InteraccionLeadDTO[];
       try {
         interacciones = await leadApi.getInteracciones(leadIdNum!);
       } catch {

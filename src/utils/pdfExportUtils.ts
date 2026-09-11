@@ -351,7 +351,7 @@ export const generateSaleDetailPDF = async (
         yPosition = 20;
       }
 
-      let productName = '';
+      let productName: string;
       if (item.tipoItem === 'EQUIPO') {
         productName = item.recetaNombre || item.descripcionEquipo || 'Equipo';
       } else {

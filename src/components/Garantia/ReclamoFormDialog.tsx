@@ -45,8 +45,32 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const loadEmpleados = async () => {
+    try {
+      const data = await employeeApi.getAllList();
+      setEmpleados(data);
+    } catch (err) {
+      console.error('Error loading empleados:', err);
+    }
+  };
+
+  const resetForm = () => {
+    setForm({
+      descripcionProblema: '',
+      tipoSolucion: '',
+      estado: 'PENDIENTE',
+      solucionAplicada: '',
+      costoSolucion: '',
+      tecnicoId: 0,
+    });
+    setSelectedTecnico(null);
+    setSelectedGarantia(null);
+    setError(null);
+  };
+
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- precarga del form al abrir el dialog; un re-render, sin cascada
       loadEmpleados();
 
       if (reclamo) {
@@ -76,29 +100,6 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
       }
     }
   }, [open, reclamo, garantiaId, garantias]);
-
-  const loadEmpleados = async () => {
-    try {
-      const data = await employeeApi.getAllList();
-      setEmpleados(data);
-    } catch (err) {
-      console.error('Error loading empleados:', err);
-    }
-  };
-
-  const resetForm = () => {
-    setForm({
-      descripcionProblema: '',
-      tipoSolucion: '',
-      estado: 'PENDIENTE',
-      solucionAplicada: '',
-      costoSolucion: '',
-      tecnicoId: 0,
-    });
-    setSelectedTecnico(null);
-    setSelectedGarantia(null);
-    setError(null);
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });

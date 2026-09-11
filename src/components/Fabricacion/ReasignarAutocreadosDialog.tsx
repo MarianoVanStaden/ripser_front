@@ -34,16 +34,6 @@ const ReasignarAutocreadosDialog: React.FC<Props> = ({ open, onClose, onApplied 
   const [preview, setPreview] = useState<ReasignacionStockResult | null>(null);
   const [applied, setApplied] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setPreview(null);
-      setApplied(false);
-      setError(null);
-      correrDryRun();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
   const correrDryRun = async () => {
     setLoading(true);
     setError(null);
@@ -56,6 +46,17 @@ const ReasignarAutocreadosDialog: React.FC<Props> = ({ open, onClose, onApplied 
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI + dry-run al abrir el dialog; un re-render, sin cascada
+      setPreview(null);
+      setApplied(false);
+      setError(null);
+      correrDryRun();
+    }
+
+  }, [open]);
 
   const aplicar = async () => {
     setApplying(true);

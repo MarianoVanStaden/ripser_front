@@ -189,6 +189,7 @@ const InventarioDepositoPage: React.FC = () => {
   // Effect to verify synchronization after data loads
   useEffect(() => {
     if (productos.length > 0 && stockItems.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- verificación de sincronización tras cargar datos; deriva estado, un re-render, sin cascada
       verificarSincronizacion();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

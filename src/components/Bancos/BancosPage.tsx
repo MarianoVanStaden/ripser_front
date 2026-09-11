@@ -55,14 +55,6 @@ const BancosPage: React.FC = () => {
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Cargar datos
-  useEffect(() => {
-    if (tienePermiso('ADMINISTRACION')) {
-      loadData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const loadData = async () => {
     try {
       setLoading(true);
@@ -86,6 +78,15 @@ const BancosPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Cargar datos
+  useEffect(() => {
+    if (tienePermiso('ADMINISTRACION')) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: loadData setea loading sync antes del request; migrar a React Query es el fix real
+      loadData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Bancos filtrados
   const filteredBancos = useMemo(() => {

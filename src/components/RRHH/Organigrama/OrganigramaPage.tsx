@@ -234,6 +234,7 @@ const OrganigramaPage: React.FC = () => {
   // (sólo la primera vez para no pisar al usuario si decide volver a "Jerárquica").
   useEffect(() => {
     if (!loading && !autoSwitched && stats.jerarquiaVacia) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- switch de vista una única vez al detectar jerarquía vacía; guard autoSwitched evita cascada
       setVista('area');
       setAutoSwitched(true);
     }

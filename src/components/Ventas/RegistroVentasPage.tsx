@@ -152,8 +152,9 @@ const RegistroVentasPage: React.FC = () => {
 
   // Reset page=0 cuando cambian filtros server-side.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar filtros; un re-render, sin cascada
     setPage(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [debouncedSearch, statusFilter, clientFilter, dateFromFilter, dateToFilter, tipoDocumentoFilter, debouncedCiudad, provinciaFilter]);
 
   const usuariosMap = useMemo(
@@ -163,6 +164,7 @@ const RegistroVentasPage: React.FC = () => {
 
   // Reset page=0 también cuando cambia paymentMethodFilter (ahora server-side).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar filtro; un re-render, sin cascada
     setPage(0);
   }, [paymentMethodFilter]);
 
@@ -268,6 +270,7 @@ const RegistroVentasPage: React.FC = () => {
 
   useEffect(() => {
     if (salesQuery.error) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del banner de error con el estado de la query; un re-render, sin cascada
       setError('Error al cargar los datos. Verifique la conexión con el servidor.');
     } else {
       setError(null);

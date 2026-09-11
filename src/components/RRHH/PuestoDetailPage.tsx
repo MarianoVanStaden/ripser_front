@@ -388,6 +388,7 @@ const PuestoDetailPage: React.FC = () => {
                 <AccordionDetails>
                   <ol style={{ marginTop: 0 }}>
                     {puesto.objetivos.map((o) => (
+                      // eslint-disable-next-line react-hooks/purity -- key fallback legacy con Math.random() para ítems sin id; el fix real es una key estable, fuera de alcance acá
                       <li key={o.id ?? Math.random()}>
                         <Typography variant="body2">{capFirst(o.descripcion)}</Typography>
                       </li>
@@ -480,6 +481,7 @@ const PuestoDetailPage: React.FC = () => {
                       {puesto.habilidades?.length ? (
                         <ul>
                           {puesto.habilidades.map((h) => (
+                            // eslint-disable-next-line react-hooks/purity -- key fallback legacy con Math.random() para ítems sin id; el fix real es una key estable, fuera de alcance acá
                             <li key={h.id ?? Math.random()}>
                               <Typography variant="body2">{capFirst(h.descripcion)}</Typography>
                             </li>
@@ -492,6 +494,7 @@ const PuestoDetailPage: React.FC = () => {
                       {puesto.conocimientos?.length ? (
                         <ul>
                           {puesto.conocimientos.map((c) => (
+                            // eslint-disable-next-line react-hooks/purity -- key fallback legacy con Math.random() para ítems sin id; el fix real es una key estable, fuera de alcance acá
                             <li key={c.id ?? Math.random()}>
                               <Typography variant="body2">{capFirst(c.descripcion)}</Typography>
                             </li>

@@ -65,14 +65,6 @@ const ProveedorProductosDialog: React.FC<Props> = ({ open, proveedor, onClose })
   // Confirm eliminar
   const [confirmEliminarId, setConfirmEliminarId] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (open && proveedor) {
-      loadRelaciones();
-      loadTodosProductos();
-      loadCategorias();
-    }
-  }, [open, proveedor]);
-
   const loadRelaciones = async () => {
     if (!proveedor) return;
     try {
@@ -105,6 +97,15 @@ const ProveedorProductosDialog: React.FC<Props> = ({ open, proveedor, onClose })
       // silencioso
     }
   };
+
+  useEffect(() => {
+    if (open && proveedor) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch al abrir el dialog: setea loading sync antes del request; migrar a React Query es el fix real
+      loadRelaciones();
+      loadTodosProductos();
+      loadCategorias();
+    }
+  }, [open, proveedor]);
 
   // Generate code like ComprasPedidosPage: first 3 letters of category + sequential number
   const generateProductCode = (catId: string): string => {

@@ -58,6 +58,7 @@ const TareaFormDialog: React.FC<Props> = ({ open, puestoId, tarea, onClose, onSa
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset del form al abrir el dialog (crear/editar); un re-render, sin cascada
       setError(null);
       if (tarea) {
         reset({

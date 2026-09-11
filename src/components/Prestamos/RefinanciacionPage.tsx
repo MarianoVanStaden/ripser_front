@@ -148,6 +148,7 @@ export const RefinanciacionPage: React.FC = () => {
   // ── Load prestamo ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!prestamoId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
     setLoading(true);
     prestamoPersonalApi.getById(prestamoId)
       .then((p) => {
@@ -176,6 +177,7 @@ export const RefinanciacionPage: React.FC = () => {
     const formErrors = validarFormulario(debouncedForm, deudaTotal);
     if (Object.keys(formErrors).length > 0) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- preview de refinanciación: setea loading sync antes del request; migrar a React Query es el fix real
     setPreviewLoading(true);
     setPreviewError(null);
     refinanciacionApi.preview(buildRequest(debouncedForm, prestamo.id))

@@ -58,6 +58,7 @@ const ReclamosGarantiaPage: React.FC = () => {
   // Al cambiar cualquier filtro se vuelve a la página 0: si no, una página
   // fuera de rango deja la lista vacía (y en mobile, sin controles de paginado).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync de paginado con filtros: volver a página 0 al filtrar; un re-render, sin cascada
     setPage(0);
   }, [debouncedSearch, estadoFilter, garantiaFilter]);
 
@@ -116,11 +117,13 @@ const ReclamosGarantiaPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
     loadReclamos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage, debouncedSearch, estadoFilter, garantiaFilter]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial de stats/garantías; setState solo tras la respuesta, sin cascada
     loadStats();
     loadGarantias();
   }, []);

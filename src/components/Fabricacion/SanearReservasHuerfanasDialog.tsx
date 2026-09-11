@@ -29,16 +29,6 @@ const SanearReservasHuerfanasDialog: React.FC<Props> = ({ open, onClose, onAppli
   const [preview, setPreview] = useState<SaneoReservasResult | null>(null);
   const [applied, setApplied] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setPreview(null);
-      setApplied(false);
-      setError(null);
-      correrDryRun();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
   const correrDryRun = async () => {
     setLoading(true);
     setError(null);
@@ -51,6 +41,17 @@ const SanearReservasHuerfanasDialog: React.FC<Props> = ({ open, onClose, onAppli
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI + dry-run al abrir el dialog; un re-render, sin cascada
+      setPreview(null);
+      setApplied(false);
+      setError(null);
+      correrDryRun();
+    }
+
+  }, [open]);
 
   const aplicar = async () => {
     setApplying(true);

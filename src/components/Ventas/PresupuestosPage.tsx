@@ -86,8 +86,9 @@ const PresupuestosPage: React.FC = () => {
 
   // Reset page=0 cuando cambian filtros (evita pedir página vacía).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar filtros; un re-render, sin cascada
     setPage(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [debouncedSearch, statusFilter, clientFilter?.id, dateFromFilter, dateToFilter]);
 
   const presupuestosQueryKey = useMemo(() => ([
@@ -133,6 +134,8 @@ const PresupuestosPage: React.FC = () => {
   // Editar color de líneas EQUIPO (informado post-creación).
   const [colorDialogOpen, setColorDialogOpen] = useState(false);
   const [docParaColor, setDocParaColor] = useState<DocumentoComercial | null>(null);
+  // Declarado antes de los callbacks que lo usan (react-hooks/immutability: no acceder antes de declarar).
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'success' });
 
   const handleOpenColorDialog = useCallback(async (presupuesto: DocumentoComercial) => {
     try {
@@ -159,7 +162,6 @@ const PresupuestosPage: React.FC = () => {
   const [selectedPresupuesto, setSelectedPresupuesto] = useState<DocumentoComercial | null>(null);
   const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState<OpcionFinanciamientoDTO[]>([]);
   const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'success' });
   const [presupuestosFinanciamiento, setPresupuestosFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
   // Calculadora previa a exportar PDF
   const [calculadoraOpen, setCalculadoraOpen] = useState(false);
@@ -199,6 +201,7 @@ const PresupuestosPage: React.FC = () => {
   // poblaba en el fetch global; ahora el server pagina y queda en sync solo.
   useEffect(() => {
     if (!presupuestos.length) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del cache local con la página cargada; updater devuelve prev si no muta, sin cascada
     setPresupuestosFinanciamiento((prev) => {
       const next = { ...prev };
       let mutated = false;
@@ -215,6 +218,7 @@ const PresupuestosPage: React.FC = () => {
 
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
     fetchData();
   }, [fetchData]);
 
@@ -289,6 +293,7 @@ const PresupuestosPage: React.FC = () => {
     setSearchParams({}, { replace: true });
     const leadIdNum = Number(leadIdParam);
     if (!Number.isFinite(leadIdNum) || leadIdNum <= 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync con query param leadId (deep-link, corre una sola vez); un re-render, sin cascada
     setInitialLeadId(leadIdParam);
     handleOpenDialog();
   }, [searchParams, setSearchParams, handleOpenDialog]);

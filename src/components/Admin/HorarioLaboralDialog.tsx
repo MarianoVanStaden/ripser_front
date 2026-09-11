@@ -56,6 +56,7 @@ export const HorarioLaboralDialog: React.FC<Props> = ({ open, onClose }) => {
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch al abrir el dialog: setea loading sync antes del request; migrar a React Query es el fix real
     setError(null);
     setSuccess(false);
     setLoading(true);

@@ -115,6 +115,7 @@ const LicenciasPage: React.FC = () => {
 
   // Reset page cuando cambian filtros
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de página al cambiar filtros; un re-render, sin cascada
     setPage(0);
   }, [debouncedSearch, tipoFilter, estadoFilter, empleadoFilter?.id]);
 

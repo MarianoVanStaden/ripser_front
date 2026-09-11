@@ -111,6 +111,7 @@ const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
     abortRef.current = controller;
     const reqId = ++requestIdRef.current;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- búsqueda server-side: setea loading sync antes del request; migrar a React Query es el fix real
     setLoading(true);
     const run = async () => {
       try {

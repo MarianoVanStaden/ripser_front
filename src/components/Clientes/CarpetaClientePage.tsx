@@ -163,6 +163,7 @@ const CarpetaClientePage: React.FC = () => {
 
   // Las notas siguen siendo mock (candidata a feature real o limpieza).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync de notas mock por cliente; un re-render, sin cascada
     setNotas(mockNotas);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

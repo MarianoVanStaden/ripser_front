@@ -20,6 +20,7 @@ export function useClienteSearch(): UseClienteSearchResult {
 
   useEffect(() => {
     if (debouncedInput.length < 3) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- orquestación de fetch debounced (limpiar/loading antes del request); migrar a React Query es el fix real
       setOptions([]);
       return;
     }
@@ -28,6 +29,7 @@ export function useClienteSearch(): UseClienteSearchResult {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
 
+     
     setLoading(true);
 
     clienteApi
@@ -56,6 +58,7 @@ export function useClienteSearch(): UseClienteSearchResult {
 
   // Limpiar resultados cuando el input queda vacío
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- limpieza de opciones al vaciar el input; un re-render, sin cascada
     if (!inputValue) setOptions([]);
   }, [inputValue]);
 

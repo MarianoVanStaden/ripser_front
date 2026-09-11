@@ -54,6 +54,7 @@ const ConfiguracionTallerPage: React.FC = () => {
   // y el QueryClient no refetchea en background → no pisa lo que el usuario tipea.
   useEffect(() => {
     if (paramQuery.data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- siembra del form editable desde la query; un re-render, sin cascada
       setValorHora(paramQuery.data.valor);
       setParametroId(paramQuery.data.id);
     } else if (paramQuery.data === null) {

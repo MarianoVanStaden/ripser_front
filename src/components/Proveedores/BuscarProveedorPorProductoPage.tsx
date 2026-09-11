@@ -64,6 +64,7 @@ const BuscarProveedorPorProductoPage: React.FC = () => {
 
   useEffect(() => {
     if (debounced.trim().length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpia sugerencias al quedar la búsqueda corta; un re-render, sin cascada
       setOptions([]);
       return;
     }
@@ -90,6 +91,7 @@ const BuscarProveedorPorProductoPage: React.FC = () => {
 
   useEffect(() => {
     if (!selected) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpia resultados al deseleccionar; un re-render, sin cascada
       setResultados([]);
       setError(null);
       return;
