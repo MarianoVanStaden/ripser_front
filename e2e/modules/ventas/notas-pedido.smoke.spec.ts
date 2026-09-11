@@ -167,7 +167,10 @@ test.describe('FRONT-003 smoke — Ventas pages render & primary CTAs wired', ()
       (e) =>
         !/Failed to load resource/i.test(e) &&
         !/sentry/i.test(e) &&
-        !/Sentry Logger/i.test(e),
+        !/Sentry Logger/i.test(e) &&
+        // El fixture aborta el SSE (/api/eventos/stream) a propósito; el
+        // cliente fetch-event-source loguea cada retry como console.error.
+        !/\[SSE ERROR\]/i.test(e),
     );
     expect.soft(
       realErrors,

@@ -11,7 +11,38 @@ import { test, expect } from '../../fixtures';
  * With the fixture-level API mock, chart data is empty but pages should render.
  */
 
+/**
+ * El mock genérico del fixture responde `[]` a todo GET, pero
+ * /api/admin/flujo-caja/enhanced devuelve un OBJETO (FlujoCajaResponseEnhanced).
+ * `[]` es truthy → el guard `!rawData` no corta y calculateKPIsFromBackend([])
+ * crashea el ErrorBoundary. Mock LIFO-higher con shape vacío realista.
+ */
+const EMPTY_FLUJO_ENHANCED = {
+  totalIngresos: 0,
+  totalEgresos: 0,
+  flujoNeto: 0,
+  totalMovimientos: 0,
+  movimientos: [],
+  saldosPorMetodoPago: [],
+  resumenCheques: null,
+  evolucionDiaria: [],
+};
+
 test.describe('Finanzas', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/admin/flujo-caja**', (route) => {
+      const url = route.request().url();
+      // /saldos devuelve array; /cheques/resumen un objeto chico; el resto
+      // (base y /enhanced) el response completo.
+      const body = url.includes('/saldos')
+        ? '[]'
+        : url.includes('/cheques/resumen')
+          ? JSON.stringify({ enCartera: 0, depositados: 0, cobrados: 0, rechazados: 0 })
+          : JSON.stringify(EMPTY_FLUJO_ENHANCED);
+      return route.fulfill({ status: 200, contentType: 'application/json', body });
+    });
+  });
+
   // ── Flujo de Caja ─────────────────────────────────────────────────────────
 
   test('should navigate to the flujo de caja route without crashing', async ({

@@ -5,10 +5,10 @@ import { BasePage } from '../../pages/base.page';
  * PrestamosPage — Page Object for /prestamos/lista.
  *
  * Selectors derived from src/components/Prestamos/PrestamosListPage.tsx:
- *   - Heading: Typography "Gestión de Préstamos"
- *   - Search: TextField placeholder "Buscar por nombre o código..."
- *   - Estado chips: ACTIVO, FINALIZADO, EN_MORA, EN_LEGAL, CANCELADO
- *   - Categoría chips: NORMAL, LEGALES, PAGO_CON_MORA, ALTO_RIESGO
+ *   - Heading: Typography "Gestión de Créditos Personales"
+ *   - Search: TextField placeholder "Buscar por nombre, apellido, CUIT/DNI o teléfono..."
+ *   - Estado chips: ESTADO_PRESTAMO_LABELS (Activo, En Mora, ...)
+ *   - Categoría chips: CATEGORIA_PRESTAMO_LABELS (Normal, Alto Riesgo, ...)
  */
 export class PrestamosPage extends BasePage {
   readonly path = '/prestamos/lista';
@@ -29,8 +29,8 @@ export class PrestamosPage extends BasePage {
   constructor(page: Page) {
     super(page);
 
-    this.heading     = page.getByText('Gestión de Préstamos');
-    this.searchInput = page.getByPlaceholder('Buscar por nombre o código...');
+    this.heading     = page.getByText('Gestión de Créditos Personales');
+    this.searchInput = page.getByPlaceholder(/^Buscar por nombre/);
 
     // Estado chips — MUI Chips act as toggle buttons
     this.chipActivo    = page.getByRole('button', { name: /^activo$/i });

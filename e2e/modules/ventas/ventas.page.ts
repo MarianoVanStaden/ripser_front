@@ -53,13 +53,33 @@ export class PresupuestosPage extends BasePage {
   }
 
   async gotoFacturacion(): Promise<void> {
+    // El FORM de facturar (tabs manual / desde nota).
     await this.page.goto('./ventas/facturacion');
+  }
+
+  async gotoRegistroVentas(): Promise<void> {
+    // Drift sep-2026: el LISTADO de facturas ya no está en /ventas/facturacion
+    // (eso es el form) sino en /ventas/registro (RegistroVentasPage).
+    await this.page.goto('./ventas/registro');
     await this.page.waitForLoadState('networkidle');
   }
 
   async gotoNotasCredito(): Promise<void> {
     await this.page.goto('./ventas/notas-credito');
     await this.page.waitForLoadState('networkidle');
+    // Drift sep-2026: la página es un contenedor de tabs — el default es el
+    // flujo "Crear Nota de Crédito" (Seleccionar Factura). El LISTADO de NCs
+    // emitidas vive en el tab "Anulaciones".
+    const anulacionesTab = this.page.getByRole('tab', { name: /anulaciones/i });
+    const tabReady = await anulacionesTab
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (tabReady) {
+      await anulacionesTab.click();
+      await this.page.waitForLoadState('networkidle').catch(() => {});
+      await this.page.waitForTimeout(500);
+    }
   }
 
   // ─── Create presupuesto via dialog ────────────────────────────────────────
@@ -170,7 +190,54 @@ export class PresupuestosPage extends BasePage {
    * current page.
    */
   async assertDocumentoVisible(numero: string | number): Promise<void> {
-    // Use a broad text search to find any element containing the document number
+    // Las listas reales tienen cientos de documentos paginados — el sembrado
+    // puede no estar en la página 1. Si la página tiene buscador, filtramos
+    // por número primero (el filtro es server-side y debounced).
+    // Los listados filtran por estado "Pendiente" por default: un documento ya
+    // convertido (APROBADO/FACTURADO) queda oculto. Si hay filtro de Estado,
+    // lo abrimos y elegimos "Todos".
+    // count()/isVisible() NO auto-esperan: si el assert corre apenas navegada
+    // la página, los filtros todavía no están en el DOM y se saltean. Esperar
+    // a que la UI de filtros exista antes de interactuar.
+    await this.page
+      .getByRole('combobox')
+      .first()
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .catch(() => {});
+    await this.page.waitForTimeout(300);
+
+    // El MUI Select de Estado no expone accessible name — se identifica por su
+    // valor visible ("Pendiente", el default que oculta documentos convertidos).
+    const estadoCombo = this.page
+      .getByRole('combobox')
+      .filter({ hasText: /^pendiente$/i })
+      .first();
+    if (
+      (await estadoCombo.count()) > 0 &&
+      (await estadoCombo.isVisible().catch(() => false))
+    ) {
+      await estadoCombo.click();
+      const todos = this.page.getByRole('option', { name: /todos/i }).first();
+      if ((await todos.count()) > 0) {
+        await todos.click();
+      } else {
+        await this.page.keyboard.press('Escape');
+      }
+      await this.page.waitForTimeout(600);
+    }
+
+    // OJO: el sidebar tiene su propio "Buscar… (Ctrl K)" — hay que excluirlo.
+    const candidates = this.page.locator('input[placeholder]');
+    const total = await candidates.count();
+    for (let i = 0; i < total; i++) {
+      const input = candidates.nth(i);
+      const ph = (await input.getAttribute('placeholder')) ?? '';
+      if (/ctrl/i.test(ph) || !/n[úu]mero|buscar/i.test(ph)) continue;
+      if (!(await input.isVisible().catch(() => false))) continue;
+      await input.fill(String(numero));
+      await this.page.waitForTimeout(800); // debounce + fetch server-side
+      break;
+    }
     await expect(
       this.page.getByText(String(numero), { exact: false }).first()
     ).toBeVisible({ timeout: 10_000 });

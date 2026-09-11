@@ -24,7 +24,12 @@ export abstract class BasePage {
   // ─── Navigation ────────────────────────────────────────────────────────────
 
   async goto() {
-    await this.page.goto(this.path);
+    // El baseURL incluye el subpath /ripser/. Un path absoluto ('/x') resuelve
+    // contra el origin y lo pierde (semántica de new URL()) — la página de 404
+    // de Vite "did you mean to visit /ripser/x" es el síntoma. Normalizamos a
+    // relativo para que un POM con '/' inicial no pueda pisar el subpath.
+    const rel = this.path.startsWith('/') ? '.' + this.path : this.path;
+    await this.page.goto(rel);
   }
 
   async waitForPageLoad() {
