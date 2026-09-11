@@ -92,6 +92,7 @@ const SueldoFormDialog: React.FC<Props> = ({
   // Reset form on open / editing change
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset del form al abrir/cambiar sueldo editado; un re-render, sin cascada
     setError(null);
     if (editing) {
       setForm({
@@ -122,6 +123,7 @@ const SueldoFormDialog: React.FC<Props> = ({
   // Cargar total de adelantos del empleado+período (autocompleta el campo).
   useEffect(() => {
     if (!form.empleadoId || !form.periodo) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpia adelantos al deseleccionar empleado/período; un re-render, sin cascada
       setAdelantosDelMes([]);
       return;
     }
@@ -148,6 +150,7 @@ const SueldoFormDialog: React.FC<Props> = ({
   // mismo patrón que adelantos. El monto sale de las metas de la masiva.
   useEffect(() => {
     if (!form.empleadoId || !form.periodo) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpia el bono sugerido al deseleccionar empleado/período; un re-render, sin cascada
       setBonoVentasSugerido(null);
       return;
     }
@@ -178,6 +181,7 @@ const SueldoFormDialog: React.FC<Props> = ({
   useEffect(() => {
     if (editing || !form.empleadoId || !form.periodo) return;
     const dias = calcularDiasComputados(form.periodo, empleadoSel?.fechaIngreso, empleadoSel?.fechaEgreso);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- autocompleta días computados al elegir empleado/período (queda editable); un re-render, sin cascada
     setForm(prev => ({ ...prev, diasComputados: dias }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.empleadoId, form.periodo]);

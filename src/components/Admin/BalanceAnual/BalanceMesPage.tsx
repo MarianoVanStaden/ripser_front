@@ -164,6 +164,7 @@ export default function BalanceMesPage() {
     }
   }, [anioNum, mesNum]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
   useEffect(() => { load(); }, [load]);
 
   // Prefill del valor dólar con la cotización oficial (editable; best-effort)

@@ -26,6 +26,7 @@ export default function EmpresaAutocomplete({
 
   useEffect(() => {
     let cancel = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
     setLoading(true);
     empresaService.getActive()
       .then((emps) => { if (!cancel) setOpciones(emps); })

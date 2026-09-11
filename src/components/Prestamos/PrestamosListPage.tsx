@@ -59,6 +59,7 @@ export const PrestamosListPage: React.FC = () => {
   const debouncedTerm = useDebounce(searchInput, 300);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del input con el term de la URL; un re-render, sin cascada
     setSearchInput(urlFilters.term ?? '');
   }, [urlFilters.term]);
 

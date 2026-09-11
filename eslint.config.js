@@ -23,27 +23,10 @@ export default tseslint.config([
       globals: globals.browser,
     },
     rules: {
-      // react-hooks v7: el preset trae las reglas nuevas del React Compiler en
-      // 'error' (~330 hallazgos en código existente). Las bajamos a 'warn' para
-      // no frenar el lint con deuda histórica — rules-of-hooks sigue en error.
-      // Cleanup futuro: ir promoviendo módulo a módulo (ver docs/MIGRACION_VERSIONES_FRONT.md).
-      'react-hooks/static-components': 'warn',
-      'react-hooks/use-memo': 'warn',
-      'react-hooks/void-use-memo': 'warn',
-      'react-hooks/preserve-manual-memoization': 'warn',
-      'react-hooks/immutability': 'warn',
-      'react-hooks/globals': 'warn',
-      'react-hooks/refs': 'warn',
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/error-boundaries': 'warn',
-      'react-hooks/purity': 'warn',
-      'react-hooks/set-state-in-render': 'warn',
-      'react-hooks/config': 'warn',
-      'react-hooks/gating': 'warn',
-      // ESLint 10: reglas nuevas en js.configs.recommended que flaggean código
-      // preexistente (9 + 5 hallazgos). En warn hasta hacer el cleanup puntual.
-      'no-useless-assignment': 'warn',
-      'preserve-caught-error': 'warn',
+      // Reglas del React Compiler (react-hooks v7) y nuevas de ESLint 10
+      // (no-useless-assignment, preserve-caught-error): quedan en 'error' vía
+      // los presets. El codebase se llevó a cero en sep-2026 (fix real o
+      // eslint-disable puntual con motivo) — no reintroducir 'warn' global.
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
@@ -84,46 +67,6 @@ export default tseslint.config([
     },
     rules: {
       'ripser/no-literal-colors': 'error',
-    },
-  },
-  // ── Promoción módulo a módulo de las reglas nuevas (react-hooks v7 compiler
-  // + ESLint 10 core) de 'warn' a 'error'. Un módulo entra a esta lista cuando
-  // queda en cero hallazgos (fix real o disable puntual con motivo). La meta es
-  // que la lista cubra todo src/ y entonces se borra junto con los 'warn' de
-  // arriba. NO sacar módulos de acá: es un freeze contra regresiones.
-  {
-    files: [
-      'src/api/**',
-      'src/utils/**',
-      'src/services/**',
-      'src/context/**',
-      'src/hooks/**',
-      'src/components/BackendSetupDialog/**',
-      'src/components/Bancos/**',
-      'src/components/Clients/**',
-      'src/components/Debug/**',
-      'src/components/DevEnvBadge.tsx',
-      'src/components/Finanzas/**',
-      'src/components/Layout/**',
-      'src/components/leads/**',
-      'src/components/shared/**',
-    ],
-    rules: {
-      'react-hooks/static-components': 'error',
-      'react-hooks/use-memo': 'error',
-      'react-hooks/void-use-memo': 'error',
-      'react-hooks/preserve-manual-memoization': 'error',
-      'react-hooks/immutability': 'error',
-      'react-hooks/globals': 'error',
-      'react-hooks/refs': 'error',
-      'react-hooks/set-state-in-effect': 'error',
-      'react-hooks/error-boundaries': 'error',
-      'react-hooks/purity': 'error',
-      'react-hooks/set-state-in-render': 'error',
-      'react-hooks/config': 'error',
-      'react-hooks/gating': 'error',
-      'no-useless-assignment': 'error',
-      'preserve-caught-error': 'error',
     },
   },
   // react-refresh no aplica a infra de test: esos archivos no participan del

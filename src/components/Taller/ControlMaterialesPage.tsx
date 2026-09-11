@@ -72,12 +72,6 @@ const ControlMaterialesPage: React.FC = () => {
     precioUnitario: '0'
   });
 
-  useEffect(() => {
-    loadMateriales();
-    loadOrdenes();
-    loadProductos();
-  }, []);
-
   const loadMateriales = async () => {
     try {
       setLoading(true);
@@ -115,6 +109,13 @@ const ControlMaterialesPage: React.FC = () => {
       setProductos([]);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadMateriales();
+    loadOrdenes();
+    loadProductos();
+  }, []);
 
   const handleOpenForm = async (material?: MaterialUtilizado) => {
     if (material) {
@@ -291,6 +292,7 @@ const ControlMaterialesPage: React.FC = () => {
     if (formData.productoId) {
       const producto = productos.find(p => p.id.toString() === formData.productoId);
       if (producto) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del precio al elegir producto (queda editable); un re-render, sin cascada
         setFormData(prev => ({
           ...prev,
           precioUnitario: producto.precio.toString()

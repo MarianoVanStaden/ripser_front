@@ -61,10 +61,6 @@ const ContactosCondicionesPage: React.FC = () => {
     usuarioId: undefined,
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
     try {
       setLoading(true);
@@ -82,6 +78,11 @@ const ContactosCondicionesPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadData();
+  }, []);
 
   const handleSelectProveedor = (proveedor: ProveedorDTO) => {
     setSelectedProveedor(proveedor);

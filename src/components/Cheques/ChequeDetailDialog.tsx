@@ -67,6 +67,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
   // Reset de los inputs transitorios al cerrar.
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de inputs transitorios al cerrar el dialog; un re-render, sin cascada
       setShowCobroInput(false);
       setCajaRef(null);
       setShowReversionInput(false);

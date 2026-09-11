@@ -93,17 +93,6 @@ const EvaluacionDesempenoPage = () => {
     return evaluaciones.filter((e) => e.proveedorId === Number(supplierId));
   };
 
-  useEffect(() => {
-    loadSuppliers();
-  }, []);
-
-  useEffect(() => {
-    if (selectedSupplier) {
-      loadEvaluaciones();
-      loadEstadisticas();
-    }
-  }, [selectedSupplier]);
-
   const loadSuppliers = async () => {
     try {
       setLoading(true);
@@ -178,6 +167,18 @@ const EvaluacionDesempenoPage = () => {
     }
   };
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadSuppliers();
+  }, []);
+
+  useEffect(() => {
+    if (selectedSupplier) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch al cambiar proveedor: setea loading sync antes del request; migrar a React Query es el fix real
+      loadEvaluaciones();
+      loadEstadisticas();
+    }
+  }, [selectedSupplier]);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);

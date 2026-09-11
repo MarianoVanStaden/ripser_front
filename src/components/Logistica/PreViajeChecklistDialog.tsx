@@ -134,6 +134,7 @@ const PreViajeChecklistDialog: React.FC<Props> = ({ open, trip, onClose, onCompl
   // Prefill: carga el checklist existente (si lo hay) al abrir.
   useEffect(() => {
     if (!open || !trip) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
     setError(null);
     setItems(emptyItems());
     setTrailer('');

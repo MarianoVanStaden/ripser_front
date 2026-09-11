@@ -69,17 +69,6 @@ const GarantiasPage: React.FC = () => {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Carga server-side de la página actual cuando cambian filtros/paginado
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, rowsPerPage, estadoFilter, debouncedSearch, fechaDesde, fechaHasta]);
-
-  // Estadísticas (totales por estado) — independientes del paginado
-  useEffect(() => {
-    loadStats();
-  }, []);
-
   const buildParams = () => ({
     page,
     size: rowsPerPage,
@@ -120,6 +109,19 @@ const GarantiasPage: React.FC = () => {
       console.error('Error loading stats:', err);
     }
   };
+
+  // Carga server-side de la página actual cuando cambian filtros/paginado
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, rowsPerPage, estadoFilter, debouncedSearch, fechaDesde, fechaHasta]);
+
+  // Estadísticas (totales por estado) — independientes del paginado
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial de stats; setState solo tras la respuesta, sin cascada
+    loadStats();
+  }, []);
 
   // Carga perezosa de opciones del formulario (equipos + facturas) sólo al abrir el alta
   const ensureFormOptions = async () => {

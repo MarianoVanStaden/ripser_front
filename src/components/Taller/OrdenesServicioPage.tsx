@@ -103,11 +103,6 @@ const OrdenesServicioPage: React.FC = () => {
   const [equiposCliente, setEquiposCliente] = useState<EquipoFabricadoDTO[]>([]);
   const [loadingEquiposCliente, setLoadingEquiposCliente] = useState(false);
 
-  useEffect(() => {
-    loadOrdenes();
-    loadEmpleados();
-  }, []);
-
   const loadEmpleados = async () => {
     try {
       const data = await employeeApi.getAllList();
@@ -137,6 +132,12 @@ const OrdenesServicioPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadOrdenes();
+    loadEmpleados();
+  }, []);
 
   const handleOpenForm = (orden?: OrdenServicio) => {
     if (orden) {
@@ -195,6 +196,7 @@ const OrdenesServicioPage: React.FC = () => {
     if (!formOpen) return;
     const clienteId = formData.clienteId ? parseInt(formData.clienteId) : null;
     if (!clienteId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de equipos al deseleccionar cliente en el form; un re-render, sin cascada
       setEquiposCliente([]);
       setEquipoEncontrado(null);
       return;

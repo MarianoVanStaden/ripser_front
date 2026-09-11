@@ -106,6 +106,7 @@ const LiquidacionFinalDialog: React.FC<Props> = ({ open, liquidacionId, onClose 
   // Sincronizar formulario de cabecera al cargar una liquidación existente.
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset/carga del form al abrir el dialog (crear/editar); un re-render, sin cascada
     setError(null);
     if (isCreate) {
       setEmpleadoId('');

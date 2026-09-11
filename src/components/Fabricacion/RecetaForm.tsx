@@ -127,6 +127,7 @@ const RecetaForm: React.FC = () => {
   }, [recetaEditQuery.data, recetaIdNum]);
   useEffect(() => {
     if (recetaEditQuery.error) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del snackbar con el error de la query; un re-render, sin cascada
       setSnackbar({ open: true, message: 'Error al cargar la receta', severity: 'error' });
     }
   }, [recetaEditQuery.error]);

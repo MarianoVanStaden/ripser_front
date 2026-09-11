@@ -225,15 +225,6 @@ const Dashboard: React.FC = () => {
     userRole === 'PRODUCCION' ||
     userRole === 'TALLER';
 
-  useEffect(() => {
-    checkConnection();
-    if (!hasSpecificDashboard) {
-      fetchDashboardData();
-    } else {
-      setLoading(false);
-    }
-  }, [empresaId, isAdminRole, hasSpecificDashboard]); // Re-fetch when tenant changes
-
   // Unidades refrigeradas (H+C) netas del mes actual para el KPI vs meta grupal.
   useEffect(() => {
     if (!isAdminRole || tramosUnidadesRefrigeradas.length === 0) return;
@@ -476,6 +467,16 @@ const Dashboard: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial del dashboard: setea loading sync antes del request; migrar a React Query es el fix real
+    checkConnection();
+    if (!hasSpecificDashboard) {
+      fetchDashboardData();
+    } else {
+      setLoading(false);
+    }
+  }, [empresaId, isAdminRole, hasSpecificDashboard]); // Re-fetch when tenant changes
 
   const handleRetry = () => {
     checkConnection();

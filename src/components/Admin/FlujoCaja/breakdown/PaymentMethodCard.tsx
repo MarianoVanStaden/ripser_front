@@ -68,6 +68,7 @@ const PaymentMethodCard: React.FC<PaymentMethodCardProps> = ({ data, totalGenera
               justifyContent: 'center',
             }}
           >
+            {/* eslint-disable-next-line react-hooks/static-components -- Icon es un componente MUI existente seleccionado por método de pago, no se crea en render */}
             <Icon sx={{ color, fontSize: 28 }} />
           </Box>
         }

@@ -448,7 +448,7 @@ const ReconciliacionStockPage: React.FC = () => {
   const reconciliacionQuery = useQuery({
     queryKey: ['reconciliacion-stock'],
     queryFn: async () => {
-      let activa: ReconciliacionDetalladaDTO | null = null;
+      let activa: ReconciliacionDetalladaDTO | null;
       let difs: ReconciliacionDiferenciasDTO | null = null;
       try {
         activa = await reconciliacionApi.getActiva();
@@ -462,7 +462,7 @@ const ReconciliacionStockPage: React.FC = () => {
       } catch {
         activa = null;
       }
-      let hist: ReconciliacionStockDTO[] = [];
+      let hist: ReconciliacionStockDTO[];
       try {
         const h = await reconciliacionApi.getHistorial();
         hist = Array.isArray(h) ? h : (h as any)?.content || [];

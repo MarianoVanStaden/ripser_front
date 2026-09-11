@@ -86,6 +86,7 @@ const AnulacionesPage: React.FC = () => {
     ...(debouncedBusqueda.trim() ? { busqueda: debouncedBusqueda.trim() } : {}),
   }), [desde, hasta, debouncedBusqueda]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar filtros; un re-render, sin cascada
   useEffect(() => { setPage(0); }, [desde, hasta, debouncedBusqueda]);
 
   const notasQuery = useQuery({

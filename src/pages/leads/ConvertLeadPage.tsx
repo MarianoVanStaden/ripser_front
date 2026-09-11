@@ -76,12 +76,6 @@ export const ConvertLeadPage = () => {
     observacionesCliente: ''
   });
 
-  useEffect(() => {
-    if (id) {
-      loadLead(parseInt(id));
-    }
-  }, [id]);
-
   const loadLead = async (leadId: number) => {
     try {
       setLoading(true);
@@ -174,6 +168,13 @@ export const ConvertLeadPage = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+      loadLead(parseInt(id));
+    }
+  }, [id]);
 
   const validateEmail = (email: string): boolean => {
     if (!email) return true; // opcional

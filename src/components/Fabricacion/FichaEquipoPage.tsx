@@ -158,6 +158,7 @@ const FichaEquipoPage: React.FC = () => {
 
   useEffect(() => {
     if (paramNumero) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
       void loadFicha(paramNumero);
     }
      

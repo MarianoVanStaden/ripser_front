@@ -105,9 +105,11 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
       cantidadSolicitada: undefined,
       observaciones: '',
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset del form al abrir el dialog; un re-render, sin cascada
     setApiError(null);
   }, [open, reset]);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del error local con la query; un re-render, sin cascada
     if (depsQuery.error) setApiError('Error al cargar recetas y depósitos');
   }, [depsQuery.error]);
 

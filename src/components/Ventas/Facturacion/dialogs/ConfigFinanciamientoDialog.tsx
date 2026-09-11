@@ -73,6 +73,7 @@ const ConfigFinanciamientoDialog: React.FC<Props> = ({
   // Reset internal state on each open so previous draft doesn't persist.
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
       setShowNewForm(false);
       setForm(EMPTY_FORM);
     }

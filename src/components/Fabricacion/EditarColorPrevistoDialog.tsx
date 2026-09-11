@@ -45,6 +45,7 @@ const EditarColorPrevistoDialog: React.FC<EditarColorPrevistoDialogProps> = ({
 
   useEffect(() => {
     if (!open || !equipo?.numeroHeladera) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al cerrar el dialog; un re-render, sin cascada
       setFull(null);
       setColorId(undefined);
       setError(null);

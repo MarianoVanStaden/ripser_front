@@ -74,6 +74,7 @@ const ExcepcionesTab: React.FC<Props> = ({
 
   // Si cambia el set de datos (recarga/filtro), volver a la primera página.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de página al cambiar el set de datos; un re-render, sin cascada
     setPage(0);
   }, [ordenadas.length]);
 

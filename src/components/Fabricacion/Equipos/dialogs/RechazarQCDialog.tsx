@@ -39,6 +39,7 @@ export default function RechazarQCDialog({ open, equipo, onClose, onNotify, onRe
 
   // Reset de la selección al (re)abrir.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
     if (open) setEtapasRechazadas(new Map());
   }, [open, equipo?.id]);
 

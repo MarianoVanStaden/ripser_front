@@ -59,6 +59,7 @@ const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
   // When dialog opens, fetch the full equipo to ensure observaciones and clienteId are available
   useEffect(() => {
     if (!open || !equipo?.numeroHeladera) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al cerrar el dialog; un re-render, sin cascada
       setFullEquipo(null);
       autoFilledRef.current = false;
       return;

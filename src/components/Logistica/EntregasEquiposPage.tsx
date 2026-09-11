@@ -221,6 +221,7 @@ const EntregasEquiposPage2: React.FC = () => {
     },
   });
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync de datos de React Query a estado local editable (expanded); un re-render, sin cascada
     setFacturasConEquipos(facturasEquiposQuery.data ?? []);
   }, [facturasEquiposQuery.data]);
   const loading = facturasEquiposQuery.isPending;

@@ -45,6 +45,7 @@ const BillingDialog: React.FC<Props> = ({ open, baseTotal, costoEnvio = 0, defau
 
   // Re-seed when the dialog opens (parent passes fresh defaults per opening).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- re-seed del form al abrir el dialog; un re-render, sin cascada
     if (open) setForm(defaultValues);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

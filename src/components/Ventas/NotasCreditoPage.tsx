@@ -73,6 +73,18 @@ interface SuccessData {
   itemsAcreditados?: number;
 }
 
+// Izado a scope de módulo: no cierra sobre estado del componente (react-hooks/static-components).
+const StepBadge = ({ n }: { n: number }) => (
+  <Box sx={{
+    width: 28, height: 28, borderRadius: '50%',
+    bgcolor: 'primary.main', color: 'primary.contrastText',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontWeight: 600, fontSize: '0.875rem', flexShrink: 0,
+  }}>
+    {n}
+  </Box>
+);
+
 // ────────────────────────── Component ──────────────────────────
 
 const NotasCreditoPage: React.FC = () => {
@@ -135,6 +147,7 @@ const NotasCreditoPage: React.FC = () => {
   const loadingFacturas = facturasQuery.isFetching;
   useEffect(() => {
     if (facturasQuery.error) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del alert con el estado de error de la query; un re-render, sin cascada
       setAlert({ open: true, message: 'Error al cargar las facturas.', severity: 'error' });
     }
      
@@ -325,6 +338,7 @@ const NotasCreditoPage: React.FC = () => {
 
   // ── Computed values ──
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- bail del compiler sobre este useMemo existente; se conserva la memo manual tal cual
   const equiposElegiblesDevolucion = useMemo(
     () => equiposFactura.filter(e => ['FACTURADO', 'EN_TRANSITO', 'ENTREGADO'].includes(e.estadoAsignacion as string)),
     [equiposFactura]
@@ -403,6 +417,7 @@ const NotasCreditoPage: React.FC = () => {
     const seq = ++previewSeqRef.current;
     if (!payload) {
       setPreview(null);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- preview debounced: setea loading sync antes del request; migrar a React Query es el fix real
       setLoadingPreview(false);
       return;
     }
@@ -494,17 +509,6 @@ const NotasCreditoPage: React.FC = () => {
     value.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 });
 
   // ── Render helpers ──
-
-  const StepBadge = ({ n }: { n: number }) => (
-    <Box sx={{
-      width: 28, height: 28, borderRadius: '50%',
-      bgcolor: 'primary.main', color: 'primary.contrastText',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontWeight: 600, fontSize: '0.875rem', flexShrink: 0,
-    }}>
-      {n}
-    </Box>
-  );
 
   const equipoEstadoColor = (estado?: string) => {
     if (estado === 'ENTREGADO') return 'success';

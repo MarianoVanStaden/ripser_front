@@ -301,6 +301,7 @@ const IncidenciaFormDialog: React.FC<IncidenciaFormDialogProps> = ({
   useEffect(() => {
     if (!open) return;
     if (isEdit && incidencia) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
       setForm({
         tipo: incidencia.tipo,
         gravedad: incidencia.gravedad,

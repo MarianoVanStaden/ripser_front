@@ -94,6 +94,7 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
   // ── Reset al abrir ──
   useEffect(() => {
     if (!open || !viaje) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
     setStep(0);
     setRendicionCreada(null);
     setErrorSubmit(null);

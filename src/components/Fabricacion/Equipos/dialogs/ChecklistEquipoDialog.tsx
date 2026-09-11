@@ -37,9 +37,11 @@ export default function ChecklistEquipoDialog({
     enabled: open && !!equipo?.id,
   });
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync de la copia local editable con la query; un re-render, sin cascada
     setEtapas(etapasQuery.data ?? []);
   }, [etapasQuery.data]);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al cerrar el dialog; un re-render, sin cascada
     if (!open) setModoRechazo(false);
   }, [open]);
 

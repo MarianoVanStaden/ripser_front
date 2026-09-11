@@ -87,6 +87,7 @@ const InventoryPage: React.FC = () => {
   }, []);
 
   // Reset page=0 cuando cambian filtros server-side.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar filtros; un re-render, sin cascada
   useEffect(() => { setProductPage(0); }, [selectedCategory]);
 
   // Productos: paginado server-side con filtro de categoría opcional.
@@ -154,6 +155,7 @@ const InventoryPage: React.FC = () => {
   const loading = productsQuery.isLoading || movimientosQuery.isLoading;
   useEffect(() => {
     if (productsQuery.error || movimientosQuery.error) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deriva mensaje de error de los errores de las queries; un re-render, sin cascada
       setError('Error al cargar los datos de inventario');
     } else {
       setError(null);

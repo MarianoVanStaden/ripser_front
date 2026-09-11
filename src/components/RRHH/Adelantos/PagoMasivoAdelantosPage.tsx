@@ -92,6 +92,7 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
   useEffect(() => { loadInitial(); }, [loadInitial]);
 
   // Adelantos del período + pendientes (fechaPago == null)
@@ -103,6 +104,7 @@ const PagoMasivoAdelantosPage: React.FC<PagoMasivoAdelantosPageProps> = ({ embed
   useEffect(() => {
     const next: Record<number, boolean> = {};
     pendientes.forEach(a => { next[a.id] = true; });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync de la selección con los pendientes del período; un re-render, sin cascada
     setSeleccion(next);
   }, [pendientes.length, periodo]); // eslint-disable-line react-hooks/exhaustive-deps
 

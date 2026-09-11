@@ -149,6 +149,7 @@ export const CobranzasListPage: React.FC = () => {
 
   // Keep input in sync if URL changes externally (e.g. resetFilters or deep link).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del input con el term de la URL; un re-render, sin cascada
     setSearchInput(urlFilters.term ?? '');
   }, [urlFilters.term]);
 
@@ -291,6 +292,7 @@ export const CobranzasListPage: React.FC = () => {
       if (visibleIds.has(id)) next.add(id);
       else changed = true;
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- poda la selección contra las filas visibles al cambiar la lista; un re-render, sin cascada
     if (changed) setSelectedIds(next);
   }, [gestiones, selectedIds]);
 

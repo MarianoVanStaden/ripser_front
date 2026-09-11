@@ -72,6 +72,7 @@ const formatFecha = (iso: string | null): string => {
 // tooltip agrega los días desde la facturación, que no se pueden maquillar.
 const AtrasoChip: React.FC<{ diasAtraso: number | null; fechaEmision: string | null }> = ({ diasAtraso, fechaEmision }) => {
   const diasDesdeEmision = fechaEmision
+    // eslint-disable-next-line react-hooks/purity -- días desde la facturación contra hoy; solo display, estable dentro del día
     ? Math.floor((Date.now() - new Date(`${fechaEmision}T00:00:00`).getTime()) / 86_400_000)
     : null;
   const tooltip = [

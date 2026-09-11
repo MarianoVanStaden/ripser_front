@@ -168,6 +168,7 @@ const ReasignacionLeadsPage: React.FC = () => {
   useEffect(() => {
     if (modo !== 'LEADS_SELECCIONADOS' || activeStep !== 0) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch de leads: setea loading sync antes del request; migrar a React Query es el fix real
     setLoadingLeads(true);
     leadApi.getAll(
       { page: leadPage, size: leadRowsPerPage, sort: `fechaPrimerContacto,${leadOrden}` },

@@ -51,13 +51,6 @@ const CuentasBancariasPage: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    if (tienePermiso('ADMINISTRACION')) {
-      loadData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const loadData = async () => {
     try {
       setLoading(true);
@@ -75,6 +68,14 @@ const CuentasBancariasPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (tienePermiso('ADMINISTRACION')) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: loadData setea loading sync antes del request; migrar a React Query es el fix real
+      loadData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredCuentas = useMemo(() => {
     return cuentas.filter((cuenta) => {

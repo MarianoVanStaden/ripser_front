@@ -45,10 +45,6 @@ const ConfiguracionFinanciamiento: React.FC = () => {
     activa: true,
   });
 
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
   const loadTemplates = async () => {
     try {
       setLoading(true);
@@ -62,6 +58,11 @@ const ConfiguracionFinanciamiento: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadTemplates();
+  }, []);
 
   const handleOpenDialog = (template?: OpcionFinanciamientoTemplateDTO) => {
     if (template) {

@@ -90,6 +90,7 @@ export default function CierreMensualDialog({ open, anio, mes, onClose, onSucces
   useEffect(() => {
     if (!open) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
     setResultado(null);
     setError(null);
     setConfirmado(false);

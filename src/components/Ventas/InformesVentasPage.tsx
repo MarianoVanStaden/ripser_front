@@ -551,7 +551,7 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
     const groupedSales: Record<string, { count: number; total: number }> = {};
     filteredSales.forEach((sale: SaleRecord) => {
       const saleDate = safeParseDate(sale.fechaVenta || sale.fecha_venta) || new Date();
-      let key = '';
+      let key: string;
       switch (groupBy) {
         case 'Dia':
           key = saleDate.toLocaleDateString();

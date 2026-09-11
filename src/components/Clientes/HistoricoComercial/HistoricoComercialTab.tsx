@@ -156,6 +156,7 @@ const HistoricoComercialTab: React.FC<HistoricoComercialTabProps> = ({ clienteId
   }, [documentosFiltrados, page, rowsPerPage]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de paginación al cambiar filtros; un re-render, sin cascada
     setPage(0);
   }, [tipoFiltro, estadoFiltro, desde, hasta, busqueda]);
 

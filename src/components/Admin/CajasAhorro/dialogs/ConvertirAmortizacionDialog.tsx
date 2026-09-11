@@ -89,6 +89,7 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
   // Reset al abrir
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
     setStep(0);
     setDisponibles([]);
     setSelected(null);
@@ -104,6 +105,7 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
   // Cargar cajas pesos cuando entra al paso 1
   useEffect(() => {
     if (step !== 1) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch al entrar al paso 1: setea loading sync antes del request; migrar a React Query es el fix real
     setLoadingCajasPesos(true);
     cajasPesosApi
       .getAll()

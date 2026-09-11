@@ -52,6 +52,7 @@ export const CajaSelector: React.FC<Props> = ({
 
   useEffect(() => {
     if (!aplica || !canon) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpia opciones cuando el método de pago no requiere caja; un re-render, sin cascada
       setCajas([]);
       onChange(null);
       return;

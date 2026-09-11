@@ -89,6 +89,7 @@ export default function TripDetailsPanel({
   // Tab activa del detalle — vuelve a la primera al abrir (como hacía la página).
   const [detailsTab, setDetailsTab] = useState(0);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
     if (detailsDialogOpen) setDetailsTab(0);
   }, [detailsDialogOpen]);
 

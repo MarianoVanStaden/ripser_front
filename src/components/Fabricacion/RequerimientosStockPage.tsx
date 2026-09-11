@@ -557,6 +557,7 @@ const CargarPedidoDialog: React.FC<{
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
       setCarrito({});
       setObservaciones('');
       setBusqueda('');
@@ -962,6 +963,7 @@ const AsignarProveedoresDialog: React.FC<{
           ];
         }
       });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset del form al cambiar el requerimiento seleccionado; un re-render, sin cascada
       setFilas(inicial);
       setErrorLocal(null);
     }
@@ -1201,6 +1203,7 @@ const RecibirDialog: React.FC<{
 
   useEffect(() => {
     if (reqId == null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
       setDetalle(null);
       return;
     }

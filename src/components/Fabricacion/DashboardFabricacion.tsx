@@ -95,7 +95,7 @@ const DashboardFabricacion: React.FC = () => {
   // Primero intentamos agrupar por receta, si no hay, agrupamos por modelo
   const equiposConReceta = equipos.filter((e) => e.recetaId);
   
-  let modelosUsados: any = {};
+  let modelosUsados: any;
   
   if (equiposConReceta.length > 0) {
     // Si hay equipos con receta, agrupar por receta

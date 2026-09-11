@@ -88,6 +88,7 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI + loading sync al abrir el dialog; un re-render, sin cascada
     setDestinoId('');
     setOrigenes([nuevaFila()]);
     setApiError(null);

@@ -89,6 +89,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
       // confirmación (puede haber varios; montoInformado es la suma). Si ya
       // está todo informado, queda 0 y se tipea el monto del nuevo cobro.
       const disponible = cuota.montoCuota - cuota.montoPagado - (cuota.montoInformado ?? 0);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de UI al abrir el dialog; un re-render, sin cascada
       setMontoPagado(disponible > 0 ? disponible : 0);
       setFechaPago(dayjs().format('YYYY-MM-DD'));
       // Si el plan original definió un medio de pago para esta cuota (ej. CHEQUE
@@ -111,6 +112,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
   // Carga lazy de bancos — solo cuando el usuario efectivamente elige CHEQUE.
   useEffect(() => {
     if (metodoPago === 'CHEQUE' && bancos.length === 0 && !loadingBancos) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
       setLoadingBancos(true);
       bancoApi
         .getActivos()
@@ -121,6 +123,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
   }, [metodoPago, bancos.length, loadingBancos]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de error + fetch de saldo con loading sync; migrar a React Query es el fix real
     setError(null);
     if (METODOS_CON_VALIDACION_SALDO.includes(metodoPago) && clienteId) {
       setLoadingSaldo(true);

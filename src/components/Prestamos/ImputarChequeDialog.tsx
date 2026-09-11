@@ -39,6 +39,7 @@ export const ImputarChequeDialog: React.FC<ImputarChequeDialogProps> = ({
 
   useEffect(() => {
     if (open && clienteId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset + loading sync al abrir el dialog antes del request; migrar a React Query es el fix real
       setChequeId('');
       setError(null);
       setLoading(true);

@@ -81,6 +81,7 @@ const CalculadoraPDFDialog: React.FC<Props> = ({ open, onClose, presupuesto, onE
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial al abrir el dialog: setea loading sync antes del request; migrar a React Query es el fix real
     setLoading(true);
     setError(null);
     setEntregaPctInput('40');

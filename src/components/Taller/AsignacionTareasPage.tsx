@@ -94,12 +94,6 @@ const AsignacionTareasPage: React.FC = () => {
     estado: 'PENDIENTE'
   });
 
-  useEffect(() => {
-    loadTareas();
-    loadOrdenes();
-    loadEmpleados();
-  }, []);
-
   const loadTareas = async () => {
     try {
       setLoading(true);
@@ -138,6 +132,13 @@ const AsignacionTareasPage: React.FC = () => {
       setEmpleados([]);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadTareas();
+    loadOrdenes();
+    loadEmpleados();
+  }, []);
 
   const handleOpenForm = async (tarea?: TareaServicio) => {
     if (tarea) {

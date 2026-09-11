@@ -523,6 +523,7 @@ const ReprogramarDialog: React.FC<ReprogramarDialogProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- precarga la fecha al abrir el dialog con el recordatorio; un re-render, sin cascada
     if (recordatorio) setNuevaFecha(recordatorio.fechaRecordatorio);
   }, [recordatorio]);
 
@@ -640,6 +641,7 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
   // Load leads + sucursales when dialog opens (en paralelo)
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch al abrir el dialog: setea loading sync antes del request; migrar a React Query es el fix real
     setLoadingLeads(true);
 
     const leadsPromise = leadApi.getAll({ page: 0, size: 300 })

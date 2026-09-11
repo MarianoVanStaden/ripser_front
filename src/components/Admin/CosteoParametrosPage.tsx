@@ -38,10 +38,6 @@ const CosteoParametrosPage: React.FC = () => {
     severity: 'success',
   });
 
-  useEffect(() => {
-    loadParametros();
-  }, []);
-
   const loadParametros = async () => {
     setLoading(true);
     setError(null);
@@ -62,6 +58,11 @@ const CosteoParametrosPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadParametros();
+  }, []);
 
   const handleChange = (clave: string, raw: string) => {
     setValues((prev) => ({ ...prev, [clave]: raw }));

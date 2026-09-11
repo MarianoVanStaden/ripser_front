@@ -124,6 +124,7 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
   // ── Cargar resumen y armar el desglose ──
   useEffect(() => {
     let cancel = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
     setLoading(true);
     setError(null);
     viajeApi.getResumenCobros(viajeId)
@@ -216,6 +217,7 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
 
   // ── Auto-seleccionar caja default cuando llegan las cajas ──
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-selección de caja default cuando llegan las cajas; un re-render, sin cascada
     setCajaSel((prev) => {
       const next = { ...prev };
       Object.entries(cajasPorMetodo).forEach(([metodo, lista]) => {

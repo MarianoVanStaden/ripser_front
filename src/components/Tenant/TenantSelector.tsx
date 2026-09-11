@@ -22,18 +22,6 @@ export const TenantSelector: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadEmpresas();
-  }, [esSuperAdmin, user]);
-
-  useEffect(() => {
-    if (selectedEmpresa) {
-      loadSucursales(selectedEmpresa);
-    } else {
-      setSucursales([]);
-    }
-  }, [selectedEmpresa]);
-
   const loadEmpresas = async () => {
     if (!user) {
       console.log('❌ TenantSelector: No user found, cannot load empresas');
@@ -89,6 +77,20 @@ export const TenantSelector: React.FC = () => {
       setError('Error al cargar sucursales');
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial de empresas; migrar a React Query es el fix real
+    loadEmpresas();
+  }, [esSuperAdmin, user]);
+
+  useEffect(() => {
+    if (selectedEmpresa) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch de sucursales al elegir empresa (y limpia al deseleccionar); migrar a React Query es el fix real
+      loadSucursales(selectedEmpresa);
+    } else {
+      setSucursales([]);
+    }
+  }, [selectedEmpresa]);
 
   const handleChange = async () => {
     if (!selectedEmpresa) {

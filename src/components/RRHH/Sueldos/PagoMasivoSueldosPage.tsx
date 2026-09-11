@@ -101,6 +101,7 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
   // Auto-seleccionar la primera caja activa (y su método) al cargar.
   useEffect(() => {
     if (cajas.length > 0 && cajaId === '') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-selección inicial de caja al cargar; guard cajaId==='' evita cascada
       setCajaId(cajas[0].id);
       setMetodoPago(metodoDefaultDeCaja(cajas[0]));
     }
@@ -139,6 +140,7 @@ const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded 
     (Array.isArray(sueldosRaw) ? sueldosRaw : []).forEach((s: any) => {
       if (saldoPendienteDe(s) > 0) next[s.id] = true;
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- selección default (todos los pendientes) al recargar el período; un re-render, sin cascada
     setSeleccion(next);
   }, [sueldosRaw]);
 

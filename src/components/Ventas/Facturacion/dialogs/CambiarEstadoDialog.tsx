@@ -29,6 +29,7 @@ const CambiarEstadoDialog: React.FC<Props> = ({ documento, onClose, onUpdated, o
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync con prop documento al abrir; un re-render, sin cascada
     if (documento) setEstado(documento.estado);
   }, [documento]);
 

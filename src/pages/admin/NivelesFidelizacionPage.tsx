@@ -60,6 +60,7 @@ const NivelesFidelizacionPage: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: load() setea loading sync antes del request; migrar a React Query es el fix real
   useEffect(() => { load();   }, []);
 
   const handleOpenNew = () => {

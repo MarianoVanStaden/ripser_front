@@ -78,13 +78,6 @@ export const LeadMetricasPage = () => {
   const [vendedores, setVendedores] = useState<Usuario[]>([]);
   const [loadingVendedores, setLoadingVendedores] = useState(false);
 
-  // Cargar vendedores y métricas al montar
-  useEffect(() => {
-    loadVendedores();
-    loadMetricas();
-    loadParametrosMeta();
-  }, [sucursalFiltro]);
-
   const loadVendedores = async () => {
     try {
       setLoadingVendedores(true);
@@ -96,21 +89,6 @@ export const LeadMetricasPage = () => {
       setLoadingVendedores(false);
     }
   };
-
-  // Auto-refresh cuando la página recibe el foco (usuario vuelve después de convertir un lead)
-  useEffect(() => {
-    const handleFocus = () => {
-      // Recargar métricas cuando el usuario vuelve a la pestaña
-      if (document.visibilityState === 'visible') {
-        loadMetricas();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleFocus);
-    return () => {
-      document.removeEventListener('visibilitychange', handleFocus);
-    };
-  }, [fechaInicio, fechaFin, sucursalFiltro, usuarioSeleccionado]);
 
   const loadParametrosMeta = async () => {
     try {
@@ -175,6 +153,29 @@ export const LeadMetricasPage = () => {
       setLoading(false);
     }
   };
+
+  // Auto-refresh cuando la página recibe el foco (usuario vuelve después de convertir un lead)
+  useEffect(() => {
+    const handleFocus = () => {
+      // Recargar métricas cuando el usuario vuelve a la pestaña
+      if (document.visibilityState === 'visible') {
+        loadMetricas();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [fechaInicio, fechaFin, sucursalFiltro, usuarioSeleccionado]);
+
+  // Cargar vendedores y métricas al montar
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: setea loading sync antes del request; migrar a React Query es el fix real
+    loadVendedores();
+    loadMetricas();
+    loadParametrosMeta();
+  }, [sucursalFiltro]);
 
   const handleExportar = async () => {
     if (!metricas) return;

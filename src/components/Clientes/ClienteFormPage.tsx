@@ -129,6 +129,7 @@ const ClienteFormPage: React.FC = () => {
       });
 
       if (cliente.recetaCompradaId) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- sync del form con el cliente cargado por la query; un re-render, sin cascada
         setSelectedItem({
           type: 'receta',
           id: cliente.recetaCompradaId,
@@ -151,6 +152,7 @@ const ClienteFormPage: React.FC = () => {
      
   }, [clienteQuery.data, clienteIdNum]);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- propaga el error de la query a estado de UI; un re-render, sin cascada
     if (clienteQuery.error) setError('Error al cargar el cliente');
   }, [clienteQuery.error]);
 

@@ -93,6 +93,7 @@ const OfertasPrecioPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial: loadOfertas setea loading sync antes del request; migrar a React Query es el fix real
     loadOfertas();
     (async () => {
       try {
